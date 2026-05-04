@@ -1,0 +1,19 @@
+{
+  "id": "bone_archer",
+  "name": "Bone Archer",
+  "description": "A skeletal figure clutching a bow of fused ribs.",
+  "stats": {
+    "str": 4,
+    "dex": 7,
+    "con": 3,
+    "int": 2,
+    "wil": 4
+  },
+  "hpBase": 10,
+  "speed": 6,
+  "ai": "ranged_priority",
+  "abilities": ["bone_arrow", "skull_crack"],
+  "lootTable": [
+    { "itemId": "bone_fragments", "chance": 0.6 }
+  ]
+}
