@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { GameClient } from './net/GameClient';
   import { DungeonRenderer } from './renderer/DungeonRenderer';
+  import AutoMap from './ui/AutoMap.svelte';
   import type { GameState } from './types/game';
 
   let gameContainer: HTMLElement | undefined = $state(undefined);
@@ -102,6 +103,10 @@
       <p>Use <kbd>↑</kbd>/<kbd>W</kbd> to move forward</p>
       <p>Use <kbd>←</kbd>/<kbd>A</kbd> and <kbd>→</kbd>/<kbd>D</kbd> to turn</p>
     </div>
+
+    <div class="automap-wrapper">
+      <AutoMap {state} />
+    </div>
   </div>
 </main>
 
@@ -183,6 +188,12 @@
     color: #ccc;
     font-size: 0.875rem;
     max-width: 300px;
+  }
+
+  .automap-wrapper {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
   }
 
   .instructions p {

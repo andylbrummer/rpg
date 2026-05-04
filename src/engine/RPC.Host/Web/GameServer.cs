@@ -386,6 +386,7 @@ public class GameServer
     private object CreateStateMessage()
     {
         var tiles = new List<object>();
+        var explored = new List<object>();
         if (_gameState.CurrentDungeon != null)
         {
             // Only send visible tiles around player
@@ -404,6 +405,16 @@ public class GameServer
                     }
                 }
             }
+
+            // Send explored tiles for automap
+            foreach (var key in _gameState.ExploredTiles)
+            {
+                var parts = key.Split(',');
+                var x = int.Parse(parts[0]);
+                var y = int.Parse(parts[1]);
+                var tile = _gameState.CurrentDungeon.Tiles[x, y];
+                explored.Add(new { x, y, type = tile.Type.ToString() });
+            }
         }
 
         return new
@@ -417,6 +428,7 @@ public class GameServer
                 facing = _gameState.Player.Facing.ToString()
             },
             tiles,
+            explored,
             hasDungeon = _gameState.CurrentDungeon != null
         };
     }

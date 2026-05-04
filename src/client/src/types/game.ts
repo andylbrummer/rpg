@@ -20,6 +20,7 @@ export interface GameState {
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
   player: Player;
   tiles: Tile[];
+  explored: Tile[];
   hasDungeon: boolean;
 }
 

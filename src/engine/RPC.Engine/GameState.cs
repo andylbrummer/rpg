@@ -16,9 +16,12 @@ public class GameState
         LastUpdate = DateTime.UtcNow;
     }
 
+    public HashSet<string> ExploredTiles { get; } = new();
+
     public void EnterDungeon(Dungeon dungeon)
     {
         CurrentDungeon = dungeon;
+        ExploredTiles.Clear();
         // Find entrance position
         for (int x = 0; x < dungeon.Width; x++)
         {
@@ -28,7 +31,28 @@ public class GameState
                 {
                     Player.Position = new Position(x, y);
                     Player.Facing = Direction.North;
+                    ExploreAroundPlayer();
                     return;
+                }
+            }
+        }
+    }
+
+    public void ExploreAroundPlayer()
+    {
+        if (CurrentDungeon == null) return;
+        var px = Player.Position.X;
+        var py = Player.Position.Y;
+        var viewRadius = 3;
+        
+        for (int x = Math.Max(0, px - viewRadius); x < Math.Min(CurrentDungeon.Width, px + viewRadius + 1); x++)
+        {
+            for (int y = Math.Max(0, py - viewRadius); y < Math.Min(CurrentDungeon.Height, py + viewRadius + 1); y++)
+            {
+                var tile = CurrentDungeon.Tiles[x, y];
+                if (tile.Type != TileType.Empty)
+                {
+                    ExploredTiles.Add($"{x},{y}");
                 }
             }
         }
@@ -42,6 +66,7 @@ public class GameState
         if (CurrentDungeon.CanMoveTo(newPos))
         {
             Player.Position = newPos;
+            ExploreAroundPlayer();
             LastUpdate = DateTime.UtcNow;
             return true;
         }
