@@ -59,8 +59,8 @@
 | T11 | Character data model | Backend | 1d | ✅ Done |
 | T12 | Party system (4 chars, 2+2) | Backend | 1d | ✅ Done |
 | T13 | Content: 4 classes | Content | 2d | ✅ Done |
-| T14 | Content: items & equipment | Content | 2d | 🎯 Next |
-| T15 | Inventory UI | Frontend | 3d | 🟡 Ready |
+| T14 | Content: items & equipment | Content | 2d | ✅ Done |
+| T15 | Inventory UI | Frontend | 3d | 🎯 Next |
 | T16 | Content pack compiler v1 | Tools | 2d | 🟡 Ready |
 
 **Acceptance:** Create party of 4, equip, view stats. Content loads from binary pack.
