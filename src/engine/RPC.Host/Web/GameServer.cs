@@ -80,7 +80,7 @@ public class GameServer
     private async Task HandleStaticFile(HttpListenerContext context, string path)
     {
         // Map /app to the built frontend directory
-        // AppContext.BaseDirectory is bin/Debug/net10.0/, so we need to go up 5 levels to reach src/client/dist
+        // AppContext.BaseDirectory is bin/Debug/net9.0/, so we need to go up 5 levels to reach src/client/dist
         var clientDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "client", "dist");
         
         // Map URL path to file path
