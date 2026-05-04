@@ -1,0 +1,15 @@
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/bin/Debug/net10.0/RPC.Content.deps.json
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/bin/Debug/net10.0/RPC.Content.dll
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/bin/Debug/net10.0/RPC.Content.pdb
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/bin/Debug/net10.0/RPC.Engine.dll
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/bin/Debug/net10.0/RPC.Engine.pdb
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/RPC.Content.csproj.AssemblyReference.cache
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/RPC.Content.GeneratedMSBuildEditorConfig.editorconfig
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/RPC.Content.AssemblyInfoInputs.cache
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/RPC.Content.AssemblyInfo.cs
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/RPC.Content.csproj.CoreCompileInputs.cache
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/RPC.Cont.EF2BD3A2.Up2Date
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/RPC.Content.dll
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/refint/RPC.Content.dll
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/RPC.Content.pdb
+/home/beagle/work/personal/rpc/src/engine/RPC.Content/obj/Debug/net10.0/ref/RPC.Content.dll

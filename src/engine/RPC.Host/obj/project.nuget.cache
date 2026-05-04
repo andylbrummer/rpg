@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "dgSpecHash": "BiY6VwVLgq8=",
+  "success": true,
+  "projectFilePath": "/home/beagle/work/personal/rpc/src/engine/RPC.Host/RPC.Host.csproj",
+  "expectedPackageFiles": [
+    "/home/beagle/.nuget/packages/photino.native/4.0.22/photino.native.4.0.22.nupkg.sha512",
+    "/home/beagle/.nuget/packages/photino.net/4.0.16/photino.net.4.0.16.nupkg.sha512",
+    "/home/beagle/.nuget/packages/system.text.json/10.0.5/system.text.json.10.0.5.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1510",
+      "level": "Warning",
+      "message": "PackageReference System.Text.Json will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
+      "projectPath": "/home/beagle/work/personal/rpc/src/engine/RPC.Host/RPC.Host.csproj",
+      "warningLevel": 1,
+      "filePath": "/home/beagle/work/personal/rpc/src/engine/RPC.Host/RPC.Host.csproj",
+      "libraryId": "System.Text.Json",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}

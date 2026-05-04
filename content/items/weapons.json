@@ -1,0 +1,39 @@
+[
+  {
+    "id": "rusty_sword",
+    "name": "Rusty Sword",
+    "description": "A pitted blade that has seen better days.",
+    "type": "weapon",
+    "slot": "mainHand",
+    "stats": {
+      "damage": "1d6",
+      "accuracy": 0
+    },
+    "value": 10
+  },
+  {
+    "id": "iron_mace",
+    "name": "Iron Mace",
+    "description": "A heavy blunt weapon favored by Bonewardens.",
+    "type": "weapon",
+    "slot": "mainHand",
+    "stats": {
+      "damage": "1d8",
+      "accuracy": -1
+    },
+    "value": 25
+  },
+  {
+    "id": "cautery_knife",
+    "name": "Cautery Knife",
+    "description": "A heated blade used for both surgery and combat.",
+    "type": "weapon",
+    "slot": "mainHand",
+    "stats": {
+      "damage": "1d6",
+      "accuracy": 1,
+      "special": "burn"
+    },
+    "value": 40
+  }
+]

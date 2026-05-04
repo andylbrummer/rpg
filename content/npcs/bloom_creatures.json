@@ -1,0 +1,34 @@
+[
+  {
+    "id": "ash_wretch",
+    "name": "Ash Wretch",
+    "description": "A humanoid figure covered in grey ash, still smoldering.",
+    "type": "bloom",
+    "level": 1,
+    "stats": {
+      "hp": 12,
+      "strength": 10,
+      "dexterity": 8,
+      "speed": 6
+    },
+    "abilities": ["ash_claw", "smolder"],
+    "ai": "aggressive",
+    "loot": ["ash_residue", "bone_fragment"]
+  },
+  {
+    "id": "cinder_hound",
+    "name": "Cinder Hound",
+    "description": "A charred beast that hunts in packs.",
+    "type": "bloom",
+    "level": 2,
+    "stats": {
+      "hp": 18,
+      "strength": 12,
+      "dexterity": 14,
+      "speed": 12
+    },
+    "abilities": ["bite", "burning_charge"],
+    "ai": "pack_hunter",
+    "loot": ["cinder_fang", "charred_hide"]
+  }
+]
