@@ -7,11 +7,11 @@
 | Phase | State | Blocking On |
 |---|---|---|
 | **Spec** | ✅ Complete | — |
-| **Phase 1: Skeleton (G1)** | 🎯 Ready to start | Nothing |
-| **Phase 1: Navigation (G2)** | 🎯 Ready to start | G1 |
-| **Phase 1: Characters (G3)** | 🎯 Ready to start | G1 |
-| **Phase 1: Combat (G4)** | 🎯 Ready to start | G3 |
-| **Phase 1: Loop (G5)** | 🎯 Ready to start | G2 + G4 |
+| **Phase 1: Skeleton (G1)** | ✅ Complete | — |
+| **Phase 1: Navigation (G2)** | ✅ Complete | — |
+| **Phase 1: Characters (G3)** | 🎯 In Progress | G2 complete |
+| **Phase 1: Combat (G4)** | 🟡 Partial | G3 |
+| **Phase 1: Loop (G5)** | ⏳ Blocked | G3 + G4 |
 | Phase 1.5 | ⏳ Blocked | Phase 1 complete |
 | Phase 2 | ⏳ Blocked | Phase 1.5 complete |
 | Phase 3 | ⏳ Blocked | Phase 2 complete |
@@ -24,10 +24,10 @@
 
 | # | Task | Owner | Est | Status |
 |---|---|---|---|---|
-| T1 | Photino shell boots | Backend | 2d | 🔴 Ready |
-| T2 | WebSocket handshake | Both | 1d | 🔴 Ready |
-| T3 | Empty Three.js scene | Frontend | 1d | 🔴 Ready |
-| T4 | REST content endpoint | Both | 1d | 🔴 Ready |
+| T1 | Photino shell boots | Backend | 2d | ✅ Done |
+| T2 | WebSocket handshake | Both | 1d | ✅ Done |
+| T3 | Empty Three.js scene | Frontend | 1d | ✅ Done |
+| T4 | REST content endpoint | Both | 1d | ✅ Done |
 
 **Acceptance:** Window shows gray floor + "Connected" dot.
 
@@ -39,12 +39,12 @@
 
 | # | Task | Owner | Est | Status |
 |---|---|---|---|---|
-| T5 | Grid movement (pure function) | Backend | 2d | 🟡 Ready (needs G1) |
-| T6 | Room segment loader | Backend | 2d | 🟡 Ready |
-| T7 | Dungeon assembler | Backend | 3d | 🟡 Ready |
-| T8 | Three.js dungeon renderer | Frontend | 3d | 🟡 Ready |
-| T9 | Movement input loop | Both | 2d | 🟡 Ready |
-| T10 | Automap | Frontend | 2d | 🟡 Ready |
+| T5 | Grid movement (pure function) | Backend | 2d | ✅ Done |
+| T6 | Room segment loader | Backend | 2d | ✅ Done |
+| T7 | Dungeon assembler | Backend | 3d | ✅ Done |
+| T8 | Three.js dungeon renderer | Frontend | 3d | ✅ Done |
+| T9 | Movement input loop | Both | 2d | ✅ Done |
+| T10 | Automap | Frontend | 2d | ✅ Done |
 
 **Acceptance:** Procedurally assembled Broken Engine dungeon. Movement <50ms input-to-render. Automap tracks correctly.
 
@@ -56,7 +56,7 @@
 
 | # | Task | Owner | Est | Status |
 |---|---|---|---|---|
-| T11 | Character data model | Backend | 1d | 🟡 Ready |
+| T11 | Character data model | Backend | 1d | 🎯 Next |
 | T12 | Party system (4 chars, 2+2) | Backend | 1d | 🟡 Ready |
 | T13 | Content: 4 classes | Content | 2d | 🟡 Ready |
 | T14 | Content: items & equipment | Content | 2d | 🟡 Ready |
