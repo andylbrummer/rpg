@@ -1,0 +1,62 @@
+[
+  {
+    "id": "leather_cap",
+    "name": "Leather Cap",
+    "description": "A worn leather hood offering minimal protection.",
+    "type": "armor",
+    "slot": "head",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGVsbGlwc2UgY3g9IjE2IiBjeT0iMTQiIHJ4PSIxMCIgcnk9IjEwIiBmaWxsPSIjNjU0MzIxIi8+PC9zdmc+",
+    "statBonus": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 },
+    "value": 8
+  },
+  {
+    "id": "iron_helm",
+    "name": "Iron Helm",
+    "description": "A simple iron helmet that turns aside glancing blows.",
+    "type": "armor",
+    "slot": "head",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGVsbGlwc2UgY3g9IjE2IiBjeT0iMTQiIHJ4PSIxMCIgcnk9IjEwIiBmaWxsPSIjNDQ0Ii8+PC9zdmc+",
+    "statBonus": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 0 },
+    "value": 20
+  },
+  {
+    "id": "cloth_vest",
+    "name": "Cloth Vest",
+    "description": "Lightweight cloth wrapping. Better than nothing.",
+    "type": "armor",
+    "slot": "body",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3QgeD0iOCIgeT0iOCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjODc2Ii8+PC9zdmc+",
+    "statBonus": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 },
+    "value": 5
+  },
+  {
+    "id": "scale_mail",
+    "name": "Scale Mail",
+    "description": "Overlapping iron scales providing solid torso protection.",
+    "type": "armor",
+    "slot": "body",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3QgeD0iOCIgeT0iOCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjNTU1Ii8+PC9zdmc+",
+    "statBonus": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 0 },
+    "value": 30
+  },
+  {
+    "id": "wooden_buckler",
+    "name": "Wooden Buckler",
+    "description": "A small wooden shield. Light and easy to handle.",
+    "type": "armor",
+    "slot": "offHand",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTAiIGZpbGw9IiM4NzY1NDMiLz48L3N2Zz4=",
+    "statBonus": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 },
+    "value": 6
+  },
+  {
+    "id": "iron_shield",
+    "name": "Iron Shield",
+    "description": "A heavy iron shield that absorbs significant punishment.",
+    "type": "armor",
+    "slot": "offHand",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTAiIGZpbGw9IiM0NDQiLz48L3N2Zz4=",
+    "statBonus": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 0 },
+    "value": 22
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "small_salve",
+    "name": "Small Salve",
+    "description": "A greasy ointment that closes minor wounds.",
+    "type": "consumable",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgZmlsbD0iIzMyODQzMiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 15,
+    "effect": { "type": "heal", "value": "1d6+2", "target": "ally" },
+    "stackSize": 5
+  },
+  {
+    "id": "healing_draft",
+    "name": "Healing Draft",
+    "description": "A bitter herbal tonic that knits flesh quickly.",
+    "type": "consumable",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgZmlsbD0iIzJhYTYyZiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 35,
+    "effect": { "type": "heal", "value": "2d6+4", "target": "ally" },
+    "stackSize": 3
+  },
+  {
+    "id": "restoration_balm",
+    "name": "Restoration Balm",
+    "description": "A rare compound that restores vitality in moments.",
+    "type": "consumable",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgZmlsbD0iIzAwN2JmZiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 80,
+    "effect": { "type": "heal", "value": "3d8+6", "target": "ally" },
+    "stackSize": 2
+  },
+  {
+    "id": "antitoxin",
+    "name": "Antitoxin",
+    "description": "Neutralizes common poisons and bloom contaminants.",
+    "type": "consumable",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgZmlsbD0iI2ZmNTUwMCIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 25,
+    "effect": { "type": "cure_status", "value": "poison", "target": "ally" },
+    "stackSize": 3
+  },
+  {
+    "id": "clear_mind",
+    "name": "Clear Mind",
+    "description": "A sharp inhale that breaks confusion and dread.",
+    "type": "consumable",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgZmlsbD0iI2FhMDBmZiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 20,
+    "effect": { "type": "cure_status", "value": "confuse", "target": "ally" },
+    "stackSize": 3
+  },
+  {
+    "id": "steadying_drink",
+    "name": "Steadying Drink",
+    "description": "Warms the limbs and stops uncontrollable shaking.",
+    "type": "consumable",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgZmlsbD0iI2ZmYWEwMCIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 20,
+    "effect": { "type": "cure_status", "value": "stun", "target": "ally" },
+    "stackSize": 3
+  }
+]

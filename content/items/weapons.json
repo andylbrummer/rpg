@@ -5,10 +5,8 @@
     "description": "A pitted blade that has seen better days.",
     "type": "weapon",
     "slot": "mainHand",
-    "stats": {
-      "damage": "1d6",
-      "accuracy": 0
-    },
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTE2IDJMMTggOEwyNCAxMEwxNiAzMkw4IDEwTDE0IDhaIiBmaWxsPSIjODg4Ii8+PC9zdmc+",
+    "statBonus": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 },
     "value": 10
   },
   {
@@ -17,10 +15,8 @@
     "description": "A heavy blunt weapon favored by Bonewardens.",
     "type": "weapon",
     "slot": "mainHand",
-    "stats": {
-      "damage": "1d8",
-      "accuracy": -1
-    },
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIyNCIgcj0iNiIgZmlsbD0iIzU1NSIvPjxwYXRoIGQ9Ik0xNSA4TDE3IDhMMTcgMjRMMTUgMjRaIiBmaWxsPSIjNDQ0Ii8+PC9zdmc+",
+    "statBonus": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 },
     "value": 25
   },
   {
@@ -29,11 +25,18 @@
     "description": "A heated blade used for both surgery and combat.",
     "type": "weapon",
     "slot": "mainHand",
-    "stats": {
-      "damage": "1d6",
-      "accuracy": 1,
-      "special": "burn"
-    },
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTE2IDJMMTggOEwyNCAxMEwxNiAzMkw4IDEwTDE0IDhaIiBmaWxsPSIjYzQ0Ii8+PC9zdmc+",
+    "statBonus": { "strength": 0, "dexterity": 1, "constitution": 0, "intelligence": 0, "willpower": 0 },
     "value": 40
+  },
+  {
+    "id": "hollow_dagger",
+    "name": "Hollow Dagger",
+    "description": "A slim blade weighted for quick strikes from the shadows.",
+    "type": "weapon",
+    "slot": "mainHand",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTE2IDJMMTggOEwyNCAxMEwxNiAzMkw4IDEwTDE0IDhaIiBmaWxsPSIjMzMzIi8+PC9zdmc+",
+    "statBonus": { "strength": 0, "dexterity": 1, "constitution": 0, "intelligence": 0, "willpower": 0 },
+    "value": 35
   }
 ]

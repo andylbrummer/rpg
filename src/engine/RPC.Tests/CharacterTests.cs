@@ -25,8 +25,8 @@ public class CharacterTests
             17, Equipment.Empty,
             new[] { "bone_spear", "tithe_touch" }, 0);
 
-        Assert.Equal(17, bonewarden.EffectiveStats.MaxHp); // 5*3 + 1*2 = 17
-        Assert.InRange(bonewarden.EffectiveStats.MaxHp, 15, 20);
+        Assert.Equal(17, bonewarden.GetEffectiveStats().MaxHp); // 5*3 + 1*2 = 17
+        Assert.InRange(bonewarden.GetEffectiveStats().MaxHp, 15, 20);
     }
 
     [Fact]
@@ -38,10 +38,10 @@ public class CharacterTests
             14, Equipment.Empty,
             Array.Empty<string>(), 0);
 
-        Assert.Equal(7, character.EffectiveStats.Accuracy); // 6 + 1
-        Assert.Equal(3, character.EffectiveStats.Evade);   // 6/2 + 1/2 = 3 + 0
-        Assert.Equal(6, character.EffectiveStats.Speed);   // 6 + 0
-        Assert.Equal(5, character.EffectiveStats.Power);   // 5
+        Assert.Equal(7, character.GetEffectiveStats().Accuracy); // 6 + 1
+        Assert.Equal(3, character.GetEffectiveStats().Evade);   // 6/2 + 1/2 = 3 + 0
+        Assert.Equal(6, character.GetEffectiveStats().Speed);   // 6 + 0
+        Assert.Equal(5, character.GetEffectiveStats().Power);   // 5
     }
 
     [Fact]

@@ -1,0 +1,46 @@
+[
+  {
+    "id": "bone_fragment",
+    "name": "Bone Fragment",
+    "description": "A shard of calcified material. Fuel for Bonewarden rites.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTEyIDEyTDIwIDIwTTEyIDIwTDIwIDEyIiBzdHJva2U9IiNjY2MiIHN0cm9rZS13aWR0aD0iNCIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 2,
+    "stackSize": 20
+  },
+  {
+    "id": "cautery_supply",
+    "name": "Cautery Supplies",
+    "description": "Alchemical fuel and dressings for Cauterist techniques.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3QgeD0iMTAiIHk9IjgiIHdpZHRoPSIxMiIgaGVpZ2h0PSIxNiIgZmlsbD0iI2M0NCIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 3,
+    "stackSize": 12
+  },
+  {
+    "id": "ink_vial",
+    "name": "Ink Vial",
+    "description": "Dark, viscous ink for Inkblood rituals.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNiIgZmlsbD0iIzIyMiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 5,
+    "stackSize": 15
+  },
+  {
+    "id": "engine_charge",
+    "name": "Engine Charge",
+    "description": "A volatile crystalline battery. Powers Fieldwright devices.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTE2IDJMMTggMThMMjQgMThMMTYgMzBMMTQgMTRMOCAxNEwxNiAyWiIgZmlsbD0iIzAwY2ZmZiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 8,
+    "stackSize": 10
+  }
+]
