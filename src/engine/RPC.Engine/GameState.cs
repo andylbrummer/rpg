@@ -1,5 +1,7 @@
+using RPC.Engine.Character;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
+using RPC.Engine.Party;
 
 namespace RPC.Engine;
 
@@ -9,11 +11,33 @@ public class GameState
     public Dungeon? CurrentDungeon { get; set; }
     public GameMode Mode { get; set; } = GameMode.Exploration;
     public DateTime LastUpdate { get; set; }
+    public PartyState Party { get; set; } = new();
     
     public GameState()
     {
         Player = new Player(new Position(32, 32), Direction.North);
         LastUpdate = DateTime.UtcNow;
+        InitializeDefaultParty();
+    }
+
+    private void InitializeDefaultParty()
+    {
+        Party.SetMember(0, new CharacterState(
+            Guid.NewGuid(), "Kael", "bonewarden", 1, 0,
+            new BaseStats(4, 3, 5, 4, 4), 17, Equipment.Empty,
+            new[] { "bone_spear", "tithe_touch" }, 0));
+        Party.SetMember(1, new CharacterState(
+            Guid.NewGuid(), "Sera", "stillblade", 1, 0,
+            new BaseStats(5, 5, 4, 3, 4), 14, Equipment.Empty,
+            new[] { "rend", "silence_strike" }, 0));
+        Party.SetMember(2, new CharacterState(
+            Guid.NewGuid(), "Mira", "cauterist", 1, 0,
+            new BaseStats(3, 5, 4, 5, 4), 14, Equipment.Empty,
+            new[] { "cauterize", "scalpel_dance" }, 1));
+        Party.SetMember(3, new CharacterState(
+            Guid.NewGuid(), "Vex", "hollow", 1, 0,
+            new BaseStats(4, 6, 3, 4, 4), 11, Equipment.Empty,
+            new[] { "shiv", "smoke_bomb" }, 1));
     }
 
     public HashSet<string> ExploredTiles { get; } = new();

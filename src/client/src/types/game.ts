@@ -15,6 +15,17 @@ export interface Tile {
   type: 'Empty' | 'Floor' | 'Wall' | 'Door' | 'SecretDoor' | 'StairsUp' | 'StairsDown';
 }
 
+export interface PartyMember {
+  slot: number;
+  name: string;
+  classId: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  row: number;
+  alive: boolean;
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -22,6 +33,7 @@ export interface GameState {
   tiles: Tile[];
   explored: Tile[];
   hasDungeon: boolean;
+  party: PartyMember[];
 }
 
 export type PlayerAction = 

@@ -3,6 +3,7 @@
   import { GameClient } from './net/GameClient';
   import { DungeonRenderer } from './renderer/DungeonRenderer';
   import AutoMap from './ui/AutoMap.svelte';
+  import PartyStatusBar from './ui/PartyStatusBar.svelte';
   import type { GameState } from './types/game';
 
   let gameContainer: HTMLElement | undefined = $state(undefined);
@@ -107,6 +108,12 @@
     <div class="automap-wrapper">
       <AutoMap {state} />
     </div>
+
+    {#if state?.party}
+      <div class="party-wrapper">
+        <PartyStatusBar members={state.party} />
+      </div>
+    {/if}
   </div>
 </main>
 
@@ -194,6 +201,13 @@
     position: absolute;
     top: 1rem;
     right: 1rem;
+  }
+
+  .party-wrapper {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
   }
 
   .instructions p {

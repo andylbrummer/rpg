@@ -417,6 +417,18 @@ public class GameServer
             }
         }
 
+        var party = _gameState.Party.Members.Select((c, i) => new
+        {
+            slot = i,
+            name = c.Name,
+            classId = c.ClassId,
+            level = c.Level,
+            hp = c.CurrentHp,
+            maxHp = c.GetEffectiveStats().MaxHp,
+            row = c.Row,
+            alive = c.IsAlive
+        }).ToArray();
+
         return new
         {
             type = "state",
@@ -429,7 +441,8 @@ public class GameServer
             },
             tiles,
             explored,
-            hasDungeon = _gameState.CurrentDungeon != null
+            hasDungeon = _gameState.CurrentDungeon != null,
+            party
         };
     }
 
