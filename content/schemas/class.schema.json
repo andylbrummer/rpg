@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://the-reach.game/schemas/class.json",
+  "title": "Class Definition",
+  "type": "object",
+  "required": ["id", "name", "description", "baseStats", "abilities", "levelTable"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z_]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "baseStats": {
+      "type": "object",
+      "required": ["strength", "dexterity", "constitution", "intelligence", "willpower"],
+      "properties": {
+        "strength": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "dexterity": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "constitution": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "intelligence": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "willpower": { "type": "integer", "minimum": 1, "maximum": 10 }
+      }
+    },
+    "abilities": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "cost", "effect", "tags"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z_]+$" },
+          "name": { "type": "string", "minLength": 1 },
+          "cost": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string", "enum": ["none", "hp", "bone_fragment", "cautery_supply", "ink_vial", "engine_charge"] },
+              "amount": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "effect": { "type": "object" },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "levelTable": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["level", "hpGain", "statGain", "newAbilities"],
+        "properties": {
+          "level": { "type": "integer", "minimum": 1 },
+          "hpGain": { "type": "integer", "minimum": 0 },
+          "statGain": {
+            "type": "object",
+            "required": ["strength", "dexterity", "constitution", "intelligence", "willpower"],
+            "properties": {
+              "strength": { "type": "integer" },
+              "dexterity": { "type": "integer" },
+              "constitution": { "type": "integer" },
+              "intelligence": { "type": "integer" },
+              "willpower": { "type": "integer" }
+            }
+          },
+          "newAbilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

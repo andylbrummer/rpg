@@ -1,0 +1,49 @@
+{
+  "id": "bonewarden",
+  "name": "Bonewarden",
+  "description": "Necromantic support who manipulates bone and death. Summons constructs, links allies through tithe-magic, and sustains the party at a cost.",
+  "baseStats": {
+    "strength": 4,
+    "dexterity": 3,
+    "constitution": 5,
+    "intelligence": 4,
+    "willpower": 4
+  },
+  "abilities": [
+    {
+      "id": "bone_spear",
+      "name": "Bone Spear",
+      "cost": { "type": "bone_fragment", "amount": 1 },
+      "effect": { "type": "damage", "value": "1d6+PWR", "range": "short" },
+      "tags": ["necromantic", "projectile"]
+    },
+    {
+      "id": "tithe_touch",
+      "name": "Tithe Touch",
+      "cost": { "type": "hp", "amount": 3 },
+      "effect": { "type": "heal", "value": "1d8+INT", "target": "ally" },
+      "tags": ["necromantic", "heal"]
+    },
+    {
+      "id": "raise_minion",
+      "name": "Raise Minion",
+      "cost": { "type": "bone_fragment", "amount": 2 },
+      "effect": { "type": "summon", "unit": "bone_construct", "duration": 3 },
+      "tags": ["necromantic", "summon"]
+    },
+    {
+      "id": "death_pact",
+      "name": "Death Pact",
+      "cost": { "type": "hp", "amount": 5 },
+      "effect": { "type": "buff", "stat": "power", "value": 3, "duration": 2, "target": "ally" },
+      "tags": ["necromantic", "buff"]
+    }
+  ],
+  "levelTable": [
+    { "level": 1, "hpGain": 0,  "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["bone_spear", "tithe_touch"] },
+    { "level": 2, "hpGain": 4,  "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 1 }, "newAbilities": ["raise_minion"] },
+    { "level": 3, "hpGain": 4,  "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 1, "willpower": 0 }, "newAbilities": [] },
+    { "level": 4, "hpGain": 3,  "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 1, "willpower": 1 }, "newAbilities": ["death_pact"] },
+    { "level": 5, "hpGain": 5,  "statGain": { "strength": 1, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 1 }, "newAbilities": [] }
+  ]
+}

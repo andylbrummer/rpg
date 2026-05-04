@@ -1,0 +1,49 @@
+{
+  "id": "hollow",
+  "name": "Hollow",
+  "description": "Rogue and saboteur. Excels at stealth, dirty fighting, and manipulating towns through rumor and theft.",
+  "baseStats": {
+    "strength": 4,
+    "dexterity": 6,
+    "constitution": 3,
+    "intelligence": 4,
+    "willpower": 4
+  },
+  "abilities": [
+    {
+      "id": "shiv",
+      "name": "Shiv",
+      "cost": { "type": "none" },
+      "effect": { "type": "damage", "value": "1d6+DEX", "range": "melee" },
+      "tags": ["physical", "stealth"]
+    },
+    {
+      "id": "smoke_bomb",
+      "name": "Smoke Bomb",
+      "cost": { "type": "none" },
+      "effect": { "type": "debuff", "stat": "accuracy", "value": -3, "duration": 2, "target": "enemy_group" },
+      "tags": ["item", "blind"]
+    },
+    {
+      "id": "backstab",
+      "name": "Backstab",
+      "cost": { "type": "none" },
+      "effect": { "type": "damage", "value": "2d6+DEX", "range": "melee", "condition": "target_status_bleed" },
+      "tags": ["physical", "assassination"]
+    },
+    {
+      "id": "filch",
+      "name": "Filch",
+      "cost": { "type": "none" },
+      "effect": { "type": "steal", "target": "enemy", "item_chance": 0.3 },
+      "tags": ["stealth", "loot"]
+    }
+  ],
+  "levelTable": [
+    { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["shiv", "smoke_bomb"] },
+    { "level": 2, "hpGain": 2, "statGain": { "strength": 0, "dexterity": 1, "constitution": 0, "intelligence": 0, "willpower": 1 }, "newAbilities": ["backstab"] },
+    { "level": 3, "hpGain": 2, "statGain": { "strength": 1, "dexterity": 1, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
+    { "level": 4, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 1, "constitution": 1, "intelligence": 0, "willpower": 0 }, "newAbilities": ["filch"] },
+    { "level": 5, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 1, "constitution": 0, "intelligence": 1, "willpower": 0 }, "newAbilities": [] }
+  ]
+}

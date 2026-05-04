@@ -41,9 +41,27 @@ public readonly record struct Equipment(
 public record ClassDef(
     string Id,
     string Name,
+    string Description,
     BaseStats BaseStats,
-    string[] StartingAbilities,
+    AbilityDef[] Abilities,
     LevelTableEntry[] LevelTable);
+
+public record AbilityDef(
+    string Id,
+    string Name,
+    AbilityCost Cost,
+    AbilityEffect Effect,
+    string[] Tags);
+
+public record AbilityCost(
+    string Type,
+    int? Amount);
+
+public record AbilityEffect(
+    string Type,
+    System.Text.Json.JsonElement? Value,
+    string? Range,
+    string? Target);
 
 public record LevelTableEntry(
     int Level,
