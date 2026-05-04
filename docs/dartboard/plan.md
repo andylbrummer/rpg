@@ -56,8 +56,8 @@
 
 | # | Task | Owner | Est | Status |
 |---|---|---|---|---|
-| T11 | Character data model | Backend | 1d | 🎯 Next |
-| T12 | Party system (4 chars, 2+2) | Backend | 1d | 🟡 Ready |
+| T11 | Character data model | Backend | 1d | ✅ Done |
+| T12 | Party system (4 chars, 2+2) | Backend | 1d | 🎯 Next |
 | T13 | Content: 4 classes | Content | 2d | 🟡 Ready |
 | T14 | Content: items & equipment | Content | 2d | 🟡 Ready |
 | T15 | Inventory UI | Frontend | 3d | 🟡 Ready |
