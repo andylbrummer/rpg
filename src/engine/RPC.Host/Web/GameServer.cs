@@ -3,6 +3,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using RPC.Engine;
+using RPC.Engine.Combat;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Models.Dungeons;
 
@@ -229,6 +230,16 @@ public class GameServer
                     GenerateSampleDungeon();
                     stateChanged = true;
                     break;
+                case "combat_action":
+                    if (action.Action != null)
+                    {
+                        stateChanged = _gameState.SubmitCombatAction(action.Action);
+                    }
+                    break;
+                case "flee_combat":
+                    _gameState.FleeCombat();
+                    stateChanged = true;
+                    break;
             }
 
             if (stateChanged)
@@ -429,6 +440,33 @@ public class GameServer
             alive = c.IsAlive
         }).ToArray();
 
+        object? combat = null;
+        if (_gameState.Mode == GameMode.Combat && _gameState.Combat != null)
+        {
+            var c = _gameState.Combat;
+            combat = new
+            {
+                phase = c.Phase.ToString(),
+                round = c.Round,
+                combatants = c.Combatants.Select(x => new
+                {
+                    id = x.Id,
+                    name = x.Name,
+                    isPlayer = x.IsPlayer,
+                    hp = x.Hp,
+                    maxHp = x.MaxHp,
+                    speed = x.Speed,
+                    row = x.Row,
+                    alive = x.IsAlive,
+                    isCurrent = c.CurrentActor?.Id == x.Id
+                }).ToArray(),
+                initiativeOrder = c.InitiativeOrder,
+                currentTurnIndex = c.CurrentTurnIndex,
+                log = c.Log.Select(l => new { actor = l.ActorId, message = l.Message, round = l.Round }).ToArray(),
+                isFinished = c.IsFinished
+            };
+        }
+
         return new
         {
             type = "state",
@@ -442,7 +480,8 @@ public class GameServer
             tiles,
             explored,
             hasDungeon = _gameState.CurrentDungeon != null,
-            party
+            party,
+            combat
         };
     }
 
@@ -494,4 +533,5 @@ public class GameServer
 public class PlayerAction
 {
     public string Type { get; set; } = "";
+    public CombatAction? Action { get; set; }
 }

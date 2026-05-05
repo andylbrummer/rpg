@@ -4,7 +4,8 @@
   import { DungeonRenderer } from './renderer/DungeonRenderer';
   import AutoMap from './ui/AutoMap.svelte';
   import PartyStatusBar from './ui/PartyStatusBar.svelte';
-  import type { GameState } from './types/game';
+  import CombatOverlay from './ui/CombatOverlay.svelte';
+  import type { GameState, CombatAction } from './types/game';
 
   let gameContainer: HTMLElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | undefined = $state(undefined);
@@ -44,6 +45,7 @@
     // Keyboard input
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!connected || !client) return;
+      if (state?.mode === 'Combat') return; // disable movement in combat
       
       switch (e.key) {
         case 'ArrowUp':
@@ -79,6 +81,14 @@
   function generateDungeon() {
     client?.sendAction({ type: 'generate_dungeon' });
   }
+
+  function sendCombatAction(action: CombatAction) {
+    client?.sendAction({ type: 'combat_action', action });
+  }
+
+  function fleeCombat() {
+    client?.sendAction({ type: 'flee_combat' });
+  }
 </script>
 
 <main class="game-container">
@@ -113,6 +123,10 @@
       <div class="party-wrapper">
         <PartyStatusBar members={state.party} />
       </div>
+    {/if}
+
+    {#if state?.mode === 'Combat' && state.combat}
+      <CombatOverlay combat={state.combat} onAction={sendCombatAction} onFlee={fleeCombat} />
     {/if}
   </div>
 </main>

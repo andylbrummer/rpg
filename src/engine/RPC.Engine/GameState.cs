@@ -1,4 +1,5 @@
 using RPC.Engine.Character;
+using RPC.Engine.Combat;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Party;
@@ -12,30 +13,36 @@ public class GameState
     public GameMode Mode { get; set; } = GameMode.Exploration;
     public DateTime LastUpdate { get; set; }
     public PartyState Party { get; set; } = new();
-    
-    public GameState()
+    public CombatState? Combat { get; private set; }
+    public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
+
+    private readonly GameRandom _encounterRng;
+    private int _stepsSinceEncounter = 0;
+
+    public GameState(int? seed = null)
     {
         Player = new Player(new Position(32, 32), Direction.North);
         LastUpdate = DateTime.UtcNow;
+        _encounterRng = new GameRandom(seed ?? DateTime.UtcNow.GetHashCode());
         InitializeDefaultParty();
     }
 
     private void InitializeDefaultParty()
     {
         Party.SetMember(0, new CharacterState(
-            Guid.NewGuid(), "Kael", "bonewarden", 1, 0,
+            new Guid("11111111-1111-1111-1111-111111111111"), "Kael", "bonewarden", 1, 0,
             new BaseStats(4, 3, 5, 4, 4), 17, Equipment.Empty,
             new[] { "bone_spear", "tithe_touch" }, 0));
         Party.SetMember(1, new CharacterState(
-            Guid.NewGuid(), "Sera", "stillblade", 1, 0,
+            new Guid("22222222-2222-2222-2222-222222222222"), "Sera", "stillblade", 1, 0,
             new BaseStats(5, 5, 4, 3, 4), 14, Equipment.Empty,
             new[] { "rend", "silence_strike" }, 0));
         Party.SetMember(2, new CharacterState(
-            Guid.NewGuid(), "Mira", "cauterist", 1, 0,
+            new Guid("33333333-3333-3333-3333-333333333333"), "Mira", "cauterist", 1, 0,
             new BaseStats(3, 5, 4, 5, 4), 14, Equipment.Empty,
             new[] { "cauterize", "scalpel_dance" }, 1));
         Party.SetMember(3, new CharacterState(
-            Guid.NewGuid(), "Vex", "hollow", 1, 0,
+            new Guid("44444444-4444-4444-4444-444444444444"), "Vex", "hollow", 1, 0,
             new BaseStats(4, 6, 3, 4, 4), 11, Equipment.Empty,
             new[] { "shiv", "smoke_bomb" }, 1));
     }
@@ -46,6 +53,7 @@ public class GameState
     {
         CurrentDungeon = dungeon;
         ExploredTiles.Clear();
+        _stepsSinceEncounter = 0;
         // Find entrance position
         for (int x = 0; x < dungeon.Width; x++)
         {
@@ -85,6 +93,7 @@ public class GameState
     public bool TryMoveForward()
     {
         if (CurrentDungeon == null) return false;
+        if (Mode == GameMode.Combat) return false;
         
         var newPos = Player.Position.Move(Player.Facing);
         if (CurrentDungeon.CanMoveTo(newPos))
@@ -92,6 +101,15 @@ public class GameState
             Player.Position = newPos;
             ExploreAroundPlayer();
             LastUpdate = DateTime.UtcNow;
+            _stepsSinceEncounter++;
+
+            // Random encounter check: increases with each step, guaranteed after 10 steps
+            var encounterChance = 0.05 + (_stepsSinceEncounter * 0.08);
+            if (_encounterRng.Roll(0, 99) < encounterChance * 100)
+            {
+                TriggerEncounter();
+            }
+
             return true;
         }
         return false;
@@ -106,6 +124,72 @@ public class GameState
     public void TurnRight()
     {
         Player.TurnRight();
+        LastUpdate = DateTime.UtcNow;
+    }
+
+    public void TriggerEncounter(EncounterDef? encounter = null)
+    {
+        _stepsSinceEncounter = 0;
+        encounter ??= new EncounterDef("random", "Random Encounter", new[]
+        {
+            new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
+            new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
+        });
+
+        Combat = CombatEngine.Enter(Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)));
+
+        if (Combat.IsFinished)
+        {
+            // Immediate victory (e.g., empty encounter)
+            Mode = GameMode.Exploration;
+            Combat = null;
+        }
+        else
+        {
+            Mode = GameMode.Combat;
+        }
+        LastUpdate = DateTime.UtcNow;
+    }
+
+    public bool SubmitCombatAction(CombatAction action)
+    {
+        if (Combat == null || Mode != GameMode.Combat) return false;
+
+        var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+        Combat = CombatEngine.Tick(Combat, action, rng);
+
+        // Auto-resolve AI turns
+        while (Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == false && !Combat.IsFinished)
+        {
+            Combat = CombatEngine.Tick(Combat, null, rng);
+        }
+
+        if (Combat.IsFinished)
+        {
+            // Apply combat results to party
+            foreach (var combatant in Combat.Combatants.Where(c => c.IsPlayer))
+            {
+                var member = Party.Members.FirstOrDefault(m => m.Id == combatant.Id);
+                if (member.Id != Guid.Empty)
+                {
+                    Party.SetMember(Array.IndexOf(Party.Members, member),
+                        member with { CurrentHp = combatant.Hp });
+                }
+            }
+
+            Mode = GameMode.Exploration;
+            Combat = null;
+        }
+
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    public void FleeCombat()
+    {
+        if (Mode != GameMode.Combat) return;
+        Mode = GameMode.Exploration;
+        Combat = null;
         LastUpdate = DateTime.UtcNow;
     }
 }
