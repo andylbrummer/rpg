@@ -11,6 +11,15 @@ export class DungeonRenderer {
   private currentState: GameState | null = null;
   private isDisposed = false;
 
+  static isSupported(): boolean {
+    try {
+      const canvas = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+    } catch {
+      return false;
+    }
+  }
+
   constructor(container: HTMLElement) {
     // Minimum dimensions to ensure visibility
     const MIN_WIDTH = 800;

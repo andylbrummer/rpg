@@ -1,6 +1,5 @@
 using Photino.NET;
 using RPC.Host.Web;
-using System.Text;
 
 namespace RPC.Host;
 
@@ -12,8 +11,19 @@ class Program
         var server = new GameServer(port: 19421);
         server.Start();
         
-        // Determine if we're in dev or production mode
         var isDev = args.Contains("--dev");
+        var isHeadless = args.Contains("--headless");
+        
+        if (isHeadless)
+        {
+            Console.WriteLine($"Server running on http://localhost:{server.Port}/");
+            var mre = new System.Threading.ManualResetEvent(false);
+            System.Runtime.Loader.AssemblyLoadContext.Default.Unloading += _ => mre.Set();
+            Console.CancelKeyPress += (_, _) => mre.Set();
+            mre.WaitOne();
+            server.Stop();
+            return;
+        }
         
         var window = new PhotinoWindow()
             .SetTitle("The Reach")
@@ -21,7 +31,6 @@ class Program
             .Center()
             .SetResizable(true);
 
-        // Inject server port into the page
         window.RegisterWebMessageReceivedHandler((sender, message) =>
         {
             if (message == "getServerPort")
@@ -30,16 +39,13 @@ class Program
             }
         });
 
-        // Load the app
         if (isDev)
         {
-            // In dev mode, load a wrapper page that sets SERVER_PORT then loads Vite
             var devHtml = GetDevHtml(server.Port);
             window.LoadRawString(devHtml);
         }
         else
         {
-            // In production, load the built frontend from the backend
             window.Load(new Uri($"http://localhost:{server.Port}/app"));
         }
 

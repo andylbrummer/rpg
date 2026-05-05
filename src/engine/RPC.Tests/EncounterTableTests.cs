@@ -69,7 +69,7 @@ public class EncounterTableTests
         var gs = new GameState(seed: 42, encounterTables: registry);
         var dungeon = new RPC.Engine.Models.Dungeons.Dungeon(3, 3, "test");
         dungeon.EncounterTableId = "broken_engine";
-        gs.EnterDungeon(dungeon);
+        gs.EnterDungeon(dungeon, "broken_engine");
 
         gs.TriggerEncounter();
 

@@ -24,14 +24,16 @@ public class GameState
 
     private readonly GameRandom _encounterRng;
     private readonly EncounterTableRegistry? _encounterTables;
+    private readonly ClassRegistry? _classRegistry;
     private int _stepsSinceEncounter = 0;
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null)
     {
         Player = new Player(new Position(32, 32), Direction.North);
         LastUpdate = DateTime.UtcNow;
         _encounterRng = new GameRandom(seed ?? DateTime.UtcNow.GetHashCode());
         _encounterTables = encounterTables;
+        _classRegistry = classRegistry;
         InitializeDefaultParty();
         Mode = GameMode.Menu; // Start in town/hub
     }
@@ -58,11 +60,15 @@ public class GameState
 
     public HashSet<string> ExploredTiles { get; } = new();
 
-    public void EnterDungeon(Dungeon dungeon)
+    public string? CurrentDungeonType { get; private set; }
+
+    public void EnterDungeon(Dungeon dungeon, string dungeonType)
     {
         CurrentDungeon = dungeon;
+        CurrentDungeonType = dungeonType;
         ExploredTiles.Clear();
         _stepsSinceEncounter = 0;
+        Mode = GameMode.Exploration;
         // Find entrance position
         for (int x = 0; x < dungeon.Width; x++)
         {
@@ -189,8 +195,20 @@ public class GameState
                 {
                     var index = Array.IndexOf(Party.Members, member);
                     var newXp = member.Xp + Combat.XpReward;
-                    Party.SetMember(index,
-                        member with { CurrentHp = combatant.Hp, Xp = newXp });
+                    var updated = member with { CurrentHp = combatant.Hp, Xp = newXp };
+
+                    // Check for level ups
+                    if (_classRegistry?.Get(member.ClassId) is { } classDef)
+                    {
+                        var beforeLevel = updated.Level;
+                        updated = LevelingSystem.CheckAndApplyLevelUps(updated, classDef);
+                        if (updated.Level > beforeLevel)
+                        {
+                            levelUps.Add(updated.Name);
+                        }
+                    }
+
+                    Party.SetMember(index, updated);
                 }
             }
 
@@ -235,6 +253,9 @@ public class GameState
         CurrentDungeon = null;
         LastUpdate = DateTime.UtcNow;
     }
+
+    public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path);
+    public bool LoadGame(string? path = null) => Save.SaveSystem.Load(this, path);
 }
 
 public enum GameMode

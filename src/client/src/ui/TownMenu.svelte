@@ -3,11 +3,20 @@
 
   interface Props {
     party: PartyMember[];
-    onEnterDungeon: () => void;
+    onEnterDungeon: (dungeonType: string) => void;
     onRest: () => void;
+    onSave: () => void;
   }
 
-  let { party, onEnterDungeon, onRest }: Props = $props();
+  let { party, onEnterDungeon, onRest, onSave }: Props = $props();
+
+  const dungeons = [
+    { id: 'broken_engine', name: 'Broken Engine', desc: 'A rusted fortress of frozen gears.', danger: 'Medium' },
+    { id: 'sewers', name: 'Sewer Warrens', desc: 'Toxic tunnels beneath the town.', danger: 'Low' },
+    { id: 'crypt', name: 'Crypt of Whispers', desc: 'Dead voices echo through hollow halls.', danger: 'High' }
+  ];
+
+  let selectedDungeon = $state<string | null>(null);
 
   function hpColor(hp: number, maxHp: number): string {
     const ratio = hp / maxHp;
@@ -42,14 +51,37 @@
     </div>
 
     <div class="actions-panel">
-      <h2>Actions</h2>
-      <button class="action-btn primary" onclick={onEnterDungeon}>
+      <h2>Dungeons</h2>
+      <div class="dungeon-list">
+        {#each dungeons as dungeon}
+          <button
+            class="dungeon-btn"
+            class:selected={selectedDungeon === dungeon.id}
+            onclick={() => selectedDungeon = dungeon.id}
+          >
+            <div class="dungeon-name">{dungeon.name}</div>
+            <div class="dungeon-desc">{dungeon.desc}</div>
+            <div class="dungeon-danger">Danger: {dungeon.danger}</div>
+          </button>
+        {/each}
+      </div>
+
+      <button
+        class="action-btn primary"
+        onclick={() => selectedDungeon && onEnterDungeon(selectedDungeon)}
+        disabled={!selectedDungeon}
+      >
         <span class="btn-icon">⚔</span>
         Enter Dungeon
       </button>
+
       <button class="action-btn" onclick={onRest}>
         <span class="btn-icon">🏠</span>
         Rest at Inn
+      </button>
+      <button class="action-btn" onclick={onSave}>
+        <span class="btn-icon">💾</span>
+        Save Game
       </button>
     </div>
   </div>
@@ -158,7 +190,52 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    min-width: 200px;
+    min-width: 240px;
+  }
+
+  .dungeon-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .dungeon-btn {
+    background: #141414;
+    border: 1px solid #333;
+    color: #ddd;
+    padding: 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+  }
+
+  .dungeon-btn:hover {
+    background: #1a1a1a;
+    border-color: #555;
+  }
+
+  .dungeon-btn.selected {
+    border-color: #484;
+    background: #1a2a1a;
+  }
+
+  .dungeon-name {
+    font-weight: bold;
+    color: #fff;
+    font-size: 0.9375rem;
+  }
+
+  .dungeon-desc {
+    font-size: 0.75rem;
+    color: #888;
+    margin: 0.125rem 0;
+  }
+
+  .dungeon-danger {
+    font-size: 0.6875rem;
+    color: #a44;
   }
 
   .action-btn {
@@ -175,9 +252,14 @@
     transition: all 0.2s;
   }
 
-  .action-btn:hover {
+  .action-btn:hover:not(:disabled) {
     background: #252525;
     border-color: #666;
+  }
+
+  .action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .action-btn.primary {
@@ -185,7 +267,7 @@
     color: #4f4;
   }
 
-  .action-btn.primary:hover {
+  .action-btn.primary:hover:not(:disabled) {
     background: #1a2a1a;
     border-color: #5a5;
   }

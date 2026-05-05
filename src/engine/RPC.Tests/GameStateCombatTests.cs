@@ -49,7 +49,7 @@ public class GameStateCombatTests
     public void GameState_MoveForward_DoesNotWorkInCombat()
     {
         var gs = new GameState(seed: 42);
-        gs.EnterDungeon(CreateTinyDungeon());
+        gs.EnterDungeon(CreateTinyDungeon(), "test");
         gs.TriggerEncounter();
 
         Assert.False(gs.TryMoveForward());
@@ -59,7 +59,7 @@ public class GameStateCombatTests
     public void GameState_SubmitCombatAction_ResolvesTurn()
     {
         var gs = new GameState(seed: 42);
-        gs.EnterDungeon(CreateTinyDungeon());
+        gs.EnterDungeon(CreateTinyDungeon(), "test");
         gs.TriggerEncounter(new EncounterDef("test", "Test", new[]
         {
             new EnemySpawn("rat", 1, 0)

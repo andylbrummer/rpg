@@ -1,0 +1,34 @@
+{
+  "id": "crypt",
+  "name": "Crypt of Whispers Encounters",
+  "entries": [
+    {
+      "weight": 30,
+      "enemies": [
+        { "enemyId": "rat", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 12
+    },
+    {
+      "weight": 30,
+      "enemies": [
+        { "enemyId": "bone_archer", "count": 1, "rowOverride": 1 }
+      ],
+      "xpReward": 15
+    },
+    {
+      "weight": 25,
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 18
+    },
+    {
+      "weight": 15,
+      "enemies": [
+        { "enemyId": "bone_archer", "count": 2, "rowOverride": 1 }
+      ],
+      "xpReward": 25
+    }
+  ]
+}

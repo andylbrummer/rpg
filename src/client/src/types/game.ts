@@ -78,8 +78,12 @@ export type PlayerAction =
   | { type: 'turn_left' }
   | { type: 'turn_right' }
   | { type: 'generate_dungeon' }
+  | { type: 'enter_dungeon'; dungeonType: string }
   | { type: 'combat_action'; action: CombatAction }
-  | { type: 'flee_combat' };
+  | { type: 'flee_combat' }
+  | { type: 'rest' }
+  | { type: 'return_to_town' }
+  | { type: 'save_game' };
 
 export interface CombatAction {
   actorId: string;

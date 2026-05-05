@@ -3,6 +3,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using RPC.Engine;
+using RPC.Engine.Character;
 using RPC.Engine.Combat;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Models.Dungeons;
@@ -17,6 +18,7 @@ public class GameServer
     private readonly CancellationTokenSource _cts = new();
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly EncounterTableRegistry _encounterTables;
+    private readonly ClassRegistry _classRegistry;
 
     public GameServer(int port = 8080)
     {
@@ -24,7 +26,9 @@ public class GameServer
         Port = port;
         _listener.Prefixes.Add($"http://localhost:{port}/");
         _encounterTables = LoadEncounterTables();
-        _gameState = new GameState(encounterTables: _encounterTables);
+        _classRegistry = LoadClassRegistry();
+        _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry);
+        _gameState.LoadGame();
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -35,6 +39,23 @@ public class GameServer
     {
         var registry = new EncounterTableRegistry();
         var contentDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "content", "encounters");
+        var fullDir = Path.GetFullPath(contentDir);
+        if (Directory.Exists(fullDir))
+        {
+            foreach (var file in Directory.EnumerateFiles(fullDir, "*.json"))
+            {
+                var id = Path.GetFileNameWithoutExtension(file);
+                var json = File.ReadAllText(file);
+                registry.LoadFromJson(id, json);
+            }
+        }
+        return registry;
+    }
+
+    private static ClassRegistry LoadClassRegistry()
+    {
+        var registry = new ClassRegistry();
+        var contentDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "content", "classes");
         var fullDir = Path.GetFullPath(contentDir);
         if (Directory.Exists(fullDir))
         {
@@ -246,7 +267,7 @@ public class GameServer
                     stateChanged = true;
                     break;
                 case "generate_dungeon":
-                    GenerateSampleDungeon();
+                    GenerateDungeon("broken_engine");
                     stateChanged = true;
                     break;
                 case "combat_action":
@@ -260,7 +281,8 @@ public class GameServer
                     stateChanged = true;
                     break;
                 case "enter_dungeon":
-                    GenerateSampleDungeon();
+                    var dungeonType = action.DungeonType ?? "broken_engine";
+                    GenerateDungeon(dungeonType);
                     stateChanged = true;
                     break;
                 case "rest":
@@ -269,6 +291,10 @@ public class GameServer
                     break;
                 case "return_to_town":
                     _gameState.ReturnToTown();
+                    stateChanged = true;
+                    break;
+                case "save_game":
+                    _gameState.SaveGame();
                     stateChanged = true;
                     break;
             }
@@ -284,9 +310,10 @@ public class GameServer
         }
     }
 
-    private void GenerateSampleDungeon()
+    private void GenerateDungeon(string dungeonType)
     {
-        var builder = new DungeonBuilder(seed: 42);
+        var seed = dungeonType.GetHashCode();
+        var builder = new DungeonBuilder(seed: seed);
         
         // Add some basic room segments
         builder.AddSegment(CreateEntranceRoom());
@@ -294,9 +321,17 @@ public class GameServer
         builder.AddSegment(CreateChamber());
         builder.AddSegment(CreateDeadEnd());
         
-        var dungeon = builder.Build("Broken Engine", 8);
-        dungeon.EncounterTableId = "broken_engine";
-        _gameState.EnterDungeon(dungeon);
+        var dungeonNames = new Dictionary<string, string>
+        {
+            ["broken_engine"] = "Broken Engine",
+            ["crypt"] = "Crypt of Whispers",
+            ["sewers"] = "Sewer Warrens"
+        };
+        
+        var name = dungeonNames.GetValueOrDefault(dungeonType, dungeonType);
+        var dungeon = builder.Build(name, 8);
+        dungeon.EncounterTableId = dungeonType;
+        _gameState.EnterDungeon(dungeon, dungeonType);
     }
 
     private static RoomSegment CreateEntranceRoom()
@@ -585,4 +620,5 @@ public class PlayerAction
 {
     public string Type { get; set; } = "";
     public CombatAction? Action { get; set; }
+    public string? DungeonType { get; set; }
 }

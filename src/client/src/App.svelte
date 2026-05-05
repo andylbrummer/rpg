@@ -20,8 +20,12 @@
   onMount(() => {
     if (!gameContainer) return;
     
-    // Initialize renderer
-    renderer = new DungeonRenderer(gameContainer);
+    // Initialize renderer (only if WebGL is available)
+    if (DungeonRenderer.isSupported()) {
+      renderer = new DungeonRenderer(gameContainer);
+    } else {
+      console.warn('WebGL not supported, 3D renderer disabled');
+    }
 
     // Initialize client
     client = new GameClient();
@@ -96,12 +100,16 @@
     client?.sendAction({ type: 'flee_combat' });
   }
 
-  function enterDungeon() {
-    client?.sendAction({ type: 'enter_dungeon' });
+  function enterDungeon(dungeonType: string) {
+    client?.sendAction({ type: 'enter_dungeon', dungeonType });
   }
 
   function restAtInn() {
     client?.sendAction({ type: 'rest' });
+  }
+
+  function saveGame() {
+    client?.sendAction({ type: 'save_game' });
   }
 
   function returnToTown() {
@@ -152,7 +160,7 @@
     {/if}
 
     {#if state?.mode === 'Menu'}
-      <TownMenu party={state.party ?? []} onEnterDungeon={enterDungeon} onRest={restAtInn} />
+      <TownMenu party={state.party ?? []} onEnterDungeon={enterDungeon} onRest={restAtInn} onSave={saveGame} />
     {/if}
 
     {#if state?.mode === 'Exploration'}
