@@ -17,10 +17,10 @@ public class GameStateCombatTests
     }
 
     [Fact]
-    public void GameState_ExplorationMode_ByDefault()
+    public void GameState_MenuMode_ByDefault()
     {
         var gs = new GameState(seed: 42);
-        Assert.Equal(GameMode.Exploration, gs.Mode);
+        Assert.Equal(GameMode.Menu, gs.Mode);
     }
 
     [Fact]

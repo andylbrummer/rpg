@@ -33,6 +33,7 @@ public class GameState
         _encounterRng = new GameRandom(seed ?? DateTime.UtcNow.GetHashCode());
         _encounterTables = encounterTables;
         InitializeDefaultParty();
+        Mode = GameMode.Menu; // Start in town/hub
     }
 
     private void InitializeDefaultParty()
@@ -212,6 +213,26 @@ public class GameState
         if (Mode != GameMode.Combat) return;
         Mode = GameMode.Exploration;
         Combat = null;
+        LastUpdate = DateTime.UtcNow;
+    }
+
+    public void RestAtInn()
+    {
+        if (Mode != GameMode.Menu) return;
+        foreach (var member in Party.Members)
+        {
+            if (member.Id == Guid.Empty) continue;
+            var maxHp = member.GetEffectiveStats().MaxHp;
+            var index = Array.IndexOf(Party.Members, member);
+            Party.SetMember(index, member with { CurrentHp = maxHp });
+        }
+        LastUpdate = DateTime.UtcNow;
+    }
+
+    public void ReturnToTown()
+    {
+        Mode = GameMode.Menu;
+        CurrentDungeon = null;
         LastUpdate = DateTime.UtcNow;
     }
 }

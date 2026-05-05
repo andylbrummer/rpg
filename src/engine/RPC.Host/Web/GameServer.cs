@@ -259,6 +259,18 @@ public class GameServer
                     _gameState.FleeCombat();
                     stateChanged = true;
                     break;
+                case "enter_dungeon":
+                    GenerateSampleDungeon();
+                    stateChanged = true;
+                    break;
+                case "rest":
+                    _gameState.RestAtInn();
+                    stateChanged = true;
+                    break;
+                case "return_to_town":
+                    _gameState.ReturnToTown();
+                    stateChanged = true;
+                    break;
             }
 
             if (stateChanged)

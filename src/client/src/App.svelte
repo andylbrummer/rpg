@@ -6,6 +6,7 @@
   import PartyStatusBar from './ui/PartyStatusBar.svelte';
   import CombatOverlay from './ui/CombatOverlay.svelte';
   import CombatResultToast from './ui/CombatResultToast.svelte';
+  import TownMenu from './ui/TownMenu.svelte';
   import type { GameState, CombatAction } from './types/game';
 
   let gameContainer: HTMLElement | undefined = $state(undefined);
@@ -94,6 +95,18 @@
   function fleeCombat() {
     client?.sendAction({ type: 'flee_combat' });
   }
+
+  function enterDungeon() {
+    client?.sendAction({ type: 'enter_dungeon' });
+  }
+
+  function restAtInn() {
+    client?.sendAction({ type: 'rest' });
+  }
+
+  function returnToTown() {
+    client?.sendAction({ type: 'return_to_town' });
+  }
 </script>
 
 <main class="game-container">
@@ -136,6 +149,16 @@
 
     {#if showCombatResult && state?.combatResult}
       <CombatResultToast result={state.combatResult} onDismiss={() => showCombatResult = false} />
+    {/if}
+
+    {#if state?.mode === 'Menu'}
+      <TownMenu party={state.party ?? []} onEnterDungeon={enterDungeon} onRest={restAtInn} />
+    {/if}
+
+    {#if state?.mode === 'Exploration'}
+      <div class="town-return">
+        <button onclick={returnToTown}>Return to Town</button>
+      </div>
     {/if}
   </div>
 </main>
@@ -244,5 +267,26 @@
     border: 1px solid #555;
     font-family: monospace;
     font-size: 0.75rem;
+  }
+
+  .town-return {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+  }
+
+  .town-return button {
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+
+  .town-return button:hover {
+    background: #3a3a3a;
   }
 </style>
