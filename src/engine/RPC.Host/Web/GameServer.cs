@@ -35,12 +35,26 @@ public class GameServer
         };
     }
 
+    private static string? FindContentDir(params string[] subPath)
+    {
+        var baseDir = AppContext.BaseDirectory;
+        for (int ups = 0; ups <= 8; ups++)
+        {
+            var parts = new List<string> { baseDir };
+            for (int i = 0; i < ups; i++) parts.Add("..");
+            parts.AddRange(subPath);
+            var candidate = Path.GetFullPath(Path.Combine(parts.ToArray()));
+            if (Directory.Exists(candidate))
+                return candidate;
+        }
+        return null;
+    }
+
     private static EncounterTableRegistry LoadEncounterTables()
     {
         var registry = new EncounterTableRegistry();
-        var contentDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "content", "encounters");
-        var fullDir = Path.GetFullPath(contentDir);
-        if (Directory.Exists(fullDir))
+        var fullDir = FindContentDir("content", "encounters");
+        if (fullDir != null)
         {
             foreach (var file in Directory.EnumerateFiles(fullDir, "*.json"))
             {
@@ -55,9 +69,8 @@ public class GameServer
     private static ClassRegistry LoadClassRegistry()
     {
         var registry = new ClassRegistry();
-        var contentDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "content", "classes");
-        var fullDir = Path.GetFullPath(contentDir);
-        if (Directory.Exists(fullDir))
+        var fullDir = FindContentDir("content", "classes");
+        if (fullDir != null)
         {
             foreach (var file in Directory.EnumerateFiles(fullDir, "*.json"))
             {
@@ -278,6 +291,12 @@ public class GameServer
                     break;
                 case "flee_combat":
                     _gameState.FleeCombat();
+                    stateChanged = true;
+                    break;
+                case "enter_combat":
+                    Console.WriteLine("ENTER_COMBAT triggered");
+                    _gameState.TriggerEncounter();
+                    Console.WriteLine($"ENTER_COMBAT result: Mode={_gameState.Mode}, Combat={_gameState.Combat != null}");
                     stateChanged = true;
                     break;
                 case "enter_dungeon":

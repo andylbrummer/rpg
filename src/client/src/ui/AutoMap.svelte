@@ -2,21 +2,21 @@
   import type { GameState } from '../types/game';
 
   interface Props {
-    state: GameState | null;
+    gameState: GameState | null;
   }
 
-  let { state }: Props = $props();
-  let canvas: HTMLCanvasElement | undefined = $state.raw(undefined);
+  let { gameState }: Props = $props();
+  let canvas: HTMLCanvasElement | undefined = $state(undefined);
   let ctx: CanvasRenderingContext2D | null = null;
 
   const CELL_SIZE = 8;
   const MAP_SIZE = 200;
 
   $effect(() => {
-    if (!canvas || !state?.hasDungeon) return;
+    if (!canvas || !gameState?.hasDungeon) return;
     ctx = canvas.getContext('2d');
     if (!ctx) return;
-    renderMap(state);
+    renderMap(gameState);
   });
 
   function renderMap(gameState: GameState) {

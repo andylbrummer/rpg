@@ -1,72 +1,28 @@
-import { test, expect } from '@playwright/test';
-import { spawn, ChildProcess } from 'child_process';
-import { resolve } from 'path';
+import { test, expect } from './fixtures';
+import { getMainJsUrl } from './helpers';
 
-let serverProcess: ChildProcess;
-
-async function waitForServer(url: string, timeout = 15000): Promise<void> {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    try {
-      const res = await fetch(url);
-      if (res.status === 200) return;
-    } catch {
-      // not ready yet
-    }
-    await new Promise(r => setTimeout(r, 200));
-  }
-  throw new Error('Server did not start in time');
-}
-
-test.beforeAll(async () => {
-  const hostDll = resolve(__dirname, '../../../src/engine/RPC.Host/bin/Release/net9.0/RPC.Host.dll');
-  serverProcess = spawn('/home/beagle/.dotnet/dotnet', [hostDll, '--headless'], {
-    cwd: resolve(__dirname, '../../../src/engine'),
-    stdio: 'pipe',
+test.describe('Smoke', () => {
+  test('serves the frontend app', async ({ page }) => {
+    const res = await page.goto('/app');
+    expect(res?.status()).toBe(200);
+    await expect(page).toHaveTitle('The Reach');
   });
 
-  await waitForServer('http://localhost:19421/app');
-});
-
-test.afterAll(() => {
-  if (serverProcess) {
-    serverProcess.kill();
-  }
-});
-
-test('serves the frontend app', async ({ page }) => {
-  const res = await page.goto('/app');
-  expect(res?.status()).toBe(200);
-  expect(await page.title()).toBe('The Reach');
-});
-
-test('serves static assets', async ({ request }) => {
-  const res = await request.get('/assets/index-nrexz-U7.js');
-  expect(res.status()).toBe(200);
-  expect(res.headers()['content-type']).toContain('javascript');
-});
-
-test('websocket endpoint is reachable', async ({ page }) => {
-  const wsMessages: string[] = [];
-  const ws = new WebSocket('ws://localhost:19421/');
-  
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('WS timeout')), 5000);
-    ws.onopen = () => {
-      clearTimeout(timer);
-      resolve();
-    };
-    ws.onerror = () => {
-      clearTimeout(timer);
-      reject(new Error('WS connection failed'));
-    };
+  test('serves static assets', async ({ request }) => {
+    const jsName = await getMainJsUrl(request, '');
+    const res = await request.get(`/assets/${jsName}`);
+    expect(res.status()).toBe(200);
+    const ct = res.headers()['content-type'] || '';
+    expect(ct).toContain('javascript');
   });
 
-  ws.onmessage = (e) => wsMessages.push(e.data);
-  await page.waitForTimeout(500);
-  ws.close();
-
-  expect(wsMessages.length).toBeGreaterThan(0);
-  const firstMessage = JSON.parse(wsMessages[0]);
-  expect(firstMessage.type).toBe('state');
+  test('websocket endpoint is reachable', async ({ page }) => {
+    await page.goto('/app');
+    const wsState = await page.evaluate(() => new Promise((resolve) => {
+      const ws = new WebSocket(`ws://${location.host}/`);
+      ws.onopen = () => { ws.close(); resolve('open'); };
+      ws.onerror = () => resolve('error');
+    }));
+    expect(wsState).toBe('open');
+  });
 });

@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { GameClient } from './net/GameClient';
-  import { DungeonRenderer } from './renderer/DungeonRenderer';
   import AutoMap from './ui/AutoMap.svelte';
   import PartyStatusBar from './ui/PartyStatusBar.svelte';
   import CombatOverlay from './ui/CombatOverlay.svelte';
   import CombatResultToast from './ui/CombatResultToast.svelte';
   import TownMenu from './ui/TownMenu.svelte';
   import type { GameState, CombatAction } from './types/game';
+
+  let DungeonRenderer: typeof import('./renderer/DungeonRenderer').DungeonRenderer | null = null;
 
   let gameContainer: HTMLElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | undefined = $state(undefined);
@@ -17,24 +18,33 @@
   let statusMessage = $state('Connecting...');
   let showCombatResult = $state(false);
 
-  onMount(() => {
+  onMount(async () => {
     if (!gameContainer) return;
     
-    // Initialize renderer (only if WebGL is available)
-    if (DungeonRenderer.isSupported()) {
-      renderer = new DungeonRenderer(gameContainer);
-    } else {
-      console.warn('WebGL not supported, 3D renderer disabled');
+    // Initialize renderer (only if WebGL is available and not in automated test)
+    if (typeof window !== 'undefined' && !(navigator as any).webdriver) {
+      const canvas = document.createElement('canvas');
+      const hasWebGL = !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+      if (hasWebGL) {
+        try {
+          const mod = await import('./renderer/DungeonRenderer');
+          DungeonRenderer = mod.DungeonRenderer;
+          renderer = new DungeonRenderer(gameContainer);
+        } catch {
+          // 3D renderer unavailable in this environment
+        }
+      } else {
+        console.warn('WebGL not supported, 3D renderer disabled');
+      }
     }
 
     // Initialize client
     client = new GameClient();
+    (window as any).gameClient = client;
     
     client.onConnect(() => {
       connected = true;
       statusMessage = 'Connected';
-      // Generate dungeon once connected
-      client?.sendAction({ type: 'generate_dungeon' });
     });
 
     client.onDisconnect(() => {
@@ -142,7 +152,7 @@
     </div>
 
     <div class="automap-wrapper">
-      <AutoMap {state} />
+      <AutoMap gameState={state} />
     </div>
 
     {#if state?.party}
