@@ -23,6 +23,7 @@ public class Dungeon
     public int Height { get; }
     public Tile[,] Tiles { get; }
     public string Name { get; }
+    public string? EncounterTableId { get; set; }
     public List<RoomInfo> Rooms { get; } = new();
     
     public Dungeon(int width, int height, string name)

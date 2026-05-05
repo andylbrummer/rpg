@@ -25,7 +25,8 @@ public static class CombatEngine
                 0,
                 new List<CombatLogEntry> { new(Guid.Empty, "Victory!", 1) },
                 null,
-                CombatPhase.Ended);
+                CombatPhase.Ended,
+                encounter.XpReward);
         }
 
         var order = RollInitiative(all, rng);
@@ -37,7 +38,8 @@ public static class CombatEngine
             0,
             new List<CombatLogEntry>(),
             null,
-            CombatPhase.RoundStart);
+            CombatPhase.RoundStart,
+            encounter.XpReward);
     }
 
     public static CombatState Tick(CombatState state, CombatAction? action, GameRandom rng)

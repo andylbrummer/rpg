@@ -5,6 +5,7 @@
   import AutoMap from './ui/AutoMap.svelte';
   import PartyStatusBar from './ui/PartyStatusBar.svelte';
   import CombatOverlay from './ui/CombatOverlay.svelte';
+  import CombatResultToast from './ui/CombatResultToast.svelte';
   import type { GameState, CombatAction } from './types/game';
 
   let gameContainer: HTMLElement | undefined = $state(undefined);
@@ -13,6 +14,7 @@
   let connected = $state(false);
   let state: GameState | null = $state(null);
   let statusMessage = $state('Connecting...');
+  let showCombatResult = $state(false);
 
   onMount(() => {
     if (!gameContainer) return;
@@ -38,6 +40,9 @@
     client.onState((newState) => {
       state = newState;
       renderer?.updateState(newState);
+      if (newState.combatResult) {
+        showCombatResult = true;
+      }
     });
 
     client.connect();
@@ -127,6 +132,10 @@
 
     {#if state?.mode === 'Combat' && state.combat}
       <CombatOverlay combat={state.combat} onAction={sendCombatAction} onFlee={fleeCombat} />
+    {/if}
+
+    {#if showCombatResult && state?.combatResult}
+      <CombatResultToast result={state.combatResult} onDismiss={() => showCombatResult = false} />
     {/if}
   </div>
 </main>

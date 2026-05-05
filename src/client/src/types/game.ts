@@ -54,6 +54,13 @@ export interface CombatState {
   isFinished: boolean;
 }
 
+export interface CombatResult {
+  victory: boolean;
+  xpGained: number;
+  levelUps: string[];
+  roundCount: number;
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -63,6 +70,7 @@ export interface GameState {
   hasDungeon: boolean;
   party: PartyMember[];
   combat?: CombatState;
+  combatResult?: CombatResult;
 }
 
 export type PlayerAction =

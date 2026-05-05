@@ -51,7 +51,8 @@ public record CombatState(
     int CurrentTurnIndex,
     List<CombatLogEntry> Log,
     CombatAction? PendingAction,
-    CombatPhase Phase)
+    CombatPhase Phase,
+    int XpReward = 10)
 {
     public Combatant? CurrentActor =>
         Phase == CombatPhase.Turn && CurrentTurnIndex < InitiativeOrder.Length
@@ -65,4 +66,4 @@ public record CombatState(
 
 public record EnemySpawn(string EnemyId, int Count, int? RowOverride = null);
 
-public record EncounterDef(string Id, string Name, EnemySpawn[] Enemies);
+public record EncounterDef(string Id, string Name, EnemySpawn[] Enemies, int XpReward = 10);

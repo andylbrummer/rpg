@@ -14,16 +14,24 @@ public class GameState
     public DateTime LastUpdate { get; set; }
     public PartyState Party { get; set; } = new();
     public CombatState? Combat { get; private set; }
+    public CombatResult? LastCombatResult { get; private set; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
 
+    public void ClearCombatResult()
+    {
+        LastCombatResult = null;
+    }
+
     private readonly GameRandom _encounterRng;
+    private readonly EncounterTableRegistry? _encounterTables;
     private int _stepsSinceEncounter = 0;
 
-    public GameState(int? seed = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null)
     {
         Player = new Player(new Position(32, 32), Direction.North);
         LastUpdate = DateTime.UtcNow;
         _encounterRng = new GameRandom(seed ?? DateTime.UtcNow.GetHashCode());
+        _encounterTables = encounterTables;
         InitializeDefaultParty();
     }
 
@@ -103,7 +111,7 @@ public class GameState
             LastUpdate = DateTime.UtcNow;
             _stepsSinceEncounter++;
 
-            // Random encounter check: increases with each step, guaranteed after 10 steps
+            // Random encounter check: increases with each step
             var encounterChance = 0.05 + (_stepsSinceEncounter * 0.08);
             if (_encounterRng.Roll(0, 99) < encounterChance * 100)
             {
@@ -130,6 +138,12 @@ public class GameState
     public void TriggerEncounter(EncounterDef? encounter = null)
     {
         _stepsSinceEncounter = 0;
+
+        if (encounter == null && CurrentDungeon?.EncounterTableId != null && _encounterTables != null)
+        {
+            encounter = _encounterTables.RollEncounter(CurrentDungeon.EncounterTableId, _encounterRng);
+        }
+
         encounter ??= new EncounterDef("random", "Random Encounter", new[]
         {
             new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
@@ -140,7 +154,6 @@ public class GameState
 
         if (Combat.IsFinished)
         {
-            // Immediate victory (e.g., empty encounter)
             Mode = GameMode.Exploration;
             Combat = null;
         }
@@ -167,15 +180,24 @@ public class GameState
         if (Combat.IsFinished)
         {
             // Apply combat results to party
+            var levelUps = new List<string>();
             foreach (var combatant in Combat.Combatants.Where(c => c.IsPlayer))
             {
                 var member = Party.Members.FirstOrDefault(m => m.Id == combatant.Id);
                 if (member.Id != Guid.Empty)
                 {
-                    Party.SetMember(Array.IndexOf(Party.Members, member),
-                        member with { CurrentHp = combatant.Hp });
+                    var index = Array.IndexOf(Party.Members, member);
+                    var newXp = member.Xp + Combat.XpReward;
+                    Party.SetMember(index,
+                        member with { CurrentHp = combatant.Hp, Xp = newXp });
                 }
             }
+
+            LastCombatResult = new CombatResult(
+                Combat.AllEnemiesDead,
+                Combat.XpReward,
+                levelUps.ToArray(),
+                Combat.Round);
 
             Mode = GameMode.Exploration;
             Combat = null;

@@ -16,17 +16,36 @@ public class GameServer
     private readonly GameState _gameState;
     private readonly CancellationTokenSource _cts = new();
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly EncounterTableRegistry _encounterTables;
 
     public GameServer(int port = 8080)
     {
         _listener = new HttpListener();
         Port = port;
         _listener.Prefixes.Add($"http://localhost:{port}/");
-        _gameState = new GameState();
+        _encounterTables = LoadEncounterTables();
+        _gameState = new GameState(encounterTables: _encounterTables);
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
+    }
+
+    private static EncounterTableRegistry LoadEncounterTables()
+    {
+        var registry = new EncounterTableRegistry();
+        var contentDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "content", "encounters");
+        var fullDir = Path.GetFullPath(contentDir);
+        if (Directory.Exists(fullDir))
+        {
+            foreach (var file in Directory.EnumerateFiles(fullDir, "*.json"))
+            {
+                var id = Path.GetFileNameWithoutExtension(file);
+                var json = File.ReadAllText(file);
+                registry.LoadFromJson(id, json);
+            }
+        }
+        return registry;
     }
 
     public int Port { get; private set; }
@@ -264,6 +283,7 @@ public class GameServer
         builder.AddSegment(CreateDeadEnd());
         
         var dungeon = builder.Build("Broken Engine", 8);
+        dungeon.EncounterTableId = "broken_engine";
         _gameState.EnterDungeon(dungeon);
     }
 
@@ -467,7 +487,20 @@ public class GameServer
             };
         }
 
-        return new
+        object? combatResult = null;
+        if (_gameState.LastCombatResult != null)
+        {
+            var r = _gameState.LastCombatResult;
+            combatResult = new
+            {
+                victory = r.Victory,
+                xpGained = r.XpGained,
+                levelUps = r.LevelUps,
+                roundCount = r.RoundCount
+            };
+        }
+
+        var state = new
         {
             type = "state",
             mode = _gameState.Mode.ToString(),
@@ -481,8 +514,14 @@ public class GameServer
             explored,
             hasDungeon = _gameState.CurrentDungeon != null,
             party,
-            combat
+            combat,
+            combatResult
         };
+
+        // Clear one-shot combat result after including it in state
+        _gameState.ClearCombatResult();
+
+        return state;
     }
 
     private async Task HandleStatus(HttpListenerContext context)
