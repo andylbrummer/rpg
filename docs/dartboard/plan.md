@@ -9,10 +9,10 @@
 | **Spec** | ✅ Complete | — |
 | **Phase 1: Skeleton (G1)** | ✅ Complete | — |
 | **Phase 1: Navigation (G2)** | ✅ Complete | — |
-| **Phase 1: Characters (G3)** | 🎯 In Progress | G2 complete |
-| **Phase 1: Combat (G4)** | 🟡 Partial | G3 |
-| **Phase 1: Loop (G5)** | ⏳ Blocked | G3 + G4 |
-| Phase 1.5 | ⏳ Blocked | Phase 1 complete |
+| **Phase 1: Characters (G3)** | ✅ Complete | — |
+| **Phase 1: Combat (G4)** | ✅ Complete | — |
+| **Phase 1: Loop (G5)** | ✅ Complete | — |
+| Phase 1.5 | 🎯 In Progress | Phase 1 complete |
 | Phase 2 | ⏳ Blocked | Phase 1.5 complete |
 | Phase 3 | ⏳ Blocked | Phase 2 complete |
 
@@ -73,17 +73,17 @@
 
 | # | Task | Owner | Est | Status |
 |---|---|---|---|---|
-| T17 | Combat state machine | Backend | 3d | 🟡 Ready |
-| T18 | Initiative system | Backend | 1d | 🟡 Ready |
-| T19 | Action resolution | Backend | 3d | 🟡 Ready |
-| T20 | Range bands | Backend | 1d | 🟡 Ready |
-| T21 | Enemy data | Content | 1d | 🟡 Ready |
-| T22 | Enemy AI | Backend | 2d | 🟡 Ready |
-| T23 | Combat renderer | Frontend | 3d | 🟡 Ready |
-| T24 | Combat UI | Frontend | 3d | 🟡 Ready |
-| T25 | Snapshot test harness | Tests | 2d | 🟡 Ready |
+| T17 | Combat state machine | Backend | 3d | ✅ Done |
+| T18 | Initiative system | Backend | 1d | ✅ Done |
+| T19 | Action resolution | Backend | 3d | ✅ Done |
+| T20 | Range bands | Backend | 1d | ✅ Done |
+| T21 | Enemy data | Content | 1d | ✅ Done |
+| T22 | Enemy AI | Backend | 2d | ✅ Done |
+| T23 | Combat renderer | Frontend | 3d | ✅ Done |
+| T24 | Combat UI | Frontend | 3d | ✅ Done |
+| T25 | Snapshot test harness | Tests | 2d | ✅ Done |
 
-**Acceptance:** 10 snapshot tests pass. Range bands create positioning decisions.
+**Acceptance:** 10 snapshot tests pass. Range bands create positioning decisions. Combat e2e verifies combat overlay and flee.
 
 ---
 
@@ -93,15 +93,15 @@
 
 | # | Task | Owner | Est | Status |
 |---|---|---|---|---|
-| T26 | Encounter triggers | Backend | 1d | 🟢 Ready (needs G2) |
-| T27 | Dungeon-combat-dungeon flow | Both | 2d | 🟢 Ready |
-| T28 | Hub town (menu-based) | Frontend | 3d | 🟢 Ready |
-| T29 | 3-dungeon questline | Content+Backend | 3d | 🟢 Ready |
-| T30 | Leveling | Backend | 1d | 🟢 Ready |
-| T31 | Save/load | Backend | 2d | 🟢 Ready |
-| T32 | Playwright smoke tests | Tests | 2d | 🟢 Ready |
+| T26 | Encounter triggers | Backend | 1d | ✅ Done |
+| T27 | Dungeon-combat-dungeon flow | Both | 2d | ✅ Done |
+| T28 | Hub town (menu-based) | Frontend | 3d | ✅ Done |
+| T29 | 3-dungeon questline | Content+Backend | 3d | ✅ Done |
+| T30 | Leveling | Backend | 1d | ✅ Done |
+| T31 | Save/load | Backend | 2d | ✅ Done |
+| T32 | Playwright e2e tests | Tests | 2d | ✅ Done |
 
-**Acceptance:** 1-2 hour playthrough. Save/load round-trips without data loss.
+**Acceptance:** 1-2 hour playthrough. Save/load round-trips without data loss. All 18 e2e tests pass (G1-G5).
 
 ---
 
@@ -118,10 +118,9 @@
 
 ## Next Actions (Immediate)
 
-1. **Initialize .NET solution** — `src/engine/RPC.sln` with 4 projects
-2. **Initialize frontend** — `npm create vite@latest src/client -- --template svelte-ts`
-3. **Create first room segment JSON** — `content/segments/broken-engine-entrance.json`
-4. **Wire T1-T4 end-to-end** — Prove the stack works
+1. **Phase 1.5 planning** — Refactor pass, performance baseline, content pipeline v2
+2. **CI pipeline** — GitHub Actions for `dotnet test` + `npm run build` + `npx playwright test`
+3. **Phase 2 design** — Procedural narrative system, enemy faction AI, encounter scripting
 
 ---
 
@@ -151,4 +150,4 @@ G1 (Skeleton)
 
 ---
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-05-05*
