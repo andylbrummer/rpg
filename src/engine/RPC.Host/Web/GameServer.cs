@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
@@ -25,13 +26,15 @@ public class GameServer
         _listener = new HttpListener();
         Port = port;
         _listener.Prefixes.Add($"http://localhost:{port}/");
+        _listener.Prefixes.Add($"http://127.0.0.1:{port}/");
         _encounterTables = LoadEncounterTables();
         _classRegistry = LoadClassRegistry();
         _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry);
         _gameState.LoadGame();
         _jsonOptions = new JsonSerializerOptions
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
     }
 
@@ -111,6 +114,12 @@ public class GameServer
         if (context.Request.IsWebSocketRequest)
         {
             await HandleWebSocket(context);
+        }
+        else if (path == "/")
+        {
+            context.Response.StatusCode = 302;
+            context.Response.Headers.Add("Location", "/app");
+            context.Response.Close();
         }
         else if (path == "/api/status")
         {
@@ -232,16 +241,21 @@ public class GameServer
         {
             while (socket.State == WebSocketState.Open && !_cts.Token.IsCancellationRequested)
             {
-                var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
-                
-                if (result.MessageType == WebSocketMessageType.Close)
+                using var ms = new MemoryStream();
+                WebSocketReceiveResult result;
+                do
                 {
-                    break;
+                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
+                    if (result.MessageType == WebSocketMessageType.Close) break;
+                    ms.Write(buffer, 0, result.Count);
                 }
+                while (!result.EndOfMessage);
+
+                if (result.MessageType == WebSocketMessageType.Close) break;
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    var message = Encoding.UTF8.GetString(ms.ToArray());
                     await HandleMessage(socket, message);
                 }
             }
@@ -491,9 +505,9 @@ public class GameServer
             var py = _gameState.Player.Position.Y;
             var viewRadius = 8;
             
-            for (int x = Math.Max(0, px - viewRadius); x < Math.Min(_gameState.CurrentDungeon.Width, px + viewRadius); x++)
+            for (int x = Math.Max(0, px - viewRadius); x < Math.Min(_gameState.CurrentDungeon.Width, px + viewRadius + 1); x++)
             {
-                for (int y = Math.Max(0, py - viewRadius); y < Math.Min(_gameState.CurrentDungeon.Height, py + viewRadius); y++)
+                for (int y = Math.Max(0, py - viewRadius); y < Math.Min(_gameState.CurrentDungeon.Height, py + viewRadius + 1); y++)
                 {
                     var tile = _gameState.CurrentDungeon.Tiles[x, y];
                     if (tile.Type != TileType.Empty)

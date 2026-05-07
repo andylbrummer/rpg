@@ -99,16 +99,26 @@ public static class SaveSystem
             var data = JsonSerializer.Deserialize<SaveData>(json, Options);
             if (data == null) return false;
 
-            // Restore party
+            if (data.Version != "1")
+            {
+                Console.Error.WriteLine($"Save version {data.Version} not supported (expected 1)");
+                return false;
+            }
+
+            // Restore party with clamped values
             for (int i = 0; i < 4; i++)
             {
                 if (i < data.Party.Length)
                 {
                     var s = data.Party[i];
+                    var level = Math.Max(1, s.Level);
+                    var xp = Math.Max(0, s.Xp);
+                    var hp = Math.Max(0, s.CurrentHp);
+                    var row = Math.Clamp(s.Row, 0, 1);
                     state.Party.SetMember(i, new CharacterState(
-                        s.Id, s.Name, s.ClassId, s.Level, s.Xp,
-                        s.BaseStats, s.CurrentHp, s.Equipment,
-                        s.KnownAbilities, s.Row));
+                        s.Id, s.Name, s.ClassId, level, xp,
+                        s.BaseStats, hp, s.Equipment,
+                        s.KnownAbilities, row));
                 }
                 else
                 {
@@ -135,8 +145,9 @@ public static class SaveSystem
 
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"Failed to load save: {ex.Message}");
             return false;
         }
     }

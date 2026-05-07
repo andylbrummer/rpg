@@ -1,0 +1,17 @@
+# Agent config
+.agnt
+.agnt/
+.agnt.kdl
+static-server.cjs
+
+# .NET build
+bin/
+obj/
+*.user
+
+# Node
+node_modules/
+
+# Playwright
+test-results/
+playwright-report/

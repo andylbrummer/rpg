@@ -65,4 +65,76 @@ public class SaveSystemTests : IDisposable
         var gs = new GameState(seed: 42);
         Assert.False(gs.LoadGame(_testSavePath));
     }
+
+    [Fact]
+    public void SaveSystem_Load_ClampsNegativeLevel()
+    {
+        var json = """
+            {
+              "version": "1",
+              "party": [
+                {
+                  "id": "11111111-1111-1111-1111-111111111111",
+                  "name": "Kael", "classId": "bonewarden",
+                  "level": -5, "xp": -100,
+                  "baseStats": {"strength":4,"dexterity":3,"constitution":5,"intelligence":4,"willpower":4},
+                  "currentHp": -999, "equipment": {}, "knownAbilities": [], "row": 0
+                }
+              ],
+              "player": { "x": 0, "y": 0, "facing": "North" },
+              "exploredTiles": [], "mode": "Menu"
+            }
+            """;
+        File.WriteAllText(_testSavePath, json);
+
+        var gs = new GameState(seed: 1);
+        var loaded = gs.LoadGame(_testSavePath);
+
+        Assert.True(loaded);
+        var member = gs.Party.Members[0];
+        Assert.True(member.Level >= 1, $"Level should be >= 1, was {member.Level}");
+        Assert.True(member.Xp >= 0, $"Xp should be >= 0, was {member.Xp}");
+        Assert.True(member.CurrentHp >= 0, $"CurrentHp should be >= 0, was {member.CurrentHp}");
+    }
+
+    [Fact]
+    public void SaveSystem_Load_ClampsRowOutOfRange()
+    {
+        var json = """
+            {
+              "version": "1",
+              "party": [
+                {
+                  "id": "11111111-1111-1111-1111-111111111111",
+                  "name": "Kael", "classId": "bonewarden",
+                  "level": 1, "xp": 0,
+                  "baseStats": {"strength":4,"dexterity":3,"constitution":5,"intelligence":4,"willpower":4},
+                  "currentHp": 10, "equipment": {}, "knownAbilities": [], "row": 99
+                }
+              ],
+              "player": { "x": 0, "y": 0, "facing": "North" },
+              "exploredTiles": [], "mode": "Menu"
+            }
+            """;
+        File.WriteAllText(_testSavePath, json);
+
+        var gs = new GameState(seed: 1);
+        var loaded = gs.LoadGame(_testSavePath);
+
+        Assert.True(loaded);
+        var member = gs.Party.Members[0];
+        Assert.True(member.Row is 0 or 1, $"Row should be 0 or 1, was {member.Row}");
+    }
+
+    [Fact]
+    public void SaveSystem_Load_ReturnsFalse_OnVersionMismatch()
+    {
+        var json = """{"version":"99","party":[],"player":{"x":0,"y":0,"facing":"North"},"exploredTiles":[],"mode":"Menu"}""";
+        File.WriteAllText(_testSavePath, json);
+
+        var gs = new GameState(seed: 1);
+        var loaded = gs.LoadGame(_testSavePath);
+
+        Assert.False(loaded);
+    }
 }
