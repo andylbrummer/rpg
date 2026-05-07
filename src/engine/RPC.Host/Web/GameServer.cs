@@ -497,11 +497,11 @@ public class GameServer
             // Only send visible tiles around player
             var px = _gameState.Player.Position.X;
             var py = _gameState.Player.Position.Y;
-            var viewRadius = 8;
-            
-            for (int x = Math.Max(0, px - viewRadius); x < Math.Min(_gameState.CurrentDungeon.Width, px + viewRadius + 1); x++)
+            var sendRadius = 8;
+
+            for (int x = Math.Max(0, px - sendRadius); x < Math.Min(_gameState.CurrentDungeon.Width, px + sendRadius + 1); x++)
             {
-                for (int y = Math.Max(0, py - viewRadius); y < Math.Min(_gameState.CurrentDungeon.Height, py + viewRadius + 1); y++)
+                for (int y = Math.Max(0, py - sendRadius); y < Math.Min(_gameState.CurrentDungeon.Height, py + sendRadius + 1); y++)
                 {
                     var tile = _gameState.CurrentDungeon.Tiles[x, y];
                     if (tile.Type != TileType.Empty)

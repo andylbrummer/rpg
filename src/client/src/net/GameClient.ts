@@ -12,18 +12,15 @@ export class GameClient {
   constructor(serverPort?: number) {
     // Priority: explicit port > window.SERVER_PORT > default 8080
     this.serverPort = serverPort || (window as any).SERVER_PORT || 19421;
-    console.log(`GameClient using server port: ${this.serverPort}`);
   }
 
   connect(): void {
     const wsUrl = `ws://${window.location.host}/ws`;
-    console.log('Connecting to WebSocket:', wsUrl);
-    
+
     try {
       this.ws = new WebSocket(wsUrl);
       
       this.ws.onopen = () => {
-        console.log('WebSocket connected successfully');
         this.reconnectAttempts = 0;
         this.onConnectCallback?.();
       };
@@ -31,7 +28,6 @@ export class GameClient {
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('Received message:', data.type);
           if (data.type === 'state') {
             this.onStateCallback?.(data as GameState);
           }
@@ -41,7 +37,6 @@ export class GameClient {
       };
 
       this.ws.onclose = (event) => {
-        console.log('WebSocket closed:', event.code, event.reason);
         this.onDisconnectCallback?.();
         this.attemptReconnect();
       };
@@ -71,10 +66,7 @@ export class GameClient {
 
   sendAction(action: PlayerAction): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('Sending action:', action.type);
       this.ws.send(JSON.stringify(action));
-    } else {
-      console.warn('Cannot send action, WebSocket not open');
     }
   }
 
@@ -88,13 +80,5 @@ export class GameClient {
 
   onDisconnect(callback: () => void): void {
     this.onDisconnectCallback = callback;
-  }
-
-  async fetchContent<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`/api/${endpoint}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json() as Promise<T>;
   }
 }

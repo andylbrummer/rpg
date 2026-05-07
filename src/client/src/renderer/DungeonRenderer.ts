@@ -30,8 +30,6 @@ export class DungeonRenderer {
     
     const width = Math.max(container.clientWidth || MIN_WIDTH, MIN_WIDTH);
     const height = Math.max(container.clientHeight || MIN_HEIGHT, MIN_HEIGHT);
-    
-    console.log('DungeonRenderer: Initializing with container', container.clientWidth, 'x', container.clientHeight, '-> using', width, 'x', height);
 
     // Generate procedural textures
     this.wallTexture = this.createBrickTexture();
@@ -59,7 +57,6 @@ export class DungeonRenderer {
     this.renderer.domElement.style.display = 'block';
     
     container.appendChild(this.renderer.domElement);
-    console.log('DungeonRenderer: Canvas appended to container');
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x666666, 0.4);
@@ -87,7 +84,6 @@ export class DungeonRenderer {
 
     // Start render loop
     this.animate();
-    console.log('DungeonRenderer: Initialization complete');
   }
 
   private createBrickTexture(): THREE.CanvasTexture {
@@ -202,7 +198,6 @@ export class DungeonRenderer {
   }
 
   updateState(state: GameState): void {
-    console.log('DungeonRenderer: updateState called, hasDungeon:', state.hasDungeon, 'tiles:', state.tiles.length);
     this.currentState = state;
     
     if (state.hasDungeon) {
@@ -221,7 +216,6 @@ export class DungeonRenderer {
   }
 
   private renderDefaultScene(): void {
-    console.log('DungeonRenderer: Rendering default scene');
     this.clearTiles();
     
     // Add a simple floor
@@ -248,7 +242,6 @@ export class DungeonRenderer {
     // Position camera
     this.camera.position.set(0, 2, 5);
     this.camera.lookAt(0, 0, 0);
-    console.log('DungeonRenderer: Default scene rendered');
   }
 
   private clearTiles(): void {
@@ -261,8 +254,6 @@ export class DungeonRenderer {
   }
 
   private renderTiles(tiles: Tile[]): void {
-    console.log('DungeonRenderer: Rendering', tiles.length, 'tiles');
-    
     // Don't clear all tiles every time - only remove ones that are no longer visible
     const visibleKeys = new Set(tiles.map(t => `${t.x},${t.y}`));
     for (const [key, mesh] of this.tileMeshes) {
@@ -288,7 +279,6 @@ export class DungeonRenderer {
         }
       }
     }
-    console.log('DungeonRenderer: Added', added, 'new tiles');
   }
 
   private createTileMesh(tile: Tile): THREE.Mesh | null {
@@ -433,9 +423,7 @@ export class DungeonRenderer {
     
     const width = Math.max(container.clientWidth || MIN_WIDTH, MIN_WIDTH);
     const height = Math.max(container.clientHeight || MIN_HEIGHT, MIN_HEIGHT);
-    
-    console.log('DungeonRenderer: Resizing to', width, 'x', height);
-    
+
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
