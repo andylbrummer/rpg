@@ -75,7 +75,7 @@ public static class SaveSystem
                 Facing = state.Player.Facing.ToString()
             },
             CurrentDungeonType = state.CurrentDungeonType,
-            ExploredTiles = state.ExploredTiles.ToArray(),
+            ExploredTiles = state.ExploredTiles.AsEnumerable().ToArray(),
             Mode = state.Mode.ToString()
         };
 

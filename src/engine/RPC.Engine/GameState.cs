@@ -34,6 +34,7 @@ public class GameState
         _encounterRng = new GameRandom(seed ?? DateTime.UtcNow.GetHashCode());
         _encounterTables = encounterTables;
         _classRegistry = classRegistry;
+        ExploredTiles = new BoundedTileSet(_exploredTilesSet, _exploredTilesOrder, MaxExploredTiles);
         InitializeDefaultParty();
         Mode = GameMode.Menu; // Start in town/hub
     }
@@ -58,7 +59,11 @@ public class GameState
             new[] { "shiv", "smoke_bomb" }, 1));
     }
 
-    public HashSet<string> ExploredTiles { get; } = new();
+    private readonly HashSet<string> _exploredTilesSet = new();
+    private readonly Queue<string> _exploredTilesOrder = new();
+    private const int MaxExploredTiles = 4096;
+
+    public BoundedTileSet ExploredTiles { get; private set; } = null!;
 
     public string? CurrentDungeonType { get; private set; }
 
@@ -167,6 +172,14 @@ public class GameState
         else
         {
             Mode = GameMode.Combat;
+
+            // Kick off the first round and auto-resolve any leading AI turns
+            var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+            Combat = CombatEngine.Tick(Combat, null, rng);
+            while (Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == false && !Combat.IsFinished)
+            {
+                Combat = CombatEngine.Tick(Combat, null, rng);
+            }
         }
         LastUpdate = DateTime.UtcNow;
     }
@@ -264,4 +277,44 @@ public enum GameMode
     Exploration,
     Combat,
     Dialog
+}
+
+public class BoundedTileSet
+{
+    private readonly HashSet<string> _set;
+    private readonly Queue<string> _order;
+    private readonly int _max;
+
+    public BoundedTileSet(HashSet<string> set, Queue<string> order, int max)
+    {
+        _set = set;
+        _order = order;
+        _max = max;
+    }
+
+    public int Count => _set.Count;
+
+    public void Add(string key)
+    {
+        if (_set.Contains(key)) return;
+        if (_set.Count >= _max)
+        {
+            var oldest = _order.Dequeue();
+            _set.Remove(oldest);
+        }
+        _set.Add(key);
+        _order.Enqueue(key);
+    }
+
+    public void Clear()
+    {
+        _set.Clear();
+        _order.Clear();
+    }
+
+    public bool Contains(string key) => _set.Contains(key);
+
+    public IEnumerable<string> AsEnumerable() => _set;
+
+    public IEnumerator<string> GetEnumerator() => _set.GetEnumerator();
 }

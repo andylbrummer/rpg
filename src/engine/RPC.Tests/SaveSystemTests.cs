@@ -137,4 +137,15 @@ public class SaveSystemTests : IDisposable
 
         Assert.False(loaded);
     }
+
+    [Fact]
+    public void ExploredTiles_DoesNotExceedCap()
+    {
+        var gs = new GameState(seed: 1);
+        for (int x = 0; x < 100; x++)
+            for (int y = 0; y < 50; y++)
+                gs.ExploredTiles.Add($"{x},{y}");
+
+        Assert.True(gs.ExploredTiles.Count <= 4096, $"Expected <= 4096 tiles, got {gs.ExploredTiles.Count}");
+    }
 }

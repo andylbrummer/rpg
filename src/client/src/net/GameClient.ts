@@ -16,7 +16,7 @@ export class GameClient {
   }
 
   connect(): void {
-    const wsUrl = `ws://localhost:${this.serverPort}/`;
+    const wsUrl = `ws://${window.location.host}/ws`;
     console.log('Connecting to WebSocket:', wsUrl);
     
     try {
@@ -57,8 +57,8 @@ export class GameClient {
   private attemptReconnect(): void {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(`Reconnecting... attempt ${this.reconnectAttempts}`);
-      setTimeout(() => this.connect(), 1000 * this.reconnectAttempts);
+      const delay = Math.min(Math.pow(2, this.reconnectAttempts) * 1000, 30000);
+      setTimeout(() => this.connect(), delay);
     } else {
       console.error('Max reconnect attempts reached');
     }
@@ -91,7 +91,7 @@ export class GameClient {
   }
 
   async fetchContent<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`http://localhost:${this.serverPort}/api/${endpoint}`);
+    const response = await fetch(`/api/${endpoint}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
