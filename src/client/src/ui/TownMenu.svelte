@@ -41,7 +41,7 @@
             <div class="member-name">{member.name}</div>
             <div class="member-class">{member.classId} · Lv.{member.level}</div>
             <div class="hp-bar">
-              <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%; background: {hpColor(member.hp, member.maxHp)}"></div>
+              <div class="hp-fill" style="width: {(member.hp / (member.maxHp || 1)) * 100}%; background: {hpColor(member.hp, member.maxHp)}"></div>
             </div>
             <div class="hp-text">{member.hp}/{member.maxHp}</div>
             <div class="member-row">{member.row === 0 ? 'Front Row' : 'Back Row'}</div>
@@ -99,6 +99,7 @@
     justify-content: center;
     font-family: system-ui, sans-serif;
     z-index: 50;
+    pointer-events: auto;
   }
 
   .town-header {

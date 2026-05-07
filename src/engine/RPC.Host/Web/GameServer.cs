@@ -293,10 +293,6 @@ public class GameServer
                     _gameState.TurnRight();
                     stateChanged = true;
                     break;
-                case "generate_dungeon":
-                    GenerateDungeon("broken_engine");
-                    stateChanged = true;
-                    break;
                 case "combat_action":
                     if (action.Action != null)
                     {
@@ -308,9 +304,7 @@ public class GameServer
                     stateChanged = true;
                     break;
                 case "enter_combat":
-                    Console.WriteLine("ENTER_COMBAT triggered");
                     _gameState.TriggerEncounter();
-                    Console.WriteLine($"ENTER_COMBAT result: Mode={_gameState.Mode}, Combat={_gameState.Combat != null}");
                     stateChanged = true;
                     break;
                 case "enter_dungeon":
