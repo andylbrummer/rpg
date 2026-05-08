@@ -1,310 +1,229 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { GameClient } from './net/GameClient';
-  import AutoMap from './ui/AutoMap.svelte';
-  import PartyStatusBar from './ui/PartyStatusBar.svelte';
-  import CombatOverlay from './ui/CombatOverlay.svelte';
-  import CombatResultToast from './ui/CombatResultToast.svelte';
+  import { onMount } from 'svelte';
+  import { gameStore, sendAction } from './stores/gameStore';
   import TownMenu from './ui/TownMenu.svelte';
-  import type { GameState, CombatAction } from './types/game';
+  import CombatOverlay from './ui/CombatOverlay.svelte';
+  import PartyStatusBar from './ui/PartyStatusBar.svelte';
+  import ExplorationHUD from './ui/ExplorationHUD.svelte';
+  import { DungeonRenderer } from './renderer/DungeonRenderer';
+  import type { GameState } from './types/game';
 
-  let DungeonRenderer: typeof import('./renderer/DungeonRenderer').DungeonRenderer | null = null;
+  let gameContainer: HTMLDivElement | undefined = $state(undefined);
+  let renderer: DungeonRenderer | null = null;
+  let gameState = $state<GameState | null>(null);
 
-  let gameContainer: HTMLElement | undefined = $state(undefined);
-  let renderer: DungeonRenderer | undefined = $state(undefined);
-  let client: GameClient | undefined = $state(undefined);
-  let connected = $state(false);
-  let state: GameState | null = $state(null);
-  let statusMessage = $state('Connecting...');
-  let showCombatResult = $state(false);
+  $effect(() => {
+    const unsub = gameStore.subscribe(s => { gameState = s; });
+    return unsub;
+  });
 
-  onMount(async () => {
-    if (!gameContainer) return;
-    
-    // Initialize renderer (only if WebGL is available and not in automated test)
-    if (typeof window !== 'undefined' && !(navigator as any).webdriver) {
-      const canvas = document.createElement('canvas');
-      const hasWebGL = !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-      if (hasWebGL) {
-        try {
-          const mod = await import('./renderer/DungeonRenderer');
-          DungeonRenderer = mod.DungeonRenderer;
-          renderer = new DungeonRenderer(gameContainer);
-        } catch {
-          // 3D renderer unavailable in this environment
-        }
-      } else {
-        console.warn('WebGL not supported, 3D renderer disabled');
-      }
+  $effect(() => {
+    if (gameContainer && !renderer) {
+      renderer = new DungeonRenderer(gameContainer);
+      renderer.start();
     }
-
-    // Initialize client
-    client = new GameClient();
-    (window as any).gameClient = client;
-    
-    client.onConnect(() => {
-      connected = true;
-      statusMessage = 'Connected';
-    });
-
-    client.onDisconnect(() => {
-      connected = false;
-      statusMessage = 'Disconnected - check console (F12)';
-    });
-
-    client.onState((newState) => {
-      state = newState;
-      renderer?.updateState(newState);
-      if (newState.combatResult) {
-        showCombatResult = true;
-      }
-    });
-
-    client.connect();
-
-    // Keyboard input
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!connected || !client) return;
-      if (state?.mode === 'Combat') return; // disable movement in combat
-      
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          client.sendAction({ type: 'move_forward' });
-          break;
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          client.sendAction({ type: 'turn_left' });
-          break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          client.sendAction({ type: 'turn_right' });
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
   });
 
-  onDestroy(() => {
-    client?.disconnect();
-    renderer?.dispose();
+  $effect(() => {
+    if (renderer && gameState?.explored) {
+      renderer.updateMap(gameState.explored, gameState.player);
+    }
   });
 
-  function generateDungeon() {
-    client?.sendAction({ type: 'generate_dungeon' });
+  function handleEnterDungeon(type: string) {
+    sendAction({ type: 'enter_dungeon', dungeonType: type });
   }
 
-  function sendCombatAction(action: CombatAction) {
-    client?.sendAction({ type: 'combat_action', action });
+  function handleCombatAction(action: string, targetIndex: number) {
+    sendAction({ type: 'combat_action', action: { type: action, targetIndex } });
   }
 
-  function fleeCombat() {
-    client?.sendAction({ type: 'flee_combat' });
+  function handleFlee() {
+    sendAction({ type: 'flee_combat' });
   }
 
-  function enterDungeon(dungeonType: string) {
-    client?.sendAction({ type: 'enter_dungeon', dungeonType });
+  function handleMoveForward() {
+    sendAction({ type: 'move_forward' });
   }
 
-  function restAtInn() {
-    client?.sendAction({ type: 'rest' });
+  function handleTurnLeft() {
+    sendAction({ type: 'turn_left' });
   }
 
-  function saveGame() {
-    client?.sendAction({ type: 'save_game' });
+  function handleTurnRight() {
+    sendAction({ type: 'turn_right' });
   }
 
-  function returnToTown() {
-    client?.sendAction({ type: 'return_to_town' });
+  function handleReturnToTown() {
+    sendAction({ type: 'return_to_town' });
+  }
+
+  function handleRest() {
+    sendAction({ type: 'rest' });
+  }
+
+  function handleSave() {
+    sendAction({ type: 'save_game' });
+  }
+
+  function handleReset() {
+    sendAction({ type: 'reset_game' });
   }
 </script>
 
-<main class="game-container">
+<main class="game">
   <div bind:this={gameContainer} class="renderer"></div>
-  
-  <div class="ui-overlay">
-    <div class="status-bar">
-      <span class="connection-status" class:connected>
-        {statusMessage}
-      </span>
-      {#if state}
-        <span class="position">
-          Pos: ({state.player.x}, {state.player.y}) Facing: {state.player.facing}
-        </span>
+  <div class="ui-layer">
+    {#if gameState?.mode !== 'Combat'}
+      <header class="top-bar">
+        <div class="game-title">The Reach</div>
+        <div class="game-info">
+          <span class="mode-badge">{gameState?.mode || 'Menu'}</span>
+          {#if gameState?.hasDungeon}
+            <span class="dungeon-badge">Dungeon</span>
+          {/if}
+        </div>
+      </header>
+    {/if}
+    <section class="viewport">
+      {#if gameState?.mode === 'Menu'}
+        <TownMenu
+          gameState={gameState}
+          onEnterDungeon={handleEnterDungeon}
+          onSave={handleSave}
+          onReset={handleReset}
+        />
       {/if}
-    </div>
-
-    <div class="controls">
-      <button onclick={generateDungeon}>New Dungeon</button>
-    </div>
-
-    <div class="instructions">
-      <p>Use <kbd>↑</kbd>/<kbd>W</kbd> to move forward</p>
-      <p>Use <kbd>←</kbd>/<kbd>A</kbd> and <kbd>→</kbd>/<kbd>D</kbd> to turn</p>
-    </div>
-
-    <div class="automap-wrapper">
-      <AutoMap gameState={state} />
-    </div>
-
-    {#if state?.party}
-      <div class="party-wrapper">
-        <PartyStatusBar members={state.party} />
-      </div>
-    {/if}
-
-    {#if state?.mode === 'Combat' && state.combat}
-      <CombatOverlay combat={state.combat} onAction={sendCombatAction} onFlee={fleeCombat} />
-    {/if}
-
-    {#if showCombatResult && state?.combatResult}
-      <CombatResultToast result={state.combatResult} onDismiss={() => showCombatResult = false} />
-    {/if}
-
-    {#if state?.mode === 'Menu'}
-      <TownMenu party={state.party ?? []} onEnterDungeon={enterDungeon} onRest={restAtInn} onSave={saveGame} />
-    {/if}
-
-    {#if state?.mode === 'Exploration'}
-      <div class="town-return">
-        <button onclick={returnToTown}>Return to Town</button>
-      </div>
+      {#if gameState?.mode === 'Combat'}
+        <CombatOverlay
+          combat={gameState.combat}
+          lastResult={gameState.lastCombatResult}
+          onCombatAction={handleCombatAction}
+          onFlee={handleFlee}
+        />
+      {/if}
+      {#if gameState?.mode === 'Exploration'}
+        <ExplorationHUD
+          gameState={gameState}
+          onMoveForward={handleMoveForward}
+          onTurnLeft={handleTurnLeft}
+          onTurnRight={handleTurnRight}
+          onReturnToTown={handleReturnToTown}
+          onRest={handleRest}
+          onSave={handleSave}
+        />
+      {/if}
+    </section>
+    {#if gameState?.mode !== 'Combat'}
+      <footer class="bottom-bar">
+        <PartyStatusBar party={gameState?.party || []} />
+      </footer>
     {/if}
   </div>
 </main>
 
 <style>
-  .game-container {
-    width: 100vw;
-    height: 100vh;
-    min-width: 800px;
-    min-height: 600px;
-    position: relative;
+  :global(html), :global(body) {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
+    background: #000;
   }
 
-  .renderer {
+  :global(#app) {
     width: 100%;
     height: 100%;
   }
 
-  .ui-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 1rem;
+  .game {
+    display: grid;
+    grid-template: 1fr / 1fr;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
   }
 
-  .ui-overlay > * {
+  .renderer,
+  .ui-layer {
+    grid-row: 1 / -1;
+    grid-column: 1 / -1;
+  }
+
+  .renderer {
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ui-layer {
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .ui-layer > * {
     pointer-events: auto;
   }
 
-  .status-bar {
+  .top-bar {
     display: flex;
-    gap: 1rem;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    color: #fff;
-    font-family: monospace;
-    font-size: 0.875rem;
+    justify-content: space-between;
+    align-items: center;
+    padding: clamp(0.375rem, 1.5vh, 0.75rem) clamp(0.5rem, 2vw, 1rem);
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 0.0625em solid #333;
   }
 
-  .connection-status {
-    color: #ff4444;
+  .game-title {
+    font-size: clamp(1rem, 2.5vw, 1.5rem);
+    font-weight: bold;
+    color: #d4a84b;
   }
 
-  .connection-status.connected {
-    color: #44ff44;
+  .game-info {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
   }
 
-  .controls {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
+  .mode-badge,
+  .dungeon-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+    font-weight: bold;
   }
 
-  button {
-    background: #333;
-    color: #fff;
-    border: 1px solid #555;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: inherit;
+  .mode-badge {
+    background: rgba(68, 170, 255, 0.2);
+    color: #66aaff;
   }
 
-  button:hover {
-    background: #444;
+  .dungeon-badge {
+    background: rgba(212, 168, 75, 0.2);
+    color: #d4a84b;
   }
 
-  .instructions {
-    background: rgba(0, 0, 0, 0.7);
-    padding: 1rem;
-    border-radius: 4px;
-    color: #ccc;
-    font-size: 0.875rem;
-    max-width: 300px;
+  .viewport {
+    display: grid;
+    grid-template: 1fr / 1fr;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .automap-wrapper {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
+  .viewport > :global(*) {
+    grid-row: 1 / -1;
+    grid-column: 1 / -1;
+    min-height: 0;
   }
 
-  .party-wrapper {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-
-  .instructions p {
-    margin: 0.25rem 0;
-  }
-
-  kbd {
-    background: #333;
-    padding: 0.125rem 0.375rem;
-    border-radius: 3px;
-    border: 1px solid #555;
-    font-family: monospace;
-    font-size: 0.75rem;
-  }
-
-  .town-return {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 10;
-  }
-
-  .town-return button {
-    background: #2a2a2a;
-    border: 1px solid #555;
-    color: #ccc;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-  }
-
-  .town-return button:hover {
-    background: #3a3a3a;
+  .bottom-bar {
+    background: rgba(0, 0, 0, 0.8);
   }
 </style>

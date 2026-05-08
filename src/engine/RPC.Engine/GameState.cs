@@ -116,7 +116,7 @@ public class GameState
         if (Mode == GameMode.Combat) return false;
         
         var newPos = Player.Position.Move(Player.Facing);
-        if (CurrentDungeon.CanMoveTo(newPos))
+        if (CurrentDungeon.CanMoveTo(Player.Position, Player.Facing))
         {
             Player.Position = newPos;
             ExploreAroundPlayer();
@@ -176,7 +176,7 @@ public class GameState
             // Kick off the first round and auto-resolve any leading AI turns
             var rng = new GameRandom(_encounterRng.Roll(1, 10000));
             Combat = CombatEngine.Tick(Combat, null, rng);
-            while (Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == false && !Combat.IsFinished)
+            while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
             {
                 Combat = CombatEngine.Tick(Combat, null, rng);
             }
@@ -192,7 +192,7 @@ public class GameState
         Combat = CombatEngine.Tick(Combat, action, rng);
 
         // Auto-resolve AI turns
-        while (Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == false && !Combat.IsFinished)
+        while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
         {
             Combat = CombatEngine.Tick(Combat, null, rng);
         }
@@ -264,6 +264,19 @@ public class GameState
     {
         Mode = GameMode.Menu;
         CurrentDungeon = null;
+        LastUpdate = DateTime.UtcNow;
+    }
+
+    public void Reset()
+    {
+        Mode = GameMode.Menu;
+        CurrentDungeon = null;
+        Combat = null;
+        LastCombatResult = null;
+        _stepsSinceEncounter = 0;
+        Player = new Player(new Position(32, 32), Direction.North);
+        ExploredTiles.Clear();
+        InitializeDefaultParty();
         LastUpdate = DateTime.UtcNow;
     }
 

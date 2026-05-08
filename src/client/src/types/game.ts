@@ -9,10 +9,16 @@ export interface Player {
   facing: 'North' | 'East' | 'South' | 'West';
 }
 
+export type BorderType = 'None' | 'Wall' | 'Door' | 'SecretDoor';
+
 export interface Tile {
   x: number;
   y: number;
-  type: 'Empty' | 'Floor' | 'Wall' | 'Door' | 'SecretDoor' | 'StairsUp' | 'StairsDown';
+  type: 'Empty' | 'Floor' | 'StairsUp' | 'StairsDown';
+  north: BorderType;
+  south: BorderType;
+  east: BorderType;
+  west: BorderType;
 }
 
 export interface PartyMember {
@@ -83,7 +89,8 @@ export type PlayerAction =
   | { type: 'flee_combat' }
   | { type: 'rest' }
   | { type: 'return_to_town' }
-  | { type: 'save_game' };
+  | { type: 'save_game' }
+  | { type: 'reset_game' };
 
 export interface CombatAction {
   actorId: string;

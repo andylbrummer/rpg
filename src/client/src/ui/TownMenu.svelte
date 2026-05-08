@@ -1,279 +1,305 @@
 <script lang="ts">
-  import type { PartyMember } from '../types/game';
+  import type { GameState } from '../types/game';
 
   interface Props {
-    party: PartyMember[];
-    onEnterDungeon: (dungeonType: string) => void;
-    onRest: () => void;
+    gameState: GameState | null;
+    onEnterDungeon: (type: string) => void;
     onSave: () => void;
+    onReset: () => void;
   }
 
-  let { party, onEnterDungeon, onRest, onSave }: Props = $props();
+  let { gameState, onEnterDungeon, onSave, onReset }: Props = $props();
 
-  const dungeons = [
-    { id: 'broken_engine', name: 'Broken Engine', desc: 'A rusted fortress of frozen gears.', danger: 'Medium' },
-    { id: 'sewers', name: 'Sewer Warrens', desc: 'Toxic tunnels beneath the town.', danger: 'Low' },
-    { id: 'crypt', name: 'Crypt of Whispers', desc: 'Dead voices echo through hollow halls.', danger: 'High' }
+  let selectedCharacter = $state<string | null>(null);
+
+  const dungeonTypes = [
+    { id: 'goblin_caves', name: 'Goblin Caves', level: 1, desc: 'Shallow caves infested with goblins.' },
+    { id: 'ancient_ruins', name: 'Ancient Ruins', level: 3, desc: 'Crumbling ruins of a lost civilization.' },
+    { id: 'dragon_lair', name: "Dragon's Lair", level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
   ];
 
-  let selectedDungeon = $state<string | null>(null);
-
-  function hpColor(hp: number, maxHp: number): string {
-    const ratio = hp / maxHp;
-    if (ratio > 0.5) return '#4a4';
-    if (ratio > 0.25) return '#aa4';
-    return '#a44';
+  function selectCharacter(name: string) {
+    selectedCharacter = selectedCharacter === name ? null : name;
   }
 </script>
 
 <div class="town-menu">
   <div class="town-header">
     <h1>The Reach</h1>
-    <p class="subtitle">A bone-shard town at the edge of the dying world.</p>
+    <p class="tagline">An Old-School Dungeon Crawler</p>
   </div>
 
-  <div class="town-content">
+  <div class="town-body">
     <div class="party-panel">
       <h2>Your Party</h2>
       <div class="party-grid">
-        {#each party as member}
-          <div class="member-card">
-            <div class="member-name">{member.name}</div>
-            <div class="member-class">{member.classId} · Lv.{member.level}</div>
-            <div class="hp-bar">
-              <div class="hp-fill" style="width: {(member.hp / (member.maxHp || 1)) * 100}%; background: {hpColor(member.hp, member.maxHp)}"></div>
+        {#each gameState?.party || [] as member (member.name)}
+          <button
+            type="button"
+            class="character-card"
+            class:selected={selectedCharacter === member.name}
+            onclick={() => selectCharacter(member.name)}
+          >
+            <div class="card-header" style="background-color: {member.color}">
+              <span class="card-level">Lv.{member.level}</span>
             </div>
-            <div class="hp-text">{member.hp}/{member.maxHp}</div>
-            <div class="member-row">{member.row === 0 ? 'Front Row' : 'Back Row'}</div>
-          </div>
+            <div class="card-body">
+              <div class="card-name">{member.name}</div>
+              <div class="card-class">{member.class}</div>
+              <div class="card-stats">
+                <span>HP: {member.hp}/{member.maxHp}</span>
+              </div>
+            </div>
+          </button>
         {/each}
       </div>
     </div>
 
     <div class="actions-panel">
-      <h2>Dungeons</h2>
+      <h2>Actions</h2>
+
       <div class="dungeon-list">
-        {#each dungeons as dungeon}
+        {#each dungeonTypes as dungeon}
           <button
             class="dungeon-btn"
-            class:selected={selectedDungeon === dungeon.id}
-            onclick={() => selectedDungeon = dungeon.id}
+            class:selected={selectedCharacter !== null}
+            onclick={() => selectedCharacter && onEnterDungeon(dungeon.id)}
+            disabled={selectedCharacter === null}
           >
             <div class="dungeon-name">{dungeon.name}</div>
-            <div class="dungeon-desc">{dungeon.desc}</div>
-            <div class="dungeon-danger">Danger: {dungeon.danger}</div>
+            <div class="dungeon-info">
+              <span class="dungeon-level">Lv.{dungeon.level}</span>
+              <span class="dungeon-desc">{dungeon.desc}</span>
+            </div>
           </button>
         {/each}
       </div>
 
-      <button
-        class="action-btn primary"
-        onclick={() => selectedDungeon && onEnterDungeon(selectedDungeon)}
-        disabled={!selectedDungeon}
-      >
-        <span class="btn-icon">⚔</span>
-        Enter Dungeon
-      </button>
-
-      <button class="action-btn" onclick={onRest}>
-        <span class="btn-icon">🏠</span>
-        Rest at Inn
-      </button>
-      <button class="action-btn" onclick={onSave}>
-        <span class="btn-icon">💾</span>
-        Save Game
-      </button>
+      <div class="utility-actions">
+        <button class="utility-btn save-btn" onclick={onSave}>Save Game</button>
+        <button class="utility-btn reset-btn" onclick={onReset}>Reset Game</button>
+      </div>
     </div>
   </div>
+
+
 </div>
 
 <style>
   .town-menu {
-    position: absolute;
-    inset: 0;
-    background: #0a0a0a;
-    color: #ddd;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-family: system-ui, sans-serif;
-    z-index: 50;
-    pointer-events: auto;
+    width: 100%;
+    height: 100%;
+    padding: 1rem;
+    gap: 1rem;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .town-header {
+    flex: 0 0 auto;
     text-align: center;
-    margin-bottom: 2rem;
+    padding: 0.5rem 0;
   }
 
-  h1 {
-    font-size: 2.5rem;
+  .town-header h1 {
     margin: 0;
-    color: #fff;
-    letter-spacing: 4px;
-    text-transform: uppercase;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    color: #d4a84b;
+    text-shadow: 0 0 0.5em rgba(212, 168, 75, 0.3);
   }
 
-  .subtitle {
-    color: #666;
-    margin: 0.5rem 0 0;
-    font-style: italic;
-  }
-
-  .town-content {
-    display: flex;
-    gap: 3rem;
-    align-items: flex-start;
-  }
-
-  .party-panel h2,
-  .actions-panel h2 {
-    font-size: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
+  .tagline {
+    margin: 0.25rem 0 0;
     color: #888;
-    margin: 0 0 1rem;
+    font-size: clamp(0.75rem, 1.8vw, 0.875rem);
+  }
+
+  .town-body {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 1rem;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .party-panel {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .party-panel h2 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(0.875rem, 2vw, 1.1rem);
+    color: #ccc;
   }
 
   .party-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
   }
 
-  .member-card {
-    background: #141414;
-    border: 1px solid #333;
-    border-radius: 6px;
-    padding: 0.875rem;
-    min-width: 160px;
-  }
-
-  .member-name {
-    font-weight: bold;
-    color: #fff;
-    font-size: 1rem;
-  }
-
-  .member-class {
-    font-size: 0.75rem;
-    color: #888;
-    text-transform: capitalize;
-    margin-bottom: 0.5rem;
-  }
-
-  .hp-bar {
-    height: 6px;
-    background: #333;
-    border-radius: 3px;
+  .character-card {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.0625em solid #444;
+    border-radius: 0.375rem;
     overflow: hidden;
-    margin-bottom: 0.25rem;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+    min-width: clamp(7rem, 15vw, 9rem);
+    flex: 0 0 auto;
   }
 
-  .hp-fill {
-    height: 100%;
-    transition: width 0.3s;
+  .character-card:hover {
+    transform: translateY(-0.125rem);
+    border-color: #666;
   }
 
-  .hp-text {
-    font-size: 0.6875rem;
+  .character-card.selected {
+    border-color: #d4a84b;
+    box-shadow: 0 0 0.5em rgba(212, 168, 75, 0.2);
+  }
+
+  .card-header {
+    height: clamp(1.5rem, 3vh, 2rem);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 0.375rem;
+  }
+
+  .card-level {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: bold;
+  }
+
+  .card-body {
+    padding: 0.375rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .card-name {
+    font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+    font-weight: bold;
+    color: #eee;
+  }
+
+  .card-class {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
     color: #888;
   }
 
-  .member-row {
-    font-size: 0.6875rem;
-    color: #666;
-    margin-top: 0.25rem;
+  .card-stats {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    color: #aaa;
   }
 
   .actions-panel {
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    min-width: 240px;
+    min-width: clamp(14rem, 22vw, 18rem);
+    max-width: min(22rem, 30vw);
+  }
+
+  .actions-panel h2 {
+    margin: 0 0 0.25rem;
+    font-size: clamp(0.875rem, 2vw, 1.1rem);
+    color: #ccc;
   }
 
   .dungeon-list {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    flex: 1 1 auto;
+    overflow-y: auto;
   }
 
   .dungeon-btn {
-    background: #141414;
-    border: 1px solid #333;
-    color: #ddd;
-    padding: 0.75rem;
-    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.0625em solid #444;
+    border-radius: 0.375rem;
+    color: #ccc;
     cursor: pointer;
     text-align: left;
-    transition: all 0.2s;
+    transition: background 0.15s, border-color 0.15s;
+    min-height: 0;
   }
 
-  .dungeon-btn:hover {
-    background: #1a1a1a;
-    border-color: #555;
-  }
-
-  .dungeon-btn.selected {
-    border-color: #484;
-    background: #1a2a1a;
-  }
-
-  .dungeon-name {
-    font-weight: bold;
-    color: #fff;
-    font-size: 0.9375rem;
-  }
-
-  .dungeon-desc {
-    font-size: 0.75rem;
-    color: #888;
-    margin: 0.125rem 0;
-  }
-
-  .dungeon-danger {
-    font-size: 0.6875rem;
-    color: #a44;
-  }
-
-  .action-btn {
-    background: #1a1a1a;
-    border: 1px solid #444;
-    color: #ddd;
-    padding: 1rem 1.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    transition: all 0.2s;
-  }
-
-  .action-btn:hover:not(:disabled) {
-    background: #252525;
+  .dungeon-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
     border-color: #666;
   }
 
-  .action-btn:disabled {
+  .dungeon-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
   }
 
-  .action-btn.primary {
-    border-color: #484;
-    color: #4f4;
+  .dungeon-name {
+    font-size: clamp(0.8rem, 1.8vw, 0.95rem);
+    font-weight: bold;
+    color: #d4a84b;
   }
 
-  .action-btn.primary:hover:not(:disabled) {
-    background: #1a2a1a;
-    border-color: #5a5;
+  .dungeon-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
   }
 
-  .btn-icon {
-    font-size: 1.25rem;
+  .dungeon-level {
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
+    color: #44aaff;
+    font-weight: bold;
   }
+
+  .dungeon-desc {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    color: #888;
+  }
+
+  .utility-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .utility-btn {
+    flex: 1 1 auto;
+    padding: 0.4rem 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.0625em solid #444;
+    border-radius: 0.25rem;
+    color: #ccc;
+    cursor: pointer;
+    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+    transition: background 0.15s;
+    min-width: 5rem;
+  }
+
+  .utility-btn:hover {
+    background: rgba(100, 100, 100, 0.3);
+  }
+
+  .save-btn { border-color: #444466; color: #8888cc; }
+  .reset-btn { border-color: #664444; color: #cc8888; }
 </style>

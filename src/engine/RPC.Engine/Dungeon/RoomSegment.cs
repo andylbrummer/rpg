@@ -18,6 +18,10 @@ public class SegmentTile
     public int X { get; set; }
     public int Y { get; set; }
     public TileType Type { get; set; }
+    public BorderType? North { get; set; }
+    public BorderType? South { get; set; }
+    public BorderType? East { get; set; }
+    public BorderType? West { get; set; }
     public bool IsExit { get; set; }
     public Direction? ExitDirection { get; set; }
 }

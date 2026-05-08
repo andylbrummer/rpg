@@ -14,34 +14,41 @@
   });
 </script>
 
-<div class="toast" class:victory={result.victory} class:defeat={!result.victory}>
-  <div class="title">
-    {result.victory ? 'Victory!' : 'Defeat...'}
-  </div>
-  <div class="details">
-    {#if result.victory}
-      <span>+{result.xpGained} XP</span>
-      {#if result.levelUps.length > 0}
-        <span class="level-up">{result.levelUps.join(', ')} leveled up!</span>
+<div class="toast-backdrop">
+  <div class="toast" class:victory={result.victory} class:defeat={!result.victory}>
+    <div class="title">
+      {result.victory ? 'Victory!' : 'Defeat...'}
+    </div>
+    <div class="details">
+      {#if result.victory}
+        <span>+{result.xpGained} XP</span>
+        {#if result.levelUps.length > 0}
+          <span class="level-up">{result.levelUps.join(', ')} leveled up!</span>
+        {/if}
       {/if}
-    {/if}
-    <span class="rounds">{result.roundCount} rounds</span>
+      <span class="rounds">{result.roundCount} rounds</span>
+    </div>
   </div>
 </div>
 
 <style>
+  .toast-backdrop {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+  }
+
   .toast {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     background: rgba(0, 0, 0, 0.9);
-    border: 2px solid #666;
-    border-radius: 8px;
-    padding: 1.5rem 2rem;
+    border: 0.125em solid #666;
+    border-radius: 0.5em;
+    padding: 1.5em 2em;
     text-align: center;
-    z-index: 200;
     animation: fadeIn 0.3s ease-out;
+    pointer-events: auto;
   }
 
   .toast.victory {
@@ -53,9 +60,9 @@
   }
 
   .title {
-    font-size: 1.75rem;
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
     font-weight: bold;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.5em;
   }
 
   .victory .title {
@@ -67,11 +74,11 @@
   }
 
   .details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    display: grid;
+    grid-template-rows: auto;
+    gap: 0.25em;
     color: #ccc;
-    font-size: 0.875rem;
+    font-size: clamp(0.8rem, 2vw, 0.875rem);
   }
 
   .level-up {
@@ -81,11 +88,11 @@
 
   .rounds {
     color: #888;
-    font-size: 0.75rem;
+    font-size: 0.875em;
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translate(-50%, -40%); }
-    to { opacity: 1; transform: translate(-50%, -50%); }
+    from { opacity: 0; transform: translateY(-0.5em); }
+    to { opacity: 1; transform: translateY(0); }
   }
 </style>

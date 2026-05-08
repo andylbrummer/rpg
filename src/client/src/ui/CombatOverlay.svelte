@@ -1,353 +1,473 @@
 <script lang="ts">
-  import type { CombatState, CombatAction } from '../types/game';
+  import type { CombatState, GameState } from '../types/game';
+  import CombatResultToast from './CombatResultToast.svelte';
 
   interface Props {
-    combat: CombatState;
-    onAction: (action: CombatAction) => void;
+    combat: CombatState | null;
+    lastResult: GameState['lastCombatResult'];
+    onCombatAction: (action: string, targetIndex: number) => void;
     onFlee: () => void;
   }
 
-  let { combat, onAction, onFlee }: Props = $props();
+  let { combat, lastResult, onCombatAction, onFlee }: Props = $props();
 
-  const players = $derived(combat.combatants.filter(c => c.isPlayer));
-  const enemies = $derived(combat.combatants.filter(c => !c.isPlayer));
-  const currentActor = $derived(combat.combatants.find(c => c.isCurrent));
-  const isPlayerTurn = $derived(currentActor?.isPlayer ?? false);
-  const recentLogs = $derived(combat.log.slice(-6).reverse());
+  let selectedTarget = $state(0);
+  let selectedAction = $state('attack');
+  let showResult = $state(false);
 
-  function sendAttack() {
-    if (!currentActor) return;
-    const target = enemies.find(e => e.alive);
-    if (!target) return;
-    onAction({
-      actorId: currentActor.id,
-      type: 'Attack',
-      targetId: target.id
-    });
+  $effect(() => {
+    if (lastResult) {
+      showResult = true;
+    }
+  });
+
+  function dismissResult() {
+    showResult = false;
   }
 
-  function sendDefend() {
-    if (!currentActor) return;
-    onAction({
-      actorId: currentActor.id,
-      type: 'Defend'
-    });
+  function getActionName(action: string): string {
+    const names: Record<string, string> = {
+      attack: 'Attack',
+      defend: 'Defend',
+      skill: 'Skill',
+      item: 'Item',
+    };
+    return names[action] || action;
   }
 
-  function sendWait() {
-    if (!currentActor) return;
-    onAction({
-      actorId: currentActor.id,
-      type: 'Wait'
-    });
+  function submitAction() {
+    onCombatAction(selectedAction, selectedTarget);
   }
 
-  function hpColor(hp: number, maxHp: number): string {
-    const ratio = hp / maxHp;
-    if (ratio > 0.5) return '#4a4';
-    if (ratio > 0.25) return '#aa4';
-    return '#a44';
+  function isPlayerTurn() {
+    return combat?.currentActor?.isPlayer === true && combat?.phase === 'Turn';
   }
+
+  const actions = ['attack', 'defend', 'skill', 'item'];
 </script>
 
 <div class="combat-overlay">
-  <div class="combat-header">
-    <span class="round">Round {combat.round}</span>
-    <span class="phase">{combat.phase}</span>
-    {#if isPlayerTurn}
-      <span class="turn-indicator">Your Turn</span>
-    {:else if currentActor}
-      <span class="turn-indicator ai">{currentActor.name}'s Turn</span>
-    {/if}
-  </div>
-
-  <div class="combat-arena">
-    <div class="side players">
-      <h3>Party</h3>
-      {#each players as c}
-        <div class="combatant-card" class:current={c.isCurrent} class:dead={!c.alive}>
-          <div class="name">{c.name}</div>
-          <div class="hp-bar">
-            <div class="hp-fill" style="width: {(c.hp / c.maxHp) * 100}%; background: {hpColor(c.hp, c.maxHp)}"></div>
-          </div>
-          <div class="hp-text">{c.hp}/{c.maxHp}</div>
-          <div class="meta">Speed {c.speed} | Row {c.row === 0 ? 'Front' : 'Back'}</div>
-        </div>
-      {/each}
+  {#if showResult && lastResult}
+    <CombatResultToast result={lastResult} onDismiss={dismissResult} />
+  {:else}
+    <div class="combat-header">
+      <div class="round-counter">
+        Round {combat?.roundCount ?? 0}
+      </div>
+      <div class="phase-indicator">
+        {combat?.phase ?? 'Waiting...'}
+      </div>
     </div>
 
-    <div class="vs">VS</div>
-
-    <div class="side enemies">
-      <h3>Enemies</h3>
-      {#each enemies as c}
-        <div class="combatant-card" class:current={c.isCurrent} class:dead={!c.alive}>
-          <div class="name">{c.name}</div>
-          <div class="hp-bar">
-            <div class="hp-fill" style="width: {(c.hp / c.maxHp) * 100}%; background: {hpColor(c.hp, c.maxHp)}"></div>
+    <div class="combat-body">
+      <div class="initiative-bar">
+        {#each combat?.turnOrder || [] as entry, i}
+          <div class="initiative-entry" class:active={entry.isPlayer} class:current={i === combat?.currentTurnIndex}>
+            <span class="init-name">{entry.name}</span>
+            <span class="init-score">{entry.initiative}</span>
           </div>
-          <div class="hp-text">{c.hp}/{c.maxHp}</div>
-          <div class="meta">Speed {c.speed} | Row {c.row === 0 ? 'Front' : 'Back'}</div>
-        </div>
-      {/each}
-    </div>
-  </div>
+        {/each}
+      </div>
 
-  <div class="initiative-bar">
-    {#each combat.initiativeOrder as id}
-      {@const c = combat.combatants.find(x => x.id === id)}
-      {#if c}
-        <div class="init-token" class:current={c.isCurrent} class:dead={!c.alive}>
-          {c.name}
+      <div class="combat-arena">
+        <div class="party-side">
+          <h3>Party</h3>
+          {#each combat?.party || [] as member, i}
+            <div class="combatant" class:dead={member.hp <= 0} class:current-turn={combat?.currentActor?.name === member.name}>
+              <div class="combatant-header">
+                <span class="combatant-name">{member.name}</span>
+                <span class="combatant-class">{member.class}</span>
+              </div>
+              <div class="hp-bar">
+                <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
+                <div class="hp-text">{member.hp}/{member.maxHp}</div>
+              </div>
+            </div>
+          {/each}
+        </div>
+
+        <div class="vs-divider">VS</div>
+
+        <div class="enemy-side">
+          <h3>Enemies</h3>
+          {#each combat?.enemies || [] as enemy, i}
+            <button
+              type="button"
+              class="combatant"
+              class:dead={enemy.hp <= 0}
+              class:selected={selectedTarget === i && isPlayerTurn()}
+              class:current-turn={combat?.currentActor?.name === enemy.name}
+              onclick={() => { if (isPlayerTurn()) selectedTarget = i; }}
+              disabled={!isPlayerTurn()}
+            >
+              <div class="combatant-header">
+                <span class="combatant-name">{enemy.name}</span>
+                <span class="combatant-level">Lv.{enemy.level}</span>
+              </div>
+              <div class="hp-bar">
+                <div class="hp-fill" style="width: {(enemy.hp / enemy.maxHp) * 100}%"></div>
+                <div class="hp-text">{enemy.hp}/{enemy.maxHp}</div>
+              </div>
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <div class="combat-log">
+        {#each combat?.log?.slice(-6) || [] as entry}
+          <div class="log-entry {entry.type}">
+            {entry.message}
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="action-bar">
+      {#if isPlayerTurn()}
+        <div class="action-select">
+          {#each actions as action}
+            <button
+              class="action-btn"
+              class:selected={selectedAction === action}
+              onclick={() => selectedAction = action}
+            >
+              {getActionName(action)}
+            </button>
+          {/each}
+        </div>
+        <div class="target-hint">
+          {#if selectedAction === 'attack'}
+            Click an enemy to select target
+          {:else}
+            {getActionName(selectedAction)} selected
+          {/if}
+        </div>
+        <div class="action-submit">
+          <button class="submit-btn" onclick={submitAction}>Execute</button>
+          <button class="flee-btn" onclick={onFlee}>Flee</button>
+        </div>
+      {:else}
+        <div class="waiting-message">
+          {#if combat?.phase === 'Resolve'}
+            Resolving...
+          {:else}
+            Waiting for turn...
+          {/if}
         </div>
       {/if}
-    {/each}
-  </div>
-
-  <div class="combat-log">
-    {#each recentLogs as entry}
-      <div class="log-entry">
-        <span class="log-round">R{entry.round}</span>
-        <span class="log-message">{entry.message}</span>
-      </div>
-    {/each}
-  </div>
-
-  <div class="action-bar">
-    {#if isPlayerTurn}
-      <button onclick={sendAttack} disabled={!enemies.some(e => e.alive)}>Attack</button>
-      <button onclick={sendDefend}>Defend</button>
-      <button onclick={sendWait}>Wait</button>
-      <button onclick={onFlee} class="flee">Flee</button>
-    {:else}
-      <span class="waiting">Enemy acting...</span>
-    {/if}
-  </div>
+    </div>
+  {/if}
 </div>
 
 <style>
   .combat-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.92);
-    color: #ddd;
     display: flex;
     flex-direction: column;
-    padding: 1.5rem;
-    font-family: system-ui, sans-serif;
-    z-index: 100;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.92);
+    padding: clamp(0.5rem, 2vh, 1rem);
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .combat-header {
+    flex: 0 0 auto;
     display: flex;
-    gap: 1.5rem;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #444;
+    padding-bottom: clamp(0.25rem, 1vh, 0.5rem);
+    border-bottom: 0.0625em solid #444;
+    margin-bottom: clamp(0.25rem, 1vh, 0.5rem);
   }
 
-  .round {
-    font-size: 1.25rem;
+  .round-counter {
+    font-size: clamp(0.8rem, 2vw, 1rem);
+    color: #d4a84b;
     font-weight: bold;
-    color: #fff;
   }
 
-  .phase {
-    text-transform: uppercase;
-    font-size: 0.75rem;
+  .phase-indicator {
+    font-size: clamp(0.7rem, 1.8vw, 0.875rem);
     color: #888;
-    letter-spacing: 1px;
+    text-transform: uppercase;
   }
 
-  .turn-indicator {
-    background: #2a4a2a;
-    color: #4f4;
-    padding: 0.25rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
+  .combat-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    gap: clamp(0.25rem, 1vh, 0.5rem);
+  }
+
+  .initiative-bar {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding: 0.25rem 0;
+  }
+
+  .initiative-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.4rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.0625em solid #444;
+    border-radius: 0.25rem;
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .initiative-entry.active {
+    border-color: #44aaff;
+  }
+
+  .initiative-entry.current {
+    background: rgba(212, 168, 75, 0.2);
+    border-color: #d4a84b;
+  }
+
+  .init-name {
+    color: #ccc;
+  }
+
+  .init-score {
+    color: #888;
     font-weight: bold;
-  }
-
-  .turn-indicator.ai {
-    background: #4a2a2a;
-    color: #f44;
   }
 
   .combat-arena {
+    flex: 1 1 auto;
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    gap: 2rem;
-    padding: 1.5rem 0;
-    flex: 1;
+    gap: clamp(1rem, 3vw, 2rem);
+    overflow: auto;
+    min-height: 0;
+    padding: 0.5rem;
   }
 
-  .side {
+  .party-side,
+  .enemy-side {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    min-width: 200px;
+    gap: 0.5rem;
+    min-width: clamp(10rem, 20vw, 16rem);
+    max-width: min(20rem, 30vw);
+    flex: 0 0 auto;
   }
 
-  .side h3 {
-    margin: 0;
+  .party-side h3,
+  .enemy-side h3 {
+    margin: 0 0 0.25rem;
+    font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+    color: #ccc;
     text-align: center;
-    font-size: 1rem;
-    color: #888;
-    text-transform: uppercase;
-    letter-spacing: 2px;
   }
 
-  .vs {
-    font-size: 1.5rem;
+  .vs-divider {
+    display: flex;
+    align-items: center;
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
     font-weight: bold;
-    color: #666;
-    align-self: center;
+    color: #d4a84b;
+    padding: 0 0.5rem;
   }
 
-  .combatant-card {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 6px;
-    padding: 0.75rem;
-    transition: border-color 0.2s;
+  .combatant {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: clamp(0.375rem, 1vh, 0.5rem);
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.0625em solid #444;
+    border-radius: 0.375rem;
+    transition: border-color 0.15s;
+    cursor: default;
   }
 
-  .combatant-card.current {
-    border-color: #48f;
-    box-shadow: 0 0 8px rgba(68, 136, 255, 0.3);
-  }
-
-  .combatant-card.dead {
+  .combatant.dead {
     opacity: 0.4;
-    filter: grayscale(1);
   }
 
-  .name {
+  .combatant.current-turn {
+    border-color: #d4a84b;
+    box-shadow: 0 0 0.25em rgba(212, 168, 75, 0.3);
+  }
+
+  .enemy-side .combatant {
+    cursor: pointer;
+  }
+
+  .enemy-side .combatant.selected {
+    border-color: #44aaff;
+    box-shadow: 0 0 0.25em rgba(68, 170, 255, 0.3);
+  }
+
+  .combatant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .combatant-name {
+    font-size: clamp(0.75rem, 1.5vw, 0.875rem);
     font-weight: bold;
-    color: #fff;
-    margin-bottom: 0.375rem;
+    color: #eee;
+  }
+
+  .combatant-class,
+  .combatant-level {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    color: #888;
   }
 
   .hp-bar {
-    height: 8px;
-    background: #333;
-    border-radius: 4px;
+    position: relative;
+    height: clamp(0.5rem, 1.2vh, 0.75rem);
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 0.25rem;
     overflow: hidden;
-    margin-bottom: 0.25rem;
   }
 
   .hp-fill {
     height: 100%;
-    transition: width 0.3s;
+    background: linear-gradient(90deg, #44a844, #66cc66);
+    transition: width 0.3s ease;
+  }
+
+  .enemy-side .hp-fill {
+    background: linear-gradient(90deg, #a84444, #cc6666);
   }
 
   .hp-text {
-    font-size: 0.75rem;
-    color: #888;
-    margin-bottom: 0.25rem;
-  }
-
-  .meta {
-    font-size: 0.6875rem;
-    color: #666;
-  }
-
-  .initiative-bar {
+    position: absolute;
+    inset: 0;
     display: flex;
-    gap: 0.5rem;
+    align-items: center;
     justify-content: center;
-    padding: 0.75rem 0;
-    border-top: 1px solid #333;
-    border-bottom: 1px solid #333;
-    overflow-x: auto;
-  }
-
-  .init-token {
-    background: #222;
-    border: 1px solid #444;
-    padding: 0.375rem 0.625rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    white-space: nowrap;
-  }
-
-  .init-token.current {
-    border-color: #48f;
-    background: #1a2a4a;
-  }
-
-  .init-token.dead {
-    opacity: 0.4;
-    text-decoration: line-through;
+    font-size: clamp(0.5rem, 1vw, 0.65rem);
+    color: #fff;
+    text-shadow: 0 0 0.1em rgba(0, 0, 0, 0.8);
+    pointer-events: none;
   }
 
   .combat-log {
-    height: 120px;
+    flex: 0 0 auto;
+    max-height: clamp(4rem, 12vh, 6rem);
     overflow-y: auto;
-    padding: 0.75rem;
-    background: #111;
-    border-radius: 4px;
-    margin: 0.75rem 0;
-    font-size: 0.875rem;
-    font-family: monospace;
+    padding: 0.375rem;
+    background: rgba(0, 0, 0, 0.5);
+    border: 0.0625em solid #333;
+    border-radius: 0.25rem;
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
   }
 
   .log-entry {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.125rem 0;
-  }
-
-  .log-round {
-    color: #666;
-    min-width: 2rem;
-  }
-
-  .log-message {
+    padding: 0.15rem 0;
     color: #ccc;
   }
 
+  .log-entry.damage {
+    color: #ff6666;
+  }
+
+  .log-entry.heal {
+    color: #66ff66;
+  }
+
+  .log-entry.info {
+    color: #66aaff;
+  }
+
   .action-bar {
+    flex: 0 0 auto;
     display: flex;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: clamp(0.25rem, 1vh, 0.5rem);
+    border-top: 0.0625em solid #444;
+  }
+
+  .action-select {
+    display: flex;
+    gap: 0.5rem;
     justify-content: center;
-    padding-top: 0.5rem;
+    flex-wrap: wrap;
   }
 
-  .action-bar button {
-    background: #2a2a2a;
-    color: #fff;
-    border: 1px solid #555;
-    padding: 0.625rem 1.25rem;
-    border-radius: 4px;
+  .action-btn {
+    padding: clamp(0.3rem, 1vh, 0.4rem) clamp(0.6rem, 2vw, 1rem);
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.0625em solid #444;
+    border-radius: 0.25rem;
+    color: #ccc;
     cursor: pointer;
-    font-size: 1rem;
-    min-width: 100px;
+    font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+    transition: background 0.15s, border-color 0.15s;
+    min-width: clamp(4rem, 10vw, 5rem);
   }
 
-  .action-bar button:hover:not(:disabled) {
-    background: #3a3a3a;
-    border-color: #777;
+  .action-btn:hover {
+    background: rgba(100, 100, 100, 0.3);
   }
 
-  .action-bar button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+  .action-btn.selected {
+    border-color: #d4a84b;
+    background: rgba(212, 168, 75, 0.15);
   }
 
-  .action-bar button.flee {
-    border-color: #844;
-    color: #faa;
-  }
-
-  .action-bar button.flee:hover {
-    background: #4a2222;
-  }
-
-  .waiting {
+  .target-hint {
+    text-align: center;
+    font-size: clamp(0.6rem, 1.2vw, 0.75rem);
     color: #888;
-    font-style: italic;
+  }
+
+  .action-submit {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .submit-btn,
+  .flee-btn {
+    padding: clamp(0.3rem, 1vh, 0.5rem) clamp(1rem, 3vw, 2rem);
+    border: 0.0625em solid;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+    transition: background 0.15s;
+  }
+
+  .submit-btn {
+    background: rgba(68, 170, 68, 0.2);
+    border-color: #44aa44;
+    color: #88cc88;
+  }
+
+  .submit-btn:hover {
+    background: rgba(68, 170, 68, 0.35);
+  }
+
+  .flee-btn {
+    background: rgba(170, 68, 68, 0.2);
+    border-color: #aa4444;
+    color: #cc8888;
+  }
+
+  .flee-btn:hover {
+    background: rgba(170, 68, 68, 0.35);
+  }
+
+  .waiting-message {
+    text-align: center;
+    font-size: clamp(0.8rem, 2vw, 1rem);
+    color: #888;
+    padding: 0.5rem;
   }
 </style>

@@ -22,63 +22,71 @@ public class DungeonBuilder
         // Simple dungeon generation: place rooms and connect with corridors
         var dungeon = new Dungeon(64, 64, name);
         var placedRooms = new List<PlacedRoom>();
-        
+
         // Place entrance
-        var entrance = _segments.FirstOrDefault(s => s.Tags.Contains("entrance")) 
+        var entrance = _segments.FirstOrDefault(s => s.Tags.Contains("entrance"))
             ?? _segments.First();
         var entrancePos = new Position(32, 32);
         var placedEntrance = PlaceRoom(dungeon, entrance, entrancePos, 0);
         placedRooms.Add(placedEntrance);
-        
+
         int roomId = 1;
         int attempts = 0;
-        
+
         while (placedRooms.Count < targetRooms && attempts < targetRooms * 10)
         {
             attempts++;
-            
+
             // Pick a random placed room and one of its exits
             var parentRoom = placedRooms[_random.Next(placedRooms.Count)];
             if (!parentRoom.Exits.Any()) continue;
-            
+
             var exit = parentRoom.Exits[_random.Next(parentRoom.Exits.Count)];
-            
+
             // Pick a random segment to place
             var segment = _segments[_random.Next(_segments.Count)];
-            
-            // Try to place it at the exit
+
+            // Try to place it adjacent to the exit
             var newRoom = TryPlaceRoom(dungeon, segment, exit.Position, exit.Direction, roomId);
             if (newRoom != null)
             {
                 placedRooms.Add(newRoom);
                 roomId++;
-                
-                // Connect with corridor/door
-                dungeon.Tiles[exit.Position.X, exit.Position.Y] = new Tile(TileType.Door, newRoom.Id);
             }
         }
-        
+
+        // Derive borders for all walkable tiles
+        DeriveBorders(dungeon);
+
         return dungeon;
     }
 
     private PlacedRoom PlaceRoom(Dungeon dungeon, RoomSegment segment, Position position, int roomId)
     {
         var exits = new List<RoomExit>();
-        
+
         foreach (var tile in segment.Tiles)
         {
             var worldPos = new Position(position.X + tile.X, position.Y + tile.Y);
             if (dungeon.IsValidPosition(worldPos))
             {
-                dungeon.Tiles[worldPos.X, worldPos.Y] = new Tile(tile.Type, roomId);
-                
+                var placedTile = new Tile(
+                    tile.Type,
+                    tile.North ?? BorderType.None,
+                    tile.South ?? BorderType.None,
+                    tile.East ?? BorderType.None,
+                    tile.West ?? BorderType.None,
+                    roomId
+                );
+                dungeon.Tiles[worldPos.X, worldPos.Y] = placedTile;
+
                 if (tile.IsExit)
                 {
                     exits.Add(new RoomExit(worldPos, tile.ExitDirection!.Value));
                 }
             }
         }
-        
+
         return new PlacedRoom
         {
             Id = roomId,
@@ -91,19 +99,21 @@ public class DungeonBuilder
     private PlacedRoom? TryPlaceRoom(Dungeon dungeon, RoomSegment segment, Position atPosition, Direction fromDirection, int roomId)
     {
         // Calculate offset based on entrance direction
-        // The room should be placed so that one of its entrances connects to atPosition
+        // The room should be placed so that one of its entrances is adjacent to atPosition
         var entrance = segment.Tiles.FirstOrDefault(t => t.IsExit && t.ExitDirection == Opposite(fromDirection));
-        
+
         if (entrance == null)
         {
             // No matching entrance, try any exit
             entrance = segment.Tiles.FirstOrDefault(t => t.IsExit);
             if (entrance == null) return null;
         }
-        
-        var offset = new Position(atPosition.X - entrance.X, atPosition.Y - entrance.Y);
-        
-        // Check if placement is valid (no overlaps)
+
+        // Place the entrance tile adjacent to the parent's exit (one step in the connection direction)
+        var entranceWorldPos = atPosition.Move(fromDirection);
+        var offset = new Position(entranceWorldPos.X - entrance.X, entranceWorldPos.Y - entrance.Y);
+
+        // Check if placement is valid (no overlaps with existing walkable tiles)
         foreach (var tile in segment.Tiles)
         {
             var worldPos = new Position(offset.X + tile.X, offset.Y + tile.Y);
@@ -112,8 +122,54 @@ public class DungeonBuilder
             if (dungeon.Tiles[worldPos.X, worldPos.Y].Type != TileType.Empty)
                 return null;
         }
-        
+
         return PlaceRoom(dungeon, segment, offset, roomId);
+    }
+
+    private void DeriveBorders(Dungeon dungeon)
+    {
+        for (int x = 0; x < dungeon.Width; x++)
+        {
+            for (int y = 0; y < dungeon.Height; y++)
+            {
+                var tile = dungeon.Tiles[x, y];
+                if (!tile.IsWalkable) continue;
+
+                // North
+                if (tile.North == BorderType.None)
+                {
+                    var ny = y - 1;
+                    if (ny < 0 || !dungeon.Tiles[x, ny].IsWalkable)
+                        tile = tile.WithBorder(Direction.North, BorderType.Wall);
+                }
+
+                // South
+                if (tile.South == BorderType.None)
+                {
+                    var sy = y + 1;
+                    if (sy >= dungeon.Height || !dungeon.Tiles[x, sy].IsWalkable)
+                        tile = tile.WithBorder(Direction.South, BorderType.Wall);
+                }
+
+                // East
+                if (tile.East == BorderType.None)
+                {
+                    var ex = x + 1;
+                    if (ex >= dungeon.Width || !dungeon.Tiles[ex, y].IsWalkable)
+                        tile = tile.WithBorder(Direction.East, BorderType.Wall);
+                }
+
+                // West
+                if (tile.West == BorderType.None)
+                {
+                    var wx = x - 1;
+                    if (wx < 0 || !dungeon.Tiles[wx, y].IsWalkable)
+                        tile = tile.WithBorder(Direction.West, BorderType.Wall);
+                }
+
+                dungeon.Tiles[x, y] = tile;
+            }
+        }
     }
 
     private static Direction Opposite(Direction dir) => dir switch
@@ -138,7 +194,7 @@ public class RoomExit
 {
     public Position Position { get; }
     public Direction Direction { get; }
-    
+
     public RoomExit(Position position, Direction direction)
     {
         Position = position;

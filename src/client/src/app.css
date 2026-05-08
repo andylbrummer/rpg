@@ -9,14 +9,14 @@
   --accent-border: rgba(170, 59, 255, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0, 0, 0, 0.1) 0 0.625rem 0.9375rem -0.1875rem, rgba(0, 0, 0, 0.05) 0 0.25rem 0.375rem -0.125rem;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
+  font: 1.125rem/145% var(--sans);
+  letter-spacing: 0.01125rem;
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
@@ -25,8 +25,8 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  @media (max-width: 64rem) {
+    font-size: 1rem;
   }
 }
 
@@ -42,7 +42,7 @@
     --accent-border: rgba(192, 132, 252, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+      rgba(0, 0, 0, 0.4) 0 0.625rem 0.9375rem -0.1875rem, rgba(0, 0, 0, 0.25) 0 0.25rem 0.375rem -0.125rem;
   }
 
   #social .button-icon {
@@ -62,21 +62,21 @@ h2 {
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  font-size: 3.5rem;
+  letter-spacing: -0.105rem;
+  margin: 2rem 0;
+  @media (max-width: 64rem) {
+    font-size: 2.25rem;
+    margin: 1.25rem 0;
   }
 }
 h2 {
-  font-size: 24px;
+  font-size: 1.5rem;
   line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+  letter-spacing: -0.015rem;
+  margin: 0 0 0.5rem;
+  @media (max-width: 64rem) {
+    font-size: 1.25rem;
   }
 }
 p {
@@ -87,33 +87,33 @@ code,
 .counter {
   font-family: var(--mono);
   display: inline-flex;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   color: var(--text-h);
 }
 
 code {
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 135%;
-  padding: 4px 8px;
+  padding: 0.25rem 0.5rem;
   background: var(--code-bg);
 }
 
 .counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
+  font-size: 1rem;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.3125rem;
   color: var(--accent);
   background: var(--accent-bg);
-  border: 2px solid transparent;
+  border: 0.125em solid transparent;
   transition: border-color 0.3s;
-  margin-bottom: 24px;
+  margin-bottom: 1.5rem;
 
   &:hover {
     border-color: var(--accent-border);
   }
   &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: 0.125em solid var(--accent);
+    outline-offset: 0.125em;
   }
 }
 
@@ -128,7 +128,7 @@ code {
   }
 
   .base {
-    width: 170px;
+    width: 10.625rem;
     position: relative;
     z-index: 0;
   }
@@ -140,28 +140,28 @@ code {
 
   .framework {
     z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
+    top: 2.125rem;
+    height: 1.75rem;
+    transform: perspective(125rem) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
       scale(1.4);
   }
 
   .vite {
     z-index: 0;
-    top: 107px;
-    height: 26px;
+    top: 6.6875rem;
+    height: 1.625rem;
     width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
+    transform: perspective(125rem) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
       scale(0.8);
   }
 }
 
 #app {
-  width: 1126px;
+  width: 70.375rem;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
+  border-inline: 0.0625em solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -171,48 +171,48 @@ code {
 #center {
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 1.5625rem;
   place-content: center;
   place-items: center;
   flex-grow: 1;
 
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
+  @media (max-width: 64rem) {
+    padding: 2rem 1.25rem 1.5rem;
+    gap: 1.125rem;
   }
 }
 
 #next-steps {
   display: flex;
-  border-top: 1px solid var(--border);
+  border-top: 0.0625em solid var(--border);
   text-align: left;
 
   & > div {
     flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
+    padding: 2rem;
+    @media (max-width: 64rem) {
+      padding: 1.5rem 1.25rem;
     }
   }
 
   .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
+    margin-bottom: 1rem;
+    width: 1.375rem;
+    height: 1.375rem;
   }
 
-  @media (max-width: 1024px) {
+  @media (max-width: 64rem) {
     flex-direction: column;
     text-align: center;
   }
 }
 
 #docs {
-  border-right: 1px solid var(--border);
+  border-right: 0.0625em solid var(--border);
 
-  @media (max-width: 1024px) {
+  @media (max-width: 64rem) {
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 0.0625em solid var(--border);
   }
 }
 
@@ -220,22 +220,22 @@ code {
   list-style: none;
   padding: 0;
   display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
+  gap: 0.5rem;
+  margin: 2rem 0 0;
 
   .logo {
-    height: 18px;
+    height: 1.125rem;
   }
 
   a {
     color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
+    font-size: 1rem;
+    border-radius: 0.375rem;
     background: var(--social-bg);
     display: flex;
-    padding: 6px 12px;
+    padding: 0.375rem 0.75rem;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     text-decoration: none;
     transition: box-shadow 0.3s;
 
@@ -243,18 +243,18 @@ code {
       box-shadow: var(--shadow);
     }
     .button-icon {
-      height: 18px;
-      width: 18px;
+      height: 1.125rem;
+      width: 1.125rem;
     }
   }
 
-  @media (max-width: 1024px) {
-    margin-top: 20px;
+  @media (max-width: 64rem) {
+    margin-top: 1.25rem;
     flex-wrap: wrap;
     justify-content: center;
 
     li {
-      flex: 1 1 calc(50% - 8px);
+      flex: 1 1 calc(50% - 0.5rem);
     }
 
     a {
@@ -266,10 +266,10 @@ code {
 }
 
 #spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
+  height: 5.5rem;
+  border-top: 0.0625em solid var(--border);
+  @media (max-width: 64rem) {
+    height: 3rem;
   }
 }
 
@@ -281,8 +281,8 @@ code {
   &::after {
     content: '';
     position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
+    top: -0.28125rem;
+    border: 0.3125em solid transparent;
   }
 
   &::before {

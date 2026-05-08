@@ -1,46 +1,29 @@
 <script lang="ts">
-  import type { PartyMember } from '../types/game';
+  import type { Character } from '../types/game';
 
   interface Props {
-    members: PartyMember[];
+    party: Character[];
   }
 
-  let { members }: Props = $props();
-
-  function hpColor(percent: number): string {
-    if (percent > 0.5) return '#44ff44';
-    if (percent > 0.25) return '#ffcc00';
-    return '#ff4444';
-  }
-
-  function classIcon(classId: string): string {
-    const icons: Record<string, string> = {
-      bonewarden: '💀',
-      stillblade: '⚔️',
-      cauterist: '🔥',
-      hollow: '🗡️'
-    };
-    return icons[classId] ?? '❓';
-  }
+  let { party }: Props = $props();
 </script>
 
 <div class="party-bar">
-  {#each members as member}
-    <div class="char-tile" class:dead={!member.alive}>
-      <div class="char-header">
-        <span class="class-icon">{classIcon(member.classId)}</span>
-        <span class="name">{member.name}</span>
-        <span class="level">L{member.level}</span>
-      </div>
-      <div class="hp-bar-track">
-        <div
-          class="hp-bar-fill"
-          style="width: {(member.hp / member.maxHp) * 100}%; background: {hpColor(member.hp / member.maxHp)};"
-        ></div>
-        <span class="hp-text">{member.hp}/{member.maxHp}</span>
-      </div>
-      <div class="row-indicator">
-        {member.row === 0 ? 'Front' : 'Back'}
+  {#each party as member (member.name)}
+    <div class="party-member">
+      <div class="member-portrait" style="background-color: {member.color}"></div>
+      <div class="member-info">
+        <div class="member-name">{member.name}</div>
+        <div class="member-level">Lv.{member.level} {member.class}</div>
+        <div class="hp-bar">
+          <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
+          <div class="hp-text">{member.hp}/{member.maxHp}</div>
+        </div>
+        <div class="status-effects">
+          {#each member.statusEffects || [] as effect}
+            <span class="status-badge">{effect}</span>
+          {/each}
+        </div>
       </div>
     </div>
   {/each}
@@ -50,81 +33,91 @@
   .party-bar {
     display: flex;
     gap: 0.5rem;
-    background: rgba(0, 0, 0, 0.85);
-    padding: 0.5rem 1rem;
-    border-top: 1px solid #444;
-    justify-content: center;
+    padding: 0.5rem;
+    overflow-x: auto;
+    background: rgba(0, 0, 0, 0.8);
+    border-top: 0.0625em solid #333;
   }
 
-  .char-tile {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid #444;
-    border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    min-width: 140px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .char-tile.dead {
-    opacity: 0.5;
-    filter: grayscale(1);
-  }
-
-  .char-header {
+  .party-member {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    font-size: 0.875rem;
-    color: #fff;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.0625em solid #444;
+    border-radius: 0.375rem;
+    padding: 0.375rem;
+    min-width: clamp(9rem, 18vw, 12rem);
+    flex: 0 0 auto;
   }
 
-  .class-icon {
-    font-size: 1rem;
+  .member-portrait {
+    width: clamp(2rem, 5vw, 2.5rem);
+    height: clamp(2rem, 5vw, 2.5rem);
+    border-radius: 50%;
+    border: 0.125em solid #666;
+    flex-shrink: 0;
   }
 
-  .name {
-    font-weight: 600;
-    flex: 1;
+  .member-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
-  .level {
-    color: #aaa;
-    font-size: 0.75rem;
+  .member-name {
+    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+    font-weight: bold;
+    color: #eee;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .hp-bar-track {
+  .member-level {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    color: #888;
+  }
+
+  .hp-bar {
     position: relative;
-    height: 14px;
-    background: #333;
-    border-radius: 2px;
+    height: clamp(0.5rem, 1.2vh, 0.75rem);
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 0.25rem;
     overflow: hidden;
   }
 
-  .hp-bar-fill {
+  .hp-fill {
     height: 100%;
-    transition: width 0.2s ease, background 0.2s ease;
+    background: linear-gradient(90deg, #44a844, #66cc66);
+    transition: width 0.3s ease;
   }
 
   .hp-text {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.65rem;
-    color: #000;
-    font-weight: 700;
-    text-shadow: none;
+    font-size: clamp(0.5rem, 1vw, 0.65rem);
+    color: #fff;
+    text-shadow: 0 0 0.1em rgba(0, 0, 0, 0.8);
+    pointer-events: none;
   }
 
-  .row-indicator {
-    font-size: 0.65rem;
-    color: #888;
-    text-align: right;
+  .status-effects {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+  }
+
+  .status-badge {
+    font-size: clamp(0.5rem, 1vw, 0.6rem);
+    padding: 0.05rem 0.25rem;
+    background: rgba(100, 100, 100, 0.3);
+    border-radius: 0.125rem;
+    color: #aaa;
   }
 </style>

@@ -23,7 +23,7 @@ async function waitForServer(url: string, timeout = 15000): Promise<void> {
 export const test = base.extend<ServerFixture>({
   serverUrl: [async ({}, use) => {
     const hostDll = resolve(__dirname, '../../../src/engine/RPC.Host/bin/Release/net9.0/RPC.Host.dll');
-    const proc = spawn('/home/beagle/.dotnet/dotnet', [hostDll, '--headless'], {
+    const proc = spawn('/usr/lib/dotnet/dotnet', [hostDll, '--headless'], {
       cwd: resolve(__dirname, '../../../src/engine'),
       stdio: 'pipe',
     });

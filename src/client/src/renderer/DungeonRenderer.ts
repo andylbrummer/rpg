@@ -8,6 +8,7 @@ export class DungeonRenderer {
   private tileMeshes: Map<string, THREE.Mesh> = new Map();
   private tileSize = 2;
   private wallHeight = 3;
+  private wallThickness = 0.15;
   private currentState: GameState | null = null;
   private isDisposed = false;
   private torchLight: THREE.PointLight;
@@ -27,7 +28,7 @@ export class DungeonRenderer {
   constructor(container: HTMLElement) {
     const MIN_WIDTH = 800;
     const MIN_HEIGHT = 600;
-    
+
     const width = Math.max(container.clientWidth || MIN_WIDTH, MIN_WIDTH);
     const height = Math.max(container.clientHeight || MIN_HEIGHT, MIN_HEIGHT);
 
@@ -50,12 +51,12 @@ export class DungeonRenderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    
+
     // Ensure canvas fills container
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
     this.renderer.domElement.style.display = 'block';
-    
+
     container.appendChild(this.renderer.domElement);
 
     // Lighting
@@ -68,7 +69,7 @@ export class DungeonRenderer {
     this.torchLight.shadow.mapSize.width = 512;
     this.torchLight.shadow.mapSize.height = 512;
     this.scene.add(this.torchLight);
-    
+
     // Fill light from above
     const fillLight = new THREE.DirectionalLight(0xaaccff, 0.3);
     fillLight.position.set(5, 10, 5);
@@ -106,14 +107,14 @@ export class DungeonRenderer {
       for (let col = -1; col < 5; col++) {
         const x = col * brickWidth + offset;
         const y = row * brickHeight;
-        
+
         // Slight color variation per brick
         const hue = 20 + Math.random() * 10;
         const sat = 30 + Math.random() * 15;
         const light = 40 + Math.random() * 10;
         ctx.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
         ctx.fillRect(x + 1, y + 1, brickWidth - 2, brickHeight - 2);
-        
+
         // Add some noise/texture
         for (let i = 0; i < 8; i++) {
           const nx = x + Math.random() * brickWidth;
@@ -150,12 +151,12 @@ export class DungeonRenderer {
       for (let col = 0; col < cols; col++) {
         const x = col * tileSize;
         const y = row * tileSize;
-        
+
         // Tile color variation
         const light = 45 + Math.random() * 15;
         ctx.fillStyle = `hsl(0, 0%, ${light}%)`;
         ctx.fillRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
-        
+
         // Stone noise
         for (let i = 0; i < 20; i++) {
           const nx = x + Math.random() * tileSize;
@@ -199,7 +200,7 @@ export class DungeonRenderer {
 
   updateState(state: GameState): void {
     this.currentState = state;
-    
+
     if (state.hasDungeon) {
       this.renderTiles(state.tiles);
       this.updateCamera(state.player);
@@ -217,10 +218,10 @@ export class DungeonRenderer {
 
   private renderDefaultScene(): void {
     this.clearTiles();
-    
+
     // Add a simple floor
     const geometry = new THREE.PlaneGeometry(10, 10);
-    const material = new THREE.MeshStandardMaterial({ 
+    const material = new THREE.MeshStandardMaterial({
       map: this.floorTexture,
       roughness: 0.8
     });
@@ -230,7 +231,7 @@ export class DungeonRenderer {
     mesh.receiveShadow = true;
     this.tileMeshes.set('default', mesh);
     this.scene.add(mesh);
-    
+
     // Add a visible marker
     const markerGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
     const markerMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
@@ -238,7 +239,7 @@ export class DungeonRenderer {
     marker.position.set(0, 0.5, 0);
     this.tileMeshes.set('marker', marker);
     this.scene.add(marker);
-    
+
     // Position camera
     this.camera.position.set(0, 2, 5);
     this.camera.lookAt(0, 0, 0);
@@ -254,9 +255,19 @@ export class DungeonRenderer {
   }
 
   private renderTiles(tiles: Tile[]): void {
-    // Don't clear all tiles every time - only remove ones that are no longer visible
-    const visibleKeys = new Set(tiles.map(t => `${t.x},${t.y}`));
+    // Build set of visible tile keys and border keys
+    const visibleKeys = new Set<string>();
+    for (const tile of tiles) {
+      visibleKeys.add(`floor:${tile.x},${tile.y}`);
+      if (tile.north !== 'None') visibleKeys.add(`border:${tile.x},${tile.y}:N`);
+      if (tile.south !== 'None') visibleKeys.add(`border:${tile.x},${tile.y}:S`);
+      if (tile.east !== 'None') visibleKeys.add(`border:${tile.x},${tile.y}:E`);
+      if (tile.west !== 'None') visibleKeys.add(`border:${tile.x},${tile.y}:W`);
+    }
+
+    // Remove meshes that are no longer visible
     for (const [key, mesh] of this.tileMeshes) {
+      if (key === 'default' || key === 'marker') continue;
       if (!visibleKeys.has(key)) {
         this.scene.remove(mesh);
         mesh.geometry.dispose();
@@ -266,34 +277,60 @@ export class DungeonRenderer {
     }
 
     // Add or update tiles
-    let added = 0;
     for (const tile of tiles) {
-      const key = `${tile.x},${tile.y}`;
-      
-      if (!this.tileMeshes.has(key)) {
-        const mesh = this.createTileMesh(tile);
+      const fx = tile.x * this.tileSize;
+      const fz = tile.y * this.tileSize;
+
+      // Floor / stairs
+      const floorKey = `floor:${tile.x},${tile.y}`;
+      if (!this.tileMeshes.has(floorKey)) {
+        const mesh = this.createBaseMesh(tile, fx, fz);
         if (mesh) {
+          this.tileMeshes.set(floorKey, mesh);
+          this.scene.add(mesh);
+        }
+      }
+
+      // Borders
+      if (tile.north !== 'None') {
+        const key = `border:${tile.x},${tile.y}:N`;
+        if (!this.tileMeshes.has(key)) {
+          const mesh = this.createBorderPanel(fx, fz, 'north', tile.north);
           this.tileMeshes.set(key, mesh);
           this.scene.add(mesh);
-          added++;
+        }
+      }
+      if (tile.south !== 'None') {
+        const key = `border:${tile.x},${tile.y}:S`;
+        if (!this.tileMeshes.has(key)) {
+          const mesh = this.createBorderPanel(fx, fz, 'south', tile.south);
+          this.tileMeshes.set(key, mesh);
+          this.scene.add(mesh);
+        }
+      }
+      if (tile.east !== 'None') {
+        const key = `border:${tile.x},${tile.y}:E`;
+        if (!this.tileMeshes.has(key)) {
+          const mesh = this.createBorderPanel(fx, fz, 'east', tile.east);
+          this.tileMeshes.set(key, mesh);
+          this.scene.add(mesh);
+        }
+      }
+      if (tile.west !== 'None') {
+        const key = `border:${tile.x},${tile.y}:W`;
+        if (!this.tileMeshes.has(key)) {
+          const mesh = this.createBorderPanel(fx, fz, 'west', tile.west);
+          this.tileMeshes.set(key, mesh);
+          this.scene.add(mesh);
         }
       }
     }
   }
 
-  private createTileMesh(tile: Tile): THREE.Mesh | null {
-    const x = tile.x * this.tileSize;
-    const z = tile.y * this.tileSize;
-
+  private createBaseMesh(tile: Tile, x: number, z: number): THREE.Mesh | null {
     switch (tile.type) {
       case 'Floor':
         return this.createFloor(x, z);
-      case 'Wall':
-        return this.createWall(x, z);
-      case 'Door':
-        return this.createDoor(x, z);
-      case 'SecretDoor':
-        return this.createSecretDoor(x, z);
       case 'StairsUp':
         return this.createStairs(x, z, true);
       case 'StairsDown':
@@ -307,7 +344,7 @@ export class DungeonRenderer {
 
   private createFloor(x: number, z: number): THREE.Mesh {
     const geometry = new THREE.PlaneGeometry(this.tileSize * 0.95, this.tileSize * 0.95);
-    const material = new THREE.MeshStandardMaterial({ 
+    const material = new THREE.MeshStandardMaterial({
       map: this.floorTexture,
       roughness: 0.8
     });
@@ -318,55 +355,55 @@ export class DungeonRenderer {
     return mesh;
   }
 
-  private createWall(x: number, z: number): THREE.Mesh {
-    const geometry = new THREE.BoxGeometry(
-      this.tileSize * 0.95, 
-      this.wallHeight, 
-      this.tileSize * 0.95
-    );
-    const material = new THREE.MeshStandardMaterial({ 
-      map: this.wallTexture,
-      roughness: 0.9,
-      bumpMap: this.wallTexture,
-      bumpScale: 0.1
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, this.wallHeight / 2, z);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
-  }
+  private createBorderPanel(x: number, z: number, side: 'north' | 'south' | 'east' | 'west', borderType: string): THREE.Mesh {
+    const isDoor = borderType === 'Door';
+    const isSecret = borderType === 'SecretDoor';
 
-  private createDoor(x: number, z: number): THREE.Mesh {
-    const geometry = new THREE.BoxGeometry(
-      this.tileSize * 0.8, 
-      this.wallHeight * 0.9, 
-      this.tileSize * 0.2
-    );
-    const material = new THREE.MeshStandardMaterial({ 
-      map: this.doorTexture,
-      roughness: 0.7
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, this.wallHeight / 2, z);
-    mesh.castShadow = true;
-    return mesh;
-  }
+    let geometry: THREE.BoxGeometry;
+    let material: THREE.MeshStandardMaterial;
 
-  private createSecretDoor(x: number, z: number): THREE.Mesh {
-    // Looks like a wall but slightly different
-    const geometry = new THREE.BoxGeometry(
-      this.tileSize * 0.95, 
-      this.wallHeight, 
-      this.tileSize * 0.95
-    );
-    const material = new THREE.MeshStandardMaterial({ 
-      map: this.wallTexture,
-      roughness: 0.9,
-      color: 0x998877
-    });
+    if (isDoor) {
+      geometry = new THREE.BoxGeometry(
+        side === 'east' || side === 'west' ? this.wallThickness * 0.8 : this.tileSize * 0.85,
+        this.wallHeight * 0.95,
+        side === 'north' || side === 'south' ? this.wallThickness * 0.8 : this.tileSize * 0.85
+      );
+      material = new THREE.MeshStandardMaterial({
+        map: this.doorTexture,
+        roughness: 0.7
+      });
+    } else {
+      geometry = new THREE.BoxGeometry(
+        side === 'east' || side === 'west' ? this.wallThickness : this.tileSize,
+        this.wallHeight,
+        side === 'north' || side === 'south' ? this.wallThickness : this.tileSize
+      );
+      material = new THREE.MeshStandardMaterial({
+        map: this.wallTexture,
+        roughness: 0.9,
+        bumpMap: this.wallTexture,
+        bumpScale: 0.1,
+        color: isSecret ? 0x998877 : 0xffffff
+      });
+    }
+
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, this.wallHeight / 2, z);
+
+    switch (side) {
+      case 'north':
+        mesh.position.set(x, this.wallHeight / 2, z - this.tileSize / 2);
+        break;
+      case 'south':
+        mesh.position.set(x, this.wallHeight / 2, z + this.tileSize / 2);
+        break;
+      case 'east':
+        mesh.position.set(x + this.tileSize / 2, this.wallHeight / 2, z);
+        break;
+      case 'west':
+        mesh.position.set(x - this.tileSize / 2, this.wallHeight / 2, z);
+        break;
+    }
+
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     return mesh;
@@ -417,10 +454,10 @@ export class DungeonRenderer {
 
   private handleResize(container: HTMLElement): void {
     if (this.isDisposed) return;
-    
+
     const MIN_WIDTH = 800;
     const MIN_HEIGHT = 600;
-    
+
     const width = Math.max(container.clientWidth || MIN_WIDTH, MIN_WIDTH);
     const height = Math.max(container.clientHeight || MIN_HEIGHT, MIN_HEIGHT);
 

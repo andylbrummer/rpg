@@ -324,6 +324,10 @@ public class GameServer
                     _gameState.SaveGame();
                     stateChanged = true;
                     break;
+                case "reset_game":
+                    _gameState.Reset();
+                    stateChanged = true;
+                    break;
             }
 
             if (stateChanged)
@@ -371,15 +375,11 @@ public class GameServer
             Tiles = new()
             {
                 new() { X = 0, Y = 0, Type = TileType.Floor },
-                new() { X = 1, Y = 0, Type = TileType.Floor },
+                new() { X = 1, Y = 0, Type = TileType.Floor, North = BorderType.Door, IsExit = true, ExitDirection = Direction.North },
                 new() { X = 2, Y = 0, Type = TileType.Floor },
                 new() { X = 0, Y = 1, Type = TileType.Floor },
                 new() { X = 1, Y = 1, Type = TileType.Floor },
                 new() { X = 2, Y = 1, Type = TileType.Floor },
-                new() { X = 0, Y = 2, Type = TileType.Wall },
-                new() { X = 1, Y = 2, Type = TileType.Wall },
-                new() { X = 2, Y = 2, Type = TileType.Wall },
-                new() { X = 1, Y = -1, Type = TileType.Floor, IsExit = true, ExitDirection = Direction.North },
             }
         };
     }
@@ -392,10 +392,10 @@ public class GameServer
             Name = "Corridor",
             Tiles = new()
             {
-                new() { X = 0, Y = 0, Type = TileType.Floor, IsExit = true, ExitDirection = Direction.South },
+                new() { X = 0, Y = 0, Type = TileType.Floor, South = BorderType.Door, IsExit = true, ExitDirection = Direction.South },
                 new() { X = 0, Y = -1, Type = TileType.Floor },
                 new() { X = 0, Y = -2, Type = TileType.Floor },
-                new() { X = 0, Y = -3, Type = TileType.Floor, IsExit = true, ExitDirection = Direction.North },
+                new() { X = 0, Y = -3, Type = TileType.Floor, North = BorderType.Door, IsExit = true, ExitDirection = Direction.North },
             }
         };
     }
@@ -408,20 +408,13 @@ public class GameServer
             Name = "Small Chamber",
             Tiles = new()
             {
-                new() { X = 0, Y = 1, Type = TileType.Floor, IsExit = true, ExitDirection = Direction.South },
+                new() { X = 0, Y = 1, Type = TileType.Floor, South = BorderType.Door, IsExit = true, ExitDirection = Direction.South },
                 new() { X = -1, Y = 0, Type = TileType.Floor },
                 new() { X = 0, Y = 0, Type = TileType.Floor },
                 new() { X = 1, Y = 0, Type = TileType.Floor },
                 new() { X = -1, Y = -1, Type = TileType.Floor },
                 new() { X = 0, Y = -1, Type = TileType.Floor },
                 new() { X = 1, Y = -1, Type = TileType.Floor },
-                new() { X = -1, Y = -2, Type = TileType.Wall },
-                new() { X = 0, Y = -2, Type = TileType.Wall },
-                new() { X = 1, Y = -2, Type = TileType.Wall },
-                new() { X = -2, Y = 0, Type = TileType.Wall },
-                new() { X = -2, Y = -1, Type = TileType.Wall },
-                new() { X = 2, Y = 0, Type = TileType.Wall },
-                new() { X = 2, Y = -1, Type = TileType.Wall },
             }
         };
     }
@@ -434,11 +427,8 @@ public class GameServer
             Name = "Dead End",
             Tiles = new()
             {
-                new() { X = 0, Y = 1, Type = TileType.Floor, IsExit = true, ExitDirection = Direction.South },
+                new() { X = 0, Y = 1, Type = TileType.Floor, South = BorderType.Door, IsExit = true, ExitDirection = Direction.South },
                 new() { X = 0, Y = 0, Type = TileType.Floor },
-                new() { X = -1, Y = 0, Type = TileType.Wall },
-                new() { X = 1, Y = 0, Type = TileType.Wall },
-                new() { X = 0, Y = -1, Type = TileType.Wall },
             }
         };
     }
@@ -506,7 +496,7 @@ public class GameServer
                     var tile = _gameState.CurrentDungeon.Tiles[x, y];
                     if (tile.Type != TileType.Empty)
                     {
-                        tiles.Add(new { x, y, type = tile.Type.ToString() });
+                        tiles.Add(new { x, y, type = tile.Type.ToString(), north = tile.North.ToString(), south = tile.South.ToString(), east = tile.East.ToString(), west = tile.West.ToString() });
                     }
                 }
             }
@@ -518,7 +508,7 @@ public class GameServer
                 var x = int.Parse(parts[0]);
                 var y = int.Parse(parts[1]);
                 var tile = _gameState.CurrentDungeon.Tiles[x, y];
-                explored.Add(new { x, y, type = tile.Type.ToString() });
+                explored.Add(new { x, y, type = tile.Type.ToString(), north = tile.North.ToString(), south = tile.South.ToString(), east = tile.East.ToString(), west = tile.West.ToString() });
             }
         }
 
@@ -621,15 +611,12 @@ public class GameServer
             height = 3,
             tiles = new[]
             {
-                new { x = 0, y = 0, type = "floor" },
-                new { x = 1, y = 0, type = "floor" },
-                new { x = 2, y = 0, type = "floor" },
-                new { x = 0, y = 1, type = "floor" },
-                new { x = 1, y = 1, type = "floor" },
-                new { x = 2, y = 1, type = "floor" },
-                new { x = 0, y = 2, type = "wall" },
-                new { x = 1, y = 2, type = "wall" },
-                new { x = 2, y = 2, type = "wall" },
+                new { x = 0, y = 0, type = "floor", north = "wall", south = "none", east = "none", west = "wall" },
+                new { x = 1, y = 0, type = "floor", north = "wall", south = "none", east = "none", west = "none" },
+                new { x = 2, y = 0, type = "floor", north = "wall", south = "none", east = "wall", west = "none" },
+                new { x = 0, y = 1, type = "floor", north = "none", south = "wall", east = "none", west = "wall" },
+                new { x = 1, y = 1, type = "floor", north = "none", south = "wall", east = "none", west = "none" },
+                new { x = 2, y = 1, type = "floor", north = "none", south = "wall", east = "wall", west = "none" },
             }
         };
         
