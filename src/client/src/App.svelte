@@ -79,6 +79,10 @@
   function handleReset() {
     sendAction({ type: 'reset_game' });
   }
+
+  function handleSwapRow(slot: number) {
+    sendAction({ type: 'swap_row', slot });
+  }
 </script>
 
 <main class="game">
@@ -102,6 +106,7 @@
           onEnterDungeon={handleEnterDungeon}
           onSave={handleSave}
           onReset={handleReset}
+          onSwapRow={handleSwapRow}
         />
       {/if}
       {#if gameState?.mode === 'Combat'}

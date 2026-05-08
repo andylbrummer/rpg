@@ -1,16 +1,19 @@
 <script lang="ts">
-  import type { GameState } from '../types/game';
+  import type { GameState, PartyMember } from '../types/game';
+  import CharacterSheet from './CharacterSheet.svelte';
 
   interface Props {
     gameState: GameState | null;
     onEnterDungeon: (type: string) => void;
     onSave: () => void;
     onReset: () => void;
+    onSwapRow: (slot: number) => void;
   }
 
-  let { gameState, onEnterDungeon, onSave, onReset }: Props = $props();
+  let { gameState, onEnterDungeon, onSave, onReset, onSwapRow }: Props = $props();
 
   let selectedCharacter = $state<string | null>(null);
+  let sheetMember = $state<PartyMember | null>(null);
 
   const dungeonTypes = [
     { id: 'goblin_caves', name: 'Goblin Caves', level: 1, desc: 'Shallow caves infested with goblins.' },
@@ -34,11 +37,13 @@
       <h2>Your Party</h2>
       <div class="party-grid">
         {#each gameState?.party || [] as member (member.name)}
-          <button
-            type="button"
+          <div
+            role="button"
+            tabindex="0"
             class="character-card"
             class:selected={selectedCharacter === member.name}
             onclick={() => selectCharacter(member.name)}
+            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectCharacter(member.name); } }}
           >
             <div class="card-header" style="background-color: {member.color}">
               <span class="card-level">Lv.{member.level}</span>
@@ -49,8 +54,15 @@
               <div class="card-stats">
                 <span>HP: {member.hp}/{member.maxHp}</span>
               </div>
+              <button
+                type="button"
+                class="view-sheet-btn"
+                onclick={(e) => { e.stopPropagation(); sheetMember = member; }}
+              >
+                Details
+              </button>
             </div>
-          </button>
+          </div>
         {/each}
       </div>
     </div>
@@ -82,6 +94,13 @@
     </div>
   </div>
 
+{#if sheetMember}
+  <CharacterSheet
+    member={sheetMember}
+    onClose={() => sheetMember = null}
+    onSwapRow={onSwapRow}
+  />
+{/if}
 
 </div>
 
@@ -204,6 +223,23 @@
   .card-stats {
     font-size: clamp(0.6rem, 1.2vw, 0.7rem);
     color: #aaa;
+  }
+
+  .view-sheet-btn {
+    margin-top: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    background: rgba(68, 170, 255, 0.1);
+    border: 0.0625em solid #4488aa;
+    border-radius: 0.2rem;
+    color: #88ccff;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    cursor: pointer;
+    transition: background 0.15s;
+    width: 100%;
+  }
+
+  .view-sheet-btn:hover {
+    background: rgba(68, 170, 255, 0.25);
   }
 
   .actions-panel {

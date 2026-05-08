@@ -118,7 +118,8 @@ export type PlayerAction =
   | { type: 'rest' }
   | { type: 'return_to_town' }
   | { type: 'save_game' }
-  | { type: 'reset_game' };
+  | { type: 'reset_game' }
+  | { type: 'swap_row'; slot: number };
 
 export interface CombatAction {
   actorId: string;

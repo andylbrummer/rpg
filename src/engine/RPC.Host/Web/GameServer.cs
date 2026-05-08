@@ -359,6 +359,13 @@ public class GameServer
                     _gameState.Reset();
                     stateChanged = true;
                     break;
+                case "swap_row":
+                    if (action.Slot is int slot)
+                    {
+                        _gameState.Party.SwapRows(slot);
+                        stateChanged = true;
+                    }
+                    break;
             }
 
             if (stateChanged)
@@ -701,4 +708,5 @@ public class PlayerAction
     public string Type { get; set; } = "";
     public CombatAction? Action { get; set; }
     public string? DungeonType { get; set; }
+    public int? Slot { get; set; }
 }
