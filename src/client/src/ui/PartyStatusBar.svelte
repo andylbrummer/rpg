@@ -14,15 +14,10 @@
       <div class="member-portrait" style="background-color: {member.color}"></div>
       <div class="member-info">
         <div class="member-name">{member.name}</div>
-        <div class="member-level">Lv.{member.level} {member.class}</div>
+        <div class="member-level">Lv.{member.level} {member.className}</div>
         <div class="hp-bar">
           <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
           <div class="hp-text">{member.hp}/{member.maxHp}</div>
-        </div>
-        <div class="status-effects">
-          {#each member.statusEffects || [] as effect}
-            <span class="status-badge">{effect}</span>
-          {/each}
         </div>
       </div>
     </div>
@@ -107,17 +102,5 @@
     pointer-events: none;
   }
 
-  .status-effects {
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
-  }
 
-  .status-badge {
-    font-size: clamp(0.5rem, 1vw, 0.6rem);
-    padding: 0.05rem 0.25rem;
-    background: rgba(100, 100, 100, 0.3);
-    border-radius: 0.125rem;
-    color: #aaa;
-  }
 </style>

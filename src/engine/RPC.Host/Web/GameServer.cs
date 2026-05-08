@@ -6,6 +6,7 @@ using System.Text.Json;
 using RPC.Engine;
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
+using RPC.Engine.Content;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Models.Dungeons;
 
@@ -20,6 +21,7 @@ public class GameServer
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly EncounterTableRegistry _encounterTables;
     private readonly ClassRegistry _classRegistry;
+    private readonly ItemRegistry _itemRegistry;
 
     public GameServer(int port = 8080)
     {
@@ -29,6 +31,7 @@ public class GameServer
         _listener.Prefixes.Add($"http://127.0.0.1:{port}/");
         _encounterTables = LoadEncounterTables();
         _classRegistry = LoadClassRegistry();
+        _itemRegistry = LoadItemRegistry();
         _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry);
         _gameState.LoadGame();
         _jsonOptions = new JsonSerializerOptions
@@ -84,6 +87,34 @@ public class GameServer
         }
         return registry;
     }
+
+    private static ItemRegistry LoadItemRegistry()
+    {
+        var registry = new ItemRegistry();
+        var fullDir = FindContentDir("content", "items");
+        if (fullDir != null)
+        {
+            foreach (var file in Directory.EnumerateFiles(fullDir, "*.json"))
+            {
+                var json = File.ReadAllText(file);
+                var items = JsonSerializer.Deserialize<ItemDef[]>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (items != null)
+                {
+                    foreach (var item in items)
+                        registry.Register(item);
+                }
+            }
+        }
+        return registry;
+    }
+
+    private static readonly Dictionary<string, string> ClassColors = new()
+    {
+        ["bonewarden"] = "#8B7355",
+        ["stillblade"] = "#6B8E9F",
+        ["cauterist"] = "#B85C38",
+        ["hollow"] = "#6B6B6B",
+    };
 
     public int Port { get; private set; }
 
@@ -512,16 +543,46 @@ public class GameServer
             }
         }
 
-        var party = _gameState.Party.Members.Select((c, i) => new
+        var party = _gameState.Party.Members.Select((c, i) =>
         {
-            slot = i,
-            name = c.Name,
-            classId = c.ClassId,
-            level = c.Level,
-            hp = c.CurrentHp,
-            maxHp = c.GetEffectiveStats().MaxHp,
-            row = c.Row,
-            alive = c.IsAlive
+            var effective = c.GetEffectiveStats(_itemRegistry);
+            var classDef = _classRegistry.Get(c.ClassId);
+            return new
+            {
+                slot = i,
+                name = c.Name,
+                classId = c.ClassId,
+                className = classDef?.Name ?? c.ClassId,
+                color = ClassColors.GetValueOrDefault(c.ClassId, "#888888"),
+                level = c.Level,
+                xp = c.Xp,
+                hp = c.CurrentHp,
+                maxHp = effective.MaxHp,
+                row = c.Row,
+                alive = c.IsAlive,
+                stats = new
+                {
+                    strength = c.BaseStats.Strength,
+                    dexterity = c.BaseStats.Dexterity,
+                    constitution = c.BaseStats.Constitution,
+                    intelligence = c.BaseStats.Intelligence,
+                    willpower = c.BaseStats.Willpower,
+                    maxHp = effective.MaxHp,
+                    speed = effective.Speed,
+                    accuracy = effective.Accuracy,
+                    evade = effective.Evade,
+                    power = effective.Power,
+                },
+                equipment = new
+                {
+                    mainHand = c.Equipment.MainHand,
+                    offHand = c.Equipment.OffHand,
+                    armor = c.Equipment.Armor,
+                    accessory1 = c.Equipment.Accessory1,
+                    accessory2 = c.Equipment.Accessory2,
+                },
+                knownAbilities = c.KnownAbilities,
+            };
         }).ToArray();
 
         object? combat = null;
@@ -532,17 +593,22 @@ public class GameServer
             {
                 phase = c.Phase.ToString(),
                 round = c.Round,
-                combatants = c.Combatants.Select(x => new
+                combatants = c.Combatants.Select(x =>
                 {
-                    id = x.Id,
-                    name = x.Name,
-                    isPlayer = x.IsPlayer,
-                    hp = x.Hp,
-                    maxHp = x.MaxHp,
-                    speed = x.Speed,
-                    row = x.Row,
-                    alive = x.IsAlive,
-                    isCurrent = c.CurrentActor?.Id == x.Id
+                    CharacterState? member = x.IsPlayer ? _gameState.Party.Members.FirstOrDefault(m => m.Id == x.Id) : (CharacterState?)null;
+                    return new
+                    {
+                        id = x.Id,
+                        name = x.Name,
+                        isPlayer = x.IsPlayer,
+                        classId = member?.ClassId,
+                        hp = x.Hp,
+                        maxHp = x.MaxHp,
+                        speed = x.Speed,
+                        row = x.Row,
+                        alive = x.IsAlive,
+                        isCurrent = c.CurrentActor?.Id == x.Id
+                    };
                 }).ToArray(),
                 initiativeOrder = c.InitiativeOrder,
                 currentTurnIndex = c.CurrentTurnIndex,

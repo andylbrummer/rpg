@@ -45,7 +45,7 @@
             </div>
             <div class="card-body">
               <div class="card-name">{member.name}</div>
-              <div class="card-class">{member.class}</div>
+              <div class="card-class">{member.className}</div>
               <div class="card-stats">
                 <span>HP: {member.hp}/{member.maxHp}</span>
               </div>

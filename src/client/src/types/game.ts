@@ -21,21 +21,49 @@ export interface Tile {
   west: BorderType;
 }
 
+export interface CharacterStats {
+  strength: number;
+  dexterity: number;
+  constitution: number;
+  intelligence: number;
+  willpower: number;
+  maxHp: number;
+  speed: number;
+  accuracy: number;
+  evade: number;
+  power: number;
+}
+
+export interface Equipment {
+  mainHand: string | null;
+  offHand: string | null;
+  armor: string | null;
+  accessory1: string | null;
+  accessory2: string | null;
+}
+
 export interface PartyMember {
   slot: number;
   name: string;
   classId: string;
+  className: string;
+  color: string;
   level: number;
+  xp: number;
   hp: number;
   maxHp: number;
   row: number;
   alive: boolean;
+  stats: CharacterStats;
+  equipment: Equipment;
+  knownAbilities: string[];
 }
 
 export interface Combatant {
   id: string;
   name: string;
   isPlayer: boolean;
+  classId?: string;
   hp: number;
   maxHp: number;
   speed: number;
