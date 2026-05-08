@@ -1,18 +1,18 @@
 <script lang="ts">
-  import type { CombatState, GameState } from '../types/game';
+  import type { CombatState, Combatant } from '../types/game';
   import CombatResultToast from './CombatResultToast.svelte';
 
   interface Props {
     combat: CombatState | null;
-    lastResult: GameState['lastCombatResult'];
-    onCombatAction: (action: string, targetIndex: number) => void;
+    lastResult: { victory: boolean; xpGained: number; levelUps: string[]; roundCount: number } | null;
+    onCombatAction: (action: string, targetId: string) => void;
     onFlee: () => void;
   }
 
   let { combat, lastResult, onCombatAction, onFlee }: Props = $props();
 
-  let selectedTarget = $state(0);
-  let selectedAction = $state('attack');
+  let selectedTargetId = $state<string | null>(null);
+  let selectedAction = $state('Attack');
   let showResult = $state(false);
 
   $effect(() => {
@@ -27,23 +27,52 @@
 
   function getActionName(action: string): string {
     const names: Record<string, string> = {
-      attack: 'Attack',
-      defend: 'Defend',
-      skill: 'Skill',
-      item: 'Item',
+      Attack: 'Attack',
+      Defend: 'Defend',
+      Wait: 'Wait',
+      UseAbility: 'Skill',
+      UseItem: 'Item',
+      Flee: 'Flee',
     };
     return names[action] || action;
   }
 
   function submitAction() {
-    onCombatAction(selectedAction, selectedTarget);
+    const currentActor = getCurrentActor();
+    if (!currentActor) return;
+    if (selectedAction === 'Attack' && !selectedTargetId) return;
+    const targetId = selectedAction === 'Attack' ? selectedTargetId! : '';
+    onCombatAction(selectedAction, targetId);
+  }
+
+  function getCurrentActor(): Combatant | null {
+    if (!combat || combat.currentTurnIndex < 0 || combat.currentTurnIndex >= combat.initiativeOrder.length) return null;
+    const currentId = combat.initiativeOrder[combat.currentTurnIndex];
+    return combat.combatants.find(c => c.id === currentId) || null;
   }
 
   function isPlayerTurn() {
-    return combat?.currentActor?.isPlayer === true && combat?.phase === 'Turn';
+    const actor = getCurrentActor();
+    return actor?.isPlayer === true && combat?.phase === 'Turn';
   }
 
-  const actions = ['attack', 'defend', 'skill', 'item'];
+  function getInitiativeEntries() {
+    if (!combat) return [];
+    return combat.initiativeOrder.map(id => {
+      const c = combat!.combatants.find(x => x.id === id);
+      return c ? { id: c.id, name: c.name, isPlayer: c.isPlayer } : null;
+    }).filter((e): e is { id: string; name: string; isPlayer: boolean } => e !== null);
+  }
+
+  function getEnemies(): Combatant[] {
+    return combat?.combatants.filter(c => !c.isPlayer) || [];
+  }
+
+  function getParty(): Combatant[] {
+    return combat?.combatants.filter(c => c.isPlayer) || [];
+  }
+
+  const actions = ['Attack', 'Defend', 'Wait', 'UseAbility', 'UseItem'];
 </script>
 
 <div class="combat-overlay">
@@ -52,7 +81,7 @@
   {:else}
     <div class="combat-header">
       <div class="round-counter">
-        Round {combat?.roundCount ?? 0}
+        Round {combat?.round ?? 0}
       </div>
       <div class="phase-indicator">
         {combat?.phase ?? 'Waiting...'}
@@ -61,10 +90,13 @@
 
     <div class="combat-body">
       <div class="initiative-bar">
-        {#each combat?.turnOrder || [] as entry, i}
-          <div class="initiative-entry" class:active={entry.isPlayer} class:current={i === combat?.currentTurnIndex}>
+        {#each getInitiativeEntries() as entry, i}
+          <div
+            class="initiative-entry"
+            class:active={entry.isPlayer}
+            class:current={i === combat?.currentTurnIndex}
+          >
             <span class="init-name">{entry.name}</span>
-            <span class="init-score">{entry.initiative}</span>
           </div>
         {/each}
       </div>
@@ -72,11 +104,14 @@
       <div class="combat-arena">
         <div class="party-side">
           <h3>Party</h3>
-          {#each combat?.party || [] as member, i}
-            <div class="combatant" class:dead={member.hp <= 0} class:current-turn={combat?.currentActor?.name === member.name}>
+          {#each getParty() as member}
+            <div
+              class="combatant"
+              class:dead={member.hp <= 0}
+              class:current-turn={member.isCurrent}
+            >
               <div class="combatant-header">
                 <span class="combatant-name">{member.name}</span>
-                <span class="combatant-class">{member.class}</span>
               </div>
               <div class="hp-bar">
                 <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
@@ -90,19 +125,18 @@
 
         <div class="enemy-side">
           <h3>Enemies</h3>
-          {#each combat?.enemies || [] as enemy, i}
+          {#each getEnemies() as enemy}
             <button
               type="button"
               class="combatant"
               class:dead={enemy.hp <= 0}
-              class:selected={selectedTarget === i && isPlayerTurn()}
-              class:current-turn={combat?.currentActor?.name === enemy.name}
-              onclick={() => { if (isPlayerTurn()) selectedTarget = i; }}
+              class:selected={selectedTargetId === enemy.id && isPlayerTurn()}
+              class:current-turn={enemy.isCurrent}
+              onclick={() => { if (isPlayerTurn()) selectedTargetId = enemy.id; }}
               disabled={!isPlayerTurn()}
             >
               <div class="combatant-header">
                 <span class="combatant-name">{enemy.name}</span>
-                <span class="combatant-level">Lv.{enemy.level}</span>
               </div>
               <div class="hp-bar">
                 <div class="hp-fill" style="width: {(enemy.hp / enemy.maxHp) * 100}%"></div>
@@ -115,7 +149,7 @@
 
       <div class="combat-log">
         {#each combat?.log?.slice(-6) || [] as entry}
-          <div class="log-entry {entry.type}">
+          <div class="log-entry">
             {entry.message}
           </div>
         {/each}
@@ -136,7 +170,7 @@
           {/each}
         </div>
         <div class="target-hint">
-          {#if selectedAction === 'attack'}
+          {#if selectedAction === 'Attack'}
             Click an enemy to select target
           {:else}
             {getActionName(selectedAction)} selected
@@ -236,11 +270,6 @@
     color: #ccc;
   }
 
-  .init-score {
-    color: #888;
-    font-weight: bold;
-  }
-
   .combat-arena {
     flex: 1 1 auto;
     display: flex;
@@ -321,12 +350,6 @@
     color: #eee;
   }
 
-  .combatant-class,
-  .combatant-level {
-    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
-    color: #888;
-  }
-
   .hp-bar {
     position: relative;
     height: clamp(0.5rem, 1.2vh, 0.75rem);
@@ -371,18 +394,6 @@
   .log-entry {
     padding: 0.15rem 0;
     color: #ccc;
-  }
-
-  .log-entry.damage {
-    color: #ff6666;
-  }
-
-  .log-entry.heal {
-    color: #66ff66;
-  }
-
-  .log-entry.info {
-    color: #66aaff;
   }
 
   .action-bar {

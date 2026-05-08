@@ -34,8 +34,18 @@
     sendAction({ type: 'enter_dungeon', dungeonType: type });
   }
 
-  function handleCombatAction(action: string, targetIndex: number) {
-    sendAction({ type: 'combat_action', action: { type: action, targetIndex } });
+  function handleCombatAction(actionType: string, targetId: string) {
+    const combat = gameState?.combat;
+    if (!combat || combat.currentTurnIndex < 0 || combat.currentTurnIndex >= combat.initiativeOrder.length) return;
+    const actorId = combat.initiativeOrder[combat.currentTurnIndex];
+    sendAction({
+      type: 'combat_action',
+      action: {
+        actorId,
+        type: actionType as any,
+        targetId: targetId || undefined,
+      }
+    });
   }
 
   function handleFlee() {
