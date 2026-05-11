@@ -5,8 +5,12 @@
   "runner_email": "claude@anthropic.com",
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
-  "current_task": null,
+  "current_task": {
+    "dart_id": "DpCHV6UOgiEv",
+    "title": "[1.5] 32b WS protocol envelope v2",
+    "iteration": 3
+  },
   "completed_tasks": 2,
   "total_tasks": 40,
-  "iteration": 2
+  "iteration": 3
 }
