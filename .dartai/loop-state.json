@@ -6,14 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "ymZWvdy5iOIY",
-    "title": "[1.5] T38 Reputation system",
-    "iteration": 5,
-    "status": "completed",
-    "phase_completed": "phase-9",
-    "failed_phase": null
+    "dart_id": "NKY068mfOq1N",
+    "title": "[1.5] T33 Expand party to 6",
+    "iteration": 6
   },
   "completed_tasks": 5,
   "total_tasks": 40,
-  "iteration": 5
+  "iteration": 6
 }
