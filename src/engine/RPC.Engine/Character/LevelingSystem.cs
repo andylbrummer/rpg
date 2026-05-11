@@ -32,7 +32,7 @@ public static class LevelingSystem
     {
         var newLevel = character.Level + 1;
         var levelEntry = classDef.LevelTable.FirstOrDefault(l => l.Level == newLevel);
-        
+
         if (levelEntry == null)
             return character; // No level data available
 

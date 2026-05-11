@@ -76,6 +76,6 @@ public class EncounterTableTests
         Assert.Equal(GameMode.Combat, gs.Mode);
         Assert.NotNull(gs.Combat);
         // Should have spawned enemies from the table, not the default
-        Assert.NotEmpty(gs.Combat.Combatants.Where(c => !c.IsPlayer));
+        Assert.Contains(gs.Combat.Combatants, c => !c.IsPlayer);
     }
 }

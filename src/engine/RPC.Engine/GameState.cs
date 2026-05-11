@@ -7,6 +7,8 @@ using RPC.Engine.Town;
 
 namespace RPC.Engine;
 
+public record ActionLogEntry(int Turn, string Category, string Type, Dictionary<string, string> Payload);
+
 public class GameState
 {
     public Player Player { get; set; }
@@ -18,6 +20,7 @@ public class GameState
     public CombatState? Combat { get; private set; }
     public CombatResult? LastCombatResult { get; private set; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
+    public List<ActionLogEntry> ActionLog { get; } = new();
 
     public void ClearCombatResult()
     {
@@ -29,6 +32,8 @@ public class GameState
     private readonly ClassRegistry? _classRegistry;
     private readonly int _seed;
     private int _stepsSinceEncounter = 0;
+    private int _actionLogTurn = 0;
+    private string? _currentEncounterId;
 
     public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null)
     {
@@ -91,6 +96,7 @@ public class GameState
         ExploredTiles.Clear();
         _stepsSinceEncounter = 0;
         Mode = GameMode.Exploration;
+        EmitActionLog("dungeon", "dungeon_entered", new Dictionary<string, string> { { "dungeonType", dungeonType } });
         // Find entrance position
         for (int x = 0; x < dungeon.Width; x++)
         {
@@ -113,7 +119,7 @@ public class GameState
         var px = Player.Position.X;
         var py = Player.Position.Y;
         var viewRadius = 3;
-        
+
         for (int x = Math.Max(0, px - viewRadius); x < Math.Min(CurrentDungeon.Width, px + viewRadius + 1); x++)
         {
             for (int y = Math.Max(0, py - viewRadius); y < Math.Min(CurrentDungeon.Height, py + viewRadius + 1); y++)
@@ -131,7 +137,7 @@ public class GameState
     {
         if (CurrentDungeon == null) return false;
         if (Mode == GameMode.Combat) return false;
-        
+
         var newPos = Player.Position.Move(Player.Facing);
         if (CurrentDungeon.CanMoveTo(Player.Position, Player.Facing))
         {
@@ -182,11 +188,18 @@ public class GameState
             });
         }
 
+        _currentEncounterId = Guid.NewGuid().ToString();
         Combat = CombatEngine.Enter(Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)));
+
+        EmitActionLog("combat", "encounter_started", new Dictionary<string, string> { { "encounterId", _currentEncounterId } });
 
         if (Combat.IsFinished)
         {
             Mode = GameMode.Exploration;
+            if (Combat.AllEnemiesDead && _currentEncounterId != null)
+            {
+                EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", _currentEncounterId } });
+            }
             Combat = null;
         }
         else
@@ -219,6 +232,8 @@ public class GameState
 
         if (Combat.IsFinished)
         {
+            var allEnemiesDead = Combat.AllEnemiesDead;
+
             // Apply combat results to party
             var levelUps = new List<string>();
             foreach (var combatant in Combat.Combatants.Where(c => c.IsPlayer))
@@ -246,13 +261,18 @@ public class GameState
             }
 
             LastCombatResult = new CombatResult(
-                Combat.AllEnemiesDead,
+                allEnemiesDead,
                 Combat.XpReward,
                 levelUps.ToArray(),
                 Combat.Round);
 
             Mode = GameMode.Exploration;
             Combat = null;
+
+            if (allEnemiesDead && _currentEncounterId != null)
+            {
+                EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", _currentEncounterId } });
+            }
         }
 
         LastUpdate = DateTime.UtcNow;
@@ -282,6 +302,10 @@ public class GameState
 
     public void ReturnToTown()
     {
+        if (CurrentDungeon != null)
+        {
+            EmitActionLog("dungeon", "dungeon_completed", new Dictionary<string, string> { { "dungeonType", CurrentDungeonType ?? "" } });
+        }
         Mode = GameMode.Menu;
         CurrentDungeon = null;
         LastUpdate = DateTime.UtcNow;
@@ -299,7 +323,23 @@ public class GameState
         Town = new TownState();
         InitializeDefaultParty();
         InitializeTown();
+        ActionLog.Clear();
+        _actionLogTurn = 0;
+        _currentEncounterId = null;
         LastUpdate = DateTime.UtcNow;
+    }
+
+    private void EmitActionLog(string category, string type, Dictionary<string, string> payload)
+    {
+        _actionLogTurn++;
+        ActionLog.Add(new ActionLogEntry(_actionLogTurn, category, type, new Dictionary<string, string>(payload)));
+    }
+
+    public void RestoreActionLog(List<ActionLogEntry> entries)
+    {
+        ActionLog.Clear();
+        ActionLog.AddRange(entries);
+        _actionLogTurn = entries.Count > 0 ? entries.Max(e => e.Turn) : 0;
     }
 
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path);

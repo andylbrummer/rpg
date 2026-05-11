@@ -26,3 +26,7 @@ function createGameStore() {
 
 export const gameStore = createGameStore();
 export const sendAction = gameStore.sendAction;
+
+if (typeof window !== 'undefined') {
+  (window as any).gameStore = gameStore;
+}

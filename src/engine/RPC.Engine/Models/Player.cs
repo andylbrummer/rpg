@@ -4,7 +4,7 @@ public class Player
 {
     public Position Position { get; set; }
     public Direction Facing { get; set; }
-    
+
     public Player(Position position, Direction facing)
     {
         Position = position;

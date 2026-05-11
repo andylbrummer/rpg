@@ -10,10 +10,10 @@ class Program
     {
         var server = new GameServer(port: 19421);
         server.Start();
-        
+
         var isDev = args.Contains("--dev");
         var isHeadless = args.Contains("--headless");
-        
+
         if (isHeadless)
         {
             Console.WriteLine($"Server running on http://localhost:{server.Port}/");
@@ -24,7 +24,7 @@ class Program
             server.Stop();
             return;
         }
-        
+
         var window = new PhotinoWindow()
             .SetTitle("The Reach")
             .SetSize(1280, 720)

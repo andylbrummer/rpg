@@ -121,7 +121,7 @@ public class GameServer
     public void Start()
     {
         _listener.Start();
-        
+
         Task.Run(async () =>
         {
             while (!_cts.Token.IsCancellationRequested)
@@ -141,7 +141,7 @@ public class GameServer
     private async Task HandleRequest(HttpListenerContext context)
     {
         var path = context.Request.Url?.AbsolutePath ?? "/";
-        
+
         if (context.Request.IsWebSocketRequest)
         {
             await HandleWebSocket(context);
@@ -160,6 +160,10 @@ public class GameServer
         {
             await HandleDungeon(context);
         }
+        else if (path == "/api/action-log")
+        {
+            await HandleActionLog(context);
+        }
         else if (path.StartsWith("/app") || path.StartsWith("/assets") || path == "/vite.svg" || path == "/favicon.svg")
         {
             await HandleStaticFile(context, path);
@@ -176,7 +180,7 @@ public class GameServer
         // Map /app to the built frontend directory
         // AppContext.BaseDirectory is bin/Debug/net9.0/, so we need to go up 5 levels to reach src/client/dist
         var clientDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "client", "dist");
-        
+
         // Map URL path to file path
         string relativePath;
         if (path == "/app" || path == "/app/")
@@ -193,9 +197,9 @@ public class GameServer
             relativePath = path.TrimStart('/');
         }
         if (string.IsNullOrEmpty(relativePath)) relativePath = "index.html";
-        
+
         var filePath = Path.Combine(clientDir, relativePath);
-        
+
         // Security check - ensure we're not escaping the client dir
         var fullClientDir = Path.GetFullPath(clientDir);
         var fullFilePath = Path.GetFullPath(filePath);
@@ -205,7 +209,7 @@ public class GameServer
             context.Response.Close();
             return;
         }
-        
+
         if (!File.Exists(filePath))
         {
             // Try index.html for SPA routing
@@ -217,7 +221,7 @@ public class GameServer
                 return;
             }
         }
-        
+
         // Set content type
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
         context.Response.ContentType = extension switch
@@ -231,7 +235,7 @@ public class GameServer
             ".svg" => "image/svg+xml",
             _ => "application/octet-stream"
         };
-        
+
         // Inject SERVER_PORT into HTML files
         if (extension == ".html")
         {
@@ -250,7 +254,7 @@ public class GameServer
             context.Response.ContentLength64 = bytes.Length;
             await context.Response.OutputStream.WriteAsync(bytes);
         }
-        
+
         context.Response.Close();
     }
 
@@ -258,7 +262,7 @@ public class GameServer
     {
         var wsContext = await context.AcceptWebSocketAsync(null);
         var socket = wsContext.WebSocket;
-        
+
         lock (_clients)
         {
             _clients.Add(socket);
@@ -310,7 +314,7 @@ public class GameServer
             if (action == null) return;
 
             bool stateChanged = false;
-            
+
             switch (action.Type)
             {
                 case "move_forward":
@@ -401,20 +405,20 @@ public class GameServer
     {
         var seed = dungeonType.GetHashCode();
         var builder = new DungeonBuilder(seed: seed);
-        
+
         // Add some basic room segments
         builder.AddSegment(CreateEntranceRoom());
         builder.AddSegment(CreateCorridor());
         builder.AddSegment(CreateChamber());
         builder.AddSegment(CreateDeadEnd());
-        
+
         var dungeonNames = new Dictionary<string, string>
         {
             ["broken_engine"] = "Broken Engine",
             ["crypt"] = "Crypt of Whispers",
             ["sewers"] = "Sewer Warrens"
         };
-        
+
         var name = dungeonNames.GetValueOrDefault(dungeonType, dungeonType);
         var dungeon = builder.Build(name, 8);
         dungeon.EncounterTableId = dungeonType;
@@ -494,7 +498,7 @@ public class GameServer
         var state = CreateStateMessage();
         var json = JsonSerializer.Serialize(state, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
-        
+
         if (socket.State == WebSocketState.Open)
         {
             await socket.SendAsync(
@@ -725,7 +729,7 @@ public class GameServer
         var response = new { status = "ok", timestamp = DateTime.UtcNow };
         var json = JsonSerializer.Serialize(response, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
-        
+
         context.Response.ContentType = "application/json";
         context.Response.ContentLength64 = bytes.Length;
         await context.Response.OutputStream.WriteAsync(bytes);
@@ -751,10 +755,30 @@ public class GameServer
                 new { x = 2, y = 1, type = "floor", north = "none", south = "wall", east = "wall", west = "none" },
             }
         };
-        
+
         var json = JsonSerializer.Serialize(segment, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
-        
+
+        context.Response.ContentType = "application/json";
+        context.Response.ContentLength64 = bytes.Length;
+        await context.Response.OutputStream.WriteAsync(bytes);
+        context.Response.Close();
+    }
+
+    private async Task HandleActionLog(HttpListenerContext context)
+    {
+        var response = new
+        {
+            events = _gameState.ActionLog.Select(e => new
+            {
+                turn = e.Turn,
+                category = e.Category,
+                type = e.Type,
+                payload = e.Payload
+            }).ToArray()
+        };
+        var json = JsonSerializer.Serialize(response, _jsonOptions);
+        var bytes = Encoding.UTF8.GetBytes(json);
         context.Response.ContentType = "application/json";
         context.Response.ContentLength64 = bytes.Length;
         await context.Response.OutputStream.WriteAsync(bytes);

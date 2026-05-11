@@ -15,7 +15,7 @@ public readonly record struct Position(int X, int Y)
     {
         var dx = other.X - X;
         var dy = other.Y - Y;
-        
+
         if (Math.Abs(dx) > Math.Abs(dy))
             return dx > 0 ? Direction.East : Direction.West;
         else

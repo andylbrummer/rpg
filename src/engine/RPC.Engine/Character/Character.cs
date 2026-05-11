@@ -7,30 +7,30 @@ public class Character
     public string ClassId { get; set; } = "";
     public int Level { get; set; }
     public int XP { get; set; }
-    
+
     // Stats
     public int Strength { get; set; }
     public int Dexterity { get; set; }
     public int Constitution { get; set; }
     public int Intelligence { get; set; }
     public int Willpower { get; set; }
-    
+
     // Derived
     public int MaxHP => Constitution * 3 + Level * 2;
     public int HP { get; set; }
     public int Speed => Dexterity + (Level / 2);
-    
+
     // Equipment
     public EquipmentSlot MainHand { get; set; } = new();
     public EquipmentSlot OffHand { get; set; } = new();
     public EquipmentSlot Armor { get; set; } = new();
     public EquipmentSlot Accessory1 { get; set; } = new();
     public EquipmentSlot Accessory2 { get; set; } = new();
-    
+
     // Inventory
     public List<ItemStack> Inventory { get; } = new();
     public int MaxInventorySize { get; set; } = 20;
-    
+
     // Row assignment (0 = front, 1 = back)
     public int Row { get; set; }
 }

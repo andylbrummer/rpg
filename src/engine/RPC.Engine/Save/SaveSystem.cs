@@ -15,6 +15,7 @@ public class SaveData
     public string[] ExploredTiles { get; set; } = Array.Empty<string>();
     public string Mode { get; set; } = "Menu";
     public SaveTownState? Town { get; set; }
+    public SaveActionLogEntry[] ActionLog { get; set; } = Array.Empty<SaveActionLogEntry>();
 }
 
 public class SaveTownState
@@ -42,6 +43,14 @@ public class SaveVendorItem
     public string Name { get; set; } = "";
     public int Price { get; set; }
     public int Quantity { get; set; }
+}
+
+public class SaveActionLogEntry
+{
+    public int Turn { get; set; }
+    public string Category { get; set; } = "";
+    public string Type { get; set; } = "";
+    public Dictionary<string, string> Payload { get; set; } = new();
 }
 
 public class SaveTavernRecruit
@@ -148,7 +157,14 @@ public static class SaveSystem
                         Cost = r.Cost
                     }).ToArray(),
                 ViewedMissions = state.Town.ViewedMissions.ToArray()
-            }
+            },
+            ActionLog = state.ActionLog.Select(e => new SaveActionLogEntry
+            {
+                Turn = e.Turn,
+                Category = e.Category,
+                Type = e.Type,
+                Payload = e.Payload
+            }).ToArray()
         };
 
         var dir = Path.GetDirectoryName(path);
@@ -231,6 +247,12 @@ public static class SaveSystem
                     .ToList();
                 state.Town.ViewedMissions = data.Town.ViewedMissions.ToList();
             }
+
+            // Restore action log
+            state.RestoreActionLog(
+                (data.ActionLog ?? Array.Empty<SaveActionLogEntry>())
+                .Select(e => new ActionLogEntry(e.Turn, e.Category, e.Type, e.Payload))
+                .ToList());
 
             return true;
         }
