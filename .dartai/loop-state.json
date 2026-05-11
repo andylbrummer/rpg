@@ -5,8 +5,12 @@
   "runner_email": "claude@anthropic.com",
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
-  "current_task": null,
+  "current_task": {
+    "dart_id": "LEr3gP1mg61Z",
+    "title": "[1.5] 32a Action log infrastructure",
+    "iteration": 2
+  },
   "completed_tasks": 1,
   "total_tasks": 40,
-  "iteration": 1
+  "iteration": 2
 }
