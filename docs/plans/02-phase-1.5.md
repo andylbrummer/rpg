@@ -2,11 +2,180 @@
 
 **Goal:** Does the strategic layer change how players approach the core loop? Validates formation, faction tension, and composition consequences before the full content investment.
 
-**Prerequisite:** Phase 1 complete. Dungeon navigation and combat feel good.
+**Prerequisite:** Phase 1 complete (✅ shipped). Dungeon navigation and combat feel good.
 
-**Duration estimate:** 4–6 weeks (2 engineers + 1 content author)
+**Duration estimate:** 5–7 weeks (was 4–6; added 1 week for Group 5.5 Phase 1 retrofits) — 2 engineers + 1 content author.
+
+> **Start here:** **Group 5.5 (Phase 1 Retrofits)** must complete before Groups 6–9 can be safely built on the existing codebase. Retrofits close the gap between what Phase 1 design intended and what shipped. Skipping them creates compounding drift through Phase 2.
 
 ---
+
+## Group 5.5: Phase 1 Retrofits
+
+Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted as detail blocks in `docs/plans/01-phase-1.md`) and the shipped Phase 1 build. Each task references the as-built state from Appendix Y and the design gap from Appendix Z.
+
+### 32a. Action log infrastructure
+**Layer:** Engine
+**Owner:** Backend lead
+
+**Subtasks:**
+1. `ActionLog` append-only `List<ActionEvent>` per design doc 11 schema: `turn, act, category, type, payload`.
+2. Phase 1 categories backfilled: `combat` (encounter_started, encounter_won, encounter_fled, character_downed, character_died), `dungeon` (dungeon_entered, dungeon_completed, secret_discovered).
+3. Emit points wired into existing systems:
+   - `GameState.TryMoveForward` (dungeon_entered fires on first move into new dungeon).
+   - `CombatEngine` resolution end → `encounter_won` / `encounter_fled`.
+   - `GameState.TriggerEncounter` → `encounter_started`.
+4. Persisted as part of save (extends `SaveData` to v2; see task 32d).
+5. Phase 1.5 categories added by tasks 51e + this task: `faction`, `overworld`.
+6. Privacy: no free-text in payloads (matches design doc 11).
+
+**Acceptance criteria:**
+- Completing a dungeon emits `dungeon_entered` then `dungeon_completed` in order.
+- Killing all enemies emits `encounter_started` + `encounter_won` with matching `encounterId`.
+- Save/load preserves full event ordering after a v1 → v2 migration.
+
+**Depends on:** Task 32d (save schema v2).
+
+---
+
+### 32b. WebSocket protocol envelope (v2)
+**Layer:** Engine + Client
+**Owner:** Both leads
+
+**Background:** Phase 1 shipped flat `{ "type": "...", ... }` messages. Plan called for envelope `{ v, type, seq, payload }`. Phase 1.5 introduces enough new message types (formation, branch, mission, vendor, travel, journal, keybinding) that a structured envelope becomes load-bearing.
+
+**Subtasks:**
+1. Introduce envelope: `{ "v": 2, "type": "...", "seq": int, "payload": {...} }`.
+2. Server emits `hello { protocolVersion: 2, sessionId }` on connection. Client must reply `ready` before any other message.
+3. Backwards compat shim: server accepts both flat v1 messages and v2 envelopes for 1 minor version; logs `protocol.legacy_message` metric.
+4. `seq` monotonic per direction; client-sent `seq` echoed in matching ack (`state.*` or `error`).
+5. Heartbeat: server pings every 5s with `heartbeat.ping { pingSeq }`; client must `heartbeat.pong { pingSeq }` within 2s.
+6. Error envelope: every server throw → `error { code, message, recoverable: bool }`. Migrate existing `Console.WriteLine($"Error handling message: {ex}")` to client-facing errors with code mapping.
+
+**Acceptance criteria:**
+- Client sends `action.move` with `seq=42`; server responds with state carrying matching `seq`.
+- Killing server triggers reconnect; on reconnect, client receives full `state.snapshot`, no delta catch-up.
+- Malformed JSON → `error.malformed_payload` with `recoverable: true`; client surfaces toast.
+
+**Depends on:** None (foundational).
+
+---
+
+### 32c. Strafe + cancel input
+**Layer:** Engine + Client
+**Owner:** Both leads
+
+**Background:** Phase 1 ships `move_forward`, `turn_left`, `turn_right` only. Plan (and design doc 10 keybinding table) specifies six cardinal actions plus cancel. Phase 1.5 formation UI needs cancel; Phase 2 a11y settings expect full input surface.
+
+**Subtasks:**
+1. Add `move_back`, `strafe_left`, `strafe_right` to `GameState` and protocol.
+2. Add input buffer (2-slot, design doc 10) on client.
+3. Repeat delay 300ms initial / 200ms repeat per design doc 10.
+4. Server validates each direction against `Dungeon.CanMoveTo`.
+5. Cancel action: clears input buffer and closes top modal; bound to Escape per design doc 10.
+
+**Acceptance criteria:**
+- Holding W against a wall does not flood server (buffer + reject loop self-limits).
+- Strafe left/right moves perpendicular to facing without changing facing.
+- Escape during combat targeting cancels the targeting state, not the combat.
+
+**Depends on:** Phase 1 task 9 (movement input loop, ✅ shipped).
+
+---
+
+### 32d. Save schema v2 + migration layer
+**Layer:** Engine
+**Owner:** Backend lead
+
+**Background:** Phase 1 ships `SaveData.Version = "1"` with hard reject on mismatch. Phase 1.5 + 2 require schema growth (action log, formation, reputation, etc.) — migration layer must exist before adding fields.
+
+**Subtasks:**
+1. Promote `Version` to int 2; reader migrates v1 → v2 on load.
+2. v1 → v2 migration:
+   - Carry over party (2+2 → 3+3 with 2 empty slots), player, explored tiles, mode, dungeon type.
+   - Initialize empty `actionLog: []`.
+   - Initialize `formation: { front: [...members where row==0...], back: [...members where row==1...] }`.
+   - Initialize empty `reputation: {}` (per design doc 04 ranges).
+   - Initialize empty `settings: null` (settings live in KDL; save references by hash).
+3. Migration unit test: load fixture v1 save, assert v2 fields populated correctly.
+4. Atomic write: serialize → `.tmp` → fsync → rename. Phase 1 currently does direct write (race risk).
+
+**Acceptance criteria:**
+- Existing v1 saves load cleanly into v2 game; party visible, dungeon resumed.
+- Save round-trip on v2 yields byte-identical state.
+- Power-cut simulation (kill -9 mid-write) leaves either intact v1 or intact v2, never half-written.
+
+**Depends on:** Task 32a (action log feeds schema).
+
+---
+
+### 32e. Encounter trigger system — tile-tagged path
+**Layer:** Engine
+**Owner:** Backend lead
+
+**Background:** Plan (Phase 1 task 26) specified tile-tagged encounters: assembler tags tiles with `encounter_id`, stepping on tile triggers that exact encounter. Build shipped probabilistic per-step trigger (`encounterChance = 0.05 + 0.08 * stepsSinceEncounter`) drawing from one dungeon-wide encounter table. Both modes have merit; Phase 1.5 needs both:
+- Authored set-piece encounters (tile-tagged) for boss rooms, narrative beats.
+- Wandering encounters (probabilistic) for filler.
+
+**Subtasks:**
+1. Add `encounterId: string | null` to `Dungeon` cells.
+2. Dungeon assembler tags `encounter_slot` connection-point tiles with picks from encounter table at build time.
+3. On step, check tile tag first; if present and unresolved, trigger that encounter and mark resolved. If no tag, fall back to probabilistic roll.
+4. Wandering encounter table separate from tile-tagged authored set: `dungeon.wanderingTableId` vs `dungeon.encounterTableId` (current single field).
+5. Document the encounter probability formula (`0.05 + 0.08 * stepsSinceEncounter`) as a balance knob in design doc 06 appendix; expose for content tuning.
+
+**Acceptance criteria:**
+- Boss tile tagged with `boss-encounter-1` always triggers that exact encounter on entry.
+- Walking corridor tiles still triggers wandering encounters at the existing rate.
+- Resolving a tagged encounter does not re-trigger; fleeing leaves it pending.
+
+**Depends on:** Phase 1 tasks 7, 26 (✅ shipped).
+
+---
+
+### 32f. Hub town → in-engine state machine
+**Layer:** Engine + Client
+**Owner:** Backend lead
+
+**Background:** Phase 1 town is `GameMode.Menu` with all logic in Svelte (`TownMenu.svelte`). Phase 1.5 introduces faction contacts, vendor stock, mission acceptance, downtime allocation — these need server authority. Pure client state will diverge from save/load and break multi-client testing.
+
+**Subtasks:**
+1. Move town state to `GameState.Town`: `currentTownId, availableMissions[], vendorStock[], factionContacts[]`.
+2. Client `TownMenu` reads from `state.town` via WebSocket, sends actions (`mission.accept`, `vendor.purchase`).
+3. Tavern recruit roster server-generated, persisted in save.
+4. Resolves the `NaN guard in TownMenu` quality fix (commit c451dbd) at the root — server never sends NaN if party empty since recruitment happens server-side.
+
+**Acceptance criteria:**
+- Refreshing the client mid-town shows same recruits, same mission offers (server authoritative).
+- Saving in town and reloading restores exact town state including which missions were viewed.
+
+**Depends on:** Task 32b (envelope), Tasks 38–42 (faction system, primary Phase 1.5 work).
+
+---
+
+### 32g. Dungeon segment authoring — JSON loader path
+**Layer:** Engine + Content
+**Owner:** Backend lead + Content author
+
+**Background:** Phase 1 ships `DungeonBuilder.AddSegment(CreateEntranceRoom())` — segments hardcoded in C#. Plan (task 6) specified JSON segment loader. Phase 1.5 Bloom Site (task 51) and all Phase 2 dungeon templates require JSON authoring; cannot scale via C# code-gen.
+
+**Subtasks:**
+1. Define segment JSON schema (already in Appendix Y).
+2. `SegmentLoader.LoadFromDirectory(string dir)` reads all `*.json` under `content/segments/<template>/`.
+3. Replace `Create*Room()` C# methods with JSON files under `content/segments/broken-engine/`.
+4. Content pack compiler validates each segment: connection-point sanity, tile shape, no orphan tiles.
+5. Dev mode reload: file watcher → `content.reload` over WebSocket.
+
+**Acceptance criteria:**
+- Existing Phase 1 dungeons assemble identically from JSON.
+- Adding a new segment to `content/segments/broken-engine/` reflects in next dungeon without recompile.
+- Invalid segment (orphan tile) fails content pack build with file + line.
+
+**Depends on:** Phase 1 task 16 (content pack compiler, ✅ shipped).
+
+---
+
+
 
 ## Group 6: Full Formation
 
@@ -610,7 +779,15 @@ content/
 ## Dependency Graph
 
 ```
-Phase 1 (complete)
+Phase 1 (✅ complete)
+  ├─► Group 5.5 (Retrofits, run FIRST)
+  │     ├─► 32a (Action log) → unblocks 32d
+  │     ├─► 32b (Envelope v2) → unblocks all new message types
+  │     ├─► 32c (Strafe + cancel) → unblocks formation/journal UI
+  │     ├─► 32d (Save v2 + migration) → unblocks all save schema growth
+  │     ├─► 32e (Tile-tagged encounters) → unblocks set-piece authoring
+  │     ├─► 32f (Town → engine) → unblocks Group 7 (Factions)
+  │     └─► 32g (JSON segments) → unblocks Bloom Site + all Phase 2 templates
   ├─► Group 6 (Formation)
   │     ├─► 33 (Party of 6)
   │     │     ├─► 34 (Row abilities)
@@ -658,6 +835,10 @@ Group 7 ──► Group 9 (town contacts need rep system)
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
+| Retrofit work blocks Phase 1.5 feature progress | High | High | Group 5.5 has 7 tasks; assign two engineers; prefer 32a/32b/32d in week 1, 32c/32e/32g in week 2. 32f waits on Group 7 design alignment. |
+| Save v1 → v2 migration corrupts existing playtester saves | Medium | High | Migration test against checked-in v1 save fixtures; ship migration before any v2-only field is added. Keep v1 reader path until Phase 2. |
+| Protocol envelope rollout breaks live client | Medium | Medium | Shim accepts both flat v1 and v2 envelope for one minor release; metric logs legacy usage to confirm clients upgraded. |
+| Encounter rate formula (`0.05 + 0.08 * steps`) is now load-bearing for pacing | Low | Medium | Pin formula in design doc 06 appendix with named constants before content authors tune Phase 1.5 encounters. Two-mode (tagged + wandering) must keep this knob isolated to wandering. |
 | 6-character combat feels chaotic | Medium | High | Early prototype task 37 in week 1; if unreadable, reduce enemy group size or add UI grouping |
 | Branch choice UI is confusing | Low | Medium | User test with 3 non-gamers in week 2; iterate modal copy |
 | Faction reputation math feels arbitrary | Medium | High | Expose rep deltas in UI ("Bureau +5, Convocation -2") so players understand cause/effect |
@@ -670,10 +851,12 @@ Group 7 ──► Group 9 (town contacts need rep system)
 
 | Week | Milestone | Definition of Done |
 |---|---|---|
-| 2 | Formation works | 3+3 combat is playable, row abilities function, branch choices are made |
-| 4 | Factions feel real | Bureau/Convocation vendors unlock, side missions complete, rep consequences visible |
-| 5 | Synergies discovered | All 5 synergies trigger in playtesting, Field Notes captures them |
-| 6 | Phase 1.5 complete | Full 15-turn campaign playable from start to finish, all validation tests pass |
+| 1 | Retrofits land | Group 5.5 tasks 32a/32b/32d shipped; envelope v2 in production; v1 saves auto-migrate |
+| 2 | Retrofits complete | 32c/32e/32f/32g shipped; JSON segments authoritative; town server-side |
+| 3 | Formation works | 3+3 combat is playable, row abilities function, branch choices are made |
+| 5 | Factions feel real | Bureau/Convocation vendors unlock, side missions complete, rep consequences visible |
+| 6 | Synergies discovered | All 5 synergies trigger in playtesting, Field Notes captures them |
+| 7 | Phase 1.5 complete | Full 15-turn campaign playable from start to finish, all validation tests pass |
 
 ---
 
@@ -781,3 +964,165 @@ Adds to Phase 1 log. Schema unchanged.
 { "turn": 7, "act": 1, "category": "combat", "type": "synergy_triggered",
   "payload": { "synergyId": "syn-bonewarden-cauterist-bone-link-pyre", "encounterId": "bloom-pocket-2" } }
 ```
+
+---
+
+## Appendix Y — Phase 1 As-Built Reference
+
+Snapshot of what shipped in Phase 1. Use this as the source of truth for what Group 5.5 retrofits against. Diverges from the Phase 1 design-intent appendices originally drafted.
+
+### Y.1 WebSocket Protocol (as-built)
+
+Flat envelope, no `v` or `seq`:
+```json
+{ "type": "<action>", "...action-specific fields..." }
+```
+
+**Client → server (shipped):**
+| Type | Extra fields | Notes |
+|---|---|---|
+| `move_forward` | — | No `move_back`, no strafe |
+| `turn_left` | — | |
+| `turn_right` | — | |
+| `combat_action` | `action: { ... }` | Free-form action payload |
+| `flee_combat` | — | |
+| `enter_combat` | — | Manual trigger (test/debug path) |
+| `enter_dungeon` | `dungeonType: string` | "broken_engine" / "crypt" / "sewers" |
+| `rest` | — | Inn rest (full HP heal) |
+| `return_to_town` | — | |
+| `save_game` | — | Manual save |
+| `reset_game` | — | New game / wipe |
+| `swap_row` | `slot: int` | Built-in Phase 1, originally planned Phase 1.5 |
+
+**Server → client (shipped):** broadcasts full game state JSON; no message-type discrimination beyond presence of fields.
+
+**Gaps vs design:** no `hello`/`ready`, no heartbeat, no `seq` ack, no `error` envelope (errors `Console.WriteLine`d server-side). Task 32b closes these.
+
+### Y.2 Save Schema (as-built, version `"1"`)
+
+```json
+{
+  "version": "1",
+  "party": [
+    {
+      "id": "guid",
+      "name": "string",
+      "classId": "string",
+      "level": "int",
+      "xp": "int",
+      "baseStats": { ... },
+      "currentHp": "int",
+      "equipment": { ... },
+      "knownAbilities": ["string"],
+      "row": "int (0=front, 1=back)"
+    }
+  ],
+  "player": { "x": "int", "y": "int", "facing": "string" },
+  "currentDungeonType": "string | null",
+  "exploredTiles": ["string (x:y)"],
+  "mode": "string (GameMode enum name)"
+}
+```
+
+- `Version` is a string field (not int). Task 32d migrates to int 2.
+- Save path: `%LocalAppData%/TheReach/save.json`.
+- No action log, no formation array, no reputation map, no settings ref.
+- Hard reject on version mismatch (`Console.Error` log, no migration).
+
+### Y.3 Dungeon + Encounter (as-built)
+
+- Dungeons assembled from C#-hardcoded segments (`CreateEntranceRoom`, `CreateCorridor`, `CreateChamber`, `CreateDeadEnd`).
+- One encounter table per dungeon type (`Dungeon.EncounterTableId`).
+- Encounter trigger: probabilistic per step using `encounterChance = 0.05 + 0.08 * stepsSinceEncounter`, evaluated after every successful move.
+- `_stepsSinceEncounter` resets on encounter, dungeon enter, dungeon exit.
+- No tile-tagged authored encounters.
+
+### Y.4 Game State (as-built)
+
+`GameState` is the single root holding `Player`, `Party`, `CurrentDungeon`, `Mode (GameMode enum)`, `Combat`, `LastCombatResult`, `ExploredTiles (BoundedTileSet, cap 4096)`, `CurrentDungeonType`, `_stepsSinceEncounter`, `_encounterRng`.
+
+- `Player` is a separate entity from `Party` — Player owns `Position + Facing`, Party owns members. Plan implied Party owns position; refactor deferred to Phase 2 if it hurts.
+- `Mode` enum: `Menu`, `Exploration`, `Combat` (others may exist).
+- RNG is seedable via `GameState(seed: int)`; default seeds from `DateTime.UtcNow.GetHashCode()`. Combat snapshot tests use explicit seed.
+
+### Y.5 Content Pipeline (as-built)
+
+- `EncounterTableRegistry`, `ClassRegistry`, `ItemRegistry` load JSON from disk at server boot via `FindContentDir(...)` (walks up 0–8 directory levels to find `content/`).
+- No `.rpk` binary pack in runtime path (compiler exists per T16 — `feat(tools): T16 content pack compiler + RPK reader` — but server reads raw JSON). Binary pack used for distribution prep only.
+- Hot reload not implemented; restart required for content changes.
+
+---
+
+## Appendix Z — Build Learnings (Phase 1 → improve Phase 1.5+ planning)
+
+Extracted from the 35 build commits on `build/kimi`. Each row is a real surprise — concrete enough that Phase 1.5+ planning should account for it.
+
+### Z.1 Security / robustness fixes already shipped
+
+| Commit | Lesson |
+|---|---|
+| `fix(security): WS frame accumulation, save clamping, version check, gitignore` | Multi-fragment WebSocket frames must be accumulated until `EndOfMessage`; one-shot reads drop data. Save inputs need bounds (`clamp`) at deserialization, not just at use site. Version mismatch must reject; absent check = silent corruption. |
+| `fix(perf): cap ExploredTiles, fix texture disposal, exponential reconnect backoff` | Explored-tile set grew unbounded → memory leak; cap 4096 with FIFO eviction (`BoundedTileSet`). Three.js geometry/material/texture must be `.dispose()`d on dungeon teardown; GC alone leaks GPU. WebSocket reconnect spam → exponential backoff 250ms → 4s cap. |
+| `fix(quality): remove debug logs, drop generate_dungeon, delete Class1, NaN guard in TownMenu` | Empty party division → NaN in price/avg calculations. Dead `generate_dungeon` action shipped before being removed. `Class1.cs` dotnet boilerplate snuck in. |
+| `chore(nits): remove debug logs, rename sendRadius, drop dead fetchContent` | `console.log` in hot path. `sendRadius` (legacy name) confused for network function. Dead `fetchContent` left after pivot. |
+| `build: downgrade from net10.0 to net9.0 for SDK compatibility` | net10.0 not available on most CI/dev SDKs at start of build (May 2026). Pin .NET version explicitly in `global.json` to avoid CI/local drift. |
+
+**Phase 1.5+ planning rules:**
+- Every new WebSocket message handler MUST accumulate frames before `JsonSerializer.Deserialize`.
+- Every new save schema field MUST have a clamp at deserialization (sane bounds, not just nullable).
+- Every new Three.js managed asset MUST be tracked for `.dispose()` on scene change. Add lint rule if possible.
+- Every new collection that grows with gameplay MUST have a cap + eviction policy.
+- Every new derived value (price avg, hit %, etc.) MUST guard divide-by-zero before computing.
+
+### Z.2 Architectural divergences worth keeping
+
+| Divergence | Why it's fine | Phase 1.5+ implication |
+|---|---|---|
+| `Player` separate from `Party` (position + facing isolated from members) | Allows party-of-N changes without touching navigation code | Phase 1.5 expansion to 6 members touches `Party` only |
+| Probabilistic encounter triggers (vs tile-tagged spec) | Wandering encounters work for Broken Engine corridors | Tile-tagged path (task 32e) layered on top; both modes coexist |
+| Hardcoded segment C# methods (vs JSON loader) | Shipped Phase 1 faster | Task 32g converts to JSON; Bloom Site (task 51) requires JSON path |
+| Content loaded as raw JSON at boot (vs .rpk binary) | Faster dev iteration, smaller dev loop | Binary pack stays a release-build optimization; never required at runtime |
+| Town as `GameMode.Menu` (vs server-authoritative state) | Phase 1 town is minimal — recruit/buy/save | Task 32f moves town to server before faction contacts land (taken: NaN bug already showed up) |
+
+### Z.3 Architectural divergences worth fixing (already enumerated as Group 5.5)
+
+- Flat WebSocket envelope → structured envelope with seq/error/heartbeat (task 32b).
+- 3-direction input → 6-direction + cancel (task 32c).
+- Save Version as string "1" with hard reject → int with migration (task 32d).
+- No action log → required by design doc 11 (task 32a).
+
+### Z.4 Hidden gameplay knobs surfaced by build
+
+Phase 1.5+ balance work needs to know these exist:
+
+| Knob | Location | Default value | Tuning impact |
+|---|---|---|---|
+| Wandering encounter rate | `GameState.cs:127` | `0.05 + 0.08 * stepsSinceEncounter` | Drives dungeon pacing; too high = grindy, too low = empty corridors |
+| Explored tile cap | `GameState.cs:71` | 4096 | Caps automap memory; ~64×64 dungeon limit before eviction |
+| WebSocket reconnect backoff | client `net/GameClient.ts` | 250ms → 4s exponential | Affects perceived crash recovery time |
+| Class color palette | `GameServer.cs:128` | hex per class | UI cohesion only; safe to override per skin |
+| Encounter chance reset events | `GameState.cs` | on encounter, dungeon enter, dungeon exit | Plus task 32e: also on tile-tagged encounter resolved |
+
+Surface these in design doc 06 as named balance constants before Phase 1.5 content authoring starts.
+
+### Z.5 Testing surface to grow
+
+Phase 1 e2e suite covers 18 tests across G1–G5 (Playwright). Coverage gaps Kimi should fill in Phase 1.5:
+
+- No protocol-version negotiation test (introduced by task 32b).
+- No save-migration round-trip test (introduced by task 32d).
+- No content hot-reload test (planned by task 32g; ship together).
+- No multi-client reconnect test (single-client guard mentioned in plan but not verified end-to-end).
+- No "kill -9 mid-save" durability test (covers task 32d atomic write).
+
+Add these as Playwright + xUnit pairs alongside the Phase 1.5 feature work, not as an afterthought milestone.
+
+### Z.6 Dartboard sync
+
+`docs/dartboard/plan.md` already tracks G1–G5 ✅. Phase 1.5 must add Group 5.5 retrofits to the dartboard before standard Phase 1.5 tasks, with the same priority tier as Phase 1.5 Group 6 (Formation). Suggested ordering for Ralph Wiggum loop:
+
+1. Group 5.5 (retrofits) — 32a → 32d → 32b → 32c → 32e → 32g → 32f (32a/d unblock log + schema; 32b/c unblock new UI flows; 32e/g unblock content scaling; 32f gates Group 7 town work).
+2. Group 6 (Formation) in parallel with 32a/d once they stabilize.
+3. Group 7 (Factions) blocked on 32f.
+4. Group 8 (Synergies) blocked on Group 6.
+5. Group 9 (Overworld) parallel with everything after 32b.
