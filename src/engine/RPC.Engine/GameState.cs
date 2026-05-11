@@ -156,11 +156,14 @@ public class GameState
             encounter = _encounterTables.RollEncounter(CurrentDungeon.EncounterTableId, _encounterRng);
         }
 
-        encounter ??= new EncounterDef("random", "Random Encounter", new[]
+        if (encounter == null || encounter.Enemies.Length == 0)
         {
-            new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
-            new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
-        });
+            encounter = new EncounterDef("random", "Random Encounter", new[]
+            {
+                new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
+                new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
+            });
+        }
 
         Combat = CombatEngine.Enter(Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)));
 

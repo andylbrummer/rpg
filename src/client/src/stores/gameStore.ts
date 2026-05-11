@@ -4,6 +4,11 @@ import type { GameState, PlayerAction } from '../types/game';
 
 const client = new GameClient();
 
+// Expose for e2e tests
+if (typeof window !== 'undefined') {
+  (window as any).gameClient = client;
+}
+
 function createGameStore() {
   const { subscribe, set } = writable<GameState | null>(null);
 

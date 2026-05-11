@@ -16,9 +16,9 @@
   let sheetMember = $state<PartyMember | null>(null);
 
   const dungeonTypes = [
-    { id: 'goblin_caves', name: 'Goblin Caves', level: 1, desc: 'Shallow caves infested with goblins.' },
-    { id: 'ancient_ruins', name: 'Ancient Ruins', level: 3, desc: 'Crumbling ruins of a lost civilization.' },
-    { id: 'dragon_lair', name: "Dragon's Lair", level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
+    { id: 'broken_engine', name: 'Broken Engine', level: 1, desc: 'Shallow caves infested with goblins.' },
+    { id: 'sewers', name: 'Sewer Warrens', level: 3, desc: 'Crumbling ruins of a lost civilization.' },
+    { id: 'crypt', name: 'Crypt of Whispers', level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
   ];
 
   function selectCharacter(name: string) {
@@ -74,9 +74,7 @@
         {#each dungeonTypes as dungeon}
           <button
             class="dungeon-btn"
-            class:selected={selectedCharacter !== null}
-            onclick={() => selectedCharacter && onEnterDungeon(dungeon.id)}
-            disabled={selectedCharacter === null}
+            onclick={() => onEnterDungeon(dungeon.id)}
           >
             <div class="dungeon-name">{dungeon.name}</div>
             <div class="dungeon-info">

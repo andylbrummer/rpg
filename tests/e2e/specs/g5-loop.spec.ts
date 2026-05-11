@@ -6,7 +6,7 @@ test.describe('G5: Game Loop', () => {
     await page.goto(`${serverUrl}/app`);
     // Ensure town mode (server state may be shared across tests)
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });
-    await expect(page.locator('text=The Reach')).toBeVisible();
+    await expect(page.locator('.town-header h1')).toBeVisible();
     await expect(page.locator('text=Broken Engine')).toBeVisible();
     await expect(page.locator('text=Sewer Warrens')).toBeVisible();
     await expect(page.locator('text=Crypt of Whispers')).toBeVisible();
@@ -14,7 +14,7 @@ test.describe('G5: Game Loop', () => {
 
   test('can enter a dungeon from town', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', DungeonType: 'broken_engine' });
+    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
     await expect(page.locator('text=Return to Town')).toBeVisible();
   });
 
@@ -31,7 +31,7 @@ test.describe('G5: Game Loop', () => {
       await page.waitForTimeout(300);
     }
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });
-    await expect(page.locator('text=The Reach')).toBeVisible();
+    await expect(page.locator('.town-header h1')).toBeVisible();
     // Verify at least one member is damaged
     const hpBefore = await page.locator('.hp-fill').first().evaluate((el: any) => el.style.width);
     if (hpBefore === '100%') {

@@ -20,14 +20,43 @@
   $effect(() => {
     if (gameContainer && !renderer) {
       renderer = new DungeonRenderer(gameContainer);
-      renderer.start();
     }
   });
 
   $effect(() => {
-    if (renderer && gameState?.explored) {
-      renderer.updateMap(gameState.explored, gameState.player);
+    if (renderer && gameState) {
+      renderer.updateState(gameState);
     }
+  });
+
+  onMount(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (gameState?.mode !== 'Exploration') return;
+
+      switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          e.preventDefault();
+          sendAction({ type: 'move_forward' });
+          break;
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          sendAction({ type: 'turn_left' });
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          e.preventDefault();
+          sendAction({ type: 'turn_right' });
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   });
 
   function handleEnterDungeon(type: string) {

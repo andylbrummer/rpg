@@ -8,7 +8,7 @@ export async function sendWsAction(page: Page, _serverUrl: string, action: any):
 }
 
 export async function getPositionText(page: Page): Promise<string> {
-  return page.locator('.status-bar .position').textContent({ timeout: 5000 }) ?? '';
+  return page.locator('.exploration-hud .position').textContent({ timeout: 5000 }) ?? '';
 }
 
 export async function getMainJsUrl(request: APIRequestContext, base: string): Promise<string> {
