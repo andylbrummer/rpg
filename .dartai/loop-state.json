@@ -8,9 +8,12 @@
   "current_task": {
     "dart_id": "ymZWvdy5iOIY",
     "title": "[1.5] T38 Reputation system",
-    "iteration": 5
+    "iteration": 5,
+    "status": "completed",
+    "phase_completed": "phase-9",
+    "failed_phase": null
   },
-  "completed_tasks": 4,
+  "completed_tasks": 5,
   "total_tasks": 40,
   "iteration": 5
 }

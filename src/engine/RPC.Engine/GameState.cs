@@ -21,7 +21,7 @@ public class GameState
     public CombatResult? LastCombatResult { get; private set; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
-    public Dictionary<string, int> Reputation { get; } = new();
+    public ReputationState Reputation { get; } = new();
     public string? SettingsHash { get; set; }
 
     public void ClearCombatResult()
@@ -347,6 +347,22 @@ public class GameState
     }
 
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path);
+    public void ApplyReputationDelta(string factionId, int delta, string source)
+    {
+        var changes = Reputation.ApplyDelta(factionId, delta, source);
+        foreach (var change in changes)
+        {
+            EmitActionLog("faction", "rep_changed", new Dictionary<string, string>
+            {
+                { "factionId", change.FactionId },
+                { "delta", change.Delta.ToString() },
+                { "newValue", change.NewValue.ToString() },
+                { "source", change.Source }
+            });
+        }
+        LastUpdate = DateTime.UtcNow;
+    }
+
     public bool LoadGame(string? path = null) => Save.SaveSystem.Load(this, path);
 
     public bool RecruitFromTavern(string recruitId)
