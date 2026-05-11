@@ -1,4 +1,10 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claimed": []
+  "claimed": [
+    {
+      "task_id": "DpCHV6UOgiEv",
+      "title": "[1.5] 32b WS protocol envelope v2",
+      "claimed_at": "2026-05-11T15:20:00-05:00"
+    }
+  ]
 }
