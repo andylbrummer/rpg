@@ -41,6 +41,14 @@
           "tags": {
             "type": "array",
             "items": { "type": "string" }
+          },
+          "requiredRow": {
+            "type": "string",
+            "enum": ["front", "back"]
+          },
+          "rowChangeCost": {
+            "type": "string",
+            "enum": ["action", "quick_action", "free"]
           }
         }
       }

@@ -25,7 +25,17 @@ public class PartyState
             throw new ArgumentOutOfRangeException(nameof(slot));
 
         var partnerSlot = slot < 3 ? slot + 3 : slot - 3;
-        (Members[slot], Members[partnerSlot]) = (Members[partnerSlot], Members[slot]);
+
+        var a = Members[slot];
+        var b = Members[partnerSlot];
+
+        if (a.Id != Guid.Empty)
+            a = a with { Row = partnerSlot < 3 ? 0 : 1 };
+        if (b.Id != Guid.Empty)
+            b = b with { Row = slot < 3 ? 0 : 1 };
+
+        Members[slot] = b;
+        Members[partnerSlot] = a;
     }
 
     public void RebalanceDead()

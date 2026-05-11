@@ -216,4 +216,78 @@ public class CombatSnapshotTests
         var enemyNames = state.Combatants.Where(c => !c.IsPlayer).Select(c => c.Name).ToArray();
         Assert.Equal(3, enemyNames.Length);
     }
+
+    [Fact]
+    public void Snapshot_RowVariation_ProducesDifferentDamageOutput()
+    {
+        var registry = new ClassRegistry();
+        var json = """
+            {
+              "id": "striker",
+              "name": "Striker",
+              "description": "Test",
+              "baseStats": { "strength": 5, "dexterity": 5, "constitution": 5, "intelligence": 3, "willpower": 3 },
+              "abilities": [
+                { "id": "front_slash", "name": "Front Slash", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d8+PWR", "range": "melee" }, "tags": ["physical"], "requiredRow": "front" }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["front_slash"] }
+              ]
+            }
+            """;
+        registry.LoadFromJson("striker", json);
+
+        static CharacterState MakeStriker(string name, int row)
+            => new(new Guid(name.PadRight(16).Take(16).Select(c => (byte)c).ToArray()),
+                name, "striker", 1, 0,
+                new BaseStats(5, 5, 5, 3, 3),
+                60, Equipment.Empty,
+                new[] { "front_slash" }, row);
+
+        var partyA = new PartyState();
+        partyA.SetMember(0, MakeStriker("A1", 0));
+        partyA.SetMember(1, MakeStriker("A2", 0));
+        partyA.SetMember(2, MakeStriker("A3", 0));
+
+        var partyB = new PartyState();
+        partyB.SetMember(0, MakeStriker("B1", 0));
+        partyB.SetMember(1, MakeStriker("B2", 0));
+        partyB.SetMember(2, MakeStriker("B3", 1));
+
+        // 6 rats so combat doesn't end before damage difference accumulates
+        var encounter = new EncounterDef("e1", "Test", new[] { new EnemySpawn("rat", 6, 0) });
+
+        int RunCombat(PartyState party, int seed)
+        {
+            var state = CombatEngine.Enter(party, encounter, new GameRandom(seed));
+            var rng = new GameRandom(seed);
+            int playerTurns = 0;
+            int steps = 0;
+            while (!state.IsFinished && steps < 200 && playerTurns < 6)
+            {
+                var actor = state.CurrentActor;
+                if (actor?.IsPlayer == true)
+                {
+                    var target = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                    var action = actor.Value.Row == 0
+                        ? new CombatAction(actor.Value.Id, ActionType.UseAbility, target.Id, "front_slash", null)
+                        : new CombatAction(actor.Value.Id, ActionType.Attack, target.Id, null, null);
+                    state = CombatEngine.Tick(state, action, rng, registry);
+                    playerTurns++;
+                }
+                else
+                {
+                    state = CombatEngine.Tick(state, null, rng, registry);
+                }
+                steps++;
+            }
+            return state.Combatants.Where(c => !c.IsPlayer).Sum(e => e.MaxHp - e.Hp);
+        }
+
+        var damageA = RunCombat(partyA, 42);
+        var damageB = RunCombat(partyB, 42);
+
+        Assert.True(damageA > damageB,
+            $"Expected front-only party to deal more damage. A={damageA}, B={damageB}");
+    }
 }

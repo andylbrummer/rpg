@@ -750,6 +750,10 @@ public class GameServer
                         accessory2 = c.Equipment.Accessory2,
                     },
                     knownAbilities = c.KnownAbilities,
+                    availableAbilities = classDef?.Abilities
+                        .Where(a => a.IsAvailableInRow(c.Row))
+                        .Select(a => a.Id)
+                        .ToArray() ?? Array.Empty<string>(),
                 };
             }).ToArray();
 

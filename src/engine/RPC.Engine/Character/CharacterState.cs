@@ -56,7 +56,15 @@ public record AbilityDef(
     string Name,
     AbilityCost Cost,
     AbilityEffect Effect,
-    string[] Tags);
+    string[] Tags,
+    string? RequiredRow = null,
+    string? RowChangeCost = null)
+{
+    public bool IsAvailableInRow(int row)
+        => RequiredRow == null
+            || (RequiredRow == "front" && row == 0)
+            || (RequiredRow == "back" && row == 1);
+}
 
 public record AbilityCost(
     string Type,

@@ -218,10 +218,10 @@ public class GameState
 
             // Kick off the first round and auto-resolve any leading AI turns
             var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-            Combat = CombatEngine.Tick(Combat, null, rng);
+            Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
             while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
             {
-                Combat = CombatEngine.Tick(Combat, null, rng);
+                Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
             }
         }
         LastUpdate = DateTime.UtcNow;
@@ -231,13 +231,29 @@ public class GameState
     {
         if (Combat == null || Mode != GameMode.Combat) return false;
 
+        // Validate ability row requirements
+        if (action.Type == ActionType.UseAbility && action.AbilityId is not null)
+        {
+            var actor = Combat.Combatants.FirstOrDefault(c => c.Id == action.ActorId);
+            if (actor.Id != Guid.Empty)
+            {
+                var member = Party.Members.FirstOrDefault(m => m.Id == action.ActorId);
+                if (member.Id != Guid.Empty && _classRegistry?.Get(member.ClassId) is { } classDef)
+                {
+                    var ability = classDef.Abilities.FirstOrDefault(a => a.Id == action.AbilityId);
+                    if (ability is not null && !ability.IsAvailableInRow(actor.Row))
+                        return false;
+                }
+            }
+        }
+
         var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-        Combat = CombatEngine.Tick(Combat, action, rng);
+        Combat = CombatEngine.Tick(Combat, action, rng, _classRegistry);
 
         // Auto-resolve AI turns
         while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
         {
-            Combat = CombatEngine.Tick(Combat, null, rng);
+            Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
         }
 
         if (Combat.IsFinished)

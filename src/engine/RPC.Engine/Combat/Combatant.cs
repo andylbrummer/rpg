@@ -8,7 +8,9 @@ public readonly record struct Combatant(
     int MaxHp,
     int Speed,
     int Row,
-    List<StatusEffect> StatusEffects)
+    List<StatusEffect> StatusEffects,
+    int Power = 0,
+    string? ClassId = null)
 {
     public bool IsAlive => Hp > 0;
     public bool IsFrontRow => Row == 0;

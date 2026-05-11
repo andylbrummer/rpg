@@ -42,13 +42,13 @@ public static class CombatEngine
             encounter.XpReward);
     }
 
-    public static CombatState Tick(CombatState state, CombatAction? action, GameRandom rng)
+    public static CombatState Tick(CombatState state, CombatAction? action, GameRandom rng, ClassRegistry? classes = null)
     {
         return state.Phase switch
         {
             CombatPhase.RoundStart => StartRound(state, rng),
             CombatPhase.Turn => HandleTurn(state, action, rng),
-            CombatPhase.Resolve => Resolve(state, rng),
+            CombatPhase.Resolve => Resolve(state, rng, classes),
             CombatPhase.CheckEnd => CheckEnd(state),
             _ => state
         };
@@ -105,7 +105,7 @@ public static class CombatEngine
         return new CombatAction(actor.Id, ActionType.Attack, target.Id, null, null);
     }
 
-    private static CombatState Resolve(CombatState state, GameRandom rng)
+    private static CombatState Resolve(CombatState state, GameRandom rng, ClassRegistry? classes)
     {
         if (state.PendingAction is null)
             return state with { Phase = CombatPhase.CheckEnd };
@@ -133,6 +133,30 @@ public static class CombatEngine
                 }
                 break;
 
+            case ActionType.UseAbility:
+                if (action.AbilityId is not null && action.TargetId is not null)
+                {
+                    var targetIdx = Array.FindIndex(newCombatants, c => c.Id == action.TargetId);
+                    if (targetIdx >= 0)
+                    {
+                        var damage = ResolveAbilityDamage(actor, action.AbilityId, classes, rng);
+                        var target = newCombatants[targetIdx];
+                        if (damage > 0)
+                        {
+                            var newHp = Math.Max(0, target.Hp - damage);
+                            newCombatants[targetIdx] = target with { Hp = newHp };
+                            newLog.Add(new(action.ActorId,
+                                $"{actor.Name} uses {action.AbilityId} on {target.Name} for {damage} damage", state.Round));
+                        }
+                        else
+                        {
+                            newLog.Add(new(action.ActorId,
+                                $"{actor.Name} uses {action.AbilityId} on {target.Name}", state.Round));
+                        }
+                    }
+                }
+                break;
+
             case ActionType.Defend:
                 newLog.Add(new(action.ActorId, $"{actor.Name} takes a defensive stance", state.Round));
                 break;
@@ -153,6 +177,45 @@ public static class CombatEngine
             PendingAction = null,
             Phase = CombatPhase.CheckEnd
         };
+    }
+
+    private static int ResolveAbilityDamage(Combatant actor, string abilityId, ClassRegistry? classes, GameRandom rng)
+    {
+        if (string.IsNullOrEmpty(actor.ClassId) || classes is null)
+            return 0;
+
+        var classDef = classes.Get(actor.ClassId);
+        var ability = classDef?.Abilities.FirstOrDefault(a => a.Id == abilityId);
+        if (ability is null)
+            return 0;
+
+        var effect = ability.Effect;
+        if (effect.Type != "damage")
+            return 0;
+
+        var valueStr = effect.Value?.GetString();
+        if (string.IsNullOrEmpty(valueStr))
+            return 0;
+
+        var parts = valueStr.Split('+');
+        var diceParts = parts[0].Split('d');
+        if (diceParts.Length != 2 || !int.TryParse(diceParts[0], out var count) || !int.TryParse(diceParts[1], out var sides))
+            return 0;
+
+        var bonus = 0;
+        if (parts.Length > 1)
+        {
+            if (parts[1] == "PWR")
+                bonus = actor.Power;
+            else
+                int.TryParse(parts[1], out bonus);
+        }
+
+        var roll = 0;
+        for (int i = 0; i < count; i++)
+            roll += rng.Roll(1, sides);
+
+        return Math.Max(1, roll + bonus);
     }
 
     private static CombatState CheckEnd(CombatState state)
@@ -235,7 +298,8 @@ public static class CombatEngine
                     hp + 3,
                     speed + rng.Roll(-1, 1),
                     spawn.RowOverride ?? (rng.Next(2) == 0 ? 0 : 1),
-                    new List<StatusEffect>()
+                    new List<StatusEffect>(),
+                    def?.Stats.Strength ?? 0
                 ));
                 enemyIndex++;
             }
@@ -254,7 +318,9 @@ public static class CombatEngine
             stats.MaxHp,
             stats.Speed,
             character.Row,
-            new List<StatusEffect>()
+            new List<StatusEffect>(),
+            stats.Power,
+            character.ClassId
         );
     }
 }

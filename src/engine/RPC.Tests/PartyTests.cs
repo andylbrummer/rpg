@@ -65,7 +65,7 @@ public class PartyTests
         party.SwapRows(0);
 
         Assert.Equal(back, party.Members[0]);
-        Assert.Equal(front, party.Members[3]);
+        Assert.Equal(front with { Row = 1 }, party.Members[3]);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class PartyTests
 
         party.SwapRows(5);
 
-        Assert.Equal(front, party.Members[5]);
+        Assert.Equal(front with { Row = 1 }, party.Members[5]);
         Assert.Equal(back, party.Members[2]);
     }
 
