@@ -251,7 +251,7 @@
 **Acceptance criteria:**
 - Schema validates all hand-authored Phase 2 configs without modification.
 - Schema rejects invalid configs with specific error messages.
-- Schema is versioned; future additions are backward-compatible.
+- Schema is versioned. Schema bumps break old configs; rev hand-authored fixtures in the same PR.
 
 **Depends on:** Phase 2 Group 14 (campaign config system)
 

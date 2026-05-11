@@ -218,11 +218,11 @@ The template epilogue exists from Phase 2 (no LLM dependency). The LLM epilogue 
 
 ### CC1: Save File Versioning
 
-Every phase changes the game state schema. Saves from Phase 1 won't deserialize in Phase 2. Options:
-1. **Break saves between phases** — simple. Players expect this during development.
-2. **Migration layer** — save files include a schema version. Migration functions upgrade old saves. More work, required for release.
+Every phase changes the game state schema. Saves from older versions are not loadable in newer versions. **Policy: break saves freely between phases during development.** No migration code. Old save file detected → log + delete + new game.
 
-**Recommendation:** Option 1 during development. Build the migration layer in Phase 3 when the schema stabilizes. Include a schema version field in saves from Phase 1 so the migration layer has something to key on.
+Schema version field exists from Phase 1 onward (`schemaVersion: int`) so the engine can detect-and-discard cleanly, not to enable migration.
+
+A migration layer is a Phase 3 concern only when shipping to real players and only if schema stabilization has happened first. Until then, every schema-breaking PR also bumps the version int. No back-compat shims, no dual-readers, no field defaulting from absent values.
 
 ### CC2: Content Hot-Reload for Authoring
 

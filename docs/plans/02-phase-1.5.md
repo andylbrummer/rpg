@@ -32,7 +32,7 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 **Acceptance criteria:**
 - Completing a dungeon emits `dungeon_entered` then `dungeon_completed` in order.
 - Killing all enemies emits `encounter_started` + `encounter_won` with matching `encounterId`.
-- Save/load preserves full event ordering after a v1 → v2 migration.
+- Save/load preserves full event ordering. Old v1 saves are not loadable — Phase 1.5 break is acceptable per CC1.
 
 **Depends on:** Task 32d (save schema v2).
 
@@ -45,12 +45,11 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 **Background:** Phase 1 shipped flat `{ "type": "...", ... }` messages. Plan called for envelope `{ v, type, seq, payload }`. Phase 1.5 introduces enough new message types (formation, branch, mission, vendor, travel, journal, keybinding) that a structured envelope becomes load-bearing.
 
 **Subtasks:**
-1. Introduce envelope: `{ "v": 2, "type": "...", "seq": int, "payload": {...} }`.
+1. Replace flat protocol with envelope: `{ "v": 2, "type": "...", "seq": int, "payload": {...} }`. No compat shim — old client breaks, ship matching client in same release.
 2. Server emits `hello { protocolVersion: 2, sessionId }` on connection. Client must reply `ready` before any other message.
-3. Backwards compat shim: server accepts both flat v1 messages and v2 envelopes for 1 minor version; logs `protocol.legacy_message` metric.
-4. `seq` monotonic per direction; client-sent `seq` echoed in matching ack (`state.*` or `error`).
-5. Heartbeat: server pings every 5s with `heartbeat.ping { pingSeq }`; client must `heartbeat.pong { pingSeq }` within 2s.
-6. Error envelope: every server throw → `error { code, message, recoverable: bool }`. Migrate existing `Console.WriteLine($"Error handling message: {ex}")` to client-facing errors with code mapping.
+3. `seq` monotonic per direction; client-sent `seq` echoed in matching ack (`state.*` or `error`).
+4. Heartbeat: server pings every 5s with `heartbeat.ping { pingSeq }`; client must `heartbeat.pong { pingSeq }` within 2s.
+5. Error envelope: every server throw → `error { code, message, recoverable: bool }`. Replace `Console.WriteLine($"Error handling message: {ex}")` with client-facing errors carrying code mapping.
 
 **Acceptance criteria:**
 - Client sends `action.move` with `seq=42`; server responds with state carrying matching `seq`.
@@ -83,27 +82,28 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 
 ---
 
-### 32d. Save schema v2 + migration layer
+### 32d. Save schema v2 (replace v1, no migration)
 **Layer:** Engine
 **Owner:** Backend lead
 
-**Background:** Phase 1 ships `SaveData.Version = "1"` with hard reject on mismatch. Phase 1.5 + 2 require schema growth (action log, formation, reputation, etc.) — migration layer must exist before adding fields.
+**Background:** Phase 1 ships `SaveData.Version = "1"` (string) with hard reject on mismatch. Phase 1.5 needs new fields (action log, formation, reputation). Per CC1, break v1 saves — players expect schema breaks during development.
 
 **Subtasks:**
-1. Promote `Version` to int 2; reader migrates v1 → v2 on load.
-2. v1 → v2 migration:
-   - Carry over party (2+2 → 3+3 with 2 empty slots), player, explored tiles, mode, dungeon type.
-   - Initialize empty `actionLog: []`.
-   - Initialize `formation: { front: [...members where row==0...], back: [...members where row==1...] }`.
-   - Initialize empty `reputation: {}` (per design doc 04 ranges).
-   - Initialize empty `settings: null` (settings live in KDL; save references by hash).
-3. Migration unit test: load fixture v1 save, assert v2 fields populated correctly.
+1. Replace `Version` string with int `schemaVersion = 2`. Delete the v1 reader path.
+2. v2 fields:
+   - `party` (3+3 formation array of 6 slots, empty slots = null).
+   - `player` (position + facing).
+   - `actionLog` (per design doc 11).
+   - `formation` (front[3] + back[3]).
+   - `reputation` (per design doc 04 map).
+   - `exploredTiles`, `mode`, `dungeonType`, `settings` (KDL ref hash).
+3. Load: if file is not v2, log and delete. Player starts new game.
 4. Atomic write: serialize → `.tmp` → fsync → rename. Phase 1 currently does direct write (race risk).
 
 **Acceptance criteria:**
-- Existing v1 saves load cleanly into v2 game; party visible, dungeon resumed.
+- v1 save file is deleted with a clear log message; new game starts fresh.
 - Save round-trip on v2 yields byte-identical state.
-- Power-cut simulation (kill -9 mid-write) leaves either intact v1 or intact v2, never half-written.
+- Power-cut simulation (kill -9 mid-write) leaves either intact prior v2 or intact new v2, never half-written.
 
 **Depends on:** Task 32a (action log feeds schema).
 
@@ -188,7 +188,7 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 2. Update combat engine: 3 enemy slots per range band (was 2).
 3. Update encounter tables: enemy group counts scale to 3+3 (max 4 groups, up to 3 enemies per group).
 4. Update action economy: adjust standard encounter duration target from 5–7 rounds to 6–8 rounds (more combatants).
-5. Update save schema: migration from Phase 1 `PartyState` v1 → v2. Old saves load with 2 front + 2 back + 2 empty bench slots.
+5. Update save schema: v2 has front[3] + back[3] directly (no migration from v1; per task 32d, v1 saves are deleted).
 
 **Acceptance criteria:**
 - Combat snapshot tests with 6 characters pass.
@@ -784,7 +784,7 @@ Phase 1 (✅ complete)
   │     ├─► 32a (Action log) → unblocks 32d
   │     ├─► 32b (Envelope v2) → unblocks all new message types
   │     ├─► 32c (Strafe + cancel) → unblocks formation/journal UI
-  │     ├─► 32d (Save v2 + migration) → unblocks all save schema growth
+  │     ├─► 32d (Save v2, drop v1) → unblocks all save schema growth
   │     ├─► 32e (Tile-tagged encounters) → unblocks set-piece authoring
   │     ├─► 32f (Town → engine) → unblocks Group 7 (Factions)
   │     └─► 32g (JSON segments) → unblocks Bloom Site + all Phase 2 templates
@@ -836,8 +836,7 @@ Group 7 ──► Group 9 (town contacts need rep system)
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | Retrofit work blocks Phase 1.5 feature progress | High | High | Group 5.5 has 7 tasks; assign two engineers; prefer 32a/32b/32d in week 1, 32c/32e/32g in week 2. 32f waits on Group 7 design alignment. |
-| Save v1 → v2 migration corrupts existing playtester saves | Medium | High | Migration test against checked-in v1 save fixtures; ship migration before any v2-only field is added. Keep v1 reader path until Phase 2. |
-| Protocol envelope rollout breaks live client | Medium | Medium | Shim accepts both flat v1 and v2 envelope for one minor release; metric logs legacy usage to confirm clients upgraded. |
+| Schema-break churn during dev | Low | Low | CC1 policy: break saves/protocol freely between phases. Dev-only saves are disposable; production migration is a Phase 3 concern when schema stabilizes. |
 | Encounter rate formula (`0.05 + 0.08 * steps`) is now load-bearing for pacing | Low | Medium | Pin formula in design doc 06 appendix with named constants before content authors tune Phase 1.5 encounters. Two-mode (tagged + wandering) must keep this knob isolated to wandering. |
 | 6-character combat feels chaotic | Medium | High | Early prototype task 37 in week 1; if unreadable, reduce enemy group size or add UI grouping |
 | Branch choice UI is confusing | Low | Medium | User test with 3 non-gamers in week 2; iterate modal copy |
@@ -851,7 +850,7 @@ Group 7 ──► Group 9 (town contacts need rep system)
 
 | Week | Milestone | Definition of Done |
 |---|---|---|
-| 1 | Retrofits land | Group 5.5 tasks 32a/32b/32d shipped; envelope v2 in production; v1 saves auto-migrate |
+| 1 | Retrofits land | Group 5.5 tasks 32a/32b/32d shipped; envelope v2 in production; v1 saves removed (no migration) |
 | 2 | Retrofits complete | 32c/32e/32f/32g shipped; JSON segments authoritative; town server-side |
 | 3 | Formation works | 3+3 combat is playable, row abilities function, branch choices are made |
 | 5 | Factions feel real | Bureau/Convocation vendors unlock, side missions complete, rep consequences visible |
@@ -1024,7 +1023,7 @@ Flat envelope, no `v` or `seq`:
 }
 ```
 
-- `Version` is a string field (not int). Task 32d migrates to int 2.
+- `Version` is a string field (not int). Task 32d replaces with int `schemaVersion = 2` and drops v1 reader.
 - Save path: `%LocalAppData%/TheReach/save.json`.
 - No action log, no formation array, no reputation map, no settings ref.
 - Hard reject on version mismatch (`Console.Error` log, no migration).
@@ -1088,7 +1087,7 @@ Extracted from the 35 build commits on `build/kimi`. Each row is a real surprise
 
 - Flat WebSocket envelope → structured envelope with seq/error/heartbeat (task 32b).
 - 3-direction input → 6-direction + cancel (task 32c).
-- Save Version as string "1" with hard reject → int with migration (task 32d).
+- Save Version as string "1" with hard reject → int `schemaVersion = 2`, v1 reader deleted (task 32d).
 - No action log → required by design doc 11 (task 32a).
 
 ### Z.4 Hidden gameplay knobs surfaced by build
@@ -1110,7 +1109,7 @@ Surface these in design doc 06 as named balance constants before Phase 1.5 conte
 Phase 1 e2e suite covers 18 tests across G1–G5 (Playwright). Coverage gaps Kimi should fill in Phase 1.5:
 
 - No protocol-version negotiation test (introduced by task 32b).
-- No save-migration round-trip test (introduced by task 32d).
+- No "v1 save deleted and new game starts" test (task 32d behavior).
 - No content hot-reload test (planned by task 32g; ship together).
 - No multi-client reconnect test (single-client guard mentioned in plan but not verified end-to-end).
 - No "kill -9 mid-save" durability test (covers task 32d atomic write).
