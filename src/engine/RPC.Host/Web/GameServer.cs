@@ -15,7 +15,7 @@ namespace RPC.Host.Web;
 public class GameServer
 {
     private readonly HttpListener _listener;
-    private readonly List<WebSocket> _clients = new();
+    private readonly List<ClientConnection> _clients = new();
     private readonly GameState _gameState;
     private readonly CancellationTokenSource _cts = new();
     private readonly JsonSerializerOptions _jsonOptions;
@@ -177,11 +177,8 @@ public class GameServer
 
     private async Task HandleStaticFile(HttpListenerContext context, string path)
     {
-        // Map /app to the built frontend directory
-        // AppContext.BaseDirectory is bin/Debug/net9.0/, so we need to go up 5 levels to reach src/client/dist
         var clientDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "client", "dist");
 
-        // Map URL path to file path
         string relativePath;
         if (path == "/app" || path == "/app/")
         {
@@ -193,14 +190,12 @@ public class GameServer
         }
         else
         {
-            // Handle /assets/, /vite.svg, etc. directly
             relativePath = path.TrimStart('/');
         }
         if (string.IsNullOrEmpty(relativePath)) relativePath = "index.html";
 
         var filePath = Path.Combine(clientDir, relativePath);
 
-        // Security check - ensure we're not escaping the client dir
         var fullClientDir = Path.GetFullPath(clientDir);
         var fullFilePath = Path.GetFullPath(filePath);
         if (!fullFilePath.StartsWith(fullClientDir))
@@ -212,7 +207,6 @@ public class GameServer
 
         if (!File.Exists(filePath))
         {
-            // Try index.html for SPA routing
             filePath = Path.Combine(clientDir, "index.html");
             if (!File.Exists(filePath))
             {
@@ -222,7 +216,6 @@ public class GameServer
             }
         }
 
-        // Set content type
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
         context.Response.ContentType = extension switch
         {
@@ -236,7 +229,6 @@ public class GameServer
             _ => "application/octet-stream"
         };
 
-        // Inject SERVER_PORT into HTML files
         if (extension == ".html")
         {
             var content = await File.ReadAllTextAsync(filePath);
@@ -262,18 +254,19 @@ public class GameServer
     {
         var wsContext = await context.AcceptWebSocketAsync(null);
         var socket = wsContext.WebSocket;
+        var client = new ClientConnection(socket);
 
         lock (_clients)
         {
-            _clients.Add(socket);
+            _clients.Add(client);
         }
 
-        // Send initial state
-        await SendState(socket);
-
-        var buffer = new byte[4096];
         try
         {
+            await SendHello(client);
+            _ = Task.Run(() => RunHeartbeatLoop(client));
+
+            var buffer = new byte[4096];
             while (socket.State == WebSocketState.Open && !_cts.Token.IsCancellationRequested)
             {
                 using var ms = new MemoryStream();
@@ -291,27 +284,158 @@ public class GameServer
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     var message = Encoding.UTF8.GetString(ms.ToArray());
-                    await HandleMessage(socket, message);
+                    await HandleMessage(client, message);
                 }
             }
         }
         catch (WebSocketException) { }
         finally
         {
+            client.Dispose();
             lock (_clients)
             {
-                _clients.Remove(socket);
+                _clients.Remove(client);
             }
-            socket.Dispose();
         }
     }
 
-    private async Task HandleMessage(WebSocket socket, string message)
+    private async Task RunHeartbeatLoop(ClientConnection client)
     {
         try
         {
-            var action = JsonSerializer.Deserialize<PlayerAction>(message, _jsonOptions);
-            if (action == null) return;
+            while (client.Socket.State == WebSocketState.Open && !_cts.Token.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), _cts.Token);
+                if (client.Socket.State != WebSocketState.Open) break;
+                if (!client.IsReady) continue;
+
+                var pingSeq = client.NextPingSeq();
+                client.LastPingSeq = pingSeq;
+                client.LastPingTime = DateTime.UtcNow;
+                await SendPing(client, pingSeq);
+
+                // Wait up to 2s for pong
+                var pongCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                try
+                {
+                    while (client.Socket.State == WebSocketState.Open && !pongCts.Token.IsCancellationRequested)
+                    {
+                        if (client.LastPongSeq >= pingSeq)
+                            break;
+                        await Task.Delay(100, pongCts.Token);
+                    }
+                }
+                catch (TaskCanceledException) { }
+
+                if (client.LastPongSeq < pingSeq && client.Socket.State == WebSocketState.Open)
+                {
+                    await client.Socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Heartbeat timeout", CancellationToken.None);
+                    break;
+                }
+            }
+        }
+        catch (WebSocketException) { }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task SendHello(ClientConnection client)
+    {
+        var envelope = new ProtocolEnvelope
+        {
+            V = 2,
+            Type = "hello",
+            Seq = client.NextServerSeq(),
+            Payload = new HelloPayload { ProtocolVersion = 2, SessionId = client.SessionId }
+        };
+        await SendEnvelope(client.Socket, envelope);
+    }
+
+    private async Task SendPing(ClientConnection client, int pingSeq)
+    {
+        var envelope = new ProtocolEnvelope
+        {
+            V = 2,
+            Type = "heartbeat.ping",
+            Seq = client.NextServerSeq(),
+            Payload = new HeartbeatPingPayload { PingSeq = pingSeq }
+        };
+        await SendEnvelope(client.Socket, envelope);
+    }
+
+    private async Task SendError(ClientConnection client, string code, string message, bool recoverable, int? ackSeq = null)
+    {
+        var envelope = new ProtocolEnvelope
+        {
+            V = 2,
+            Type = "error",
+            Seq = client.NextServerSeq(),
+            AckSeq = ackSeq,
+            Payload = new ErrorPayload { Code = code, Message = message, Recoverable = recoverable }
+        };
+        await SendEnvelope(client.Socket, envelope);
+    }
+
+    private async Task HandleMessage(ClientConnection client, string message)
+    {
+        ProtocolEnvelope? envelope;
+        try
+        {
+            envelope = JsonSerializer.Deserialize<ProtocolEnvelope>(message, _jsonOptions);
+        }
+        catch (JsonException)
+        {
+            await SendError(client, "malformed_payload", "Malformed JSON envelope", recoverable: true);
+            return;
+        }
+
+        if (envelope == null || envelope.V != 2 || string.IsNullOrEmpty(envelope.Type))
+        {
+            await SendError(client, "malformed_payload", "Invalid envelope: missing version or type", recoverable: true);
+            return;
+        }
+
+        if (envelope.Type == "ready")
+        {
+            client.IsReady = true;
+            await SendState(client);
+            return;
+        }
+
+        if (envelope.Type == "heartbeat.pong")
+        {
+            if (envelope.Payload is JsonElement json && json.TryGetProperty("pingSeq", out var pingSeqEl))
+            {
+                client.LastPongSeq = pingSeqEl.GetInt32();
+            }
+            return;
+        }
+
+        if (!client.IsReady)
+        {
+            await SendError(client, "not_ready", "Client must send ready before other messages", recoverable: true, ackSeq: envelope.Seq);
+            return;
+        }
+
+        if (envelope.Type != "action")
+        {
+            await SendError(client, "invalid_action", $"Unknown message type: {envelope.Type}", recoverable: true, ackSeq: envelope.Seq);
+            return;
+        }
+
+        try
+        {
+            if (envelope.Payload is not JsonElement payloadJson)
+            {
+                await SendError(client, "malformed_payload", "Action payload missing", recoverable: true, ackSeq: envelope.Seq);
+                return;
+            }
+
+            var action = JsonSerializer.Deserialize<PlayerAction>(payloadJson.GetRawText(), _jsonOptions);
+            if (action == null)
+            {
+                await SendError(client, "malformed_payload", "Unable to parse action payload", recoverable: true, ackSeq: envelope.Seq);
+                return;
+            }
 
             bool stateChanged = false;
 
@@ -388,16 +512,19 @@ public class GameServer
                         stateChanged = _gameState.PurchaseVendorItem(itemId);
                     }
                     break;
+                default:
+                    await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
+                    return;
             }
 
             if (stateChanged)
             {
-                await BroadcastState();
+                await BroadcastState(envelope.Seq);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error handling message: {ex}");
+            await SendError(client, "internal_error", $"Internal error processing action: {ex.Message}", recoverable: true, ackSeq: envelope.Seq);
         }
     }
 
@@ -406,7 +533,6 @@ public class GameServer
         var seed = dungeonType.GetHashCode();
         var builder = new DungeonBuilder(seed: seed);
 
-        // Add some basic room segments
         builder.AddSegment(CreateEntranceRoom());
         builder.AddSegment(CreateCorridor());
         builder.AddSegment(CreateChamber());
@@ -493,10 +619,52 @@ public class GameServer
         };
     }
 
-    private async Task SendState(WebSocket socket)
+    private async Task SendState(ClientConnection client)
     {
         var state = CreateStateMessage();
-        var json = JsonSerializer.Serialize(state, _jsonOptions);
+        var envelope = new ProtocolEnvelope
+        {
+            V = 2,
+            Type = "state",
+            Seq = client.NextServerSeq(),
+            Payload = state
+        };
+        await SendEnvelope(client.Socket, envelope);
+    }
+
+    private async Task BroadcastState(int? ackSeq = null)
+    {
+        var state = CreateStateMessage();
+        List<ClientConnection> clients;
+        lock (_clients)
+        {
+            clients = _clients.ToList();
+        }
+
+        foreach (var client in clients)
+        {
+            try
+            {
+                if (client.Socket.State == WebSocketState.Open && client.IsReady)
+                {
+                    var envelope = new ProtocolEnvelope
+                    {
+                        V = 2,
+                        Type = "state",
+                        Seq = client.NextServerSeq(),
+                        AckSeq = ackSeq,
+                        Payload = state
+                    };
+                    await SendEnvelope(client.Socket, envelope);
+                }
+            }
+            catch { }
+        }
+    }
+
+    private async Task SendEnvelope(WebSocket socket, ProtocolEnvelope envelope)
+    {
+        var json = JsonSerializer.Serialize(envelope, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
 
         if (socket.State == WebSocketState.Open)
@@ -509,42 +677,12 @@ public class GameServer
         }
     }
 
-    private async Task BroadcastState()
-    {
-        var state = CreateStateMessage();
-        var json = JsonSerializer.Serialize(state, _jsonOptions);
-        var bytes = Encoding.UTF8.GetBytes(json);
-
-        List<WebSocket> clients;
-        lock (_clients)
-        {
-            clients = _clients.ToList();
-        }
-
-        foreach (var client in clients)
-        {
-            try
-            {
-                if (client.State == WebSocketState.Open)
-                {
-                    await client.SendAsync(
-                        new ArraySegment<byte>(bytes),
-                        WebSocketMessageType.Text,
-                        true,
-                        _cts.Token);
-                }
-            }
-            catch { }
-        }
-    }
-
     private object CreateStateMessage()
     {
         var tiles = new List<object>();
         var explored = new List<object>();
         if (_gameState.CurrentDungeon != null)
         {
-            // Only send visible tiles around player
             var px = _gameState.Player.Position.X;
             var py = _gameState.Player.Position.Y;
             var sendRadius = 8;
@@ -561,7 +699,6 @@ public class GameServer
                 }
             }
 
-            // Send explored tiles for automap
             foreach (var key in _gameState.ExploredTiles)
             {
                 var parts = key.Split(',');
@@ -718,7 +855,6 @@ public class GameServer
             town
         };
 
-        // Clear one-shot combat result after including it in state
         _gameState.ClearCombatResult();
 
         return state;
@@ -738,7 +874,6 @@ public class GameServer
 
     private async Task HandleDungeon(HttpListenerContext context)
     {
-        // Return a sample room segment for testing
         var segment = new
         {
             id = "test_room",
@@ -793,4 +928,57 @@ public class PlayerAction
     public string? DungeonType { get; set; }
     public int? Slot { get; set; }
     public string? TargetId { get; set; }
+}
+
+public class ProtocolEnvelope
+{
+    public int V { get; set; }
+    public string Type { get; set; } = "";
+    public int Seq { get; set; }
+    public int? AckSeq { get; set; }
+    public object? Payload { get; set; }
+}
+
+public class HelloPayload
+{
+    public int ProtocolVersion { get; set; }
+    public string SessionId { get; set; } = "";
+}
+
+public class ErrorPayload
+{
+    public string Code { get; set; } = "";
+    public string Message { get; set; } = "";
+    public bool Recoverable { get; set; }
+}
+
+public class HeartbeatPingPayload
+{
+    public int PingSeq { get; set; }
+}
+
+public class ClientConnection : IDisposable
+{
+    public WebSocket Socket { get; }
+    public string SessionId { get; }
+    public bool IsReady { get; set; }
+    private int _serverSeq = -1;
+    private int _pingSeq = -1;
+    public int LastPingSeq { get; set; } = -1;
+    public DateTime LastPingTime { get; set; } = DateTime.MinValue;
+    public int LastPongSeq { get; set; } = -1;
+
+    public ClientConnection(WebSocket socket)
+    {
+        Socket = socket;
+        SessionId = Guid.NewGuid().ToString("N");
+    }
+
+    public int NextServerSeq() => Interlocked.Increment(ref _serverSeq);
+    public int NextPingSeq() => Interlocked.Increment(ref _pingSeq);
+
+    public void Dispose()
+    {
+        Socket.Dispose();
+    }
 }

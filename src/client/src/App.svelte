@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { gameStore, sendAction } from './stores/gameStore';
+  import { gameStore, sendAction, serverErrorStore } from './stores/gameStore';
   import TownMenu from './ui/TownMenu.svelte';
   import type { PlayerAction } from './types/game';
   import CombatOverlay from './ui/CombatOverlay.svelte';
@@ -12,6 +12,11 @@
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | null = null;
   let gameState = $state<GameState | null>(null);
+  let serverError = $state<{ code: string; message: string; recoverable: boolean } | null>(null);
+
+  serverErrorStore.subscribe((err) => {
+    serverError = err;
+  });
 
   $effect(() => {
     const unsub = gameStore.subscribe(s => { gameState = s; });
@@ -130,6 +135,12 @@
 <main class="game">
   <div bind:this={gameContainer} class="renderer"></div>
   <div class="ui-layer">
+    {#if serverError}
+      <div class="error-toast" role="alert">
+        <span class="error-code">{serverError.code}</span>
+        <span class="error-message">{serverError.message}</span>
+      </div>
+    {/if}
     {#if gameState?.mode !== 'Combat'}
       <header class="top-bar">
         <div class="game-title">The Reach</div>
@@ -285,5 +296,43 @@
 
   .bottom-bar {
     background: rgba(0, 0, 0, 0.8);
+  }
+
+  .error-toast {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    background: rgba(160, 40, 40, 0.95);
+    border: 1px solid #c44;
+    border-radius: 0.5rem;
+    padding: 0.75em 1.25em;
+    display: flex;
+    gap: 0.75em;
+    align-items: center;
+    animation: fadeIn 0.2s ease-out;
+    pointer-events: auto;
+  }
+
+  .error-code {
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #fcc;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.2em 0.5em;
+    border-radius: 0.25em;
+  }
+
+  .error-message {
+    font-size: 0.875rem;
+    color: #fff;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-0.5em); }
+    to { opacity: 1; transform: translateY(0); }
   }
 </style>

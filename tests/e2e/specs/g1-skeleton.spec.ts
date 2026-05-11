@@ -21,19 +21,26 @@ test.describe('G1: Skeleton', () => {
     const captured = await page.evaluate((url) => {
       return new Promise<any[]>((resolve) => {
         const msgs: any[] = [];
+        let clientSeq = 1;
         const ws = new WebSocket(`ws://${new URL(url).host}/`);
         ws.onmessage = (e) => {
-          msgs.push(JSON.parse(e.data));
-          ws.close();
-          resolve(msgs);
+          const envelope = JSON.parse(e.data);
+          msgs.push(envelope);
+          if (envelope.type === 'hello') {
+            ws.send(JSON.stringify({ v: 2, type: 'ready', seq: clientSeq++, payload: {} }));
+          } else if (envelope.type === 'state') {
+            ws.close();
+            resolve(msgs);
+          }
         };
         ws.onerror = () => { ws.close(); resolve([]); };
         setTimeout(() => { ws.close(); resolve(msgs); }, 3000);
       });
     }, serverUrl);
 
-    expect(captured.length).toBeGreaterThan(0);
-    expect(captured[0].type).toBe('state');
-    expect(captured[0].mode).toBeDefined();
+    expect(captured.length).toBeGreaterThanOrEqual(2);
+    expect(captured[0].type).toBe('hello');
+    expect(captured[1].type).toBe('state');
+    expect(captured[1].payload.mode).toBeDefined();
   });
 });

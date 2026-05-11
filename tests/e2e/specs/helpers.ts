@@ -4,7 +4,7 @@ export async function sendWsAction(page: Page, _serverUrl: string, action: any):
   await page.evaluate((act: any) => {
     (window as any).gameClient?.sendAction(act);
   }, action);
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(600);
 }
 
 export async function getPositionText(page: Page): Promise<string> {

@@ -171,3 +171,32 @@ export interface CombatAction {
   abilityId?: string;
   itemId?: string;
 }
+
+// Protocol Envelope v2 types
+
+export interface ProtocolEnvelope {
+  v: number;
+  type: string;
+  seq: number;
+  ackSeq?: number;
+  payload: Record<string, unknown>;
+}
+
+export interface HelloPayload {
+  protocolVersion: number;
+  sessionId: string;
+}
+
+export interface ErrorPayload {
+  code: string;
+  message: string;
+  recoverable: boolean;
+}
+
+export interface HeartbeatPingPayload {
+  pingSeq: number;
+}
+
+export interface HeartbeatPongPayload {
+  pingSeq: number;
+}

@@ -1,16 +1,20 @@
-import type { GameState, PlayerAction } from '../types/game';
+import type { GameState, PlayerAction, ProtocolEnvelope, ErrorPayload } from '../types/game';
 
 export class GameClient {
   private ws: WebSocket | null = null;
   private serverPort: number;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private nextSeq = 1;
+  private isReady = false;
+  private actionQueue: PlayerAction[] = [];
   private onStateCallback: ((state: GameState) => void) | null = null;
   private onConnectCallback: (() => void) | null = null;
   private onDisconnectCallback: (() => void) | null = null;
+  private onErrorCallback: ((error: ErrorPayload) => void) | null = null;
+
 
   constructor(serverPort?: number) {
-    // Priority: explicit port > window.SERVER_PORT > default 8080
     this.serverPort = serverPort || (window as any).SERVER_PORT || 19421;
   }
 
@@ -19,24 +23,18 @@ export class GameClient {
 
     try {
       this.ws = new WebSocket(wsUrl);
-      
+
       this.ws.onopen = () => {
         this.reconnectAttempts = 0;
         this.onConnectCallback?.();
       };
 
       this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'state') {
-            this.onStateCallback?.(data as GameState);
-          }
-        } catch (err) {
-          console.error('Failed to parse message:', err);
-        }
+        this.handleMessage(event.data);
       };
 
-      this.ws.onclose = (event) => {
+      this.ws.onclose = () => {
+        this.isReady = false;
         this.onDisconnectCallback?.();
         this.attemptReconnect();
       };
@@ -47,6 +45,69 @@ export class GameClient {
     } catch (err) {
       console.error('Failed to create WebSocket:', err);
     }
+  }
+
+  private handleMessage(data: string): void {
+    try {
+      const envelope = JSON.parse(data) as ProtocolEnvelope;
+      if (envelope.v !== 2) {
+        console.error('Unsupported protocol version:', envelope.v);
+        return;
+      }
+
+      switch (envelope.type) {
+        case 'hello': {
+          const payload = envelope.payload as { protocolVersion: number; sessionId: string };
+          if (payload.protocolVersion !== 2) {
+            console.error('Unsupported protocol version from server:', payload.protocolVersion);
+            this.ws?.close();
+            return;
+          }
+          this.sendEnvelope('ready', {});
+          break;
+        }
+
+        case 'state': {
+          const wasReady = this.isReady;
+          this.isReady = true;
+          this.onStateCallback?.(envelope.payload as unknown as GameState);
+          if (!wasReady) {
+            this.flushActionQueue();
+          }
+          break;
+        }
+
+        case 'error': {
+          const error = envelope.payload as unknown as ErrorPayload;
+          this.onErrorCallback?.(error);
+          break;
+        }
+
+        case 'heartbeat.ping': {
+          const pingPayload = envelope.payload as { pingSeq: number };
+          this.sendEnvelope('heartbeat.pong', { pingSeq: pingPayload.pingSeq });
+          break;
+        }
+
+        default:
+          console.warn('Unknown envelope type:', envelope.type);
+      }
+    } catch (err) {
+      console.error('Failed to parse message:', err);
+    }
+  }
+
+  private sendEnvelope(type: string, payload: Record<string, unknown>): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
+
+    const envelope: ProtocolEnvelope = {
+      v: 2,
+      type,
+      seq: this.nextSeq++,
+      payload,
+    };
+
+    this.ws.send(JSON.stringify(envelope));
   }
 
   private attemptReconnect(): void {
@@ -65,8 +126,19 @@ export class GameClient {
   }
 
   sendAction(action: PlayerAction): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(action));
+    if (this.isReady) {
+      this.sendEnvelope('action', action as unknown as Record<string, unknown>);
+    } else {
+      this.actionQueue.push(action);
+    }
+  }
+
+  private flushActionQueue(): void {
+    while (this.actionQueue.length > 0) {
+      const action = this.actionQueue.shift();
+      if (action) {
+        this.sendEnvelope('action', action as unknown as Record<string, unknown>);
+      }
     }
   }
 
@@ -80,5 +152,9 @@ export class GameClient {
 
   onDisconnect(callback: () => void): void {
     this.onDisconnectCallback = callback;
+  }
+
+  onError(callback: (error: ErrorPayload) => void): void {
+    this.onErrorCallback = callback;
   }
 }

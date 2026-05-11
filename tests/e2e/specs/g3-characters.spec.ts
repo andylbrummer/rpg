@@ -3,11 +3,16 @@ import { test, expect } from './fixtures';
 async function getState(page: any, serverUrl: string): Promise<any> {
   return page.evaluate((url: string) => {
     return new Promise<any>((resolve) => {
+      let clientSeq = 1;
       const ws = new WebSocket(`ws://${new URL(url).host}/`);
       ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        ws.close();
-        resolve(data);
+        const envelope = JSON.parse(e.data);
+        if (envelope.type === 'hello') {
+          ws.send(JSON.stringify({ v: 2, type: 'ready', seq: clientSeq++, payload: {} }));
+        } else if (envelope.type === 'state') {
+          ws.close();
+          resolve(envelope.payload);
+        }
       };
       ws.onerror = () => { ws.close(); resolve(null); };
       setTimeout(() => { ws.close(); resolve(null); }, 3000);

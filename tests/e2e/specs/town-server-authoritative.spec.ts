@@ -45,11 +45,14 @@ test.describe('Town: server-authoritative state', () => {
     const captured = await page.evaluate((url) => {
       return new Promise<any>((resolve) => {
         const ws = new WebSocket(`ws://${new URL(url).host}/`);
+        let clientSeq = 1;
         ws.onmessage = (e) => {
-          const data = JSON.parse(e.data);
-          if (data.type === 'state') {
+          const envelope = JSON.parse(e.data);
+          if (envelope.type === 'hello') {
+            ws.send(JSON.stringify({ v: 2, type: 'ready', seq: clientSeq++, payload: {} }));
+          } else if (envelope.type === 'state') {
             ws.close();
-            resolve(data);
+            resolve(envelope.payload);
           }
         };
         ws.onerror = () => { ws.close(); resolve(null); };

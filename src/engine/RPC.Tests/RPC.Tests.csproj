@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\RPC.Engine\RPC.Engine.csproj" />
     <ProjectReference Include="..\RPC.Content\RPC.Content.csproj" />
+    <ProjectReference Include="..\RPC.Host\RPC.Host.csproj" />
   </ItemGroup>
 
 </Project>
