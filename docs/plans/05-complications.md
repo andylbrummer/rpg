@@ -86,7 +86,7 @@ The renderer converts this to Three.js geometry. The engine operates on the grid
 
 Alternative: Start with 6 characters and 3+3 in Phase 1. This is more work up front (6 character slots in UI, more complex encounter balancing) but means combat tuning carries forward. The spec's Phase 1.5 was added specifically to bridge this gap.
 
-**Decision needed from you:** 4 characters in Phase 1 (faster to first playable, throwaway balance) or 6 characters (slower, but balance work carries forward)?
+**Decision:** 4 characters in Phase 1, 2+2 formation, with explicit throwaway balance. Phase 1 validates feel and UI flow. Numerical tuning starts in Phase 1.5 with 3+3. This closes C4.
 
 ---
 
@@ -125,7 +125,7 @@ This is simple and O(1) per ability resolution (hash set lookup). The synergy re
 
 With these rates: vendor unlock (25) takes ~3-4 missions. Reaching both faction vendors requires deliberate balancing (~6 missions, mixed). Recovering from hostile (-25) takes ~5-8 missions of repair work.
 
-**Decision needed:** Should a player be able to max both opposed factions in a single campaign? If yes, rates need to be gentler. If no (intended tension), the current rates work.
+**Decision:** No. A player should not be able to max both opposed factions in a single campaign. The reputation system is designed to create tension and force choices. Deliberate balancing (mixed missions, Broker networking) can maintain positive standing with both, but maxing both is impossible without extraordinary investment that costs progress elsewhere. This closes C6.
 
 ---
 

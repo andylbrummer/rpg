@@ -176,6 +176,39 @@ In ironman mode (Phase 3), a total party kill ends the run. The bench exists as 
 
 The game can become unwinnable in ironman mode. This is intentional. The strategic bind means bad bets have consequences. The design floor: if the player has 3+ bench characters and the campaign is before turn 25, recovery is always possible (difficult, but possible). After turn 25 with fewer than 3 bench characters, the game warns the player they're in a fragile state.
 
+## Hollow Heat Meter
+
+Hollows accumulate **heat** through aggressive or illicit actions in towns. Heat is a hidden value (0–100) that affects how town NPCs and guards react to the party.
+
+### Heat Sources
+
+| Action | Heat Gain |
+|---|---|
+| Rob refugees (travel encounter) | +25 |
+| Steal from market | +20 |
+| Pickpocket faction contact | +15 |
+| Assassinate target (Fader branch contract) | +30 |
+| Plant false rumor (Rumor branch) | +10 |
+| Threaten NPC in dialogue | +5 |
+
+### Heat Thresholds
+
+| Heat | Effect |
+|---|---|
+| 0–20 | No effect. |
+| 21–40 | Market prices +10%. Tavern recruits become scarce. |
+| 41–60 | Bureau patrols appear in town. Chance of random search (minor gold loss). |
+| 61–80 | Faction contacts refuse meetings. Bone Clerk reports you to authorities. |
+| 81–100 | Town lockdown. Cannot leave without bribing guards (500g) or fighting through (combat encounter vs town guard). |
+
+### Heat Reduction
+
+- **Lay Low** downtime action: -30 heat per town visit.
+- **Broker connection** (Ashmouth in party): heat decays by 10 per town visit passively.
+- **Bribe** (town UI): -20 heat for 300g. Can repeat.
+- **Campaign turn pass**: -5 heat per turn (natural cooling).
+- Heat does **not** reset between dungeons unless actively reduced.
+
 ## Component Inventory
 
 Physical spell costs are the replacement for mana bars. This makes inventory management a core system, not a convenience feature.
@@ -188,7 +221,7 @@ Physical spell costs are the replacement for mana bars. This makes inventory man
 | **Engine Charges** | Fieldwright | Engine facilities, Fieldwright crafting | 10 |
 | **Ink Vials** | Inkblood | Market purchase, dungeon lore caches | 15 |
 | **Cautery Supplies** | Cauterist | Market purchase, Patron resupply | 12 |
-| **Bloom Samples** | Heretic branch | Bloom sites, Convocation vendors | 5 (unstable, decay after 10 turns) |
+| **Bloom Samples** | Heretic branch | Bloom sites, Convocation vendors | 5 (unstable, decay after 10 dungeon turns) |
 | **Tithe Tokens** | Resurrection, Tithebinder | Compact missions, bloom containment | No stack limit (rare) |
 
 ### Inventory Rules
@@ -198,6 +231,41 @@ Physical spell costs are the replacement for mana bars. This makes inventory man
 - The party shares a 12-slot expedition cache (accessible between combats, not during)
 - Towns have unlimited storage — strategic component management happens at the expedition/town boundary
 - Running out of components mid-dungeon is a real risk. Bonewardens without bone fragments can still use blood (HP) as a fallback at 2x the HP cost. Other classes have no fallback — they're reduced to basic attacks and items.
+
+### Bloom Sample Decay
+
+Bloom samples decay after **10 dungeon turns** — turns spent inside any dungeon, including exploration and combat. Time spent in town, traveling the overworld, or in downtime does **not** count toward decay.
+
+- When a bloom sample decays, it is destroyed and removed from inventory.
+- The player receives a UI notification: "A bloom sample has decayed into inert matter."
+- The **Tend Blooms** downtime action stabilizes one bloom sample, preventing all further decay on that sample for the remainder of the campaign.
+
+## Inkblood Memory Recovery
+
+Inkblood spell costs paid in memory cause temporary stat reductions. These reductions recover under the following conditions:
+
+- **Rest** downtime action (town): Clears all temporary memory penalties.
+- **Dungeon rest** (risky): If the party chooses to rest in a dungeon (not a town), each Inkblood recovers 50% of accumulated memory penalty. Resting in a dungeon costs 1 campaign turn and has a 25% chance of triggering a random encounter during the rest.
+- Memory penalties persist across combats within the same dungeon until recovered.
+
+Over-casting (casting while already at maximum memory debt) causes **permanent** stat loss. The UI warns the player when approaching this threshold.
+
+## Tithe Obligations
+
+All characters owe a bone tithe to the Ossuary Compact as a condition of operating in the Reach. This is a background system, not a player choice.
+
+### Tithe Rules
+
+- **Frequency:** Once per campaign act (turns 1, 15, 25).
+- **Cost:** 1 Tithe Token per 3 active party members (round up). So a party of 6 owes 2 tokens; a party of 4 owes 2 tokens.
+- **Payment:** At the Bone Clerk in any town. Automatic prompt when entering town if tithe is due.
+- **Consequences of non-payment:**
+  - -10 Ossuary Compact reputation per unpaid token.
+  - Bonewarden spell costs increase by 50% (the Compact restricts fragment supply).
+  - Compact contacts refuse interaction until debt is cleared.
+  - Debt accumulates; paying later requires full back-payment plus a 25% penalty in gold.
+
+Tithe Tokens are earned through Compact missions, bloom containment work, and as rare dungeon loot. A typical campaign yields 6–8 tokens total.
 
 ## Class Interaction Notes
 

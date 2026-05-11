@@ -13,6 +13,9 @@ A first-person party-based dungeon crawler for the browser. Grim fantasy, factio
 7. [Dungeon Design](07-dungeon-design.md) — Eight dungeon templates, procedural assembly, and room segment system
 8. [Overworld & Exploration](08-overworld-and-exploration.md) — Node-based travel, towns, time system, and information economy
 9. [MVP Phases](09-mvp-phases.md) — Three implementation phases with validation criteria
+10. [Settings & Input](10-settings-and-input.md) — Keybindings, display options, accessibility, and input architecture
+11. [Action Log & Epilogue](11-action-log-and-epilogue.md) — Structured event logging for epilogue generation and analytics
+12. [Secret Discovery](12-secret-discovery.md) — Hidden doors, breakable walls, and detection mechanics
 
 ## Status
 
@@ -28,3 +31,6 @@ A first-person party-based dungeon crawler for the browser. Grim fantasy, factio
 - **07:** Specified Underway procedural variation; added room segment data format
 - **08:** Defined overworld encounter resolution types; added rumor verification mechanics; added closing window signal system
 - **09:** Added Phase 1.5 (minimum viable strategy); scoped faction AI as state machines; added LLM campaign generation data model and validation layer; added content library format notes; added audio direction
+- **10:** Settings and input system design; accessibility framework from Phase 1
+- **11:** Action log schema and epilogue generation pipeline (template + LLM)
+- **12:** Secret discovery mechanics with class-based bypass and data model

@@ -9,9 +9,20 @@ Each campaign contains 5-8 dungeons, drawn from a library of authored dungeon te
 - First-person low-poly 3D, grid-based movement (step/turn)
 - Cardinal directions: forward, back, strafe left/right, turn left/right
 - Automap fills in as you explore
-- Secret doors, hidden passages, environmental puzzles
+- Secret doors, hidden passages, environmental puzzles (see **Secret Discovery** design doc)
 - The Cartography faction's maps can reveal sections in advance
 - Marcher (Pathfinder) class detects hidden features at greater range
+
+## Secret Discovery
+
+Secrets (hidden doors, breakable walls, concealed compartments) are authored in room segment data and discovered through a layered system:
+
+1. **Passive proximity detection** — automatic roll when near a secret.
+2. **Explicit search** — player-initiated action costing a dungeon turn.
+3. **Class abilities** — guaranteed discovery for certain classes/branches.
+4. **Triggered discovery** — documents, enemy behavior, or area damage revealing secrets.
+
+See `docs/design/12-secret-discovery.md` for the full specification including detection math, data model, and automap integration.
 
 ## Dungeon Templates
 
