@@ -95,6 +95,45 @@ export interface CombatResult {
   roundCount: number;
 }
 
+export interface MissionOffer {
+  id: string;
+  title: string;
+  description: string;
+  minLevel: number;
+  rewards: string[];
+}
+
+export interface VendorItem {
+  itemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export interface TavernRecruit {
+  id: string;
+  name: string;
+  classId: string;
+  level: number;
+  baseStats: {
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    willpower: number;
+  };
+  cost: number;
+}
+
+export interface TownState {
+  currentTownId: string;
+  availableMissions: MissionOffer[];
+  vendorStock: VendorItem[];
+  factionContacts: string[];
+  tavernRoster: TavernRecruit[];
+  viewedMissions: string[];
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -105,6 +144,7 @@ export interface GameState {
   party: PartyMember[];
   combat?: CombatState;
   combatResult?: CombatResult;
+  town?: TownState;
 }
 
 export type PlayerAction =
@@ -119,7 +159,10 @@ export type PlayerAction =
   | { type: 'return_to_town' }
   | { type: 'save_game' }
   | { type: 'reset_game' }
-  | { type: 'swap_row'; slot: number };
+  | { type: 'swap_row'; slot: number }
+  | { type: 'tavern_recruit'; targetId: string }
+  | { type: 'mission_accept'; targetId: string }
+  | { type: 'vendor_purchase'; targetId: string };
 
 export interface CombatAction {
   actorId: string;

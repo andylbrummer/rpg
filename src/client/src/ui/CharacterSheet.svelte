@@ -27,7 +27,6 @@
 
   function getItemName(itemId: string | null): string {
     if (!itemId) return 'Empty';
-    // TODO: lookup from client-side item registry when available
     return itemId;
   }
 

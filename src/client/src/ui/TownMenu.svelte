@@ -8,9 +8,21 @@
     onSave: () => void;
     onReset: () => void;
     onSwapRow: (slot: number) => void;
+    onTavernRecruit: (id: string) => void;
+    onMissionAccept: (id: string) => void;
+    onVendorPurchase: (id: string) => void;
   }
 
-  let { gameState, onEnterDungeon, onSave, onReset, onSwapRow }: Props = $props();
+  let {
+    gameState,
+    onEnterDungeon,
+    onSave,
+    onReset,
+    onSwapRow,
+    onTavernRecruit,
+    onMissionAccept,
+    onVendorPurchase
+  }: Props = $props();
 
   let selectedCharacter = $state<string | null>(null);
   let sheetMember = $state<PartyMember | null>(null);
@@ -21,9 +33,18 @@
     { id: 'crypt', name: 'Crypt of Whispers', level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
   ];
 
+  const classColors: Record<string, string> = {
+    bonewarden: '#8B7355',
+    stillblade: '#6B8E9F',
+    cauterist: '#B85C38',
+    hollow: '#6B6B6B',
+  };
+
   function selectCharacter(name: string) {
     selectedCharacter = selectedCharacter === name ? null : name;
   }
+
+  const town = $derived(gameState?.town);
 </script>
 
 <div class="town-menu">
@@ -64,6 +85,71 @@
             </div>
           </div>
         {/each}
+      </div>
+
+      <div class="town-services">
+        <h2>Tavern</h2>
+        <div class="service-list">
+          {#each town?.tavernRoster || [] as recruit (recruit.id)}
+            <div class="service-item">
+              <div class="recruit-header">
+                <span class="recruit-name">{recruit.name}</span>
+                <span class="recruit-class" style="color: {classColors[recruit.classId] || '#888'}">
+                  {recruit.classId}
+                </span>
+                <span class="recruit-level">Lv.{recruit.level}</span>
+              </div>
+              <div class="recruit-cost">{recruit.cost}g</div>
+              <button
+                type="button"
+                class="action-btn"
+                onclick={() => onTavernRecruit(recruit.id)}
+              >
+                Recruit
+              </button>
+            </div>
+          {:else}
+            <div class="empty-state">No recruits available.</div>
+          {/each}
+        </div>
+
+        <h2>Missions</h2>
+        <div class="service-list">
+          {#each town?.availableMissions || [] as mission (mission.id)}
+            <div class="service-item">
+              <div class="mission-title">{mission.title}</div>
+              <div class="mission-desc">{mission.description}</div>
+              <button
+                type="button"
+                class="action-btn"
+                onclick={() => onMissionAccept(mission.id)}
+              >
+                Accept
+              </button>
+            </div>
+          {:else}
+            <div class="empty-state">No missions available.</div>
+          {/each}
+        </div>
+
+        <h2>Vendor</h2>
+        <div class="service-list">
+          {#each town?.vendorStock || [] as item (item.itemId)}
+            <div class="service-item">
+              <div class="item-name">{item.name}</div>
+              <div class="item-price">{item.price}g (x{item.quantity})</div>
+              <button
+                type="button"
+                class="action-btn"
+                onclick={() => onVendorPurchase(item.itemId)}
+              >
+                Buy
+              </button>
+            </div>
+          {:else}
+            <div class="empty-state">No items in stock.</div>
+          {/each}
+        </div>
       </div>
     </div>
 
@@ -238,6 +324,109 @@
 
   .view-sheet-btn:hover {
     background: rgba(68, 170, 255, 0.25);
+  }
+
+  .town-services {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+
+  .town-services h2 {
+    margin: 0;
+    font-size: clamp(0.875rem, 2vw, 1.1rem);
+    color: #ccc;
+  }
+
+  .service-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .service-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 0.0625em solid #333;
+    border-radius: 0.25rem;
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
+    color: #aaa;
+  }
+
+  .recruit-header {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .recruit-name {
+    color: #eee;
+    font-weight: bold;
+  }
+
+  .recruit-class {
+    text-transform: capitalize;
+  }
+
+  .recruit-level {
+    color: #d4a84b;
+  }
+
+  .recruit-cost,
+  .item-price {
+    color: #d4a84b;
+    font-weight: bold;
+    min-width: 3rem;
+    text-align: right;
+  }
+
+  .mission-title,
+  .item-name {
+    color: #eee;
+    font-weight: bold;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .mission-desc {
+    color: #888;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .action-btn {
+    padding: 0.15rem 0.375rem;
+    background: rgba(68, 170, 68, 0.15);
+    border: 0.0625em solid #44aa44;
+    border-radius: 0.2rem;
+    color: #88cc88;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .action-btn:hover {
+    background: rgba(68, 170, 68, 0.3);
+  }
+
+  .empty-state {
+    padding: 0.5rem;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
   }
 
   .actions-panel {

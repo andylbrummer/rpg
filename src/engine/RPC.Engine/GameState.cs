@@ -3,6 +3,7 @@ using RPC.Engine.Combat;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Party;
+using RPC.Engine.Town;
 
 namespace RPC.Engine;
 
@@ -13,6 +14,7 @@ public class GameState
     public GameMode Mode { get; set; } = GameMode.Exploration;
     public DateTime LastUpdate { get; set; }
     public PartyState Party { get; set; } = new();
+    public TownState Town { get; set; } = new();
     public CombatState? Combat { get; private set; }
     public CombatResult? LastCombatResult { get; private set; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
@@ -25,17 +27,20 @@ public class GameState
     private readonly GameRandom _encounterRng;
     private readonly EncounterTableRegistry? _encounterTables;
     private readonly ClassRegistry? _classRegistry;
+    private readonly int _seed;
     private int _stepsSinceEncounter = 0;
 
     public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null)
     {
         Player = new Player(new Position(32, 32), Direction.North);
         LastUpdate = DateTime.UtcNow;
-        _encounterRng = new GameRandom(seed ?? DateTime.UtcNow.GetHashCode());
+        _seed = seed ?? DateTime.UtcNow.GetHashCode();
+        _encounterRng = new GameRandom(_seed);
         _encounterTables = encounterTables;
         _classRegistry = classRegistry;
         ExploredTiles = new BoundedTileSet(_exploredTilesSet, _exploredTilesOrder, MaxExploredTiles);
         InitializeDefaultParty();
+        InitializeTown();
         Mode = GameMode.Menu; // Start in town/hub
     }
 
@@ -57,6 +62,18 @@ public class GameState
             new Guid("44444444-4444-4444-4444-444444444444"), "Vex", "hollow", 1, 0,
             new BaseStats(4, 6, 3, 4, 4), 11, Equipment.Empty,
             new[] { "shiv", "smoke_bomb" }, 1));
+    }
+
+    private void InitializeTown()
+    {
+        if (Town.TavernRoster.Count == 0)
+        {
+            Town.TavernRoster = TavernRecruitGenerator.GenerateRoster(_seed);
+        }
+        if (string.IsNullOrEmpty(Town.CurrentTownId))
+        {
+            Town.CurrentTownId = "the_reach";
+        }
     }
 
     private readonly HashSet<string> _exploredTilesSet = new();
@@ -156,7 +173,7 @@ public class GameState
             encounter = _encounterTables.RollEncounter(CurrentDungeon.EncounterTableId, _encounterRng);
         }
 
-        if (encounter == null || encounter.Enemies.Length == 0)
+        if (encounter == null)
         {
             encounter = new EncounterDef("random", "Random Encounter", new[]
             {
@@ -279,12 +296,54 @@ public class GameState
         _stepsSinceEncounter = 0;
         Player = new Player(new Position(32, 32), Direction.North);
         ExploredTiles.Clear();
+        Town = new TownState();
         InitializeDefaultParty();
+        InitializeTown();
         LastUpdate = DateTime.UtcNow;
     }
 
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path);
     public bool LoadGame(string? path = null) => Save.SaveSystem.Load(this, path);
+
+    public bool RecruitFromTavern(string recruitId)
+    {
+        var recruit = Town.TavernRoster.FirstOrDefault(r => r.Id == recruitId);
+        if (recruit == null) return false;
+
+        var emptySlot = Array.IndexOf(Party.Members, default);
+        if (emptySlot < 0) return false;
+
+        var maxHp = EffectiveStats.FromBase(recruit.BaseStats, recruit.Level).MaxHp;
+        var character = new CharacterState(
+            Guid.NewGuid(), recruit.Name, recruit.ClassId,
+            recruit.Level, 0, recruit.BaseStats, maxHp,
+            Equipment.Empty, Array.Empty<string>(), 0);
+
+        Party.SetMember(emptySlot, character);
+        Town.TavernRoster.Remove(recruit);
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    public bool AcceptMission(string missionId)
+    {
+        var mission = Town.AvailableMissions.FirstOrDefault(m => m.Id == missionId);
+        if (mission == null) return false;
+
+        Town.AvailableMissions.Remove(mission);
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    public bool PurchaseVendorItem(string itemId)
+    {
+        var item = Town.VendorStock.FirstOrDefault(v => v.ItemId == itemId);
+        if (item == null) return false;
+
+        Town.VendorStock.Remove(item);
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
 }
 
 public enum GameMode

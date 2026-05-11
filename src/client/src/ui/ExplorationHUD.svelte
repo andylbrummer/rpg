@@ -29,9 +29,6 @@
   <div class="hud-main">
     <div class="hud-left">
       <AutoMap {gameState} />
-      <div class="encounter-danger">
-        Danger Level: {gameState?.encounterDanger?.toFixed(1) ?? '0.0'}
-      </div>
     </div>
 
     <div class="hud-center">
@@ -94,14 +91,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
-  }
-
-  .encounter-danger {
-    background: rgba(0, 0, 0, 0.6);
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.25rem;
-    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
-    color: #ff8866;
   }
 
   .hud-center {

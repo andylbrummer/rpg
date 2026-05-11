@@ -2,17 +2,56 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using RPC.Engine.Character;
 using RPC.Engine.Models.Dungeons;
+using RPC.Engine.Town;
 
 namespace RPC.Engine.Save;
 
 public class SaveData
 {
-    public string Version { get; set; } = "1";
+    public string Version { get; set; } = "2";
     public SavePartyMember[] Party { get; set; } = Array.Empty<SavePartyMember>();
     public SavePlayer Player { get; set; } = new();
     public string? CurrentDungeonType { get; set; }
     public string[] ExploredTiles { get; set; } = Array.Empty<string>();
     public string Mode { get; set; } = "Menu";
+    public SaveTownState? Town { get; set; }
+}
+
+public class SaveTownState
+{
+    public string CurrentTownId { get; set; } = "the_reach";
+    public SaveMissionOffer[] AvailableMissions { get; set; } = Array.Empty<SaveMissionOffer>();
+    public SaveVendorItem[] VendorStock { get; set; } = Array.Empty<SaveVendorItem>();
+    public string[] FactionContacts { get; set; } = Array.Empty<string>();
+    public SaveTavernRecruit[] TavernRoster { get; set; } = Array.Empty<SaveTavernRecruit>();
+    public string[] ViewedMissions { get; set; } = Array.Empty<string>();
+}
+
+public class SaveMissionOffer
+{
+    public string Id { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
+    public int MinLevel { get; set; }
+    public string[] Rewards { get; set; } = Array.Empty<string>();
+}
+
+public class SaveVendorItem
+{
+    public string ItemId { get; set; } = "";
+    public string Name { get; set; } = "";
+    public int Price { get; set; }
+    public int Quantity { get; set; }
+}
+
+public class SaveTavernRecruit
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string ClassId { get; set; } = "";
+    public int Level { get; set; }
+    public BaseStats BaseStats { get; set; }
+    public int Cost { get; set; }
 }
 
 public class SavePartyMember
@@ -76,7 +115,40 @@ public static class SaveSystem
             },
             CurrentDungeonType = state.CurrentDungeonType,
             ExploredTiles = state.ExploredTiles.AsEnumerable().ToArray(),
-            Mode = state.Mode.ToString()
+            Mode = state.Mode.ToString(),
+            Town = new SaveTownState
+            {
+                CurrentTownId = state.Town.CurrentTownId,
+                AvailableMissions = state.Town.AvailableMissions
+                    .Select(m => new SaveMissionOffer
+                    {
+                        Id = m.Id,
+                        Title = m.Title,
+                        Description = m.Description,
+                        MinLevel = m.MinLevel,
+                        Rewards = m.Rewards
+                    }).ToArray(),
+                VendorStock = state.Town.VendorStock
+                    .Select(v => new SaveVendorItem
+                    {
+                        ItemId = v.ItemId,
+                        Name = v.Name,
+                        Price = v.Price,
+                        Quantity = v.Quantity
+                    }).ToArray(),
+                FactionContacts = state.Town.FactionContacts.ToArray(),
+                TavernRoster = state.Town.TavernRoster
+                    .Select(r => new SaveTavernRecruit
+                    {
+                        Id = r.Id,
+                        Name = r.Name,
+                        ClassId = r.ClassId,
+                        Level = r.Level,
+                        BaseStats = r.BaseStats,
+                        Cost = r.Cost
+                    }).ToArray(),
+                ViewedMissions = state.Town.ViewedMissions.ToArray()
+            }
         };
 
         var dir = Path.GetDirectoryName(path);
@@ -99,9 +171,9 @@ public static class SaveSystem
             var data = JsonSerializer.Deserialize<SaveData>(json, Options);
             if (data == null) return false;
 
-            if (data.Version != "1")
+            if (data.Version != "1" && data.Version != "2")
             {
-                Console.Error.WriteLine($"Save version {data.Version} not supported (expected 1)");
+                Console.Error.WriteLine($"Save version {data.Version} not supported (expected 1 or 2)");
                 return false;
             }
 
@@ -142,6 +214,23 @@ public static class SaveSystem
             // Restore mode
             if (Enum.TryParse<GameMode>(data.Mode, out var mode))
                 state.Mode = mode;
+
+            // Restore town state
+            if (data.Town != null)
+            {
+                state.Town.CurrentTownId = data.Town.CurrentTownId;
+                state.Town.AvailableMissions = data.Town.AvailableMissions
+                    .Select(m => new MissionOffer(m.Id, m.Title, m.Description, m.MinLevel, m.Rewards))
+                    .ToList();
+                state.Town.VendorStock = data.Town.VendorStock
+                    .Select(v => new VendorItem(v.ItemId, v.Name, v.Price, v.Quantity))
+                    .ToList();
+                state.Town.FactionContacts = data.Town.FactionContacts.ToList();
+                state.Town.TavernRoster = data.Town.TavernRoster
+                    .Select(r => new TavernRecruit(r.Id, r.Name, r.ClassId, r.Level, r.BaseStats, r.Cost))
+                    .ToList();
+                state.Town.ViewedMissions = data.Town.ViewedMissions.ToList();
+            }
 
             return true;
         }

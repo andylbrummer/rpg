@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { Character } from '../types/game';
+  import type { PartyMember } from '../types/game';
 
   interface Props {
-    party: Character[];
+    party: PartyMember[];
   }
 
   let { party }: Props = $props();

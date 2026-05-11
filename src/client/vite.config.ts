@@ -6,7 +6,7 @@ const suppressViteClientErrors = () => ({
   name: 'suppress-vite-client-errors',
   transformIndexHtml: {
     order: 'post',
-    handler(html) {
+    handler(html: string) {
       return html.replace(
         /<script type="module" src="\/\@vite\/client"><\/script>/,
         '<script type="module">/* vite client suppressed */</script>'

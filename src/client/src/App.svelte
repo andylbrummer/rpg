@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { gameStore, sendAction } from './stores/gameStore';
   import TownMenu from './ui/TownMenu.svelte';
+  import type { PlayerAction } from './types/game';
   import CombatOverlay from './ui/CombatOverlay.svelte';
   import PartyStatusBar from './ui/PartyStatusBar.svelte';
   import ExplorationHUD from './ui/ExplorationHUD.svelte';
@@ -112,6 +113,18 @@
   function handleSwapRow(slot: number) {
     sendAction({ type: 'swap_row', slot });
   }
+
+  function handleTavernRecruit(id: string) {
+    sendAction({ type: 'tavern_recruit', targetId: id });
+  }
+
+  function handleMissionAccept(id: string) {
+    sendAction({ type: 'mission_accept', targetId: id });
+  }
+
+  function handleVendorPurchase(id: string) {
+    sendAction({ type: 'vendor_purchase', targetId: id });
+  }
 </script>
 
 <main class="game">
@@ -136,12 +149,15 @@
           onSave={handleSave}
           onReset={handleReset}
           onSwapRow={handleSwapRow}
+          onTavernRecruit={handleTavernRecruit}
+          onMissionAccept={handleMissionAccept}
+          onVendorPurchase={handleVendorPurchase}
         />
       {/if}
       {#if gameState?.mode === 'Combat'}
         <CombatOverlay
-          combat={gameState.combat}
-          lastResult={gameState.lastCombatResult}
+          combat={gameState.combat ?? null}
+          lastResult={gameState.combatResult ?? null}
           onCombatAction={handleCombatAction}
           onFlee={handleFlee}
         />

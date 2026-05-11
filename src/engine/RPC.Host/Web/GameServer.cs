@@ -366,6 +366,24 @@ public class GameServer
                         stateChanged = true;
                     }
                     break;
+                case "tavern_recruit":
+                    if (action.TargetId is string recruitId)
+                    {
+                        stateChanged = _gameState.RecruitFromTavern(recruitId);
+                    }
+                    break;
+                case "mission_accept":
+                    if (action.TargetId is string missionId)
+                    {
+                        stateChanged = _gameState.AcceptMission(missionId);
+                    }
+                    break;
+                case "vendor_purchase":
+                    if (action.TargetId is string itemId)
+                    {
+                        stateChanged = _gameState.PurchaseVendorItem(itemId);
+                    }
+                    break;
             }
 
             if (stateChanged)
@@ -550,47 +568,49 @@ public class GameServer
             }
         }
 
-        var party = _gameState.Party.Members.Select((c, i) =>
-        {
-            var effective = c.GetEffectiveStats(_itemRegistry);
-            var classDef = _classRegistry.Get(c.ClassId);
-            return new
+        var party = _gameState.Party.Members
+            .Where(c => c.Id != Guid.Empty)
+            .Select((c, i) =>
             {
-                slot = i,
-                name = c.Name,
-                classId = c.ClassId,
-                className = classDef?.Name ?? c.ClassId,
-                color = ClassColors.GetValueOrDefault(c.ClassId, "#888888"),
-                level = c.Level,
-                xp = c.Xp,
-                hp = c.CurrentHp,
-                maxHp = effective.MaxHp,
-                row = c.Row,
-                alive = c.IsAlive,
-                stats = new
+                var effective = c.GetEffectiveStats(_itemRegistry);
+                var classDef = _classRegistry.Get(c.ClassId);
+                return new
                 {
-                    strength = c.BaseStats.Strength,
-                    dexterity = c.BaseStats.Dexterity,
-                    constitution = c.BaseStats.Constitution,
-                    intelligence = c.BaseStats.Intelligence,
-                    willpower = c.BaseStats.Willpower,
+                    slot = i,
+                    name = c.Name,
+                    classId = c.ClassId,
+                    className = classDef?.Name ?? c.ClassId,
+                    color = ClassColors.GetValueOrDefault(c.ClassId, "#888888"),
+                    level = c.Level,
+                    xp = c.Xp,
+                    hp = c.CurrentHp,
                     maxHp = effective.MaxHp,
-                    speed = effective.Speed,
-                    accuracy = effective.Accuracy,
-                    evade = effective.Evade,
-                    power = effective.Power,
-                },
-                equipment = new
-                {
-                    mainHand = c.Equipment.MainHand,
-                    offHand = c.Equipment.OffHand,
-                    armor = c.Equipment.Armor,
-                    accessory1 = c.Equipment.Accessory1,
-                    accessory2 = c.Equipment.Accessory2,
-                },
-                knownAbilities = c.KnownAbilities,
-            };
-        }).ToArray();
+                    row = c.Row,
+                    alive = c.IsAlive,
+                    stats = new
+                    {
+                        strength = c.BaseStats.Strength,
+                        dexterity = c.BaseStats.Dexterity,
+                        constitution = c.BaseStats.Constitution,
+                        intelligence = c.BaseStats.Intelligence,
+                        willpower = c.BaseStats.Willpower,
+                        maxHp = effective.MaxHp,
+                        speed = effective.Speed,
+                        accuracy = effective.Accuracy,
+                        evade = effective.Evade,
+                        power = effective.Power,
+                    },
+                    equipment = new
+                    {
+                        mainHand = c.Equipment.MainHand,
+                        offHand = c.Equipment.OffHand,
+                        armor = c.Equipment.Armor,
+                        accessory1 = c.Equipment.Accessory1,
+                        accessory2 = c.Equipment.Accessory2,
+                    },
+                    knownAbilities = c.KnownAbilities,
+                };
+            }).ToArray();
 
         object? combat = null;
         if (_gameState.Mode == GameMode.Combat && _gameState.Combat != null)
@@ -637,6 +657,44 @@ public class GameServer
             };
         }
 
+        var town = new
+        {
+            currentTownId = _gameState.Town.CurrentTownId,
+            availableMissions = _gameState.Town.AvailableMissions.Select(m => new
+            {
+                id = m.Id,
+                title = m.Title,
+                description = m.Description,
+                minLevel = m.MinLevel,
+                rewards = m.Rewards
+            }).ToArray(),
+            vendorStock = _gameState.Town.VendorStock.Select(v => new
+            {
+                itemId = v.ItemId,
+                name = v.Name,
+                price = v.Price,
+                quantity = v.Quantity
+            }).ToArray(),
+            factionContacts = _gameState.Town.FactionContacts.ToArray(),
+            tavernRoster = _gameState.Town.TavernRoster.Select(r => new
+            {
+                id = r.Id,
+                name = r.Name,
+                classId = r.ClassId,
+                level = r.Level,
+                baseStats = new
+                {
+                    strength = r.BaseStats.Strength,
+                    dexterity = r.BaseStats.Dexterity,
+                    constitution = r.BaseStats.Constitution,
+                    intelligence = r.BaseStats.Intelligence,
+                    willpower = r.BaseStats.Willpower
+                },
+                cost = r.Cost
+            }).ToArray(),
+            viewedMissions = _gameState.Town.ViewedMissions.ToArray()
+        };
+
         var state = new
         {
             type = "state",
@@ -652,7 +710,8 @@ public class GameServer
             hasDungeon = _gameState.CurrentDungeon != null,
             party,
             combat,
-            combatResult
+            combatResult,
+            town
         };
 
         // Clear one-shot combat result after including it in state
@@ -709,4 +768,5 @@ public class PlayerAction
     public CombatAction? Action { get; set; }
     public string? DungeonType { get; set; }
     public int? Slot { get; set; }
+    public string? TargetId { get; set; }
 }
