@@ -10,9 +10,27 @@
 
 ---
 
+## Phase 1.5 Entry / Exit Criteria
+
+**Entry (this phase starts when):**
+- Phase 1 G1–G5 marked ✅ on dartboard.
+- Full Phase 1 Playwright suite green on `build/kimi`.
+- `dotnet test` green across all engine projects.
+- This plan reviewed and Group 5.5 task tickets created in Dart.
+
+**Exit (this phase ends when):**
+- Group 5.5 retrofits ✅ (32a–32g).
+- Groups 6–9 + 9.5 tasks ✅.
+- Full 15-turn campaign playable end-to-end with 6-character party, Bureau/Convocation factions, 5 synergies discoverable, two-node overworld, both dungeon templates.
+- xUnit suite ≥ Phase 1 count + Phase 1.5 deliverables (~30 new unit, ~10 snapshot).
+- Playwright suite passes (Phase 1 18 tests + Phase 1.5 ~6 new = ~24 total).
+- Action log produces a valid template epilogue stub (template wiring; full epilogue in Phase 2).
+
+---
+
 ## Group 5.5: Phase 1 Retrofits
 
-Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted as detail blocks in `docs/plans/01-phase-1.md`) and the shipped Phase 1 build. Each task references the as-built state from Appendix Y and the design gap from Appendix Z.
+Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted as detail blocks in `docs/plans/01-phase-1.md`) and the shipped Phase 1 build. Each task references the as-built state from Appendix Y and the design gap from Appendix Z. **All seven tasks must complete before Group 7 (Factions) starts; Groups 6/8/9 can begin in parallel with Group 5.5 once their specific blocking retrofit lands (see dependency graph).**
 
 ### 32a. Action log infrastructure
 **Layer:** Engine
@@ -33,6 +51,8 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 - Completing a dungeon emits `dungeon_entered` then `dungeon_completed` in order.
 - Killing all enemies emits `encounter_started` + `encounter_won` with matching `encounterId`.
 - Save/load preserves full event ordering. Old v1 saves are not loadable — Phase 1.5 break is acceptable per CC1.
+
+**Tests:** xUnit `ActionLogTests` (emit ordering, payload shape, serialization round-trip). 1 Playwright `action-log-persists.spec.ts` (run combat, save, reload, inspect log via debug endpoint).
 
 **Depends on:** Task 32d (save schema v2).
 
@@ -56,6 +76,8 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 - Killing server triggers reconnect; on reconnect, client receives full `state.snapshot`, no delta catch-up.
 - Malformed JSON → `error.malformed_payload` with `recoverable: true`; client surfaces toast.
 
+**Tests:** xUnit `ProtocolEnvelopeTests` (seq monotonicity, hello sequencing, error code mapping). Playwright `ws-reconnect.spec.ts` (server bounce + heartbeat timeout).
+
 **Depends on:** None (foundational).
 
 ---
@@ -78,7 +100,9 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 - Strafe left/right moves perpendicular to facing without changing facing.
 - Escape during combat targeting cancels the targeting state, not the combat.
 
-**Depends on:** Phase 1 task 9 (movement input loop, ✅ shipped).
+**Tests:** xUnit `GridMovementTests` (strafe direction math, 6-direction coverage). Playwright `strafe-and-cancel.spec.ts` (key chord rebind + strafe + escape in combat).
+
+**Depends on:** Task 32b (envelope).
 
 ---
 
@@ -105,6 +129,8 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 - Save round-trip on v2 yields byte-identical state.
 - Power-cut simulation (kill -9 mid-write) leaves either intact prior v2 or intact new v2, never half-written.
 
+**Tests:** xUnit `SaveSchemaV2Tests` (round-trip, v1 detect-and-delete, atomic write under fault injection). No Playwright (file-system level).
+
 **Depends on:** Task 32a (action log feeds schema).
 
 ---
@@ -129,6 +155,8 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 - Walking corridor tiles still triggers wandering encounters at the existing rate.
 - Resolving a tagged encounter does not re-trigger; fleeing leaves it pending.
 
+**Tests:** xUnit `TileTaggedEncounterTests` (tag respect, wandering fallback, resolve/flee state). Playwright `setpiece-encounter.spec.ts` (walk into tagged tile → expected enemies appear).
+
 **Depends on:** Phase 1 tasks 7, 26 (✅ shipped).
 
 ---
@@ -137,19 +165,22 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 **Layer:** Engine + Client
 **Owner:** Backend lead
 
-**Background:** Phase 1 town is `GameMode.Menu` with all logic in Svelte (`TownMenu.svelte`). Phase 1.5 introduces faction contacts, vendor stock, mission acceptance, downtime allocation — these need server authority. Pure client state will diverge from save/load and break multi-client testing.
+**Background:** Phase 1 town is `GameMode.Menu` with all logic in Svelte (`TownMenu.svelte`). Phase 1.5 introduces faction contacts, vendor stock, mission acceptance, downtime allocation — these need server authority. Pure client state will diverge from save/load and break multi-client testing. **This task ships empty stubs for vendor/mission/contact slots; Group 7 (Factions, tasks 38–42) fills them.**
 
 **Subtasks:**
-1. Move town state to `GameState.Town`: `currentTownId, availableMissions[], vendorStock[], factionContacts[]`.
-2. Client `TownMenu` reads from `state.town` via WebSocket, sends actions (`mission.accept`, `vendor.purchase`).
-3. Tavern recruit roster server-generated, persisted in save.
+1. Move town state to `GameState.Town`: `currentTownId, availableMissions[], vendorStock[], factionContacts[], tavernRoster[]`. All collections empty in this task — populated by Group 7 work.
+2. Client `TownMenu` reads from `state.town` via WebSocket, sends actions (`mission.accept`, `vendor.purchase`, `tavern.recruit`).
+3. Tavern recruit roster server-generated (Phase 1.5 has a fixed roster of 6 candidates; faction-gated recruits land in Group 7).
 4. Resolves the `NaN guard in TownMenu` quality fix (commit c451dbd) at the root — server never sends NaN if party empty since recruitment happens server-side.
 
 **Acceptance criteria:**
 - Refreshing the client mid-town shows same recruits, same mission offers (server authoritative).
 - Saving in town and reloading restores exact town state including which missions were viewed.
+- Empty `availableMissions: []` and `vendorStock: []` render without errors (Group 7 fills later).
 
-**Depends on:** Task 32b (envelope), Tasks 38–42 (faction system, primary Phase 1.5 work).
+**Tests:** xUnit `TownStateTests` (recruit generation determinism, save round-trip). Playwright `town-server-authoritative.spec.ts` (refresh keeps roster).
+
+**Depends on:** Task 32b (envelope).
 
 ---
 
@@ -170,6 +201,8 @@ Retrofit tasks bridge the gap between Phase 1 design intent (originally drafted 
 - Existing Phase 1 dungeons assemble identically from JSON.
 - Adding a new segment to `content/segments/broken-engine/` reflects in next dungeon without recompile.
 - Invalid segment (orphan tile) fails content pack build with file + line.
+
+**Tests:** xUnit `SegmentLoaderTests` (parse, schema validation, dungeon-assembly equivalence against Phase 1 hardcoded segments). Content-pack CLI integration test (invalid segment fails). Playwright `content-hot-reload.spec.ts` (touch JSON → in-game change).
 
 **Depends on:** Phase 1 task 16 (content pack compiler, ✅ shipped).
 
@@ -1125,3 +1158,134 @@ Add these as Playwright + xUnit pairs alongside the Phase 1.5 feature work, not 
 3. Group 7 (Factions) blocked on 32f.
 4. Group 8 (Synergies) blocked on Group 6.
 5. Group 9 (Overworld) parallel with everything after 32b.
+
+---
+
+## Appendix AA — Dart Import Manifest
+
+Drop-in metadata for `dart-query.create_task`. Each row maps to one Dart task. Dartboard `Personal/rpg` assumed; rename if user picks a different board. Size scale: XS (≤2h), S (½d), M (1d), L (2–3d), XL (1wk).
+
+Priority: `critical` (blocks others / required for phase exit), `high` (in critical path), `medium` (parallelizable), `low` (polish).
+
+### Group 5.5 — Phase 1 Retrofits
+
+| Title | Dartboard | Priority | Size | Depends on | Notes |
+|---|---|---|---|---|---|
+| `[1.5] 32a Action log infrastructure` | Personal/rpg | critical | M | 32d | Engine — log emit points wired into shipped systems |
+| `[1.5] 32b WS protocol envelope v2` | Personal/rpg | critical | L | — | Engine + Client — replace flat, no shim |
+| `[1.5] 32c Strafe + cancel input` | Personal/rpg | high | S | 32b | Engine + Client — 6-direction + Esc, buffer cap 2 |
+| `[1.5] 32d Save schema v2 (replace v1)` | Personal/rpg | critical | M | 32a | Engine — detect-and-delete v1, atomic write |
+| `[1.5] 32e Tile-tagged encounter system` | Personal/rpg | high | M | — | Engine — layered over probabilistic wandering |
+| `[1.5] 32f Hub town server-authoritative` | Personal/rpg | critical | L | 32b | Engine + Client — empty stubs for Group 7 |
+| `[1.5] 32g JSON segment loader` | Personal/rpg | high | M | — | Engine + Content — replaces hardcoded `Create*Room` |
+
+### Group 6 — Formation
+
+| Title | Dartboard | Priority | Size | Depends on | Notes |
+|---|---|---|---|---|---|
+| `[1.5] T33 Expand party to 6` | Personal/rpg | high | M | 32d | Save schema 6 slots |
+| `[1.5] T34 Row-dependent abilities` | Personal/rpg | high | S | T33 | Engine — `requiredRow` field |
+| `[1.5] T35 Fieldwright + Inkblood content` | Personal/rpg | high | L | 32g | Content — 12 abilities, 2 classes |
+| `[1.5] T35a Branch choice UI` | Personal/rpg | medium | S | T35b | Client — town-level modal |
+| `[1.5] T35b Branch system engine` | Personal/rpg | high | M | T33 | Engine — level-3 choice gate |
+| `[1.5] T36 Formation UI` | Personal/rpg | high | M | T33, T34 | Client — drag-drop 3+3 |
+| `[1.5] T37 Combat renderer for 6` | Personal/rpg | high | M | T33, T36 | Client — 3 per band, initiative bar 12 slots |
+
+### Group 7 — Factions
+
+| Title | Dartboard | Priority | Size | Depends on | Notes |
+|---|---|---|---|---|---|
+| `[1.5] T38 Reputation system` | Personal/rpg | critical | S | 32f | Engine — `ReputationState`, opposed propagation |
+| `[1.5] T39 Bureau + Convocation content` | Personal/rpg | high | L | T38 | Content — vendors, thresholds, 2 missions each |
+| `[1.5] T40 Reputation-gated vendor` | Personal/rpg | high | M | T38, T39 | Engine + Client — threshold filter |
+| `[1.5] T41 Faction contacts in town` | Personal/rpg | high | M | T38, T39 | Client — NPC dialogue panel |
+| `[1.5] T42 Reputation consequences` | Personal/rpg | high | M | T38, T39, T40 | Engine — opposed deltas, contact lockout |
+
+### Group 8 — Synergy Spark
+
+| Title | Dartboard | Priority | Size | Depends on | Notes |
+|---|---|---|---|---|---|
+| `[1.5] T43 Synergy detection engine` | Personal/rpg | high | M | — | Engine — `SynergyRegistry`, set lookup |
+| `[1.5] T44 5 synergies content` | Personal/rpg | high | S | T35, T43 | Content — JSON registry, hint text |
+| `[1.5] T45 Synergy feedback (3-tier)` | Personal/rpg | high | M | T43, T44 | Client — flash, journal entry, replay |
+| `[1.5] T46 Field Notes journal` | Personal/rpg | medium | M | T45 | Client — Svelte panel + replay |
+
+### Group 9 — Minimal Overworld
+
+| Title | Dartboard | Priority | Size | Depends on | Notes |
+|---|---|---|---|---|---|
+| `[1.5] T47 Two-node overworld` | Personal/rpg | high | M | 32d | Engine — `OverworldState`, travel |
+| `[1.5] T48 Overworld map UI` | Personal/rpg | high | S | T47 | Client — Svelte node graph |
+| `[1.5] T49 Travel encounters` | Personal/rpg | high | M | T47, T38 | Engine + Content — 6 encounters |
+| `[1.5] T50 Turn counter` | Personal/rpg | high | S | T47 | Engine + Client — 15-turn cap |
+| `[1.5] T51 Second dungeon: Bloom Site` | Personal/rpg | high | XL | 32g | Content + Client — 10–15 segments, theme |
+
+### Group 9.5 — Quality of Life
+
+| Title | Dartboard | Priority | Size | Depends on | Notes |
+|---|---|---|---|---|---|
+| `[1.5] T51a Rebindable keys` | Personal/rpg | medium | S | 32c | Client — KDL persistence, conflict detect |
+| `[1.5] T51b Breakable walls + Cartographer detection` | Personal/rpg | medium | M | 32g, T35 | Engine + Client + Content |
+| `[1.5] T51c Bloom sample decay` | Personal/rpg | medium | S | T35 | Engine + Client — 10 dungeon turns |
+| `[1.5] T51d Inkblood memory recovery` | Personal/rpg | medium | S | T35 | Engine + Client |
+| `[1.5] T51e Action log expansion (Phase 1.5 cats)` | Personal/rpg | medium | S | 32a, T38, T49 | Engine — faction + overworld categories |
+
+### Dart payload pattern
+
+For each row above, call:
+```
+mcp__plugin_slop-mcp_slop-mcp__execute_tool(
+  mcp_name="dart-query",
+  tool_name="create_task",
+  arguments={
+    "title": "<from table>",
+    "dartboard": "Personal/rpg",
+    "priority": "<from table>",
+    "size": "<from table>",
+    "description": "<copy task body from plan; ~10-30 lines>",
+    "tags": ["phase-1.5", "<group-id>"]
+  }
+)
+```
+
+Group-id tags: `g5.5-retrofit`, `g6-formation`, `g7-factions`, `g8-synergies`, `g9-overworld`, `g9.5-qol`. These let the Ralph Wiggum loop filter by group.
+
+### Suggested batch ordering for the loop
+
+Week 1 (start the loop here):
+1. 32b, 32a, 32d (foundational; assign in parallel where possible).
+2. 32c, 32e, 32g (start once 32b lands).
+3. 32f (after 32b).
+
+Week 2 (overlaps end of retrofit week):
+- T33, T35b (Group 6 can begin once 32d ships).
+- T38 (Group 7 starts once 32f ships; T39 content authoring can begin in parallel).
+- T43, T47 (Groups 8 and 9 independent of 32f).
+
+Weeks 3–5:
+- T35, T34, T36, T37 (Formation).
+- T39–T42 (Factions).
+- T44–T46 (Synergies).
+- T48–T51 (Overworld).
+
+Weeks 6–7:
+- Group 9.5 QoL passes.
+- Integration playthrough.
+- Playwright suite refresh.
+- Phase 1.5 exit-criteria check.
+
+---
+
+## Ready-to-execute checklist
+
+- [x] Phase 1 build verified ✅ via dartboard.
+- [x] Phase 1.5 retrofit tasks specified (32a–32g) with acceptance + test deliverables.
+- [x] Group 6–9 + 9.5 task specs in place.
+- [x] No back-compat shims or migration paths (CC1 policy).
+- [x] Build learnings captured in Appendix Z.
+- [x] As-built reference snapshot captured in Appendix Y.
+- [x] Dart import manifest ready (Appendix AA).
+- [x] Entry/exit criteria stated.
+- [x] Suggested loop ordering documented.
+
+**Status: ready to import to Dart and start the Ralph Wiggum loop.** Begin with `[1.5] 32b WS protocol envelope v2` and `[1.5] 32a Action log infrastructure` in parallel.
