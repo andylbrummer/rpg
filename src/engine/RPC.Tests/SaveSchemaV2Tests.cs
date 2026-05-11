@@ -174,13 +174,11 @@ public class SaveSchemaV2Tests : IDisposable
 
         Assert.Equal(6, party.GetArrayLength());
 
-        // Default party: 4 members at slots 0,1,3,4
-        Assert.Equal(JsonValueKind.Object, party[0].ValueKind);
-        Assert.Equal(JsonValueKind.Object, party[1].ValueKind);
-        Assert.Equal(JsonValueKind.Null, party[2].ValueKind);
-        Assert.Equal(JsonValueKind.Object, party[3].ValueKind);
-        Assert.Equal(JsonValueKind.Object, party[4].ValueKind);
-        Assert.Equal(JsonValueKind.Null, party[5].ValueKind);
+        // Default party: 6 members at all slots
+        for (int i = 0; i < 6; i++)
+        {
+            Assert.Equal(JsonValueKind.Object, party[i].ValueKind);
+        }
     }
 
     [Fact]

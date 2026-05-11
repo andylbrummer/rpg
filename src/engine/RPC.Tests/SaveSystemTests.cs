@@ -45,7 +45,7 @@ public class SaveSystemTests : IDisposable
         Assert.Equal(gs.Player.Facing, gs2.Player.Facing);
         Assert.Equal(gs.ExploredTiles.Count, gs2.ExploredTiles.Count);
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 6; i++)
         {
             var original = gs.Party.Members[i];
             var loadedMember = gs2.Party.Members[i];
@@ -100,7 +100,7 @@ public class SaveSystemTests : IDisposable
         var loaded = gs.LoadGame(_testSavePath);
 
         Assert.True(loaded);
-        var member = gs.Party.Members[2];
+        var member = gs.Party.Members[3];
         Assert.True(member.Level >= 1, $"Level should be >= 1, was {member.Level}");
         Assert.True(member.Xp >= 0, $"Xp should be >= 0, was {member.Xp}");
         Assert.True(member.CurrentHp >= 0, $"CurrentHp should be >= 0, was {member.CurrentHp}");
@@ -138,7 +138,7 @@ public class SaveSystemTests : IDisposable
         var loaded = gs.LoadGame(_testSavePath);
 
         Assert.True(loaded);
-        var member = gs.Party.Members[2];
+        var member = gs.Party.Members[3];
         Assert.True(member.Row is 0 or 1, $"Row should be 0 or 1, was {member.Row}");
     }
 

@@ -30,18 +30,20 @@ test.describe('G3: Characters', () => {
     const state = await getState(page, serverUrl);
     expect(state).not.toBeNull();
     expect(state.party).toBeDefined();
-    expect(state.party.length).toBe(4);
+    expect(state.party.length).toBe(6);
 
     const names = state.party.map((m: any) => m.name);
     expect(names).toContain('Kael');
     expect(names).toContain('Sera');
     expect(names).toContain('Mira');
     expect(names).toContain('Vex');
+    expect(names).toContain('Nyx');
+    expect(names).toContain('Orin');
   });
 
   test('party members have HP and maxHP', async ({ page, serverUrl }) => {
     const state = await getState(page, serverUrl);
-    expect(state.party.length).toBe(4);
+    expect(state.party.length).toBe(6);
 
     for (const member of state.party) {
       expect(member.hp).toBeGreaterThan(0);
@@ -59,7 +61,7 @@ test.describe('G3: Characters', () => {
     expect(classes).toContain('hollow');
 
     const rows = state.party.map((m: any) => m.row);
-    expect(rows.filter((r: number) => r === 0).length).toBe(2); // 2 front
-    expect(rows.filter((r: number) => r === 1).length).toBe(2); // 2 back
+    expect(rows.filter((r: number) => r === 0).length).toBe(3); // 3 front
+    expect(rows.filter((r: number) => r === 1).length).toBe(3); // 3 back
   });
 });

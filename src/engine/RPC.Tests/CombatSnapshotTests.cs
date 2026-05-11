@@ -137,4 +137,83 @@ public class CombatSnapshotTests
         Assert.False(RangeBands.InRange(enemy, backPlayer, "melee"));
         Assert.True(RangeBands.InRange(enemy, backPlayer, "far"));
     }
+
+    [Fact]
+    public void Snapshot_SixCharParty_ToVictory()
+    {
+        var party = new PartyState();
+        party.SetMember(0, MakeChar("Alpha", 40, 8, 0));
+        party.SetMember(1, MakeChar("Beta", 35, 7, 0));
+        party.SetMember(2, MakeChar("Gamma", 30, 6, 0));
+        party.SetMember(3, MakeChar("Delta", 25, 5, 1));
+        party.SetMember(4, MakeChar("Epsilon", 25, 5, 1));
+        party.SetMember(5, MakeChar("Zeta", 20, 4, 1));
+
+        var encounter = new EncounterDef("e1", "Test", new[] { new EnemySpawn("rat", 3) });
+        var state = CombatEngine.Enter(party, encounter, new GameRandom(5));
+        var rng = new GameRandom(5);
+
+        int steps = 0;
+        while (!state.IsFinished && steps < 200)
+        {
+            var actor = state.CurrentActor;
+            if (actor?.IsPlayer == true)
+            {
+                var target = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                state = CombatEngine.Tick(state,
+                    new CombatAction(actor.Value.Id, ActionType.Attack, target.Id, null, null), rng);
+            }
+            else
+            {
+                state = CombatEngine.Tick(state, null, rng);
+            }
+            steps++;
+        }
+
+        Assert.Equal(CombatPhase.Ended, state.Phase);
+        Assert.Contains("Victory", state.Log.Last().Message);
+    }
+
+    [Fact]
+    public void Snapshot_ThreeEnemyGroups_MeleeBand_CombatResolves()
+    {
+        var party = new PartyState();
+        party.SetMember(0, MakeChar("Tank", 60, 5, 0));
+        party.SetMember(1, MakeChar("Dps", 40, 8, 0));
+
+        // Three enemy groups all in melee band (row 0)
+        var encounter = new EncounterDef("e1", "Test", new[]
+        {
+            new EnemySpawn("rat", 1, 0),
+            new EnemySpawn("goblin", 1, 0),
+            new EnemySpawn("wolf", 1, 0)
+        });
+
+        var state = CombatEngine.Enter(party, encounter, new GameRandom(11));
+        var rng = new GameRandom(11);
+
+        int steps = 0;
+        while (!state.IsFinished && steps < 200)
+        {
+            var actor = state.CurrentActor;
+            if (actor?.IsPlayer == true)
+            {
+                var target = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                state = CombatEngine.Tick(state,
+                    new CombatAction(actor.Value.Id, ActionType.Attack, target.Id, null, null), rng);
+            }
+            else
+            {
+                state = CombatEngine.Tick(state, null, rng);
+            }
+            steps++;
+        }
+
+        Assert.Equal(CombatPhase.Ended, state.Phase);
+        Assert.Contains("Victory", state.Log.Last().Message);
+
+        // Verify all three enemy groups were present
+        var enemyNames = state.Combatants.Where(c => !c.IsPlayer).Select(c => c.Name).ToArray();
+        Assert.Equal(3, enemyNames.Length);
+    }
 }

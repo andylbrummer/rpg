@@ -166,13 +166,12 @@ public static class SaveSystem
     private static SaveData BuildSaveData(GameState state)
     {
         var party = new SavePartyMember?[6];
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 6; i++)
         {
             var m = state.Party.Members[i];
             if (m.Id != Guid.Empty)
             {
-                int slot = i < 2 ? i : i + 1;
-                party[slot] = new SavePartyMember
+                party[i] = new SavePartyMember
                 {
                     Id = m.Id,
                     Name = m.Name,
@@ -248,11 +247,10 @@ public static class SaveSystem
 
     private static void RestoreParty(GameState state, SaveData data)
     {
-        for (int i = 0; i < 4; i++)
+        var party = data.Party ?? Array.Empty<SavePartyMember?>();
+        for (int i = 0; i < 6; i++)
         {
-            int slot = i < 2 ? i : i + 1;
-            var party = data.Party ?? Array.Empty<SavePartyMember?>();
-            if (slot < party.Length && party[slot] is { } s)
+            if (i < party.Length && party[i] is { } s)
             {
                 var level = Math.Max(1, s.Level);
                 var xp = Math.Max(0, s.Xp);
