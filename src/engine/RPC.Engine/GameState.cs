@@ -21,6 +21,8 @@ public class GameState
     public CombatResult? LastCombatResult { get; private set; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
+    public Dictionary<string, int> Reputation { get; } = new();
+    public string? SettingsHash { get; set; }
 
     public void ClearCombatResult()
     {
@@ -87,7 +89,7 @@ public class GameState
 
     public BoundedTileSet ExploredTiles { get; private set; } = null!;
 
-    public string? CurrentDungeonType { get; private set; }
+    public string? CurrentDungeonType { get; internal set; }
 
     public void EnterDungeon(Dungeon dungeon, string dungeonType)
     {
@@ -326,6 +328,8 @@ public class GameState
         ActionLog.Clear();
         _actionLogTurn = 0;
         _currentEncounterId = null;
+        Reputation.Clear();
+        SettingsHash = null;
         LastUpdate = DateTime.UtcNow;
     }
 

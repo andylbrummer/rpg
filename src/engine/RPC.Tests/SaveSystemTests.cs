@@ -19,6 +19,8 @@ public class SaveSystemTests : IDisposable
     {
         if (File.Exists(_testSavePath))
             File.Delete(_testSavePath);
+        if (File.Exists(_testSavePath + ".tmp"))
+            File.Delete(_testSavePath + ".tmp");
     }
 
     [Fact]
@@ -71,18 +73,25 @@ public class SaveSystemTests : IDisposable
     {
         var json = """
             {
-              "version": "1",
+              "schemaVersion": 2,
               "party": [
+                null,
+                null,
+                null,
                 {
                   "id": "11111111-1111-1111-1111-111111111111",
                   "name": "Kael", "classId": "bonewarden",
                   "level": -5, "xp": -100,
                   "baseStats": {"strength":4,"dexterity":3,"constitution":5,"intelligence":4,"willpower":4},
                   "currentHp": -999, "equipment": {}, "knownAbilities": [], "row": 0
-                }
+                },
+                null,
+                null
               ],
               "player": { "x": 0, "y": 0, "facing": "North" },
-              "exploredTiles": [], "mode": "Menu"
+              "exploredTiles": [], "mode": "Menu",
+              "reputation": {},
+              "actionLog": []
             }
             """;
         File.WriteAllText(_testSavePath, json);
@@ -91,7 +100,7 @@ public class SaveSystemTests : IDisposable
         var loaded = gs.LoadGame(_testSavePath);
 
         Assert.True(loaded);
-        var member = gs.Party.Members[0];
+        var member = gs.Party.Members[2];
         Assert.True(member.Level >= 1, $"Level should be >= 1, was {member.Level}");
         Assert.True(member.Xp >= 0, $"Xp should be >= 0, was {member.Xp}");
         Assert.True(member.CurrentHp >= 0, $"CurrentHp should be >= 0, was {member.CurrentHp}");
@@ -102,18 +111,25 @@ public class SaveSystemTests : IDisposable
     {
         var json = """
             {
-              "version": "1",
+              "schemaVersion": 2,
               "party": [
+                null,
+                null,
+                null,
                 {
                   "id": "11111111-1111-1111-1111-111111111111",
                   "name": "Kael", "classId": "bonewarden",
                   "level": 1, "xp": 0,
                   "baseStats": {"strength":4,"dexterity":3,"constitution":5,"intelligence":4,"willpower":4},
                   "currentHp": 10, "equipment": {}, "knownAbilities": [], "row": 99
-                }
+                },
+                null,
+                null
               ],
               "player": { "x": 0, "y": 0, "facing": "North" },
-              "exploredTiles": [], "mode": "Menu"
+              "exploredTiles": [], "mode": "Menu",
+              "reputation": {},
+              "actionLog": []
             }
             """;
         File.WriteAllText(_testSavePath, json);
@@ -122,14 +138,14 @@ public class SaveSystemTests : IDisposable
         var loaded = gs.LoadGame(_testSavePath);
 
         Assert.True(loaded);
-        var member = gs.Party.Members[0];
+        var member = gs.Party.Members[2];
         Assert.True(member.Row is 0 or 1, $"Row should be 0 or 1, was {member.Row}");
     }
 
     [Fact]
     public void SaveSystem_Load_ReturnsFalse_OnVersionMismatch()
     {
-        var json = """{"version":"99","party":[],"player":{"x":0,"y":0,"facing":"North"},"exploredTiles":[],"mode":"Menu"}""";
+        var json = """{"schemaVersion":99,"party":[null,null,null,null,null,null],"player":{"x":0,"y":0,"facing":"North"},"exploredTiles":[],"mode":"Menu","reputation":{},"actionLog":[]}""";
         File.WriteAllText(_testSavePath, json);
 
         var gs = new GameState(seed: 1);
