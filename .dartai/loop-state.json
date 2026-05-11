@@ -2,15 +2,12 @@
   "status": "active",
   "dartboard": "Personal/rpg",
   "runner_id": "beagle-ab2-3871289",
-  "runner_email": "claude@anthropic.com",
-  "started_at": "2026-05-11T14:17:57-05:00",
-  "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
     "dart_id": "55PtRe0T0OXI",
     "title": "[1.5] 32c Strafe + cancel input",
-    "iteration": 8
-  },
-  "completed_tasks": 7,
-  "total_tasks": 40,
-  "iteration": 8
+    "iteration": 8,
+    "status": "completed",
+    "phase_completed": "phase-9",
+    "failed_phase": null
+  }
 }

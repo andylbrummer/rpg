@@ -149,8 +149,12 @@ export interface GameState {
 
 export type PlayerAction =
   | { type: 'move_forward' }
+  | { type: 'move_back' }
+  | { type: 'strafe_left' }
+  | { type: 'strafe_right' }
   | { type: 'turn_left' }
   | { type: 'turn_right' }
+  | { type: 'cancel' }
   | { type: 'generate_dungeon' }
   | { type: 'enter_dungeon'; dungeonType: string }
   | { type: 'combat_action'; action: CombatAction }

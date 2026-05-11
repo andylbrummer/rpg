@@ -7,9 +7,10 @@
     lastResult: { victory: boolean; xpGained: number; levelUps: string[]; roundCount: number } | null;
     onCombatAction: (action: string, targetId: string) => void;
     onFlee: () => void;
+    cancelSignal?: number;
   }
 
-  let { combat, lastResult, onCombatAction, onFlee }: Props = $props();
+  let { combat, lastResult, onCombatAction, onFlee, cancelSignal = 0 }: Props = $props();
 
   let selectedTargetId = $state<string | null>(null);
   let selectedAction = $state('Attack');
@@ -24,6 +25,16 @@
   function dismissResult() {
     showResult = false;
   }
+
+  $effect(() => {
+    if (cancelSignal > 0) {
+      if (showResult) {
+        dismissResult();
+      } else {
+        selectedTargetId = null;
+      }
+    }
+  });
 
   function getActionName(action: string): string {
     const names: Record<string, string> = {

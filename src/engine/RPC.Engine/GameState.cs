@@ -143,20 +143,24 @@ public class GameState
         }
     }
 
-    public bool TryMoveForward()
+    public bool TryMoveForward() => ExecuteMove(Player.Facing);
+    public bool TryMoveBack() => ExecuteMove(Player.Facing.Opposite());
+    public bool TryStrafeLeft() => ExecuteMove(Player.Facing.StrafeLeft());
+    public bool TryStrafeRight() => ExecuteMove(Player.Facing.StrafeRight());
+
+    private bool ExecuteMove(Direction dir)
     {
         if (CurrentDungeon == null) return false;
         if (Mode == GameMode.Combat) return false;
 
-        var newPos = Player.Position.Move(Player.Facing);
-        if (CurrentDungeon.CanMoveTo(Player.Position, Player.Facing))
+        var newPos = Player.Position.Move(dir);
+        if (CurrentDungeon.CanMoveTo(Player.Position, dir))
         {
             Player.Position = newPos;
             ExploreAroundPlayer();
             LastUpdate = DateTime.UtcNow;
             _stepsSinceEncounter++;
 
-            // Random encounter check: increases with each step
             var encounterChance = 0.05 + (_stepsSinceEncounter * 0.08);
             if (_encounterRng.Roll(0, 99) < encounterChance * 100)
             {

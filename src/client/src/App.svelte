@@ -13,13 +13,132 @@
   let renderer: DungeonRenderer | null = null;
   let gameState = $state<GameState | null>(null);
   let serverError = $state<{ code: string; message: string; recoverable: boolean } | null>(null);
+  let combatCancelSignal = $state(0);
 
   serverErrorStore.subscribe((err) => {
     serverError = err;
   });
 
+  // Input buffer state
+  const INPUT_BUFFER_SIZE = 2;
+  const REPEAT_INITIAL_MS = 300;
+  const REPEAT_INTERVAL_MS = 200;
+  const PENDING_TIMEOUT_MS = 500;
+
+  let inputBuffer: PlayerAction[] = [];
+  let pendingAction: PlayerAction | null = null;
+  let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+  let heldKeys = new Set<string>();
+  let repeatTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  function clearPending() {
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      pendingTimer = null;
+    }
+    pendingAction = null;
+  }
+
+  function drainBuffer() {
+    if (pendingAction || inputBuffer.length === 0) return;
+    const action = inputBuffer.shift()!;
+    pendingAction = action;
+    sendAction(action);
+    pendingTimer = setTimeout(() => {
+      pendingAction = null;
+      pendingTimer = null;
+      drainBuffer();
+    }, PENDING_TIMEOUT_MS);
+  }
+
+  function enqueueAction(action: PlayerAction) {
+    if (inputBuffer.length < INPUT_BUFFER_SIZE) {
+      inputBuffer.push(action);
+      drainBuffer();
+    }
+  }
+
+  function startRepeat(key: string, action: PlayerAction) {
+    if (repeatTimers.has(key)) return;
+    const timer = setTimeout(() => {
+      repeatTimers.delete(key);
+      if (heldKeys.has(key)) {
+        enqueueAction(action);
+        const intervalTimer = setInterval(() => {
+          if (!heldKeys.has(key)) {
+            clearInterval(intervalTimer);
+            return;
+          }
+          enqueueAction(action);
+        }, REPEAT_INTERVAL_MS);
+        repeatTimers.set(key, intervalTimer);
+      }
+    }, REPEAT_INITIAL_MS);
+    repeatTimers.set(key, timer);
+  }
+
+  function stopRepeat(key: string) {
+    const timer = repeatTimers.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      clearInterval(timer);
+      repeatTimers.delete(key);
+    }
+    heldKeys.delete(key);
+  }
+
+  function stopAllRepeats() {
+    for (const timer of repeatTimers.values()) {
+      clearTimeout(timer);
+      clearInterval(timer);
+    }
+    repeatTimers.clear();
+    heldKeys.clear();
+  }
+
+  function handleCancel() {
+    inputBuffer = [];
+    clearPending();
+    stopAllRepeats();
+    combatCancelSignal++;
+    sendAction({ type: 'cancel' });
+  }
+
+  function keyToAction(key: string): PlayerAction | null {
+    switch (key) {
+      case 'ArrowUp':
+      case 'w':
+      case 'W':
+        return { type: 'move_forward' };
+      case 'ArrowDown':
+      case 's':
+      case 'S':
+        return { type: 'move_back' };
+      case 'a':
+      case 'A':
+        return { type: 'strafe_left' };
+      case 'd':
+      case 'D':
+        return { type: 'strafe_right' };
+      case 'ArrowLeft':
+      case 'q':
+      case 'Q':
+        return { type: 'turn_left' };
+      case 'ArrowRight':
+      case 'e':
+      case 'E':
+        return { type: 'turn_right' };
+      default:
+        return null;
+    }
+  }
+
   $effect(() => {
-    const unsub = gameStore.subscribe(s => { gameState = s; });
+    const unsub = gameStore.subscribe((s) => {
+      gameState = s;
+      clearPending();
+      drainBuffer();
+    });
     return unsub;
   });
 
@@ -37,32 +156,37 @@
 
   onMount(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCancel();
+        return;
+      }
+
+      const action = keyToAction(e.key);
+      if (!action) return;
+
       if (gameState?.mode !== 'Exploration') return;
 
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          e.preventDefault();
-          sendAction({ type: 'move_forward' });
-          break;
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          e.preventDefault();
-          sendAction({ type: 'turn_left' });
-          break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          e.preventDefault();
-          sendAction({ type: 'turn_right' });
-          break;
+      e.preventDefault();
+
+      if (!heldKeys.has(e.key)) {
+        heldKeys.add(e.key);
+        enqueueAction(action);
+        startRepeat(e.key, action);
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      stopRepeat(e.key);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      stopAllRepeats();
+    };
   });
 
   function handleEnterDungeon(type: string) {
@@ -79,7 +203,7 @@
         actorId,
         type: actionType as any,
         targetId: targetId || undefined,
-      }
+      },
     });
   }
 
@@ -171,6 +295,7 @@
           lastResult={gameState.combatResult ?? null}
           onCombatAction={handleCombatAction}
           onFlee={handleFlee}
+          cancelSignal={combatCancelSignal}
         />
       {/if}
       {#if gameState?.mode === 'Exploration'}

@@ -59,4 +59,31 @@ public static class DirectionExtensions
         Direction.West => (float)(-Math.PI / 2),
         _ => 0
     };
+
+    public static Direction Opposite(this Direction dir) => dir switch
+    {
+        Direction.North => Direction.South,
+        Direction.East => Direction.West,
+        Direction.South => Direction.North,
+        Direction.West => Direction.East,
+        _ => dir
+    };
+
+    public static Direction StrafeLeft(this Direction dir) => dir switch
+    {
+        Direction.North => Direction.West,
+        Direction.East => Direction.North,
+        Direction.South => Direction.East,
+        Direction.West => Direction.South,
+        _ => dir
+    };
+
+    public static Direction StrafeRight(this Direction dir) => dir switch
+    {
+        Direction.North => Direction.East,
+        Direction.East => Direction.South,
+        Direction.South => Direction.West,
+        Direction.West => Direction.North,
+        _ => dir
+    };
 }

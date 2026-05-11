@@ -444,12 +444,24 @@ public class GameServer
                 case "move_forward":
                     stateChanged = _gameState.TryMoveForward();
                     break;
+                case "move_back":
+                    stateChanged = _gameState.TryMoveBack();
+                    break;
+                case "strafe_left":
+                    stateChanged = _gameState.TryStrafeLeft();
+                    break;
+                case "strafe_right":
+                    stateChanged = _gameState.TryStrafeRight();
+                    break;
                 case "turn_left":
                     _gameState.TurnLeft();
                     stateChanged = true;
                     break;
                 case "turn_right":
                     _gameState.TurnRight();
+                    stateChanged = true;
+                    break;
+                case "cancel":
                     stateChanged = true;
                     break;
                 case "combat_action":
