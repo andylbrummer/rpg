@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace RPC.Engine.Combat;
 
-public record EncounterTableEntry(int Weight, EnemySpawn[] Enemies, int XpReward = 10);
+public record EncounterTableEntry(string? Id, int Weight, EnemySpawn[] Enemies, int XpReward = 10);
 
 public record EncounterTableDef(string Id, string Name, EncounterTableEntry[] Entries);
 
@@ -21,6 +21,19 @@ public class EncounterTableRegistry
     public EncounterTableDef? Get(string id)
         => _tables.TryGetValue(id, out var def) ? def : null;
 
+    public EncounterDef? GetEncounterById(string encounterId)
+    {
+        foreach (var table in _tables.Values)
+        {
+            foreach (var entry in table.Entries)
+            {
+                if (entry.Id == encounterId)
+                    return new EncounterDef(encounterId, table.Name, entry.Enemies, entry.XpReward);
+            }
+        }
+        return null;
+    }
+
     public EncounterDef RollEncounter(string id, GameRandom rng)
     {
         var table = Get(id);
@@ -36,12 +49,12 @@ public class EncounterTableRegistry
             cumulative += entry.Weight;
             if (roll <= cumulative)
             {
-                return new EncounterDef($"{id}_encounter", table.Name, entry.Enemies, entry.XpReward);
+                return new EncounterDef(entry.Id ?? $"{id}_encounter", table.Name, entry.Enemies, entry.XpReward);
             }
         }
 
         // Fallback to last entry
         var last = table.Entries[^1];
-        return new EncounterDef($"{id}_encounter", table.Name, last.Enemies, last.XpReward);
+        return new EncounterDef(last.Id ?? $"{id}_encounter", table.Name, last.Enemies, last.XpReward);
     }
 }

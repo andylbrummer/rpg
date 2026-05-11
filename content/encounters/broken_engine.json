@@ -3,24 +3,28 @@
   "name": "Broken Engine Encounters",
   "entries": [
     {
+      "id": "be-rat-single",
       "weight": 40,
       "enemies": [
         { "enemyId": "rat", "count": 1, "rowOverride": 0 }
       ]
     },
     {
+      "id": "be-rat-pair",
       "weight": 30,
       "enemies": [
         { "enemyId": "rat", "count": 2, "rowOverride": 0 }
       ]
     },
     {
+      "id": "be-goblin-scout",
       "weight": 20,
       "enemies": [
         { "enemyId": "goblin_scavenger", "count": 1, "rowOverride": 0 }
       ]
     },
     {
+      "id": "be-mixed",
       "weight": 10,
       "enemies": [
         { "enemyId": "rat", "count": 1, "rowOverride": 0 },

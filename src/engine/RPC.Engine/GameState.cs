@@ -36,6 +36,7 @@ public class GameState
     private int _stepsSinceEncounter = 0;
     private int _actionLogTurn = 0;
     private string? _currentEncounterId;
+    private Position? _pendingTaggedEncounterTile;
 
     public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null)
     {
@@ -105,6 +106,7 @@ public class GameState
         CurrentDungeonType = dungeonType;
         ExploredTiles.Clear();
         _stepsSinceEncounter = 0;
+        _pendingTaggedEncounterTile = null;
         Mode = GameMode.Exploration;
         EmitActionLog("dungeon", "dungeon_entered", new Dictionary<string, string> { { "dungeonType", dungeonType } });
         // Find entrance position
@@ -161,6 +163,18 @@ public class GameState
             LastUpdate = DateTime.UtcNow;
             _stepsSinceEncounter++;
 
+            var tile = CurrentDungeon.GetTile(newPos);
+            if (!string.IsNullOrEmpty(tile.EncounterId))
+            {
+                var encounter = _encounterTables?.GetEncounterById(tile.EncounterId);
+                if (encounter != null)
+                {
+                    _pendingTaggedEncounterTile = newPos;
+                    TriggerEncounter(encounter);
+                    return true;
+                }
+            }
+
             var encounterChance = 0.05 + (_stepsSinceEncounter * 0.08);
             if (_encounterRng.Roll(0, 99) < encounterChance * 100)
             {
@@ -188,9 +202,13 @@ public class GameState
     {
         _stepsSinceEncounter = 0;
 
-        if (encounter == null && CurrentDungeon?.EncounterTableId != null && _encounterTables != null)
+        if (encounter == null)
         {
-            encounter = _encounterTables.RollEncounter(CurrentDungeon.EncounterTableId, _encounterRng);
+            var tableId = CurrentDungeon?.WanderingTableId ?? CurrentDungeon?.EncounterTableId;
+            if (tableId != null && _encounterTables != null)
+            {
+                encounter = _encounterTables.RollEncounter(tableId, _encounterRng);
+            }
         }
 
         if (encounter == null)
@@ -210,6 +228,7 @@ public class GameState
         if (Combat.IsFinished)
         {
             Mode = GameMode.Exploration;
+            ClearTaggedEncounterTile(Combat.AllEnemiesDead);
             if (Combat.AllEnemiesDead && _currentEncounterId != null)
             {
                 EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", _currentEncounterId } });
@@ -299,6 +318,8 @@ public class GameState
             Mode = GameMode.Exploration;
             Combat = null;
 
+            ClearTaggedEncounterTile(allEnemiesDead);
+
             if (allEnemiesDead && _currentEncounterId != null)
             {
                 EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", _currentEncounterId } });
@@ -314,6 +335,7 @@ public class GameState
         if (Mode != GameMode.Combat) return;
         Mode = GameMode.Exploration;
         Combat = null;
+        ClearTaggedEncounterTile(resolved: false);
         LastUpdate = DateTime.UtcNow;
     }
 
@@ -356,9 +378,24 @@ public class GameState
         ActionLog.Clear();
         _actionLogTurn = 0;
         _currentEncounterId = null;
+        _pendingTaggedEncounterTile = null;
         Reputation.Clear();
         SettingsHash = null;
         LastUpdate = DateTime.UtcNow;
+    }
+
+    private void ClearTaggedEncounterTile(bool resolved)
+    {
+        if (_pendingTaggedEncounterTile.HasValue && CurrentDungeon != null && resolved)
+        {
+            var pos = _pendingTaggedEncounterTile.Value;
+            if (CurrentDungeon.IsValidPosition(pos))
+            {
+                var tile = CurrentDungeon.Tiles[pos.X, pos.Y];
+                CurrentDungeon.Tiles[pos.X, pos.Y] = tile with { EncounterId = null };
+            }
+        }
+        _pendingTaggedEncounterTile = null;
     }
 
     private void EmitActionLog(string category, string type, Dictionary<string, string> payload)

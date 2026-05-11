@@ -22,7 +22,8 @@ public readonly record struct Tile(
     BorderType South = BorderType.None,
     BorderType East = BorderType.None,
     BorderType West = BorderType.None,
-    int RoomId = -1)
+    int RoomId = -1,
+    string? EncounterId = null)
 {
     public bool IsWalkable => Type is TileType.Floor or TileType.StairsUp or TileType.StairsDown;
 
@@ -51,6 +52,7 @@ public class Dungeon
     public int Height { get; }
     public Tile[,] Tiles { get; }
     public string Name { get; }
+    public string? WanderingTableId { get; set; }
     public string? EncounterTableId { get; set; }
     public List<RoomInfo> Rooms { get; } = new();
 

@@ -1,3 +1,4 @@
+using RPC.Engine.Combat;
 using RPC.Engine.Models.Dungeons;
 
 namespace RPC.Engine.Dungeons;
@@ -17,7 +18,7 @@ public class DungeonBuilder
         _segments.Add(segment);
     }
 
-    public Dungeon Build(string name, int targetRooms = 10)
+    public Dungeon Build(string name, int targetRooms = 10, EncounterTableRegistry? encounterTables = null, string? encounterTableId = null)
     {
         // Simple dungeon generation: place rooms and connect with corridors
         var dungeon = new Dungeon(64, 64, name);
@@ -57,6 +58,9 @@ public class DungeonBuilder
 
         // Derive borders for all walkable tiles
         DeriveBorders(dungeon);
+
+        // Tag encounter slots
+        TagEncounterSlots(dungeon, placedRooms, encounterTables, encounterTableId);
 
         return dungeon;
     }
@@ -168,6 +172,41 @@ public class DungeonBuilder
                 }
 
                 dungeon.Tiles[x, y] = tile;
+            }
+        }
+    }
+
+    private void TagEncounterSlots(Dungeon dungeon, List<PlacedRoom> placedRooms, EncounterTableRegistry? encounterTables, string? encounterTableId)
+    {
+        foreach (var placedRoom in placedRooms)
+        {
+            var forcedId = placedRoom.Segment.Tags
+                .FirstOrDefault(t => t.StartsWith("encounter:"))?
+                .Substring("encounter:".Length);
+
+            if (forcedId != null)
+            {
+                foreach (var exit in placedRoom.Exits)
+                {
+                    var pos = exit.Position;
+                    if (!dungeon.IsValidPosition(pos)) continue;
+                    var tile = dungeon.Tiles[pos.X, pos.Y];
+                    if (tile.IsWalkable)
+                        dungeon.Tiles[pos.X, pos.Y] = tile with { EncounterId = forcedId };
+                }
+            }
+            else if (placedRoom.Segment.Tags.Contains("encounter_slot") && encounterTables != null && !string.IsNullOrEmpty(encounterTableId))
+            {
+                foreach (var exit in placedRoom.Exits)
+                {
+                    var pos = exit.Position;
+                    if (!dungeon.IsValidPosition(pos)) continue;
+                    var tile = dungeon.Tiles[pos.X, pos.Y];
+                    if (!tile.IsWalkable) continue;
+                    var rng = new GameRandom(_random.Next());
+                    var enc = encounterTables.RollEncounter(encounterTableId, rng);
+                    dungeon.Tiles[pos.X, pos.Y] = tile with { EncounterId = enc.Id };
+                }
             }
         }
     }

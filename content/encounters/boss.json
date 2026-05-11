@@ -1,0 +1,13 @@
+{
+  "id": "boss",
+  "name": "Boss Encounters",
+  "entries": [
+    {
+      "id": "boss-encounter-1",
+      "weight": 1,
+      "enemies": [
+        { "enemyId": "bone_archer", "count": 1, "rowOverride": 0 }
+      ]
+    }
+  ]
+}

@@ -163,3 +163,28 @@ A dungeon expedition should contain 4-6 combat encounters before the setpiece. T
 - Standard encounter: 5-7 rounds
 - Setpiece/boss: 8-12 rounds
 - Player turn decision time target: 10-15 seconds (UI should present clear options, not require menu diving)
+
+## Appendix — Wandering Encounter Probability
+
+The per-step wandering encounter chance is a linear escalation model:
+
+```
+chance = baseChance + perStepBonus * stepsSinceEncounter
+```
+
+Current balance values (Phase 1.5):
+
+| Constant | Value | Description |
+|---|---|---|
+| `baseChance` | 0.05 | Initial chance on the first step after an encounter |
+| `perStepBonus` | 0.08 | Added for each step without an encounter |
+| `maxChance` | 1.0 | Implicit cap (roll is 0..99, so chance > 1.0 guarantees trigger) |
+
+**Example pacing:**
+- Step 1: 13%
+- Step 5: 45%
+- Step 12: 101% (guaranteed)
+
+Tagged tiles (setpiece / boss) bypass this formula entirely. They trigger on entry with 100% probability and are cleared on victory. Fleeing leaves the tag intact so the encounter fires again on re-entry.
+
+**Tuning guidance:** Raising `perStepBonus` reduces the maximum "dry" stretch. Lowering it increases tension but risks long boring walks. Keep `baseChance` low so the first few steps after combat feel safe.

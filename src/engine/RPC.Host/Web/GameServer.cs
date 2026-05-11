@@ -549,6 +549,7 @@ public class GameServer
         builder.AddSegment(CreateCorridor());
         builder.AddSegment(CreateChamber());
         builder.AddSegment(CreateDeadEnd());
+        builder.AddSegment(CreateBossRoom());
 
         var dungeonNames = new Dictionary<string, string>
         {
@@ -558,8 +559,10 @@ public class GameServer
         };
 
         var name = dungeonNames.GetValueOrDefault(dungeonType, dungeonType);
-        var dungeon = builder.Build(name, 8);
+        var dungeon = builder.Build(name, 8, _encounterTables, dungeonType);
+        dungeon.WanderingTableId = dungeonType;
         dungeon.EncounterTableId = dungeonType;
+        TagBossTile(dungeon);
         _gameState.EnterDungeon(dungeon, dungeonType);
     }
 
@@ -629,6 +632,52 @@ public class GameServer
                 new() { X = 0, Y = 0, Type = TileType.Floor },
             }
         };
+    }
+
+    private static RoomSegment CreateBossRoom()
+    {
+        return new RoomSegment
+        {
+            Id = "boss_room",
+            Name = "Boss Room",
+            Tags = new() { "encounter:boss-encounter-1" },
+            Tiles = new()
+            {
+                new() { X = 0, Y = 0, Type = TileType.Floor, South = BorderType.Door, IsExit = true, ExitDirection = Direction.South },
+                new() { X = -1, Y = -1, Type = TileType.Floor },
+                new() { X = 0, Y = -1, Type = TileType.Floor },
+                new() { X = 1, Y = -1, Type = TileType.Floor },
+            }
+        };
+    }
+
+    private static void TagBossTile(Dungeon dungeon)
+    {
+        for (int x = 0; x < dungeon.Width; x++)
+        {
+            for (int y = 0; y < dungeon.Height; y++)
+            {
+                if (dungeon.Tiles[x, y].Type == TileType.Floor)
+                {
+                    var entrance = new Position(x, y);
+                    var neighbors = new[]
+                    {
+                        entrance.Move(Direction.South),
+                        entrance.Move(Direction.North),
+                        entrance.Move(Direction.East),
+                        entrance.Move(Direction.West)
+                    };
+                    foreach (var n in neighbors)
+                    {
+                        if (dungeon.IsValidPosition(n) && dungeon.Tiles[n.X, n.Y].Type == TileType.Floor)
+                        {
+                            dungeon.Tiles[n.X, n.Y] = dungeon.Tiles[n.X, n.Y] with { EncounterId = "boss-encounter-1" };
+                            return;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private async Task SendState(ClientConnection client)
