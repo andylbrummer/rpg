@@ -6,12 +6,12 @@
   "started_at": "2026-05-12T10:18:00-05:00",
   "loop_task_id": "oQCov9S7gsKK",
   "current_task": {
-    "dart_id": "sBjNcfSdNjVn",
-    "title": "T77 Six-roll system",
-    "iteration": 1
+    "dart_id": "AmHBh4cyH1O6",
+    "title": "T52 Add Marcher + Ashmouth classes",
+    "iteration": 2
   },
-  "completed_tasks": 0,
+  "completed_tasks": 1,
   "total_tasks": 39,
-  "iteration": 1,
+  "iteration": 2,
   "phase": "Phase 2: Strategic Depth"
 }
