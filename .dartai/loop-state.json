@@ -5,12 +5,8 @@
   "runner_email": "claude@anthropic.com",
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
-  "current_task": {
-    "dart_id": "E3IIt6YaQ8Io",
-    "title": "[1.5] T51 Second dungeon: Bloom Site",
-    "iteration": 15
-  },
+  "current_task": null,
   "completed_tasks": 14,
-  "total_tasks": 40,
+  "total_tasks": 42,
   "iteration": 15
 }
