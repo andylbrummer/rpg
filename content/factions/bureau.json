@@ -22,7 +22,9 @@
     { "itemId": "antitoxin", "name": "Antitoxin", "price": 30, "quantity": 2 },
     { "itemId": "healing_draft", "name": "Healing Draft", "price": 40, "quantity": 2 },
     { "itemId": "iron_helm", "name": "Iron Helm", "price": 25, "quantity": 1 },
-    { "itemId": "scale_mail", "name": "Scale Mail", "price": 35, "quantity": 1 }
+    { "itemId": "scale_mail", "name": "Scale Mail", "price": 35, "quantity": 1 },
+    { "itemId": "wooden_buckler", "name": "Wooden Buckler", "price": 15, "quantity": 1 },
+    { "itemId": "iron_shield", "name": "Iron Shield", "price": 25, "quantity": 1 }
   ],
   "missions": [
     {
@@ -40,6 +42,22 @@
       "minLevel": 1,
       "rewards": ["75g"],
       "repReward": 5
+    },
+    {
+      "id": "mission-bureau-3",
+      "title": "Forensic Recovery",
+      "description": "A Bureau inspection team has gone missing in a compromised zone. Recover their equipment and determine what happened to them.",
+      "minLevel": 3,
+      "rewards": ["110g"],
+      "repReward": 8
+    },
+    {
+      "id": "mission-bureau-4",
+      "title": "Seal the Breach",
+      "description": "A major Engine containment field has failed. Hold the line against bloom-spawn long enough for Bureau engineers to restore the seal.",
+      "minLevel": 5,
+      "rewards": ["140g"],
+      "repReward": 10
     }
   ]
 }

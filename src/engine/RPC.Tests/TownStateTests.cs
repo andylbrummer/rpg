@@ -210,12 +210,12 @@ public class TownStateTests : IDisposable
     }
 
     [Fact]
-    public void FactionContent_Bureau_HasSixVendorItems()
+    public void FactionContent_Bureau_HasEightVendorItems()
     {
         var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
         var bureau = defs.First(d => d.Id == "bureau");
 
-        Assert.Equal(6, bureau.VendorStock.Count);
+        Assert.Equal(8, bureau.VendorStock.Count);
         Assert.All(bureau.VendorStock, item =>
         {
             Assert.False(string.IsNullOrEmpty(item.ItemId));
@@ -225,12 +225,12 @@ public class TownStateTests : IDisposable
     }
 
     [Fact]
-    public void FactionContent_Convocation_HasSixVendorItems()
+    public void FactionContent_Convocation_HasEightVendorItems()
     {
         var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
         var convocation = defs.First(d => d.Id == "convocation");
 
-        Assert.Equal(6, convocation.VendorStock.Count);
+        Assert.Equal(8, convocation.VendorStock.Count);
         Assert.All(convocation.VendorStock, item =>
         {
             Assert.False(string.IsNullOrEmpty(item.ItemId));
@@ -313,10 +313,10 @@ public class TownStateTests : IDisposable
         var gs = new GameState(seed: 42);
 
         Assert.Equal(5, gs.Town.FactionContacts.Count);
-        Assert.Equal(16, gs.Town.AvailableMissions.Count);
+        Assert.Equal(20, gs.Town.AvailableMissions.Count);
         Assert.Equal(5, gs.Town.FactionVendors.Count);
-        Assert.Equal(6, gs.Town.FactionVendors.First(v => v.FactionId == "bureau").Stock.Count);
-        Assert.Equal(6, gs.Town.FactionVendors.First(v => v.FactionId == "convocation").Stock.Count);
+        Assert.Equal(8, gs.Town.FactionVendors.First(v => v.FactionId == "bureau").Stock.Count);
+        Assert.Equal(8, gs.Town.FactionVendors.First(v => v.FactionId == "convocation").Stock.Count);
         Assert.Equal(8, gs.Town.FactionVendors.First(v => v.FactionId == "stillness").Stock.Count);
         Assert.Equal(8, gs.Town.FactionVendors.First(v => v.FactionId == "inkblood").Stock.Count);
         Assert.Equal(8, gs.Town.FactionVendors.First(v => v.FactionId == "cartography").Stock.Count);

@@ -49,10 +49,10 @@ test.describe('Faction vendors in town', () => {
     await expect(bureauHeading).not.toHaveClass(/locked-heading/);
 
     const stockItems = page.locator('.town-services h2:has-text("Bureau Quartermaster") + .service-list .service-item');
-    await expect(stockItems).toHaveCount(6);
+    await expect(stockItems).toHaveCount(8);
 
     const buyButtons = page.locator('.town-services h2:has-text("Bureau Quartermaster") + .service-list .action-btn');
-    await expect(buyButtons).toHaveCount(6);
+    await expect(buyButtons).toHaveCount(8);
   });
 
   test('purchasing faction item reduces gold and adds to inventory', async ({ page, serverUrl }) => {
@@ -95,6 +95,6 @@ test.describe('Faction vendors in town', () => {
     await expect(convocationHeading).toBeVisible();
 
     const stockItems = page.locator('.town-services h2:has-text("Convocation Arcanist") + .service-list .service-item');
-    await expect(stockItems).toHaveCount(6);
+    await expect(stockItems).toHaveCount(8);
   });
 });

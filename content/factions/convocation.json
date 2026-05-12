@@ -22,7 +22,9 @@
     { "itemId": "small_salve", "name": "Small Salve", "price": 20, "quantity": 3 },
     { "itemId": "steadying_drink", "name": "Steadying Drink", "price": 25, "quantity": 2 },
     { "itemId": "cloth_vest", "name": "Cloth Vest", "price": 10, "quantity": 1 },
-    { "itemId": "leather_cap", "name": "Leather Cap", "price": 12, "quantity": 1 }
+    { "itemId": "leather_cap", "name": "Leather Cap", "price": 12, "quantity": 1 },
+    { "itemId": "hollow_dagger", "name": "Hollow Dagger", "price": 35, "quantity": 1 },
+    { "itemId": "restoration_balm", "name": "Restoration Balm", "price": 80, "quantity": 1 }
   ],
   "missions": [
     {
@@ -40,6 +42,22 @@
       "minLevel": 1,
       "rewards": ["60g"],
       "repReward": 5
+    },
+    {
+      "id": "mission-convocation-3",
+      "title": "Live Subjects",
+      "description": "The Convocation needs test subjects exposed to controlled bloom concentrations. Escort volunteers to a research site and keep them alive.",
+      "minLevel": 3,
+      "rewards": ["100g"],
+      "repReward": 8
+    },
+    {
+      "id": "mission-convocation-4",
+      "title": "The Seeding",
+      "description": "Plant engineered bloom spores in a disputed district. Ensure no witnesses survive to tell the Bureau what they saw.",
+      "minLevel": 5,
+      "rewards": ["130g"],
+      "repReward": 10
     }
   ]
 }
