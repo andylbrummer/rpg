@@ -117,6 +117,7 @@ public class SavePartyMember
     public Equipment Equipment { get; set; }
     public string[] KnownAbilities { get; set; } = Array.Empty<string>();
     public int Row { get; set; }
+    public string? BranchChoice { get; set; }
 }
 
 public class SavePlayer
@@ -225,7 +226,8 @@ public static class SaveSystem
                     CurrentHp = m.CurrentHp,
                     Equipment = m.Equipment,
                     KnownAbilities = m.KnownAbilities,
-                    Row = m.Row
+                    Row = m.Row,
+                    BranchChoice = m.BranchChoice
                 };
             }
         }
@@ -345,7 +347,7 @@ public static class SaveSystem
                 state.Party.SetMember(i, new CharacterState(
                     s.Id, s.Name, s.ClassId, level, xp,
                     s.BaseStats, hp, s.Equipment,
-                    s.KnownAbilities, row));
+                    s.KnownAbilities, row, s.BranchChoice));
             }
             else
             {

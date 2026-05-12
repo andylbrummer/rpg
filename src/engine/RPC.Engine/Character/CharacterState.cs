@@ -12,12 +12,15 @@ public readonly record struct CharacterState(
     int CurrentHp,
     Equipment Equipment,
     string[] KnownAbilities,
-    int Row) // 0 = front, 1 = back
+    int Row, // 0 = front, 1 = back
+    string? BranchChoice = null)
 {
     public EffectiveStats GetEffectiveStats(ItemRegistry? items = null)
         => EffectiveStats.FromBase(BaseStats + Equipment.StatBonus(items), Level);
 
     public bool IsAlive => CurrentHp > 0;
+
+    public bool AwaitingBranchChoice => Level >= 3 && BranchChoice == null;
 }
 
 public readonly record struct Equipment(
@@ -49,7 +52,8 @@ public record ClassDef(
     string Description,
     BaseStats BaseStats,
     AbilityDef[] Abilities,
-    LevelTableEntry[] LevelTable);
+    LevelTableEntry[] LevelTable,
+    string[]? AvailableBranches = null);
 
 public record AbilityDef(
     string Id,
@@ -58,7 +62,8 @@ public record AbilityDef(
     AbilityEffect Effect,
     string[] Tags,
     string? RequiredRow = null,
-    string? RowChangeCost = null)
+    string? RowChangeCost = null,
+    string? Branch = null)
 {
     public bool IsAvailableInRow(int row)
         => RequiredRow == null

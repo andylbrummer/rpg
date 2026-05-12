@@ -4,6 +4,7 @@
   "title": "Class Definition",
   "type": "object",
   "required": ["id", "name", "description", "baseStats", "abilities", "levelTable"],
+  "optional": ["availableBranches"],
   "properties": {
     "id": { "type": "string", "pattern": "^[a-z_]+$" },
     "name": { "type": "string", "minLength": 1 },
@@ -49,9 +50,16 @@
           "rowChangeCost": {
             "type": "string",
             "enum": ["action", "quick_action", "free"]
+          },
+          "branch": {
+            "type": "string"
           }
         }
       }
+    },
+    "availableBranches": {
+      "type": "array",
+      "items": { "type": "string" }
     },
     "levelTable": {
       "type": "array",

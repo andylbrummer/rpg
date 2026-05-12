@@ -137,9 +137,12 @@ public class GameState
 
     public string? CurrentDungeonType { get; internal set; }
 
+    public bool HasPendingBranchChoices => Party.Members.Any(m => m.Id != Guid.Empty && m.AwaitingBranchChoice);
+
     public void EnterDungeon(Dungeon dungeon, string dungeonType)
     {
         if (CampaignEnded) return;
+        if (HasPendingBranchChoices) return;
         CurrentDungeon = dungeon;
         CurrentDungeonType = dungeonType;
         ExploredTiles.Clear();
@@ -419,6 +422,7 @@ public class GameState
     public bool Travel(string targetId)
     {
         if (CampaignEnded) return false;
+        if (HasPendingBranchChoices) return false;
         var fromNodeId = Overworld.CurrentNodeId;
         var route = Overworld.Routes.FirstOrDefault(r =>
             (r.From == fromNodeId && r.To == targetId) ||
@@ -671,6 +675,33 @@ public class GameState
     }
 
     public bool LoadGame(string? path = null) => Save.SaveSystem.Load(this, path);
+
+    public bool ChooseBranch(Guid characterId, string branch)
+    {
+        var member = Party.Members.FirstOrDefault(m => m.Id == characterId);
+        if (member.Id == Guid.Empty) return false;
+
+        if (_classRegistry?.Get(member.ClassId) is not { } classDef)
+            return false;
+
+        var available = classDef.AvailableBranches ?? Array.Empty<string>();
+        if (!available.Contains(branch)) return false;
+
+        var branchAbilities = classDef.Abilities
+            .Where(a => a.Branch == branch)
+            .Select(a => a.Id)
+            .ToArray();
+
+        var newAbilities = member.KnownAbilities
+            .Concat(branchAbilities)
+            .Distinct()
+            .ToArray();
+
+        var index = Array.IndexOf(Party.Members, member);
+        Party.SetMember(index, member with { BranchChoice = branch, KnownAbilities = newAbilities });
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
 
     public bool RecruitFromTavern(string recruitId)
     {
