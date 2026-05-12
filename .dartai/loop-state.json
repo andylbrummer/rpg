@@ -8,9 +8,12 @@
   "current_task": {
     "dart_id": "oNTgHLbOOwv0",
     "title": "T51c Bloom Site integration tests",
-    "iteration": 44
+    "iteration": 44,
+    "status": "completed",
+    "phase_completed": "phase-9",
+    "failed_phase": null
   },
-  "completed_tasks": 38,
+  "completed_tasks": 39,
   "total_tasks": 54,
   "iteration": 44
 }
