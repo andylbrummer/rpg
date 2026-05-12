@@ -5,12 +5,8 @@
   "runner_email": "claude@anthropic.com",
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
-  "current_task": {
-    "dart_id": "iG6eElCLNIzI",
-    "title": "[1.5] T45 Synergy feedback (3-tier)",
-    "iteration": 24
-  },
+  "current_task": null,
   "completed_tasks": 21,
-  "total_tasks": 44,
+  "total_tasks": 45,
   "iteration": 24
 }
