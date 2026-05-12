@@ -203,6 +203,13 @@ export interface TravelEncounter {
   options?: string[];
 }
 
+export interface ActionLogEntry {
+  turn: number;
+  category: string;
+  type: string;
+  payload: Record<string, string>;
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -220,6 +227,7 @@ export interface GameState {
   partyGold?: number;
   partyInventory?: string[];
   campaignEnded?: boolean;
+  actionLog?: ActionLogEntry[];
 }
 
 export type PlayerAction =
@@ -245,7 +253,10 @@ export type PlayerAction =
   | { type: 'travel'; targetId: string }
   | { type: 'resolve_travel_encounter'; targetId: string }
   | { type: 'set_reputation'; targetId: string; value: number }
-  | { type: 'complete_mission'; targetId: string };
+  | { type: 'complete_mission'; targetId: string }
+  | { type: 'fail_mission'; targetId: string }
+  | { type: 'abandon_mission'; targetId: string }
+  | { type: 'dialogue_choice'; targetId: string; value: number };
 
 export interface CombatAction {
   actorId: string;

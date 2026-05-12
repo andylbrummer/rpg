@@ -28,7 +28,7 @@ public class ReputationState : IEnumerable<KeyValuePair<string, int>>
         set => _values[factionId] = Math.Clamp(value, -100, 100);
     }
 
-    public IReadOnlyList<ReputationChange> ApplyDelta(string factionId, int delta, string source)
+    public IReadOnlyList<ReputationChange> ApplyDelta(string factionId, int delta, string source, bool propagate = true)
     {
         var changes = new List<ReputationChange>();
         var clampedDelta = Math.Clamp(delta, -100, 100);
@@ -38,7 +38,7 @@ public class ReputationState : IEnumerable<KeyValuePair<string, int>>
         this[factionId] = newValue;
         changes.Add(new ReputationChange(factionId, newValue - oldValue, newValue, source));
 
-        if (_opposedPairs.TryGetValue(factionId, out var opposedId))
+        if (propagate && _opposedPairs.TryGetValue(factionId, out var opposedId))
         {
             var opposedDelta = (int)Math.Round(-clampedDelta * _propagationRate);
             if (opposedDelta != 0)
@@ -51,6 +51,11 @@ public class ReputationState : IEnumerable<KeyValuePair<string, int>>
         }
 
         return changes;
+    }
+
+    public string? GetOpposedFaction(string factionId)
+    {
+        return _opposedPairs.TryGetValue(factionId, out var opposedId) ? opposedId : null;
     }
 
     public void Clear() => _values.Clear();

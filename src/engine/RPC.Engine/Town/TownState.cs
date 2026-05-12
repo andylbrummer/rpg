@@ -21,11 +21,13 @@ public record FactionVendor(string FactionId, string Name, int Threshold, List<V
 
 public record TavernRecruit(string Id, string Name, string ClassId, int Level, BaseStats BaseStats, int Cost);
 
+public enum MissionType { Side, Main }
+
 public record FactionContact(string Id, string Name, string FactionId, string Portrait);
 
-public record ActiveMission(string Id, string Title, string Description, int RepReward, string FactionId, string Status);
+public record ActiveMission(string Id, string Title, string Description, int RepReward, string FactionId, string Status, MissionType Type = MissionType.Side);
 
-public record MissionOffer(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward = 0, string FactionId = "");
+public record MissionOffer(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward = 0, string FactionId = "", MissionType Type = MissionType.Side);
 
 public record FactionContentDef(
     string Id,
@@ -42,7 +44,7 @@ public record FactionContentDef(
 
 public record FactionContactDef(string Id, string Name, string Portrait);
 public record RepThresholdsDef(int VendorAccess, int ExclusiveRecruit, int PatronOffice);
-public record FactionMissionDef(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward);
+public record FactionMissionDef(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward, MissionType Type = MissionType.Side);
 
 public static class TavernRecruitGenerator
 {
@@ -163,16 +165,16 @@ public static class FactionContactGenerator
         if (_loaded != null)
         {
             return _loaded.SelectMany(d => d.Missions.Select(m =>
-                new MissionOffer(m.Id, m.Title, m.Description, m.MinLevel, m.Rewards, m.RepReward, d.Id)))
+                new MissionOffer(m.Id, m.Title, m.Description, m.MinLevel, m.Rewards, m.RepReward, d.Id, m.Type)))
                 .ToList();
         }
 
         return new List<MissionOffer>
         {
-            new("mission-bureau-1", "Cleanse the Sewers", "Eliminate the rat infestation beneath the Reach.", 1, new[] { "100g" }, 10, "bureau"),
-            new("mission-bureau-2", "Patrol the Walls", "Guard the outer perimeter for one night.", 1, new[] { "50g" }, 5, "bureau"),
-            new("mission-convocation-1", "Gather Bloom Samples", "Collect rare flora from the Hollow.", 1, new[] { "75g" }, 10, "convocation"),
-            new("mission-convocation-2", "Scout the Crypt", "Investigate whispering echoes.", 1, new[] { "60g" }, 5, "convocation")
+            new("mission-bureau-1", "Cleanse the Sewers", "Eliminate the rat infestation beneath the Reach.", 1, new[] { "100g" }, 10, "bureau", MissionType.Side),
+            new("mission-bureau-2", "Patrol the Walls", "Guard the outer perimeter for one night.", 1, new[] { "50g" }, 5, "bureau", MissionType.Side),
+            new("mission-convocation-1", "Gather Bloom Samples", "Collect rare flora from the Hollow.", 1, new[] { "75g" }, 10, "convocation", MissionType.Side),
+            new("mission-convocation-2", "Scout the Crypt", "Investigate whispering echoes.", 1, new[] { "60g" }, 5, "convocation", MissionType.Side)
         };
     }
 }

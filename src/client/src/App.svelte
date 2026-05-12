@@ -14,6 +14,9 @@
   let gameState = $state<GameState | null>(null);
   let serverError = $state<{ code: string; message: string; recoverable: boolean } | null>(null);
   let combatCancelSignal = $state(0);
+  let repToasts = $state<Array<{ id: number; factionId: string; delta: number; source: string }>>([]);
+  let lastActionLogTurn = $state(0);
+  let nextToastId = 0;
 
   serverErrorStore.subscribe((err) => {
     serverError = err;
@@ -138,6 +141,29 @@
       gameState = s;
       clearPending();
       drainBuffer();
+
+      // Check for new reputation changes in action log
+      const actionLog = s?.actionLog ?? [];
+      const maxTurn = actionLog.length > 0 ? Math.max(...actionLog.map((e: any) => e.turn)) : 0;
+      if (maxTurn > lastActionLogTurn) {
+        const newEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'rep_changed');
+        for (const entry of newEntries) {
+          const toast = {
+            id: nextToastId++,
+            factionId: entry.payload.factionId ?? 'unknown',
+            delta: parseInt(entry.payload.delta ?? '0', 10),
+            source: entry.payload.source ?? '',
+          };
+          repToasts = [...repToasts, toast];
+          setTimeout(() => {
+            repToasts = repToasts.filter((t) => t.id !== toast.id);
+          }, 4000);
+        }
+        lastActionLogTurn = maxTurn;
+      } else if (actionLog.length === 0 && lastActionLogTurn > 0) {
+        // Reset detected — clear turn tracker so future toasts fire
+        lastActionLogTurn = 0;
+      }
     });
     return unsub;
   });
@@ -279,6 +305,15 @@
         <span class="error-message">{serverError.message}</span>
       </div>
     {/if}
+    {#each repToasts as toast (toast.id)}
+      <div class="rep-toast" role="status">
+        <span class="rep-toast-faction">{toast.factionId}</span>
+        <span class="rep-toast-delta" class:positive={toast.delta > 0} class:negative={toast.delta < 0}>
+          {toast.delta > 0 ? '+' : ''}{toast.delta}
+        </span>
+        <span class="rep-toast-source">({toast.source})</span>
+      </div>
+    {/each}
     {#if gameState?.mode !== 'Combat'}
       <header class="top-bar">
         <div class="game-title">The Reach</div>
@@ -497,6 +532,42 @@
     align-items: center;
     animation: fadeIn 0.2s ease-out;
     pointer-events: auto;
+  }
+
+  .rep-toast {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #d4a84b;
+    border-radius: 0.5rem;
+    padding: 0.75em 1.25em;
+    display: flex;
+    gap: 0.5em;
+    align-items: center;
+    animation: fadeIn 0.2s ease-out;
+    pointer-events: auto;
+    font-size: 0.875rem;
+  }
+
+  .rep-toast-faction {
+    color: #ccc;
+    text-transform: capitalize;
+    font-weight: bold;
+  }
+
+  .rep-toast-delta.positive {
+    color: #4a4;
+  }
+
+  .rep-toast-delta.negative {
+    color: #c44;
+  }
+
+  .rep-toast-source {
+    color: #888;
+    font-size: 0.75rem;
   }
 
   .error-code {

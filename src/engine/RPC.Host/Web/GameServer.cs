@@ -561,6 +561,24 @@ public class GameServer
                         stateChanged = _gameState.CompleteMission(completeMissionId);
                     }
                     break;
+                case "fail_mission":
+                    if (action.TargetId is string failMissionId)
+                    {
+                        stateChanged = _gameState.FailMission(failMissionId);
+                    }
+                    break;
+                case "abandon_mission":
+                    if (action.TargetId is string abandonMissionId)
+                    {
+                        stateChanged = _gameState.AbandonMission(abandonMissionId);
+                    }
+                    break;
+                case "dialogue_choice":
+                    if (action.TargetId is string choiceFactionId && action.Value is int choiceDelta)
+                    {
+                        stateChanged = _gameState.ApplyDialogueReputation(choiceFactionId, choiceDelta);
+                    }
+                    break;
                 default:
                     await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
                     return;
@@ -1027,7 +1045,14 @@ public class GameServer
             reputation = _gameState.Reputation.ToDictionary(r => r.Key, r => r.Value),
             partyGold = _gameState.PartyGold,
             partyInventory = _gameState.PartyInventory.ToArray(),
-            campaignEnded = _gameState.CampaignEnded
+            campaignEnded = _gameState.CampaignEnded,
+            actionLog = _gameState.ActionLog.Select(e => new
+            {
+                turn = e.Turn,
+                category = e.Category,
+                type = e.Type,
+                payload = e.Payload
+            }).ToArray()
         };
 
         _gameState.ClearCombatResult();

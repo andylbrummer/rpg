@@ -670,7 +670,7 @@ public class GameState
         if (mission == null) return false;
 
         Town.AvailableMissions.Remove(mission);
-        Town.QuestLog.Add(new ActiveMission(mission.Id, mission.Title, mission.Description, mission.RepReward, mission.FactionId, "active"));
+        Town.QuestLog.Add(new ActiveMission(mission.Id, mission.Title, mission.Description, mission.RepReward, mission.FactionId, "active", mission.Type));
         LastUpdate = DateTime.UtcNow;
         return true;
     }
@@ -682,9 +682,83 @@ public class GameState
 
         var index = Town.QuestLog.FindIndex(m => m.Id == missionId);
         Town.QuestLog[index] = mission with { Status = "completed" };
-        ApplyReputationDelta(mission.FactionId, mission.RepReward, "mission_complete");
+
+        var (primaryDelta, opposedDelta) = mission.Type switch
+        {
+            MissionType.Main => (8, -4),
+            _ => (5, -2),
+        };
+
+        var source = $"mission_complete_{mission.Type.ToString().ToLower()}";
+        ApplyMissionReputation(mission.FactionId, primaryDelta, opposedDelta, source);
         LastUpdate = DateTime.UtcNow;
         return true;
+    }
+
+    public bool FailMission(string missionId)
+    {
+        var mission = Town.QuestLog.FirstOrDefault(m => m.Id == missionId && m.Status == "active");
+        if (mission == null) return false;
+
+        var index = Town.QuestLog.FindIndex(m => m.Id == missionId);
+        Town.QuestLog[index] = mission with { Status = "failed" };
+
+        ApplyMissionReputation(mission.FactionId, -3, 1, "mission_failed");
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    public bool AbandonMission(string missionId)
+    {
+        var mission = Town.QuestLog.FirstOrDefault(m => m.Id == missionId && m.Status == "active");
+        if (mission == null) return false;
+
+        var index = Town.QuestLog.FindIndex(m => m.Id == missionId);
+        Town.QuestLog[index] = mission with { Status = "abandoned" };
+
+        ApplyMissionReputation(mission.FactionId, -3, 1, "mission_abandoned");
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    public bool ApplyDialogueReputation(string factionId, int delta)
+    {
+        ApplyReputationDelta(factionId, delta, "dialogue_choice");
+        return true;
+    }
+
+    private void ApplyMissionReputation(string factionId, int primaryDelta, int opposedDelta, string source)
+    {
+        var primaryChanges = Reputation.ApplyDelta(factionId, primaryDelta, source, propagate: false);
+        foreach (var change in primaryChanges)
+        {
+            EmitActionLog("faction", "rep_changed", new Dictionary<string, string>
+            {
+                { "factionId", change.FactionId },
+                { "delta", change.Delta.ToString() },
+                { "newValue", change.NewValue.ToString() },
+                { "source", change.Source }
+            });
+        }
+
+        if (opposedDelta != 0)
+        {
+            var opposedFactionId = Reputation.GetOpposedFaction(factionId);
+            if (opposedFactionId != null)
+            {
+                var opposedChanges = Reputation.ApplyDelta(opposedFactionId, opposedDelta, source, propagate: false);
+                foreach (var change in opposedChanges)
+                {
+                    EmitActionLog("faction", "rep_changed", new Dictionary<string, string>
+                    {
+                        { "factionId", change.FactionId },
+                        { "delta", change.Delta.ToString() },
+                        { "newValue", change.NewValue.ToString() },
+                        { "source", change.Source }
+                    });
+                }
+            }
+        }
     }
 
     public void SetReputation(string factionId, int value)

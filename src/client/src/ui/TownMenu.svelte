@@ -70,6 +70,12 @@
       : '"Rumor: The Bloom whispers differently tonight."';
   }
 
+  function hostilityLineForFaction(factionId: string): string {
+    return factionId === 'bureau'
+      ? '"You are not welcome here. Leave, or be removed."'
+      : '"Your presence offends the Convocation. Depart before we act."';
+  }
+
   const factionColors: Record<string, string> = {
     bureau: '#4488aa',
     convocation: '#aa44aa',
@@ -350,31 +356,35 @@
                 </div>
               </div>
               <div class="contact-dialogue">
-                <p class="dialogue-line greeting">{greetingForRep(reputation[contact.factionId] || 0)}</p>
-                {#if (reputation[contact.factionId] || 0) <= 0}
-                  <p class="dialogue-line dismissive">{dismissiveLineForFaction(contact.factionId)}</p>
-                {/if}
-                {#if (reputation[contact.factionId] || 0) >= 10}
-                  <p class="dialogue-line rumor">{rumorForFaction(contact.factionId)}</p>
-                {/if}
-                {#if (reputation[contact.factionId] || 0) >= 20}
-                  {#each getFactionMissions(contact.factionId) as mission (mission.id)}
-                    <div class="mission-offer">
-                      <div class="mission-offer-text">
-                        <span class="mission-offer-title">{mission.title}</span>
-                        <span class="mission-offer-desc">{mission.description}</span>
+                {#if (reputation[contact.factionId] || 0) <= -25}
+                  <p class="dialogue-line hostile">{hostilityLineForFaction(contact.factionId)}</p>
+                {:else}
+                  <p class="dialogue-line greeting">{greetingForRep(reputation[contact.factionId] || 0)}</p>
+                  {#if (reputation[contact.factionId] || 0) <= 0}
+                    <p class="dialogue-line dismissive">{dismissiveLineForFaction(contact.factionId)}</p>
+                  {/if}
+                  {#if (reputation[contact.factionId] || 0) >= 10}
+                    <p class="dialogue-line rumor">{rumorForFaction(contact.factionId)}</p>
+                  {/if}
+                  {#if (reputation[contact.factionId] || 0) >= 20}
+                    {#each getFactionMissions(contact.factionId) as mission (mission.id)}
+                      <div class="mission-offer">
+                        <div class="mission-offer-text">
+                          <span class="mission-offer-title">{mission.title}</span>
+                          <span class="mission-offer-desc">{mission.description}</span>
+                        </div>
+                        <button
+                          type="button"
+                          class="action-btn"
+                          onclick={() => onMissionAccept(mission.id)}
+                        >
+                          Accept
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        class="action-btn"
-                        onclick={() => onMissionAccept(mission.id)}
-                      >
-                        Accept
-                      </button>
-                    </div>
-                  {:else}
-                    <p class="dialogue-line empty">No missions currently available.</p>
-                  {/each}
+                    {:else}
+                      <p class="dialogue-line empty">No missions currently available.</p>
+                    {/each}
+                  {/if}
                 {/if}
               </div>
             </div>
@@ -996,6 +1006,11 @@
   .dialogue-line.dismissive {
     color: #c44;
     font-style: italic;
+  }
+
+  .dialogue-line.hostile {
+    color: #f44;
+    font-weight: bold;
   }
 
   .dialogue-line.rumor {
