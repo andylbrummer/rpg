@@ -157,6 +157,18 @@ test.describe('Synergy Feedback', () => {
 
     // Reload so the app picks up localStorage
     await page.reload();
+    await page.waitForTimeout(500);
+
+    await injectGameState(page, {
+      type: 'state',
+      mode: 'Menu',
+      player: { x: 0, y: 0, facing: 'North' },
+      tiles: [],
+      explored: [],
+      hasDungeon: false,
+      party: [],
+    });
+
     await page.waitForSelector('.field-notes-toggle');
 
     await page.locator('.field-notes-toggle').click();

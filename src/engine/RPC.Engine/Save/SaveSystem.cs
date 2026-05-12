@@ -22,6 +22,12 @@ public class SaveData
     public bool CampaignEnded { get; set; } = false;
     public int PartyGold { get; set; } = 500;
     public string[] PartyInventory { get; set; } = Array.Empty<string>();
+    public SaveJournalState? Journal { get; set; }
+}
+
+public class SaveJournalState
+{
+    public string[] DiscoveredSynergies { get; set; } = Array.Empty<string>();
 }
 
 public class SaveTownState
@@ -166,7 +172,7 @@ public static class SaveSystem
             var data = JsonSerializer.Deserialize<SaveData>(json, Options);
             if (data == null) return false;
 
-            if (data.SchemaVersion != 3)
+            if (data.SchemaVersion != 3 && data.SchemaVersion != 4)
             {
                 Console.Error.WriteLine(
                     $"Save file '{path}' has unsupported schema version {data.SchemaVersion}. Deleting; player starts new game.");
@@ -184,6 +190,7 @@ public static class SaveSystem
             RestoreReputation(state, data);
             RestoreOverworld(state, data);
             RestoreSettings(state, data);
+            RestoreJournal(state, data);
 
             return true;
         }
@@ -225,7 +232,7 @@ public static class SaveSystem
 
         return new SaveData
         {
-            SchemaVersion = 3,
+            SchemaVersion = 4,
             Party = party,
             Player = new SavePlayer
             {
@@ -316,7 +323,11 @@ public static class SaveSystem
             PartyInventory = state.PartyInventory.ToArray(),
             OverworldTurns = state.Overworld.Turns,
             OverworldCurrentNodeId = state.Overworld.CurrentNodeId,
-            CampaignEnded = state.CampaignEnded
+            CampaignEnded = state.CampaignEnded,
+            Journal = new SaveJournalState
+            {
+                DiscoveredSynergies = state.Journal.DiscoveryOrder.ToArray()
+            }
         };
     }
 
@@ -422,6 +433,19 @@ public static class SaveSystem
     private static void RestoreSettings(GameState state, SaveData data)
     {
         state.SettingsHash = data.Settings;
+    }
+
+    private static void RestoreJournal(GameState state, SaveData data)
+    {
+        state.Journal.DiscoveryOrder.Clear();
+        state.Journal.Discovered.Clear();
+        if (data.Journal?.DiscoveredSynergies != null)
+        {
+            foreach (var id in data.Journal.DiscoveredSynergies)
+            {
+                state.Journal.Discover(id);
+            }
+        }
     }
 
     private static void RestoreOverworld(GameState state, SaveData data)

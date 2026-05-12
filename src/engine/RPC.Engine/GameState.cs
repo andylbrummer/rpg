@@ -11,6 +11,20 @@ namespace RPC.Engine;
 
 public record ActionLogEntry(int Turn, string Category, string Type, Dictionary<string, string> Payload);
 
+public class JournalState
+{
+    public List<string> DiscoveryOrder { get; } = new();
+    public HashSet<string> Discovered { get; } = new();
+
+    public void Discover(string id)
+    {
+        if (Discovered.Add(id))
+            DiscoveryOrder.Add(id);
+    }
+
+    public bool IsDiscovered(string id) => Discovered.Contains(id);
+}
+
 public class GameState
 {
     public Player Player { get; set; }
@@ -25,6 +39,7 @@ public class GameState
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
     public ReputationState Reputation { get; } = new();
+    public JournalState Journal { get; } = new();
     public int PartyGold { get; set; } = 500;
     public List<string> PartyInventory { get; set; } = new();
     public bool CampaignEnded { get; set; } = false;
@@ -300,6 +315,10 @@ public class GameState
             if (type == "synergy_triggered" && _currentEncounterId != null)
             {
                 payload["encounterId"] = _currentEncounterId;
+            }
+            if (type == "synergy_triggered" && payload.TryGetValue("synergyId", out var sid) && !string.IsNullOrEmpty(sid))
+            {
+                Journal.Discover(sid);
             }
             EmitActionLog(cat, type, payload);
         };

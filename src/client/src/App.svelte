@@ -6,6 +6,7 @@
   import CombatOverlay from './ui/CombatOverlay.svelte';
   import PartyStatusBar from './ui/PartyStatusBar.svelte';
   import ExplorationHUD from './ui/ExplorationHUD.svelte';
+  import FieldNotesPanel from './ui/FieldNotesPanel.svelte';
   import { DungeonRenderer } from './renderer/DungeonRenderer';
   import type { GameState } from './types/game';
 
@@ -44,7 +45,20 @@
     localStorage.setItem(key, JSON.stringify([...ids]));
   }
 
-  let discoveredSynergies = $state<Set<string>>(loadSet(DISCOVERY_KEY));
+  function loadArray(key: string): string[] {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveArray(key: string, ids: string[]) {
+    localStorage.setItem(key, JSON.stringify(ids));
+  }
+
+  let discoveredOrder = $state<string[]>(loadArray(DISCOVERY_KEY));
   let revealedSynergies = $state<Set<string>>(loadSet(REVEALED_KEY));
   let pendingReveals = $state<string[]>([]);
 
@@ -213,9 +227,9 @@
         for (const entry of newSynergyEntries) {
           const sid = entry.payload?.synergyId;
           const tid = entry.payload?.targetId;
-          if (sid && !discoveredSynergies.has(sid)) {
-            discoveredSynergies = new Set([...discoveredSynergies, sid]);
-            saveSet(DISCOVERY_KEY, discoveredSynergies);
+          if (sid && !discoveredOrder.includes(sid)) {
+            discoveredOrder = [...discoveredOrder, sid];
+            saveArray(DISCOVERY_KEY, discoveredOrder);
           }
           if (sid && !revealedSynergies.has(sid) && !pendingReveals.includes(sid)) {
             pendingReveals = [...pendingReveals, sid];
@@ -256,7 +270,21 @@
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        if (showFieldNotes) {
+          showFieldNotes = false;
+          return;
+        }
+        if (replaySynergyId) {
+          replaySynergyId = null;
+          return;
+        }
         handleCancel();
+        return;
+      }
+
+      if ((e.key === 'j' || e.key === 'J') && (gameState?.mode === 'Menu' || gameState?.mode === 'Exploration')) {
+        e.preventDefault();
+        showFieldNotes = !showFieldNotes;
         return;
       }
 
@@ -399,6 +427,7 @@
               Turn {gameState.overworld.turns}/15
             </span>
           {/if}
+          <button class="field-notes-toggle" onclick={() => showFieldNotes = true}>Field Notes</button>
         </div>
       </header>
     {/if}
@@ -471,36 +500,12 @@
         </div>
       {/if}
       {#if showFieldNotes}
-        <div class="field-notes-overlay" role="dialog" aria-label="Field Notes">
-          <div class="field-notes-card">
-            <div class="field-notes-header">
-              <h2 class="field-notes-title">Field Notes</h2>
-              <button class="field-notes-close" onclick={() => showFieldNotes = false}>Close</button>
-            </div>
-            <div class="field-notes-list">
-              {#each ALL_SYNERGIES as synergy}
-                {@const discovered = discoveredSynergies.has(synergy.id)}
-                {@const revealed = revealedSynergies.has(synergy.id)}
-                <div class="field-note-entry" class:revealed>
-                  <div class="field-note-names">
-                    {#if revealed}
-                      {synergy.abilities.join(' + ')}
-                    {:else}
-                      ??? + ???
-                    {/if}
-                  </div>
-                  {#if revealed}
-                    <div class="field-note-hint">{synergy.hint}</div>
-                    <div class="field-note-effect">{synergy.effect}</div>
-                    <button class="replay-btn" onclick={() => { replaySynergyId = synergy.id; playBeep(); }}>Replay</button>
-                  {:else}
-                    <div class="field-note-locked">Undiscovered synergy</div>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          </div>
-        </div>
+        <FieldNotesPanel
+          discoveredOrder={discoveredOrder}
+          revealedIds={revealedSynergies}
+          onClose={() => showFieldNotes = false}
+          onReplay={(id) => { replaySynergyId = id; playBeep(); }}
+        />
       {/if}
       {#if replaySynergyId}
         <div class="replay-modal-overlay" role="dialog" aria-label="Synergy replay">
@@ -832,117 +837,6 @@
 
   .field-notes-toggle:hover {
     background: rgba(212, 168, 75, 0.3);
-  }
-
-  .field-notes-overlay {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.85);
-    z-index: 55;
-    pointer-events: auto;
-  }
-
-  .field-notes-card {
-    background: #1a1a2e;
-    border: 1px solid #444;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    min-width: 300px;
-    max-width: 90vw;
-    max-height: 80vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .field-notes-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #444;
-    padding-bottom: 0.5rem;
-  }
-
-  .field-notes-title {
-    margin: 0;
-    font-size: 1.25rem;
-    color: #d4a84b;
-  }
-
-  .field-notes-close {
-    background: transparent;
-    border: 1px solid #666;
-    border-radius: 0.25rem;
-    color: #ccc;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  .field-notes-close:hover {
-    border-color: #888;
-  }
-
-  .field-notes-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .field-note-entry {
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid #333;
-    border-radius: 0.375rem;
-  }
-
-  .field-note-entry.revealed {
-    border-color: #d4a84b;
-    background: rgba(212, 168, 75, 0.05);
-  }
-
-  .field-note-names {
-    font-weight: bold;
-    color: #eee;
-    font-size: 0.9rem;
-    margin-bottom: 0.25rem;
-  }
-
-  .field-note-hint {
-    color: #aaa;
-    font-size: 0.8rem;
-    font-style: italic;
-    margin-bottom: 0.25rem;
-  }
-
-  .field-note-effect {
-    color: #88cc88;
-    font-size: 0.8rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .field-note-locked {
-    color: #666;
-    font-size: 0.8rem;
-    font-style: italic;
-  }
-
-  .replay-btn {
-    padding: 0.25rem 0.75rem;
-    background: rgba(68, 170, 255, 0.15);
-    border: 1px solid #44aaff;
-    border-radius: 0.25rem;
-    color: #66aaff;
-    cursor: pointer;
-    font-size: 0.75rem;
-  }
-
-  .replay-btn:hover {
-    background: rgba(68, 170, 255, 0.3);
   }
 
   .replay-modal-overlay {
