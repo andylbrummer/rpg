@@ -12,6 +12,14 @@ namespace RPC.Engine;
 
 public record ActionLogEntry(int Turn, string Category, string Type, Dictionary<string, string> Payload);
 public record ParleyOffer(string EncounterId, string FactionId, string[] Options);
+public record ResurrectionResult(
+    bool Success,
+    string? Error = null,
+    int GoldCost = 0,
+    int TitheTokenCost = 0,
+    int StatLossCount = 0,
+    bool BranchLocked = false,
+    CharacterState? Character = null);
 
 public class JournalState
 {
@@ -65,6 +73,7 @@ public class GameState
     public EvidenceState Evidence { get; } = new();
     public JournalState Journal { get; } = new();
     public int PartyGold { get; set; } = 500;
+    public int TitheTokens { get; set; } = 0;
     public List<string> PartyInventory { get; set; } = new();
     public bool CampaignEnded { get; set; } = false;
     public CampaignConfig? CampaignConfig { get; set; }
@@ -559,6 +568,33 @@ public class GameState
                 if (member.Id != Guid.Empty)
                 {
                     var index = Array.IndexOf(Party.Members, member);
+
+                    if (combatant.Hp <= 0)
+                    {
+                        bool stabilized = combatant.StatusEffects.Any(s => s.Type == "stabilized");
+                        if (stabilized)
+                        {
+                            var saved = member with { CurrentHp = 1, Xp = member.Xp + Combat.XpReward, TempModifiers = combatant.TempModifiers };
+                            Party.SetMember(index, saved);
+                            EmitActionLog("combat", "character_stabilized", new Dictionary<string, string>
+                            {
+                                { "characterId", member.Id.ToString() },
+                                { "characterName", member.Name }
+                            });
+                        }
+                        else
+                        {
+                            Party.DeadCharacters.Add(member with { CurrentHp = 0, TempModifiers = Array.Empty<TempStatModifier>() });
+                            Party.SetMember(index, default);
+                            EmitActionLog("combat", "character_died", new Dictionary<string, string>
+                            {
+                                { "characterId", member.Id.ToString() },
+                                { "characterName", member.Name }
+                            });
+                        }
+                        continue;
+                    }
+
                     var newXp = member.Xp + Combat.XpReward;
                     var updated = member with { CurrentHp = combatant.Hp, Xp = newXp, TempModifiers = combatant.TempModifiers };
 
@@ -986,7 +1022,9 @@ public class GameState
         WorldState.Reset();
         CampaignEnded = false;
         PartyGold = 500;
+        TitheTokens = 0;
         PartyInventory.Clear();
+        Party.DeadCharacters.Clear();
         InitializeDefaultParty();
         InitializeTown();
         ActionLog.Clear();
@@ -1250,6 +1288,82 @@ public class GameState
         Town.TavernRoster.Remove(recruit);
         LastUpdate = DateTime.UtcNow;
         return true;
+    }
+
+    public ResurrectionResult? ResurrectCharacter(Guid characterId)
+    {
+        var deadIdx = Party.DeadCharacters.FindIndex(c => c.Id == characterId);
+        if (deadIdx < 0) return null;
+
+        var dead = Party.DeadCharacters[deadIdx];
+        var attempts = dead.ResurrectionAttempts;
+        if (attempts >= 2)
+            return new ResurrectionResult(false, "Character is permanently dead.");
+
+        var (goldCost, titheCost, statLoss, branchLock) = attempts switch
+        {
+            0 => (500, 1, 1, false),
+            1 => (1500, 2, 2, true),
+            _ => (0, 0, 0, false)
+        };
+
+        if (PartyGold < goldCost)
+            return new ResurrectionResult(false, "Not enough gold.");
+        if (TitheTokens < titheCost)
+            return new ResurrectionResult(false, "Not enough tithe tokens.");
+
+        PartyGold -= goldCost;
+        TitheTokens -= titheCost;
+
+        var newStats = ApplyRandomStatLoss(dead.BaseStats, statLoss);
+        var maxHp = EffectiveStats.FromBase(newStats, dead.Level).MaxHp;
+        var resurrected = dead with
+        {
+            BaseStats = newStats,
+            CurrentHp = maxHp,
+            ResurrectionAttempts = attempts + 1,
+            BranchAdvancementLocked = dead.BranchAdvancementLocked || branchLock,
+            TempModifiers = Array.Empty<TempStatModifier>()
+        };
+
+        var emptySlot = Array.IndexOf(Party.Members, default);
+        if (emptySlot < 0)
+            return new ResurrectionResult(false, "Party is full.");
+
+        Party.DeadCharacters.RemoveAt(deadIdx);
+        Party.SetMember(emptySlot, resurrected);
+
+        EmitActionLog("roster", "character_resurrected", new Dictionary<string, string>
+        {
+            { "characterId", characterId.ToString() },
+            { "characterName", resurrected.Name },
+            { "attempt", (attempts + 1).ToString() },
+            { "goldCost", goldCost.ToString() },
+            { "titheCost", titheCost.ToString() },
+            { "statLoss", statLoss.ToString() },
+            { "branchLocked", branchLock.ToString().ToLowerInvariant() }
+        });
+
+        LastUpdate = DateTime.UtcNow;
+        return new ResurrectionResult(true, null, goldCost, titheCost, statLoss, branchLock, resurrected);
+    }
+
+    private static BaseStats ApplyRandomStatLoss(BaseStats stats, int count)
+    {
+        var r = Random.Shared;
+        var s = stats;
+        for (int i = 0; i < count; i++)
+        {
+            switch (r.Next(5))
+            {
+                case 0: s = s with { Strength = Math.Max(1, s.Strength - 1) }; break;
+                case 1: s = s with { Dexterity = Math.Max(1, s.Dexterity - 1) }; break;
+                case 2: s = s with { Constitution = Math.Max(1, s.Constitution - 1) }; break;
+                case 3: s = s with { Intelligence = Math.Max(1, s.Intelligence - 1) }; break;
+                case 4: s = s with { Willpower = Math.Max(1, s.Willpower - 1) }; break;
+            }
+        }
+        return s;
     }
 
     public bool AcceptMission(string missionId)

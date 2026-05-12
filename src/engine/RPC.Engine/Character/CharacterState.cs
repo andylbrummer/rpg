@@ -22,7 +22,9 @@ public readonly record struct CharacterState(
     int Row,
     string? BranchChoice = null,
     string? BranchLevel6 = null,
-    TempStatModifier[]? TempModifiers = null)
+    TempStatModifier[]? TempModifiers = null,
+    int ResurrectionAttempts = 0,
+    bool BranchAdvancementLocked = false)
 {
     public TempStatModifier[] TempModifiers { get; init; } = TempModifiers ?? Array.Empty<TempStatModifier>();
 

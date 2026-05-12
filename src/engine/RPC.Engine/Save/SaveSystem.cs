@@ -28,7 +28,9 @@ public class SaveData
     public bool MastermindAdvantage { get; set; } = false;
     public bool FinalDungeonUnlocked { get; set; } = false;
     public int PartyGold { get; set; } = 500;
+    public int TitheTokens { get; set; } = 0;
     public string[] PartyInventory { get; set; } = Array.Empty<string>();
+    public SavePartyMember[] DeadCharacters { get; set; } = Array.Empty<SavePartyMember>();
     public SaveJournalState? Journal { get; set; }
     public SaveCampaignConfig? CampaignConfig { get; set; }
     public SaveOverworldNode[] OverworldNodes { get; set; } = Array.Empty<SaveOverworldNode>();
@@ -184,6 +186,8 @@ public class SavePartyMember
     public string? BranchChoice { get; set; }
     public string? BranchLevel6 { get; set; }
     public TempStatModifier[] TempModifiers { get; set; } = Array.Empty<TempStatModifier>();
+    public int ResurrectionAttempts { get; set; } = 0;
+    public bool BranchAdvancementLocked { get; set; } = false;
 }
 
 public class SavePlayer
@@ -239,7 +243,7 @@ public static class SaveSystem
             var data = JsonSerializer.Deserialize<SaveData>(json, Options);
             if (data == null) return false;
 
-            if (data.SchemaVersion != 3 && data.SchemaVersion != 4 && data.SchemaVersion != 5 && data.SchemaVersion != 6)
+            if (data.SchemaVersion != 3 && data.SchemaVersion != 4 && data.SchemaVersion != 5 && data.SchemaVersion != 6 && data.SchemaVersion != 7)
             {
                 Console.Error.WriteLine(
                     $"Save file '{path}' has unsupported schema version {data.SchemaVersion}. Deleting; player starts new game.");
@@ -305,7 +309,7 @@ public static class SaveSystem
 
         return new SaveData
         {
-            SchemaVersion = 6,
+            SchemaVersion = 7,
             Party = party,
             Player = new SavePlayer
             {
@@ -395,7 +399,26 @@ public static class SaveSystem
             SuspectedFaction = state.Evidence.SuspectedFaction,
             Settings = state.SettingsHash,
             PartyGold = state.PartyGold,
+            TitheTokens = state.TitheTokens,
             PartyInventory = state.PartyInventory.ToArray(),
+            DeadCharacters = state.Party.DeadCharacters.Select(d => new SavePartyMember
+            {
+                Id = d.Id,
+                Name = d.Name,
+                ClassId = d.ClassId,
+                Level = d.Level,
+                Xp = d.Xp,
+                BaseStats = d.BaseStats,
+                CurrentHp = d.CurrentHp,
+                Equipment = d.Equipment,
+                KnownAbilities = d.KnownAbilities,
+                Row = d.Row,
+                BranchChoice = d.BranchChoice,
+                BranchLevel6 = d.BranchLevel6,
+                TempModifiers = d.TempModifiers,
+                ResurrectionAttempts = d.ResurrectionAttempts,
+                BranchAdvancementLocked = d.BranchAdvancementLocked
+            }).ToArray(),
             OverworldTurns = state.Overworld.Turns,
             OverworldCurrentNodeId = state.Overworld.CurrentNodeId,
             CampaignEnded = state.CampaignEnded,
@@ -469,7 +492,7 @@ public static class SaveSystem
                     s.Id, s.Name, s.ClassId, level, xp,
                     s.BaseStats, hp, s.Equipment,
                     s.KnownAbilities, row, s.BranchChoice, s.BranchLevel6,
-                    s.TempModifiers));
+                    s.TempModifiers, s.ResurrectionAttempts, s.BranchAdvancementLocked));
             }
             else
             {
@@ -638,7 +661,23 @@ public static class SaveSystem
 
         state.CampaignEnded = data.CampaignEnded;
         state.PartyGold = data.PartyGold;
+        state.TitheTokens = data.TitheTokens;
         state.PartyInventory = data.PartyInventory?.ToList() ?? new List<string>();
+
+        state.Party.DeadCharacters.Clear();
+        if (data.DeadCharacters != null)
+        {
+            foreach (var d in data.DeadCharacters)
+            {
+                state.Party.DeadCharacters.Add(new CharacterState(
+                    d.Id, d.Name, d.ClassId,
+                    Math.Max(1, d.Level), Math.Max(0, d.Xp),
+                    d.BaseStats, 0, d.Equipment,
+                    d.KnownAbilities, Math.Clamp(d.Row, 0, 1),
+                    d.BranchChoice, d.BranchLevel6,
+                    d.TempModifiers, d.ResurrectionAttempts, d.BranchAdvancementLocked));
+            }
+        }
         state.SetAccusedFaction(data.AccusedFaction);
         state.SetMastermindAdvantage(data.MastermindAdvantage);
         state.SetFinalDungeonUnlocked(data.FinalDungeonUnlocked);
