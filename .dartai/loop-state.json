@@ -1,14 +1,17 @@
 {
-  "status": "completed",
+  "status": "active",
   "dartboard": "Personal/rpg",
   "runner_id": "beagle-ab2-3871289",
   "runner_email": "claude@anthropic.com",
-  "started_at": "2026-05-11T14:17:57-05:00",
-  "completed_at": "2026-05-12T06:52:00-05:00",
-  "loop_task_id": "HL32DgPRLVfQ",
-  "current_task": null,
-  "completed_tasks": 39,
-  "total_tasks": 54,
-  "iteration": 44,
-  "summary": "All Phase 1 and Phase 1.5 tasks completed. Main backlog cleared."
+  "started_at": "2026-05-12T10:18:00-05:00",
+  "loop_task_id": "oQCov9S7gsKK",
+  "current_task": {
+    "dart_id": "sBjNcfSdNjVn",
+    "title": "T77 Six-roll system",
+    "iteration": 1
+  },
+  "completed_tasks": 0,
+  "total_tasks": 39,
+  "iteration": 1,
+  "phase": "Phase 2: Strategic Depth"
 }
