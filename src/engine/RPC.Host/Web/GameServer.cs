@@ -966,7 +966,8 @@ public class GameServer
             combatResult,
             town,
             overworld,
-            travelEncounter
+            travelEncounter,
+            campaignEnded = _gameState.CampaignEnded
         };
 
         _gameState.ClearCombatResult();

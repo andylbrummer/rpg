@@ -189,6 +189,7 @@ export interface GameState {
   town?: TownState;
   overworld?: OverworldState;
   travelEncounter?: TravelEncounter;
+  campaignEnded?: boolean;
 }
 
 export type PlayerAction =

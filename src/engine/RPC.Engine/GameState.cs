@@ -25,6 +25,7 @@ public class GameState
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
     public ReputationState Reputation { get; } = new();
+    public bool CampaignEnded { get; set; } = false;
     public string? SettingsHash { get; set; }
     public TravelEncounterState? CurrentTravelEncounter { get; private set; }
     public int RolledTravelEncounterCount { get; private set; }
@@ -109,6 +110,7 @@ public class GameState
 
     public void EnterDungeon(Dungeon dungeon, string dungeonType)
     {
+        if (CampaignEnded) return;
         CurrentDungeon = dungeon;
         CurrentDungeonType = dungeonType;
         ExploredTiles.Clear();
@@ -116,6 +118,7 @@ public class GameState
         _pendingTaggedEncounterTile = null;
         Mode = GameMode.Exploration;
         EmitActionLog("dungeon", "dungeon_entered", new Dictionary<string, string> { { "dungeonType", dungeonType } });
+        IncrementTurns(1);
         // Find entrance position
         for (int x = 0; x < dungeon.Width; x++)
         {
@@ -368,19 +371,25 @@ public class GameState
         Mode = GameMode.Menu;
         CurrentDungeon = null;
         LastUpdate = DateTime.UtcNow;
+        IncrementTurns(1);
     }
 
     public bool Travel(string targetId)
     {
+        if (CampaignEnded) return false;
         var fromNodeId = Overworld.CurrentNodeId;
-        var changed = Overworld.Travel(targetId);
-        if (!changed) return false;
-
-        ClearTravelEncounters();
-
         var route = Overworld.Routes.FirstOrDefault(r =>
             (r.From == fromNodeId && r.To == targetId) ||
             (r.To == fromNodeId && r.From == targetId));
+        var changed = Overworld.Travel(targetId);
+        if (!changed) return false;
+
+        if (route != null)
+        {
+            IncrementTurns(route.Distance);
+        }
+
+        ClearTravelEncounters();
 
         if (route != null)
         {
@@ -389,6 +398,18 @@ public class GameState
 
         LastUpdate = DateTime.UtcNow;
         return true;
+    }
+
+    private void IncrementTurns(int amount)
+    {
+        if (CampaignEnded || amount <= 0) return;
+        Overworld.Turns = Math.Min(15, Overworld.Turns + amount);
+        if (Overworld.Turns >= 15)
+        {
+            CampaignEnded = true;
+            CurrentDungeon = null;
+            Mode = GameMode.Menu;
+        }
     }
 
     private void ClearTravelEncounters()
@@ -548,6 +569,7 @@ public class GameState
         ExploredTiles.Clear();
         Town = new TownState();
         Overworld = new OverworldState();
+        CampaignEnded = false;
         InitializeDefaultParty();
         InitializeTown();
         ActionLog.Clear();

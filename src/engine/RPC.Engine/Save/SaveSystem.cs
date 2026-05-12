@@ -17,6 +17,9 @@ public class SaveData
     public SaveActionLogEntry[] ActionLog { get; set; } = Array.Empty<SaveActionLogEntry>();
     public Dictionary<string, int> Reputation { get; set; } = new();
     public string? Settings { get; set; }
+    public int OverworldTurns { get; set; } = 0;
+    public string OverworldCurrentNodeId { get; set; } = "the_reach";
+    public bool CampaignEnded { get; set; } = false;
 }
 
 public class SaveTownState
@@ -147,6 +150,7 @@ public static class SaveSystem
             RestoreTown(state, data);
             RestoreActionLog(state, data);
             RestoreReputation(state, data);
+            RestoreOverworld(state, data);
             RestoreSettings(state, data);
 
             return true;
@@ -241,7 +245,10 @@ public static class SaveSystem
                 Payload = e.Payload
             }).ToArray(),
             Reputation = new Dictionary<string, int>(state.Reputation),
-            Settings = state.SettingsHash
+            Settings = state.SettingsHash,
+            OverworldTurns = state.Overworld.Turns,
+            OverworldCurrentNodeId = state.Overworld.CurrentNodeId,
+            CampaignEnded = state.CampaignEnded
         };
     }
 
@@ -335,5 +342,12 @@ public static class SaveSystem
     private static void RestoreSettings(GameState state, SaveData data)
     {
         state.SettingsHash = data.Settings;
+    }
+
+    private static void RestoreOverworld(GameState state, SaveData data)
+    {
+        state.Overworld.Turns = Math.Max(0, data.OverworldTurns);
+        state.Overworld.CurrentNodeId = string.IsNullOrEmpty(data.OverworldCurrentNodeId) ? "the_reach" : data.OverworldCurrentNodeId;
+        state.CampaignEnded = data.CampaignEnded;
     }
 }

@@ -262,6 +262,12 @@
   function handleResolveEncounter(choice: string) {
     sendAction({ type: 'resolve_travel_encounter', targetId: choice });
   }
+
+  function turnColor(turns: number): string {
+    if (turns >= 13) return '#c44';
+    if (turns >= 10) return '#d4a84b';
+    return '#ccc';
+  }
 </script>
 
 <main class="game">
@@ -280,6 +286,11 @@
           <span class="mode-badge">{gameState?.mode || 'Menu'}</span>
           {#if gameState?.hasDungeon}
             <span class="dungeon-badge">Dungeon</span>
+          {/if}
+          {#if gameState?.overworld != null}
+            <span class="turn-counter" style="color: {turnColor(gameState.overworld.turns)}">
+              Turn {gameState.overworld.turns}/15
+            </span>
           {/if}
         </div>
       </header>
@@ -324,20 +335,30 @@
             <h2 class="travel-encounter-title">{gameState.travelEncounter.name}</h2>
             {#if gameState.travelEncounter.resolutionType === 'stat_test'}
               <p class="travel-encounter-desc">Test: {gameState.travelEncounter.statName}</p>
-              <button class="travel-action-btn" on:click={() => handleResolveEncounter('roll')}>Roll</button>
+              <button class="travel-action-btn" onclick={() => handleResolveEncounter('roll')}>Roll</button>
             {:else if gameState.travelEncounter.resolutionType === 'dialogue'}
               <p class="travel-encounter-desc">Diplomatic encounter</p>
               {#if gameState.travelEncounter.options}
                 <div class="travel-options">
                   {#each gameState.travelEncounter.options as opt}
-                    <button class="travel-action-btn" on:click={() => handleResolveEncounter(opt)}>{opt}</button>
+                    <button class="travel-action-btn" onclick={() => handleResolveEncounter(opt)}>{opt}</button>
                   {/each}
                 </div>
               {/if}
             {:else}
               <p class="travel-encounter-desc">Unexpected encounter</p>
-              <button class="travel-action-btn" on:click={() => handleResolveEncounter('continue')}>Continue</button>
+              <button class="travel-action-btn" onclick={() => handleResolveEncounter('continue')}>Continue</button>
             {/if}
+          </div>
+        </div>
+      {/if}
+      {#if gameState?.campaignEnded}
+        <div class="campaign-end-overlay" role="dialog" aria-label="Campaign complete">
+          <div class="campaign-end-card">
+            <h2 class="campaign-end-title">Campaign Complete</h2>
+            <p class="campaign-end-turns">Final Turn: {gameState.overworld?.turns ?? 15}/15</p>
+            <p class="campaign-end-desc">Your journey has come to an end.</p>
+            <button class="campaign-end-btn" onclick={() => handleReset()}>New Game</button>
           </div>
         </div>
       {/if}
@@ -421,11 +442,17 @@
   }
 
   .mode-badge,
-  .dungeon-badge {
+  .dungeon-badge,
+  .turn-counter {
     padding: 0.2rem 0.5rem;
     border-radius: 0.25rem;
     font-size: clamp(0.65rem, 1.5vw, 0.75rem);
     font-weight: bold;
+  }
+
+  .turn-counter {
+    background: rgba(0, 0, 0, 0.4);
+    border: 0.0625em solid #444;
   }
 
   .mode-badge {
@@ -541,6 +568,65 @@
 
   .travel-action-btn:hover {
     background: #3a3a5e;
+  }
+
+  .campaign-end-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 60;
+    pointer-events: auto;
+  }
+
+  .campaign-end-card {
+    background: #1a1a2e;
+    border: 1px solid #444;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    min-width: 280px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+    text-align: center;
+  }
+
+  .campaign-end-title {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #d4a84b;
+  }
+
+  .campaign-end-turns {
+    margin: 0;
+    color: #c44;
+    font-size: 1rem;
+    font-weight: bold;
+  }
+
+  .campaign-end-desc {
+    margin: 0;
+    color: #888;
+    font-size: 0.875rem;
+  }
+
+  .campaign-end-btn {
+    margin-top: 0.5rem;
+    padding: 0.5rem 1.5rem;
+    background: rgba(68, 170, 68, 0.2);
+    border: 1px solid #44aa44;
+    border-radius: 0.25rem;
+    color: #88cc88;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+
+  .campaign-end-btn:hover {
+    background: rgba(68, 170, 68, 0.35);
   }
 
   @keyframes fadeIn {

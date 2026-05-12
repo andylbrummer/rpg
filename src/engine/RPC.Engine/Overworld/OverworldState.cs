@@ -22,7 +22,6 @@ public class OverworldState
             (r.To == CurrentNodeId && r.From == targetId));
         if (route == null) return false;
         CurrentNodeId = targetId;
-        Turns += route.Distance;
         return true;
     }
 }
