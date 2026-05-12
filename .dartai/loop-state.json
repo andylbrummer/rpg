@@ -2,11 +2,12 @@
   "status": "active",
   "dartboard": "Personal/rpg",
   "runner_id": "beagle-ab2-3871289",
-  "runner_email": "claude@anthropic.com",
-  "started_at": "2026-05-11T14:17:57-05:00",
-  "loop_task_id": "HL32DgPRLVfQ",
-  "current_task": null,
-  "completed_tasks": 16,
-  "total_tasks": 42,
-  "iteration": 17
+  "current_task": {
+    "dart_id": "x7DuugsCfVBF",
+    "title": "[1.5] T39 Bureau + Convocation content",
+    "iteration": 18,
+    "status": "completed",
+    "phase_completed": "phase-9",
+    "failed_phase": null
+  }
 }

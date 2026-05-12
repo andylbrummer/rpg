@@ -1,0 +1,45 @@
+{
+  "id": "bureau",
+  "name": "Bureau of Residual Affairs",
+  "shortName": "Bureau",
+  "contact": {
+    "id": "contact-bureau",
+    "name": "Agent Voss",
+    "portrait": "portrait_voss"
+  },
+  "vendorName": "Bureau Quartermaster",
+  "identity": "The Bureau of Residual Affairs is the institutional remnant of the old empire's civil service, tasked with managing death, decay, and the Engines that keep the Reach from collapsing into frozen silence. Where others see magic or mystery, the Bureau sees infrastructure: pipes, protocols, paperwork, and maintenance schedules. Their agents are process-oriented, risk-averse, and genuinely trying to keep people alive — though the higher one climbs in their ranks, the murkier their motives become.\n\nThe Bureau believes the blooms are a maintenance failure in the old empire's necromantic infrastructure. Their official doctrine is contain and repair: quarantine the afflicted, document the spread, and restore the Engines to their intended function. This makes them predictable allies and frustrating adversaries — they move slowly, demand reports, and rarely act without authorization from a chain of command that may no longer exist.\n\nIn practice, the Bureau operates through a network of field agents, quartermasters, and forensic necromancers who inspect Engine sites, enforce quarantines, and recover official documents from compromised zones. They offer Engine-tech tools, official writs of passage, and forensic equipment to those who prove useful. Their trust is hard-won and easily revoked — cross their protocols, and you become another file in their evidence locker.",
+  "colorPrimary": "#4488aa",
+  "starterRep": 0,
+  "repThresholds": {
+    "vendorAccess": 25,
+    "exclusiveRecruit": 50,
+    "patronOffice": 75
+  },
+  "vendorStock": [
+    { "itemId": "engine_charge", "name": "Engine Charge", "price": 15, "quantity": 3 },
+    { "itemId": "iron_mace", "name": "Iron Mace", "price": 30, "quantity": 1 },
+    { "itemId": "antitoxin", "name": "Antitoxin", "price": 30, "quantity": 2 },
+    { "itemId": "healing_draft", "name": "Healing Draft", "price": 40, "quantity": 2 },
+    { "itemId": "iron_helm", "name": "Iron Helm", "price": 25, "quantity": 1 },
+    { "itemId": "scale_mail", "name": "Scale Mail", "price": 35, "quantity": 1 }
+  ],
+  "missions": [
+    {
+      "id": "mission-bureau-1",
+      "title": "Engine Inspection",
+      "description": "Sweep a compromised Engine site and collect maintenance logs left by the previous inspection team.",
+      "minLevel": 1,
+      "rewards": ["100g"],
+      "repReward": 5
+    },
+    {
+      "id": "mission-bureau-2",
+      "title": "Quarantine Enforcement",
+      "description": "Exterminate bloom creatures in a newly declared quarantine zone before the infestation spreads.",
+      "minLevel": 1,
+      "rewards": ["75g"],
+      "repReward": 5
+    }
+  ]
+}

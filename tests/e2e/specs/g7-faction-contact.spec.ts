@@ -98,7 +98,7 @@ test.describe('Faction contacts in town', () => {
 
     const bureauContact2 = contactSection.locator('.contact-card').filter({ hasText: 'Agent Voss' });
     const repValue = bureauContact2.locator('.rep-value').first();
-    await expect(repValue).toHaveText('40');
+    await expect(repValue).toHaveText('35');
   });
 
   test('both Bureau and Convocation contacts render with correct faction badge', async ({ page, serverUrl }) => {

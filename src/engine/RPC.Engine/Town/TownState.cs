@@ -1,3 +1,4 @@
+using System.Text.Json;
 using RPC.Engine.Character;
 
 namespace RPC.Engine.Town;
@@ -25,6 +26,23 @@ public record FactionContact(string Id, string Name, string FactionId, string Po
 public record ActiveMission(string Id, string Title, string Description, int RepReward, string FactionId, string Status);
 
 public record MissionOffer(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward = 0, string FactionId = "");
+
+public record FactionContentDef(
+    string Id,
+    string Name,
+    string ShortName,
+    FactionContactDef Contact,
+    string VendorName,
+    string Identity,
+    string ColorPrimary,
+    int StarterRep,
+    RepThresholdsDef RepThresholds,
+    List<VendorItem> VendorStock,
+    List<FactionMissionDef> Missions);
+
+public record FactionContactDef(string Id, string Name, string Portrait);
+public record RepThresholdsDef(int VendorAccess, int ExclusiveRecruit, int PatronOffice);
+public record FactionMissionDef(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward);
 
 public static class TavernRecruitGenerator
 {
@@ -79,10 +97,60 @@ public static class TavernRecruitGenerator
     }
 }
 
+public static class FactionContentLoader
+{
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        AllowTrailingCommas = true
+    };
+
+    public static List<FactionContentDef> LoadAll(string? contentDir = null)
+    {
+        var dir = contentDir ?? FindContentDir();
+        if (dir == null || !Directory.Exists(dir))
+            return new List<FactionContentDef>();
+
+        var defs = new List<FactionContentDef>();
+        foreach (var file in Directory.EnumerateFiles(dir, "*.json").OrderBy(f => f))
+        {
+            var json = File.ReadAllText(file);
+            var def = JsonSerializer.Deserialize<FactionContentDef>(json, JsonOptions);
+            if (def != null)
+                defs.Add(def);
+        }
+        return defs;
+    }
+
+    private static string? FindContentDir()
+    {
+        var baseDir = AppContext.BaseDirectory;
+        for (int ups = 0; ups <= 8; ups++)
+        {
+            var parts = new List<string> { baseDir };
+            for (int i = 0; i < ups; i++) parts.Add("..");
+            parts.AddRange(new[] { "content", "factions" });
+            var candidate = Path.GetFullPath(Path.Combine(parts.ToArray()));
+            if (Directory.Exists(candidate))
+                return candidate;
+        }
+        return null;
+    }
+}
+
 public static class FactionContactGenerator
 {
+    private static List<FactionContentDef>? _loaded;
+
+    public static void SetContent(List<FactionContentDef> defs) => _loaded = defs;
+
     public static List<FactionContact> GenerateContacts()
     {
+        if (_loaded != null)
+        {
+            return _loaded.Select(d => new FactionContact(d.Contact.Id, d.Contact.Name, d.Id, d.Contact.Portrait)).ToList();
+        }
+
         return new List<FactionContact>
         {
             new("contact-bureau", "Agent Voss", "bureau", "portrait_voss"),
@@ -92,6 +160,13 @@ public static class FactionContactGenerator
 
     public static List<MissionOffer> GenerateMissions()
     {
+        if (_loaded != null)
+        {
+            return _loaded.SelectMany(d => d.Missions.Select(m =>
+                new MissionOffer(m.Id, m.Title, m.Description, m.MinLevel, m.Rewards, m.RepReward, d.Id)))
+                .ToList();
+        }
+
         return new List<MissionOffer>
         {
             new("mission-bureau-1", "Cleanse the Sewers", "Eliminate the rat infestation beneath the Reach.", 1, new[] { "100g" }, 10, "bureau"),
@@ -104,8 +179,21 @@ public static class FactionContactGenerator
 
 public static class FactionVendorGenerator
 {
+    private static List<FactionContentDef>? _loaded;
+
+    public static void SetContent(List<FactionContentDef> defs) => _loaded = defs;
+
     public static List<FactionVendor> GenerateStock()
     {
+        if (_loaded != null)
+        {
+            return _loaded.Select(d => new FactionVendor(
+                d.Id,
+                d.VendorName,
+                d.RepThresholds.VendorAccess,
+                d.VendorStock)).ToList();
+        }
+
         return new List<FactionVendor>
         {
             new("bureau", "Bureau Quartermaster", 25, new List<VendorItem>

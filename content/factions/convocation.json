@@ -1,0 +1,45 @@
+{
+  "id": "convocation",
+  "name": "The Convocation",
+  "shortName": "Convocation",
+  "contact": {
+    "id": "contact-convocation",
+    "name": "Seer Maren",
+    "portrait": "portrait_maren"
+  },
+  "vendorName": "Convocation Arcanist",
+  "identity": "The Convocation is a hidden network of academics, idealists, and fanatics who believe the blooms are not a plague but an evolution. They operate through infiltration and influence, pulling strings in every faction while publicly pretending to be a harmless scholarly society. Their members range from true believers who see a post-scarcity utopia in the bloom's growth to opportunists who recognize a power shift and want to be on the winning side.\n\nThe Convocation's central thesis is that the empire's infrastructure is adapting, not failing. The blooms, in their view, are the Engines achieving a new equilibrium — one that could usher in an age of abundance if guided correctly. This vision has genuine appeal, and some of their science is undeniably correct. The cost, however, is what they are willing to sacrifice to reach it: unwitting test subjects, populated districts, and anyone who stands in the way of their grand design.\n\nConvocation agents trade in forbidden knowledge, bloom-adapted equipment, and research notes that blur the line between survival and transformation. They ask their allies to do things the Bureau would never sanction — sample collection in active bloom zones, infiltration of sealed facilities, and the occasional disappearance of an inconvenient witness. Their trust opens doors to power most in the Reach dare not approach.",
+  "colorPrimary": "#aa44aa",
+  "starterRep": 0,
+  "repThresholds": {
+    "vendorAccess": 25,
+    "exclusiveRecruit": 50,
+    "patronOffice": 75
+  },
+  "vendorStock": [
+    { "itemId": "cautery_knife", "name": "Cautery Knife", "price": 45, "quantity": 1 },
+    { "itemId": "clear_mind", "name": "Clear Mind", "price": 25, "quantity": 2 },
+    { "itemId": "small_salve", "name": "Small Salve", "price": 20, "quantity": 3 },
+    { "itemId": "steadying_drink", "name": "Steadying Drink", "price": 25, "quantity": 2 },
+    { "itemId": "cloth_vest", "name": "Cloth Vest", "price": 10, "quantity": 1 },
+    { "itemId": "leather_cap", "name": "Leather Cap", "price": 12, "quantity": 1 }
+  ],
+  "missions": [
+    {
+      "id": "mission-convocation-1",
+      "title": "Bloom Sample Collection",
+      "description": "Explore an active bloom zone and retrieve viable samples without triggering a full outbreak.",
+      "minLevel": 1,
+      "rewards": ["75g"],
+      "repReward": 5
+    },
+    {
+      "id": "mission-convocation-2",
+      "title": "Infiltration",
+      "description": "Enter a sealed Bureau archive through the lower sewers. Avoid combat. Retrieve the research notes and leave undetected.",
+      "minLevel": 1,
+      "rewards": ["60g"],
+      "repReward": 5
+    }
+  ]
+}

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using RPC.Engine;
+using RPC.Engine.Content;
 using RPC.Engine.Town;
 
 namespace RPC.Tests;
@@ -192,5 +194,123 @@ public class TownStateTests : IDisposable
         var gs = new GameState(seed: 1);
         var result = gs.PurchaseVendorItem("nonexistent");
         Assert.False(result);
+    }
+
+    [Fact]
+    public void FactionContentJson_LoadsWithoutErrors()
+    {
+        var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
+
+        Assert.Equal(2, defs.Count);
+        Assert.Contains(defs, d => d.Id == "bureau");
+        Assert.Contains(defs, d => d.Id == "convocation");
+    }
+
+    [Fact]
+    public void FactionContent_Bureau_HasSixVendorItems()
+    {
+        var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
+        var bureau = defs.First(d => d.Id == "bureau");
+
+        Assert.Equal(6, bureau.VendorStock.Count);
+        Assert.All(bureau.VendorStock, item =>
+        {
+            Assert.False(string.IsNullOrEmpty(item.ItemId));
+            Assert.True(item.Price >= 0);
+            Assert.True(item.Quantity >= 1);
+        });
+    }
+
+    [Fact]
+    public void FactionContent_Convocation_HasSixVendorItems()
+    {
+        var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
+        var convocation = defs.First(d => d.Id == "convocation");
+
+        Assert.Equal(6, convocation.VendorStock.Count);
+        Assert.All(convocation.VendorStock, item =>
+        {
+            Assert.False(string.IsNullOrEmpty(item.ItemId));
+            Assert.True(item.Price >= 0);
+            Assert.True(item.Quantity >= 1);
+        });
+    }
+
+    [Fact]
+    public void FactionContent_VendorItems_ReferenceExistingItemIds()
+    {
+        var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
+        var registry = new ItemRegistry();
+        var categories = new[] { "weapons", "armor", "consumables", "components" };
+        foreach (var category in categories)
+        {
+            var path = $"../../../../../../content/items/{category}.json";
+            if (!File.Exists(path)) continue;
+            var json = File.ReadAllText(path);
+            var items = JsonSerializer.Deserialize<ItemDef[]>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            if (items != null)
+            {
+                foreach (var item in items)
+                    registry.Register(item);
+            }
+        }
+
+        foreach (var def in defs)
+        {
+            foreach (var stock in def.VendorStock)
+            {
+                Assert.True(registry.Contains(stock.ItemId), $"Faction {def.Id} references unknown item: {stock.ItemId}");
+            }
+        }
+    }
+
+    [Fact]
+    public void FactionContent_Missions_AreSideMissions_WithPlusFiveRep()
+    {
+        var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
+        foreach (var def in defs)
+        {
+            Assert.Equal(2, def.Missions.Count);
+            Assert.All(def.Missions, m => Assert.Equal(5, m.RepReward));
+        }
+    }
+
+    [Fact]
+    public void FactionContent_RepThresholds_MatchDesign()
+    {
+        var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
+        foreach (var def in defs)
+        {
+            Assert.Equal(25, def.RepThresholds.VendorAccess);
+            Assert.Equal(50, def.RepThresholds.ExclusiveRecruit);
+            Assert.Equal(75, def.RepThresholds.PatronOffice);
+        }
+    }
+
+    [Fact]
+    public void FactionContent_IdentityString_IsPresent()
+    {
+        var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
+        foreach (var def in defs)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(def.Identity));
+            Assert.True(def.Identity.Length > 200, $"Faction {def.Id} identity should be 3-4 paragraphs");
+        }
+    }
+
+    [Fact]
+    public void GameState_InitializesTown_WithFactionContentLoaded()
+    {
+        var factionContent = FactionContentLoader.LoadAll("../../../../../../content/factions");
+        FactionContactGenerator.SetContent(factionContent);
+        FactionVendorGenerator.SetContent(factionContent);
+
+        var gs = new GameState(seed: 42);
+
+        Assert.Equal(2, gs.Town.FactionContacts.Count);
+        Assert.Equal(4, gs.Town.AvailableMissions.Count);
+        Assert.Equal(2, gs.Town.FactionVendors.Count);
+        Assert.Equal(6, gs.Town.FactionVendors.First(v => v.FactionId == "bureau").Stock.Count);
+        Assert.Equal(6, gs.Town.FactionVendors.First(v => v.FactionId == "convocation").Stock.Count);
     }
 }

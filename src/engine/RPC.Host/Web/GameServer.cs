@@ -9,6 +9,7 @@ using RPC.Engine.Combat;
 using RPC.Engine.Content;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Models.Dungeons;
+using RPC.Engine.Town;
 
 namespace RPC.Host.Web;
 
@@ -32,6 +33,9 @@ public class GameServer
         _encounterTables = LoadEncounterTables();
         _classRegistry = LoadClassRegistry();
         _itemRegistry = LoadItemRegistry();
+        var factionContent = LoadFactionContent();
+        FactionContactGenerator.SetContent(factionContent);
+        FactionVendorGenerator.SetContent(factionContent);
         _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry);
         _gameState.LoadGame();
         _jsonOptions = new JsonSerializerOptions
@@ -106,6 +110,16 @@ public class GameServer
             }
         }
         return registry;
+    }
+
+    private static List<FactionContentDef> LoadFactionContent()
+    {
+        var fullDir = FindContentDir("content", "factions");
+        if (fullDir != null)
+        {
+            return FactionContentLoader.LoadAll(fullDir);
+        }
+        return new List<FactionContentDef>();
     }
 
     private static readonly Dictionary<string, string> ClassColors = new()
