@@ -42,13 +42,13 @@ public static class CombatEngine
             encounter.XpReward);
     }
 
-    public static CombatState Tick(CombatState state, CombatAction? action, GameRandom rng, ClassRegistry? classes = null)
+    public static CombatState Tick(CombatState state, CombatAction? action, GameRandom rng, ClassRegistry? classes = null, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null)
     {
         return state.Phase switch
         {
             CombatPhase.RoundStart => StartRound(state, rng),
             CombatPhase.Turn => HandleTurn(state, action, rng),
-            CombatPhase.Resolve => Resolve(state, rng, classes),
+            CombatPhase.Resolve => Resolve(state, rng, classes, actionLogEmitter),
             CombatPhase.CheckEnd => CheckEnd(state),
             _ => state
         };
@@ -106,7 +106,7 @@ public static class CombatEngine
         return new CombatAction(actor.Id, ActionType.Attack, target.Id, null, null);
     }
 
-    private static CombatState Resolve(CombatState state, GameRandom rng, ClassRegistry? classes)
+    private static CombatState Resolve(CombatState state, GameRandom rng, ClassRegistry? classes, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null)
     {
         if (state.PendingAction is null)
             return state with { Phase = CombatPhase.CheckEnd };
@@ -177,9 +177,16 @@ public static class CombatEngine
         {
             foreach (var used in state.AbilitiesUsedThisRound)
             {
-                var syn = SynergyRegistry.Lookup(abilityId, used);
-                if (syn is not null)
-                    ApplySynergyEffect(syn, a, new SynergyContext(newCombatants, newLog, state.Round, idx));
+                var synEntry = SynergyRegistry.LookupWithId(abilityId, used);
+                if (synEntry is not null)
+                {
+                    ApplySynergyEffect(synEntry.Value.Effect, a, new SynergyContext(newCombatants, newLog, state.Round, idx));
+                    actionLogEmitter?.Invoke("combat", "synergy_triggered", new Dictionary<string, string>
+                    {
+                        { "synergyId", synEntry.Value.Id ?? "" },
+                        { "targetId", newCombatants[idx].Id.ToString() }
+                    });
+                }
             }
         }
 

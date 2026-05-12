@@ -295,12 +295,21 @@ public class GameState
         }
 
         var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-        Combat = CombatEngine.Tick(Combat, action, rng, _classRegistry);
+        Action<string, string, Dictionary<string, string>> emitter = (cat, type, payload) =>
+        {
+            if (type == "synergy_triggered" && _currentEncounterId != null)
+            {
+                payload["encounterId"] = _currentEncounterId;
+            }
+            EmitActionLog(cat, type, payload);
+        };
+
+        Combat = CombatEngine.Tick(Combat, action, rng, _classRegistry, emitter);
 
         // Auto-resolve AI turns
         while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
         {
-            Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
+            Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry, emitter);
         }
 
         if (Combat.IsFinished)

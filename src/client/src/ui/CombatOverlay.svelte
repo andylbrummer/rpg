@@ -9,9 +9,25 @@
     onCombatAction: (action: string, targetId: string) => void;
     onFlee: () => void;
     cancelSignal?: number;
+    synergyFlashTargetId?: string | null;
   }
 
-  let { combat, lastResult, onCombatAction, onFlee, cancelSignal = 0 }: Props = $props();
+  let { combat, lastResult, onCombatAction, onFlee, cancelSignal = 0, synergyFlashTargetId = null }: Props = $props();
+
+  let flashingTargetId = $state<string | null>(null);
+  let processedFlashTarget: string | null = null;
+
+  $effect(() => {
+    const target = synergyFlashTargetId;
+    if (target && processedFlashTarget !== target) {
+      processedFlashTarget = target;
+      flashingTargetId = target;
+      const timer = setTimeout(() => {
+        flashingTargetId = null;
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  });
 
   let selectedTargetId = $state<string | null>(null);
   let selectedAction = $state('Attack');
@@ -138,7 +154,7 @@
   const actions = ['Attack', 'Defend', 'Wait', 'UseAbility', 'UseItem'];
 </script>
 
-<div class="combat-overlay">
+<div class="combat-overlay" data-testid="combat-overlay" data-flash-target={flashingTargetId ?? ''}>
   {#if showResult && lastResult}
     <CombatResultToast result={lastResult} onDismiss={dismissResult} />
   {:else}
@@ -174,6 +190,7 @@
                 class="combatant"
                 class:dead={member.hp <= 0}
                 class:current-turn={member.isCurrent}
+                class:synergy-flash={flashingTargetId === member.id}
               >
                 <div class="combatant-header">
                   <span class="combatant-name">{member.name}</span>
@@ -192,6 +209,7 @@
                 class="combatant"
                 class:dead={member.hp <= 0}
                 class:current-turn={member.isCurrent}
+                class:synergy-flash={flashingTargetId === member.id}
               >
                 <div class="combatant-header">
                   <span class="combatant-name">{member.name}</span>
@@ -220,6 +238,7 @@
                 class:valid-target={isValidTarget(enemy)}
                 class:invalid-target={!isValidTarget(enemy) && selectedAction === 'UseAbility' && selectedAbilityId !== null}
                 class:current-turn={enemy.isCurrent}
+                class:synergy-flash={flashingTargetId === enemy.id}
                 onclick={() => { if (isPlayerTurn() && isValidTarget(enemy)) selectedTargetId = enemy.id; }}
                 disabled={!isPlayerTurn() || !isValidTarget(enemy)}
               >
@@ -244,6 +263,7 @@
                 class:valid-target={isValidTarget(enemy)}
                 class:invalid-target={!isValidTarget(enemy) && selectedAction === 'UseAbility' && selectedAbilityId !== null}
                 class:current-turn={enemy.isCurrent}
+                class:synergy-flash={flashingTargetId === enemy.id}
                 onclick={() => { if (isPlayerTurn() && isValidTarget(enemy)) selectedTargetId = enemy.id; }}
                 disabled={!isPlayerTurn() || !isValidTarget(enemy)}
               >
@@ -694,5 +714,25 @@
     font-size: clamp(0.8rem, 2vw, 1rem);
     color: #888;
     padding: 0.5rem;
+  }
+
+  .combatant.synergy-flash {
+    animation: synergyPulse 500ms ease-out;
+    z-index: 10;
+  }
+
+  @keyframes synergyPulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(212, 168, 75, 0.9);
+      border-color: #d4a84b;
+    }
+    50% {
+      box-shadow: 0 0 0.75em 0.35em rgba(212, 168, 75, 0.6);
+      border-color: #ffdd77;
+    }
+    100% {
+      box-shadow: 0 0 1.5em 0.75em rgba(212, 168, 75, 0);
+      border-color: #444;
+    }
   }
 </style>

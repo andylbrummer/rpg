@@ -8,7 +8,7 @@ namespace RPC.Engine.Combat;
 /// </summary>
 public static class SynergyRegistry
 {
-    private static readonly Dictionary<string, SynergyEffect> _effects = new();
+    private static readonly Dictionary<string, (string? Id, SynergyEffect Effect)> _effects = new();
 
     public static string MakeKey(string a, string b)
     {
@@ -20,9 +20,9 @@ public static class SynergyRegistry
             : $"{b}|{a}";
     }
 
-    public static void Register(string a, string b, SynergyEffect effect)
+    public static void Register(string a, string b, SynergyEffect effect, string? id = null)
     {
-        _effects[MakeKey(a, b)] = effect;
+        _effects[MakeKey(a, b)] = (id, effect);
     }
 
     public static SynergyEffect? Lookup(string a, string b)
@@ -31,12 +31,21 @@ public static class SynergyRegistry
         if (string.IsNullOrEmpty(key))
             return null;
 
-        return _effects.TryGetValue(key, out var effect) ? effect : null;
+        return _effects.TryGetValue(key, out var entry) ? entry.Effect : null;
+    }
+
+    public static (string? Id, SynergyEffect Effect)? LookupWithId(string a, string b)
+    {
+        var key = MakeKey(a, b);
+        if (string.IsNullOrEmpty(key))
+            return null;
+
+        return _effects.TryGetValue(key, out var entry) ? entry : null;
     }
 
     public static void Clear() => _effects.Clear();
 
-    public static IReadOnlyDictionary<string, SynergyEffect> GetAll() => _effects;
+    public static IReadOnlyDictionary<string, (string? Id, SynergyEffect Effect)> GetAll() => _effects;
 
     public static void LoadFromJson(string json)
     {
@@ -52,7 +61,7 @@ public static class SynergyRegistry
             def.Effect.Type,
             def.Effect.Value);
 
-        Register(def.Abilities[0], def.Abilities[1], effect);
+        Register(def.Abilities[0], def.Abilities[1], effect, def.Id);
     }
 
     public static void LoadFromDirectory(string directoryPath)

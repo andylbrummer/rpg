@@ -17,6 +17,51 @@
   let repToasts = $state<Array<{ id: number; factionId: string; delta: number; source: string }>>([]);
   let lastActionLogTurn = $state(0);
   let nextToastId = 0;
+  let synergyFlashTargetId = $state<string | null>(null);
+  let showFieldNotes = $state(false);
+  let replaySynergyId = $state<string | null>(null);
+
+  const DISCOVERY_KEY = 'rpc_discovered_synergies';
+  const REVEALED_KEY = 'rpc_revealed_synergies';
+
+  const ALL_SYNERGIES = [
+    { id: 'bonewarden_cauterist_bone_link', abilities: ['bone_link', 'pyre'], hint: 'Bone-link channels pyre damage to all linked allies.', effect: '+4 bonus damage' },
+    { id: 'stillblade_hollow_backstep', abilities: ['backstep', 'cheap_shot'], hint: 'A Stillblade feint creates the perfect opening for a Hollow cheap shot.', effect: '+6 bonus damage' },
+    { id: 'cauterist_hollow_purify', abilities: ['purify', 'cheap_shot'], hint: 'Purification exposes wounds, letting the Hollow\'s cheap shot apply a lasting debuff.', effect: 'applies status (-3 potency)' },
+    { id: 'fieldwright_inkblood_overcharge', abilities: ['overcharge', 'knowledge_bolt'], hint: 'Overcharged tools empower the Inkblood\'s knowledge bolt to strike farther.', effect: '+5 bonus damage' },
+  ];
+
+  function loadSet(key: string): Set<string> {
+    try {
+      const raw = localStorage.getItem(key);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveSet(key: string, ids: Set<string>) {
+    localStorage.setItem(key, JSON.stringify([...ids]));
+  }
+
+  let discoveredSynergies = $state<Set<string>>(loadSet(DISCOVERY_KEY));
+  let revealedSynergies = $state<Set<string>>(loadSet(REVEALED_KEY));
+  let pendingReveals = $state<string[]>([]);
+
+  function playBeep() {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.value = 0.1;
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+      setTimeout(() => ctx.close(), 200);
+    } catch {}
+  }
 
   serverErrorStore.subscribe((err) => {
     serverError = err;
@@ -136,8 +181,12 @@
     }
   }
 
+  let lastMode: string | null = null;
+
   $effect(() => {
     const unsub = gameStore.subscribe((s) => {
+      const wasCombat = lastMode === 'Combat';
+      lastMode = s?.mode ?? null;
       gameState = s;
       clearPending();
       drainBuffer();
@@ -159,10 +208,33 @@
             repToasts = repToasts.filter((t) => t.id !== toast.id);
           }, 4000);
         }
+
+        const newSynergyEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'synergy_triggered');
+        for (const entry of newSynergyEntries) {
+          const sid = entry.payload?.synergyId;
+          const tid = entry.payload?.targetId;
+          if (sid && !discoveredSynergies.has(sid)) {
+            discoveredSynergies = new Set([...discoveredSynergies, sid]);
+            saveSet(DISCOVERY_KEY, discoveredSynergies);
+          }
+          if (sid && !revealedSynergies.has(sid) && !pendingReveals.includes(sid)) {
+            pendingReveals = [...pendingReveals, sid];
+          }
+          if (tid) {
+            synergyFlashTargetId = tid;
+          }
+        }
         lastActionLogTurn = maxTurn;
       } else if (actionLog.length === 0 && lastActionLogTurn > 0) {
         // Reset detected — clear turn tracker so future toasts fire
         lastActionLogTurn = 0;
+      }
+
+      // Reveal field notes entries post-combat
+      if (wasCombat && s?.mode !== 'Combat' && pendingReveals.length > 0) {
+        revealedSynergies = new Set([...revealedSynergies, ...pendingReveals]);
+        saveSet(REVEALED_KEY, revealedSynergies);
+        pendingReveals = [];
       }
     });
     return unsub;
@@ -351,6 +423,7 @@
           onCombatAction={handleCombatAction}
           onFlee={handleFlee}
           cancelSignal={combatCancelSignal}
+          synergyFlashTargetId={synergyFlashTargetId}
         />
       {/if}
       {#if gameState?.mode === 'Exploration'}
@@ -394,6 +467,47 @@
             <p class="campaign-end-turns">Final Turn: {gameState.overworld?.turns ?? 15}/15</p>
             <p class="campaign-end-desc">Your journey has come to an end.</p>
             <button class="campaign-end-btn" onclick={() => handleReset()}>New Game</button>
+          </div>
+        </div>
+      {/if}
+      {#if showFieldNotes}
+        <div class="field-notes-overlay" role="dialog" aria-label="Field Notes">
+          <div class="field-notes-card">
+            <div class="field-notes-header">
+              <h2 class="field-notes-title">Field Notes</h2>
+              <button class="field-notes-close" onclick={() => showFieldNotes = false}>Close</button>
+            </div>
+            <div class="field-notes-list">
+              {#each ALL_SYNERGIES as synergy}
+                {@const discovered = discoveredSynergies.has(synergy.id)}
+                {@const revealed = revealedSynergies.has(synergy.id)}
+                <div class="field-note-entry" class:revealed>
+                  <div class="field-note-names">
+                    {#if revealed}
+                      {synergy.abilities.join(' + ')}
+                    {:else}
+                      ??? + ???
+                    {/if}
+                  </div>
+                  {#if revealed}
+                    <div class="field-note-hint">{synergy.hint}</div>
+                    <div class="field-note-effect">{synergy.effect}</div>
+                    <button class="replay-btn" onclick={() => { replaySynergyId = synergy.id; playBeep(); }}>Replay</button>
+                  {:else}
+                    <div class="field-note-locked">Undiscovered synergy</div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
+      {#if replaySynergyId}
+        <div class="replay-modal-overlay" role="dialog" aria-label="Synergy replay">
+          <div class="replay-modal-card">
+            <h3 class="replay-title">{ALL_SYNERGIES.find(s => s.id === replaySynergyId)?.abilities.join(' + ') ?? 'Synergy'}</h3>
+            <div class="replay-anim"></div>
+            <button class="replay-close-btn" onclick={() => replaySynergyId = null}>Close</button>
           </div>
         </div>
       {/if}
@@ -698,6 +812,209 @@
 
   .campaign-end-btn:hover {
     background: rgba(68, 170, 68, 0.35);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-0.5em); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .field-notes-toggle {
+    padding: 0.2rem 0.5rem;
+    background: rgba(212, 168, 75, 0.15);
+    border: 1px solid #d4a84b;
+    border-radius: 0.25rem;
+    color: #d4a84b;
+    cursor: pointer;
+    font-size: clamp(0.6rem, 1.2vw, 0.75rem);
+    font-weight: bold;
+  }
+
+  .field-notes-toggle:hover {
+    background: rgba(212, 168, 75, 0.3);
+  }
+
+  .field-notes-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 55;
+    pointer-events: auto;
+  }
+
+  .field-notes-card {
+    background: #1a1a2e;
+    border: 1px solid #444;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    min-width: 300px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .field-notes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #444;
+    padding-bottom: 0.5rem;
+  }
+
+  .field-notes-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #d4a84b;
+  }
+
+  .field-notes-close {
+    background: transparent;
+    border: 1px solid #666;
+    border-radius: 0.25rem;
+    color: #ccc;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .field-notes-close:hover {
+    border-color: #888;
+  }
+
+  .field-notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .field-note-entry {
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #333;
+    border-radius: 0.375rem;
+  }
+
+  .field-note-entry.revealed {
+    border-color: #d4a84b;
+    background: rgba(212, 168, 75, 0.05);
+  }
+
+  .field-note-names {
+    font-weight: bold;
+    color: #eee;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .field-note-hint {
+    color: #aaa;
+    font-size: 0.8rem;
+    font-style: italic;
+    margin-bottom: 0.25rem;
+  }
+
+  .field-note-effect {
+    color: #88cc88;
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .field-note-locked {
+    color: #666;
+    font-size: 0.8rem;
+    font-style: italic;
+  }
+
+  .replay-btn {
+    padding: 0.25rem 0.75rem;
+    background: rgba(68, 170, 255, 0.15);
+    border: 1px solid #44aaff;
+    border-radius: 0.25rem;
+    color: #66aaff;
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+
+  .replay-btn:hover {
+    background: rgba(68, 170, 255, 0.3);
+  }
+
+  .replay-modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 60;
+    pointer-events: auto;
+  }
+
+  .replay-modal-card {
+    background: #1a1a2e;
+    border: 1px solid #d4a84b;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    min-width: 280px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    text-align: center;
+  }
+
+  .replay-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #d4a84b;
+  }
+
+  .replay-anim {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 2px solid #444;
+    background: rgba(212, 168, 75, 0.1);
+    animation: synergyPulse 500ms ease-out;
+  }
+
+  @keyframes synergyPulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(212, 168, 75, 0.9);
+      border-color: #d4a84b;
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 1em 0.5em rgba(212, 168, 75, 0.6);
+      border-color: #ffdd77;
+      transform: scale(1.1);
+    }
+    100% {
+      box-shadow: 0 0 2em 1em rgba(212, 168, 75, 0);
+      border-color: #444;
+      transform: scale(1);
+    }
+  }
+
+  .replay-close-btn {
+    padding: 0.5rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #666;
+    border-radius: 0.25rem;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+
+  .replay-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
   }
 
   @keyframes fadeIn {
