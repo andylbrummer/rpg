@@ -1,4 +1,10 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claimed": []
+  "claimed": [
+    {
+      "task_id": "DjMyjirG1HuX",
+      "title": "[1.5] T41 Faction contacts in town",
+      "claimed_at": "2026-05-11T19:30:00-05:00"
+    }
+  ]
 }
