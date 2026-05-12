@@ -1,4 +1,10 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claimed": []
+  "claimed": [
+    {
+      "task_id": "U2Onc2EpBVnH",
+      "title": "[1.5] 32g JSON segment loader",
+      "claimed_at": "2026-05-11T23:10:00-05:00"
+    }
+  ]
 }
