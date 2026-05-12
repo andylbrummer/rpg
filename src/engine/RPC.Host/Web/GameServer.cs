@@ -35,6 +35,7 @@ public class GameServer
         _encounterTables = LoadEncounterTables();
         _classRegistry = LoadClassRegistry();
         _itemRegistry = LoadItemRegistry();
+        LoadSynergies();
         var factionContent = LoadFactionContent();
         FactionContactGenerator.SetContent(factionContent);
         FactionVendorGenerator.SetContent(factionContent);
@@ -97,6 +98,15 @@ public class GameServer
             }
         }
         return registry;
+    }
+
+    private static void LoadSynergies()
+    {
+        var fullDir = FindContentDir("content", "synergies");
+        if (fullDir != null)
+        {
+            SynergyRegistry.LoadFromDirectory(fullDir);
+        }
     }
 
     private static ItemRegistry LoadItemRegistry()

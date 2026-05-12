@@ -6,9 +6,9 @@ namespace RPC.Tests;
 
 public class CombatSnapshotTests
 {
-    private static CharacterState MakeChar(string name, int hp, int speed, int row = 0)
+    private static CharacterState MakeChar(string name, int hp, int speed, int row = 0, string classId = "test")
         => new(new Guid(name.PadRight(16).Take(16).Select(c => (byte)c).ToArray()),
-            name, "test", 1, 0,
+            name, classId, 1, 0,
             new BaseStats(4, speed, 4, 4, 4),
             hp, Equipment.Empty,
             Array.Empty<string>(), row);
@@ -289,6 +289,355 @@ public class CombatSnapshotTests
 
         Assert.True(damageA > damageB,
             $"Expected front-only party to deal more damage. A={damageA}, B={damageB}");
+    }
+
+    [Fact]
+    public void Snapshot_Synergy_BonewardenCauterist_BoneLinkPyre_Triggers()
+    {
+        SynergyRegistry.Register("bone_link", "pyre", new SynergyEffect("bonus_damage", 4));
+
+        var registry = new ClassRegistry();
+        var bwJson = """
+            {
+              "id": "bonewarden",
+              "name": "Bonewarden",
+              "description": "Test",
+              "baseStats": { "strength": 4, "dexterity": 3, "constitution": 5, "intelligence": 4, "willpower": 4 },
+              "abilities": [
+                { "id": "bone_link", "name": "Bone Link", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["bone_link"] }
+              ]
+            }
+            """;
+        var caJson = """
+            {
+              "id": "cauterist",
+              "name": "Cauterist",
+              "description": "Test",
+              "baseStats": { "strength": 3, "dexterity": 5, "constitution": 4, "intelligence": 5, "willpower": 4 },
+              "abilities": [
+                { "id": "pyre", "name": "Pyre", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["pyre"] }
+              ]
+            }
+            """;
+        registry.LoadFromJson("bonewarden", bwJson);
+        registry.LoadFromJson("cauterist", caJson);
+
+        var party = new PartyState();
+        party.SetMember(0, MakeChar("Bone", 20, 10, 0, "bonewarden"));
+        party.SetMember(1, MakeChar("Caut", 20, 1, 0, "cauterist"));
+        var encounter = new EncounterDef("e1", "Test", new[] { new EnemySpawn("rat", 1) });
+
+        var state = CombatEngine.Enter(party, encounter, new GameRandom(42));
+        var rng = new GameRandom(42);
+
+        int playerTurns = 0;
+        string[] abilitySequence = ["bone_link", "pyre"];
+        while (!state.IsFinished && playerTurns < 2)
+        {
+            if (state.Phase == CombatPhase.Turn && state.CurrentActor?.IsPlayer == true)
+            {
+                var enemy = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                var ability = abilitySequence[playerTurns];
+                state = CombatEngine.Tick(state,
+                    new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
+                    rng, registry);
+                while (!state.IsFinished && state.Phase != CombatPhase.Turn)
+                    state = CombatEngine.Tick(state, null, rng, registry);
+                playerTurns++;
+            }
+            else
+            {
+                state = CombatEngine.Tick(state, null, rng, registry);
+            }
+        }
+
+        var synergyLogs = state.Log.Where(l => l.Message.Contains("synergy", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.NotEmpty(synergyLogs);
+    }
+
+    [Fact]
+    public void Snapshot_Synergy_StillbladeHollow_BackstepCheapShot_Triggers()
+    {
+        SynergyRegistry.Register("backstep", "cheap_shot", new SynergyEffect("bonus_damage", 6));
+
+        var registry = new ClassRegistry();
+        var sbJson = """
+            {
+              "id": "stillblade",
+              "name": "Stillblade",
+              "description": "Test",
+              "baseStats": { "strength": 5, "dexterity": 5, "constitution": 4, "intelligence": 3, "willpower": 4 },
+              "abilities": [
+                { "id": "backstep", "name": "Backstep", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["backstep"] }
+              ]
+            }
+            """;
+        var hoJson = """
+            {
+              "id": "hollow",
+              "name": "Hollow",
+              "description": "Test",
+              "baseStats": { "strength": 4, "dexterity": 6, "constitution": 3, "intelligence": 4, "willpower": 4 },
+              "abilities": [
+                { "id": "cheap_shot", "name": "Cheap Shot", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["cheap_shot"] }
+              ]
+            }
+            """;
+        registry.LoadFromJson("stillblade", sbJson);
+        registry.LoadFromJson("hollow", hoJson);
+
+        var party = new PartyState();
+        party.SetMember(0, MakeChar("Still", 20, 10, 0, "stillblade"));
+        party.SetMember(1, MakeChar("Hollow", 20, 1, 0, "hollow"));
+        var encounter = new EncounterDef("e1", "Test", new[] { new EnemySpawn("rat", 1) });
+
+        var state = CombatEngine.Enter(party, encounter, new GameRandom(42));
+        var rng = new GameRandom(42);
+
+        int playerTurns = 0;
+        string[] abilitySequence = ["backstep", "cheap_shot"];
+        while (!state.IsFinished && playerTurns < 2)
+        {
+            if (state.Phase == CombatPhase.Turn && state.CurrentActor?.IsPlayer == true)
+            {
+                var enemy = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                var ability = abilitySequence[playerTurns];
+                state = CombatEngine.Tick(state,
+                    new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
+                    rng, registry);
+                while (!state.IsFinished && state.Phase != CombatPhase.Turn)
+                    state = CombatEngine.Tick(state, null, rng, registry);
+                playerTurns++;
+            }
+            else
+            {
+                state = CombatEngine.Tick(state, null, rng, registry);
+            }
+        }
+
+        var synergyLogs = state.Log.Where(l => l.Message.Contains("synergy", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.NotEmpty(synergyLogs);
+    }
+
+    [Fact]
+    public void Snapshot_Synergy_FieldwrightInkblood_OverchargeKnowledgeBolt_Triggers()
+    {
+        SynergyRegistry.Register("overcharge", "knowledge_bolt", new SynergyEffect("bonus_damage", 5));
+
+        var registry = new ClassRegistry();
+        var fwJson = """
+            {
+              "id": "fieldwright",
+              "name": "Fieldwright",
+              "description": "Test",
+              "baseStats": { "strength": 4, "dexterity": 4, "constitution": 4, "intelligence": 5, "willpower": 4 },
+              "abilities": [
+                { "id": "overcharge", "name": "Overcharge", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["overcharge"] }
+              ]
+            }
+            """;
+        var ibJson = """
+            {
+              "id": "inkblood",
+              "name": "Inkblood",
+              "description": "Test",
+              "baseStats": { "strength": 3, "dexterity": 4, "constitution": 4, "intelligence": 6, "willpower": 4 },
+              "abilities": [
+                { "id": "knowledge_bolt", "name": "Knowledge Bolt", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["knowledge_bolt"] }
+              ]
+            }
+            """;
+        registry.LoadFromJson("fieldwright", fwJson);
+        registry.LoadFromJson("inkblood", ibJson);
+
+        var party = new PartyState();
+        party.SetMember(0, MakeChar("Field", 20, 10, 0, "fieldwright"));
+        party.SetMember(1, MakeChar("Ink", 20, 1, 0, "inkblood"));
+        var encounter = new EncounterDef("e1", "Test", new[] { new EnemySpawn("rat", 1) });
+
+        var state = CombatEngine.Enter(party, encounter, new GameRandom(42));
+        var rng = new GameRandom(42);
+
+        int playerTurns = 0;
+        string[] abilitySequence = ["overcharge", "knowledge_bolt"];
+        while (!state.IsFinished && playerTurns < 2)
+        {
+            if (state.Phase == CombatPhase.Turn && state.CurrentActor?.IsPlayer == true)
+            {
+                var enemy = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                var ability = abilitySequence[playerTurns];
+                state = CombatEngine.Tick(state,
+                    new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
+                    rng, registry);
+                while (!state.IsFinished && state.Phase != CombatPhase.Turn)
+                    state = CombatEngine.Tick(state, null, rng, registry);
+                playerTurns++;
+            }
+            else
+            {
+                state = CombatEngine.Tick(state, null, rng, registry);
+            }
+        }
+
+        var synergyLogs = state.Log.Where(l => l.Message.Contains("synergy", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.NotEmpty(synergyLogs);
+    }
+
+    [Fact]
+    public void Snapshot_Synergy_CauteristHollow_PurifyCheapShot_Triggers()
+    {
+        SynergyRegistry.Register("purify", "cheap_shot", new SynergyEffect("apply_status", -3, "weakened", 2));
+
+        var registry = new ClassRegistry();
+        var caJson = """
+            {
+              "id": "cauterist",
+              "name": "Cauterist",
+              "description": "Test",
+              "baseStats": { "strength": 3, "dexterity": 5, "constitution": 4, "intelligence": 5, "willpower": 4 },
+              "abilities": [
+                { "id": "purify", "name": "Purify", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["purify"] }
+              ]
+            }
+            """;
+        var hoJson = """
+            {
+              "id": "hollow",
+              "name": "Hollow",
+              "description": "Test",
+              "baseStats": { "strength": 4, "dexterity": 6, "constitution": 3, "intelligence": 4, "willpower": 4 },
+              "abilities": [
+                { "id": "cheap_shot", "name": "Cheap Shot", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["cheap_shot"] }
+              ]
+            }
+            """;
+        registry.LoadFromJson("cauterist", caJson);
+        registry.LoadFromJson("hollow", hoJson);
+
+        var party = new PartyState();
+        party.SetMember(0, MakeChar("Caut", 20, 10, 0, "cauterist"));
+        party.SetMember(1, MakeChar("Hollow", 20, 1, 0, "hollow"));
+        var encounter = new EncounterDef("e1", "Test", new[] { new EnemySpawn("rat", 1) });
+
+        var state = CombatEngine.Enter(party, encounter, new GameRandom(42));
+        var rng = new GameRandom(42);
+
+        int playerTurns = 0;
+        string[] abilitySequence = ["purify", "cheap_shot"];
+        while (!state.IsFinished && playerTurns < 2)
+        {
+            if (state.Phase == CombatPhase.Turn && state.CurrentActor?.IsPlayer == true)
+            {
+                var enemy = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                var ability = abilitySequence[playerTurns];
+                state = CombatEngine.Tick(state,
+                    new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
+                    rng, registry);
+                while (!state.IsFinished && state.Phase != CombatPhase.Turn)
+                    state = CombatEngine.Tick(state, null, rng, registry);
+                playerTurns++;
+            }
+            else
+            {
+                state = CombatEngine.Tick(state, null, rng, registry);
+            }
+        }
+
+        var synergyLogs = state.Log.Where(l => l.Message.Contains("synergy", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.NotEmpty(synergyLogs);
+    }
+
+    [Fact]
+    public void Snapshot_AntiSynergy_BonewardenStillblade_NoPositiveEffect()
+    {
+        // Anti-synergy is not registered in the runtime map, so no synergy should trigger
+        var registry = new ClassRegistry();
+        var bwJson = """
+            {
+              "id": "bonewarden",
+              "name": "Bonewarden",
+              "description": "Test",
+              "baseStats": { "strength": 4, "dexterity": 3, "constitution": 5, "intelligence": 4, "willpower": 4 },
+              "abilities": [
+                { "id": "bone_spear", "name": "Bone Spear", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["bone_spear"] }
+              ]
+            }
+            """;
+        var sbJson = """
+            {
+              "id": "stillblade",
+              "name": "Stillblade",
+              "description": "Test",
+              "baseStats": { "strength": 5, "dexterity": 5, "constitution": 4, "intelligence": 3, "willpower": 4 },
+              "abilities": [
+                { "id": "rend", "name": "Rend", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["test"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["rend"] }
+              ]
+            }
+            """;
+        registry.LoadFromJson("bonewarden", bwJson);
+        registry.LoadFromJson("stillblade", sbJson);
+
+        var party = new PartyState();
+        party.SetMember(0, MakeChar("Bone", 20, 10, 0, "bonewarden"));
+        party.SetMember(1, MakeChar("Still", 20, 1, 0, "stillblade"));
+        var encounter = new EncounterDef("e1", "Test", new[] { new EnemySpawn("rat", 1) });
+
+        var state = CombatEngine.Enter(party, encounter, new GameRandom(42));
+        var rng = new GameRandom(42);
+
+        int playerTurns = 0;
+        string[] abilitySequence = ["bone_spear", "rend"];
+        while (!state.IsFinished && playerTurns < 2)
+        {
+            if (state.Phase == CombatPhase.Turn && state.CurrentActor?.IsPlayer == true)
+            {
+                var enemy = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                var ability = abilitySequence[playerTurns];
+                state = CombatEngine.Tick(state,
+                    new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
+                    rng, registry);
+                while (!state.IsFinished && state.Phase != CombatPhase.Turn)
+                    state = CombatEngine.Tick(state, null, rng, registry);
+                playerTurns++;
+            }
+            else
+            {
+                state = CombatEngine.Tick(state, null, rng, registry);
+            }
+        }
+
+        var synergyLogs = state.Log.Where(l => l.Message.Contains("synergy", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Empty(synergyLogs);
     }
 
     [Fact]

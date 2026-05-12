@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace RPC.Engine.Combat;
 
 /// <summary>
@@ -33,6 +35,37 @@ public static class SynergyRegistry
     }
 
     public static void Clear() => _effects.Clear();
+
+    public static IReadOnlyDictionary<string, SynergyEffect> GetAll() => _effects;
+
+    public static void LoadFromJson(string json)
+    {
+        var def = JsonSerializer.Deserialize<SynergyDef>(json, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        if (def is null || def.Anti || def.Abilities.Length != 2)
+            return;
+
+        var effect = new SynergyEffect(
+            def.Effect.Type,
+            def.Effect.Value);
+
+        Register(def.Abilities[0], def.Abilities[1], effect);
+    }
+
+    public static void LoadFromDirectory(string directoryPath)
+    {
+        if (!Directory.Exists(directoryPath))
+            return;
+
+        foreach (var file in Directory.EnumerateFiles(directoryPath, "*.json"))
+        {
+            var json = File.ReadAllText(file);
+            LoadFromJson(json);
+        }
+    }
 }
 
 public record SynergyEffect(
@@ -40,3 +73,19 @@ public record SynergyEffect(
     int Value,
     string? StatusType = null,
     int? StatusDuration = null);
+
+public record SynergyDef(
+    string Id,
+    string[] Abilities,
+    bool Anti,
+    SynergyDefEffect Effect,
+    string Hint,
+    SynergyFieldNotes FieldNotes);
+
+public record SynergyDefEffect(
+    string Type,
+    int Value,
+    string AppliesAfter);
+
+public record SynergyFieldNotes(
+    string? DiscoveredBy);

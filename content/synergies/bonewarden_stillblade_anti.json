@@ -1,0 +1,14 @@
+{
+  "id": "bonewarden_stillblade_anti",
+  "abilities": ["bone_spear", "rend"],
+  "anti": true,
+  "effect": {
+    "type": "none",
+    "value": 0,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "The Stillblade's discipline rejects necromantic energies outright.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

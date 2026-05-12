@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using RPC.Engine.Combat;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Models.Dungeons;
 
@@ -40,6 +41,12 @@ class Program
                 var result = ValidateSegment(file, json);
                 if (result != 0) return result;
             }
+            else if (relativePath.Contains("/synergies/") || relativePath.StartsWith("synergies/"))
+            {
+                var json = File.ReadAllText(file);
+                var result = ValidateSynergy(file, json);
+                if (result != 0) return result;
+            }
         }
 
         var manifest = new Manifest
@@ -51,6 +58,11 @@ class Program
         var manifestPath = Path.Combine(outputDir, "manifest.json");
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
         Console.WriteLine($"Wrote manifest: {manifestPath}");
+
+        var synergyMap = CompileSynergyMap(contentDir);
+        var synergyMapPath = Path.Combine(outputDir, "synergies.map.json");
+        File.WriteAllText(synergyMapPath, JsonSerializer.Serialize(synergyMap, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"Wrote synergy map: {synergyMapPath}");
 
         var rpkPath = Path.Combine(outputDir, "content.rpk");
         CompileRpk(contentDir, jsonFiles, rpkPath);
@@ -141,6 +153,93 @@ class Program
         }
 
         return 0;
+    }
+
+    static int ValidateSynergy(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        SynergyDef? def;
+        try
+        {
+            def = JsonSerializer.Deserialize<SynergyDef>(json, options);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        if (def == null)
+        {
+            Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(def.Id))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Missing id");
+            return 1;
+        }
+
+        if (def.Abilities == null || def.Abilities.Length != 2)
+        {
+            Console.WriteLine($"FAIL: {filePath} - Expected exactly 2 abilities");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(def.Abilities[0]) || string.IsNullOrWhiteSpace(def.Abilities[1]))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Ability IDs must not be empty");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(def.Hint))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Hint must not be empty");
+            return 1;
+        }
+
+        var validAppliesAfter = new[] { "first_ability", "second_ability", "round_end" };
+        if (def.Effect == null || !validAppliesAfter.Contains(def.Effect.AppliesAfter))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Invalid or missing effect.appliesAfter");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static Dictionary<string, SynergyEffect> CompileSynergyMap(string contentDir)
+    {
+        var map = new Dictionary<string, SynergyEffect>();
+        var synergyDir = Path.Combine(contentDir, "synergies");
+        if (!Directory.Exists(synergyDir))
+            return map;
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        foreach (var file in Directory.EnumerateFiles(synergyDir, "*.json"))
+        {
+            var json = File.ReadAllText(file);
+            var def = JsonSerializer.Deserialize<SynergyDef>(json, options);
+            if (def == null || def.Anti || def.Abilities.Length != 2)
+                continue;
+
+            var key = SynergyRegistry.MakeKey(def.Abilities[0], def.Abilities[1]);
+            if (string.IsNullOrEmpty(key))
+                continue;
+
+            map[key] = new SynergyEffect(def.Effect.Type, def.Effect.Value);
+        }
+
+        return map;
     }
 
     static int FindLineNumber(string text, int x, int y)
