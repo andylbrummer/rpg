@@ -6,11 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "hXkIFq2lLJ8y",
-    "title": "T51b-1 Pipe dungeon type to client",
-    "iteration": 39
+    "dart_id": "5FqE2K9ZIZRz",
+    "title": "T51b-2 DungeonRenderer theming engine + Bloom palette",
+    "iteration": 40
   },
-  "completed_tasks": 33,
+  "completed_tasks": 34,
   "total_tasks": 54,
-  "iteration": 39
+  "iteration": 40
 }
