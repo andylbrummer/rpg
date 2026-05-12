@@ -6,6 +6,8 @@ public class PartyState
 {
     public CharacterState[] Members { get; } = new CharacterState[6];
     public List<CharacterState> DeadCharacters { get; } = new();
+    public ComponentStack[] ExpeditionCache { get; set; } = Array.Empty<ComponentStack>();
+    public const int MaxExpeditionCacheSlots = 12;
 
     public IEnumerable<CharacterState> FrontRow => Members.Take(3).Where(c => c.IsAlive);
     public IEnumerable<CharacterState> BackRow => Members.Skip(3).Where(c => c.IsAlive);

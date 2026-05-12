@@ -9,6 +9,12 @@ public readonly record struct TempStatModifier(string Stat, int Delta, int Durat
 
 public readonly record struct MemoryCost(string Stat, int Amount, int Duration);
 
+public readonly record struct ComponentStack(string ItemId, int Count, int MaxStack = 99)
+{
+    public int RemainingSpace => MaxStack - Count;
+    public bool IsFull => Count >= MaxStack;
+}
+
 public readonly record struct CharacterState(
     Guid Id,
     string Name,
@@ -24,9 +30,12 @@ public readonly record struct CharacterState(
     string? BranchLevel6 = null,
     TempStatModifier[]? TempModifiers = null,
     int ResurrectionAttempts = 0,
-    bool BranchAdvancementLocked = false)
+    bool BranchAdvancementLocked = false,
+    ComponentStack[]? ComponentInventory = null)
 {
     public TempStatModifier[] TempModifiers { get; init; } = TempModifiers ?? Array.Empty<TempStatModifier>();
+    public ComponentStack[] ComponentInventory { get; init; } = ComponentInventory ?? Array.Empty<ComponentStack>();
+    public const int MaxComponentSlots = 8;
 
     public EffectiveStats GetEffectiveStats(ItemRegistry? items = null)
     {

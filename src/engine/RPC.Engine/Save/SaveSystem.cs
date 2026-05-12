@@ -30,6 +30,7 @@ public class SaveData
     public int PartyGold { get; set; } = 500;
     public int TitheTokens { get; set; } = 0;
     public string[] PartyInventory { get; set; } = Array.Empty<string>();
+    public SaveComponentStack[] ExpeditionCache { get; set; } = Array.Empty<SaveComponentStack>();
     public SavePartyMember[] DeadCharacters { get; set; } = Array.Empty<SavePartyMember>();
     public SaveJournalState? Journal { get; set; }
     public SaveCampaignConfig? CampaignConfig { get; set; }
@@ -171,6 +172,13 @@ public class SaveOverworldRoute
     public string Status { get; set; } = "";
 }
 
+public class SaveComponentStack
+{
+    public string ItemId { get; set; } = "";
+    public int Count { get; set; }
+    public int MaxStack { get; set; } = 99;
+}
+
 public class SavePartyMember
 {
     public Guid Id { get; set; }
@@ -188,6 +196,7 @@ public class SavePartyMember
     public TempStatModifier[] TempModifiers { get; set; } = Array.Empty<TempStatModifier>();
     public int ResurrectionAttempts { get; set; } = 0;
     public bool BranchAdvancementLocked { get; set; } = false;
+    public SaveComponentStack[] ComponentInventory { get; set; } = Array.Empty<SaveComponentStack>();
 }
 
 public class SavePlayer
@@ -243,7 +252,7 @@ public static class SaveSystem
             var data = JsonSerializer.Deserialize<SaveData>(json, Options);
             if (data == null) return false;
 
-            if (data.SchemaVersion != 3 && data.SchemaVersion != 4 && data.SchemaVersion != 5 && data.SchemaVersion != 6 && data.SchemaVersion != 7)
+            if (data.SchemaVersion != 3 && data.SchemaVersion != 4 && data.SchemaVersion != 5 && data.SchemaVersion != 6 && data.SchemaVersion != 7 && data.SchemaVersion != 8)
             {
                 Console.Error.WriteLine(
                     $"Save file '{path}' has unsupported schema version {data.SchemaVersion}. Deleting; player starts new game.");
@@ -302,14 +311,20 @@ public static class SaveSystem
                     Row = m.Row,
                     BranchChoice = m.BranchChoice,
                     BranchLevel6 = m.BranchLevel6,
-                    TempModifiers = m.TempModifiers
+                    TempModifiers = m.TempModifiers,
+                    ComponentInventory = m.ComponentInventory.Select(c => new SaveComponentStack
+                    {
+                        ItemId = c.ItemId,
+                        Count = c.Count,
+                        MaxStack = c.MaxStack
+                    }).ToArray()
                 };
             }
         }
 
         return new SaveData
         {
-            SchemaVersion = 7,
+            SchemaVersion = 8,
             Party = party,
             Player = new SavePlayer
             {
@@ -401,6 +416,12 @@ public static class SaveSystem
             PartyGold = state.PartyGold,
             TitheTokens = state.TitheTokens,
             PartyInventory = state.PartyInventory.ToArray(),
+            ExpeditionCache = state.Party.ExpeditionCache.Select(c => new SaveComponentStack
+            {
+                ItemId = c.ItemId,
+                Count = c.Count,
+                MaxStack = c.MaxStack
+            }).ToArray(),
             DeadCharacters = state.Party.DeadCharacters.Select(d => new SavePartyMember
             {
                 Id = d.Id,
@@ -488,11 +509,13 @@ public static class SaveSystem
                 var xp = Math.Max(0, s.Xp);
                 var hp = Math.Max(0, s.CurrentHp);
                 var row = Math.Clamp(s.Row, 0, 1);
+                var componentInventory = s.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();
                 state.Party.SetMember(i, new CharacterState(
                     s.Id, s.Name, s.ClassId, level, xp,
                     s.BaseStats, hp, s.Equipment,
                     s.KnownAbilities, row, s.BranchChoice, s.BranchLevel6,
-                    s.TempModifiers, s.ResurrectionAttempts, s.BranchAdvancementLocked));
+                    s.TempModifiers, s.ResurrectionAttempts, s.BranchAdvancementLocked,
+                    componentInventory));
             }
             else
             {
@@ -664,18 +687,21 @@ public static class SaveSystem
         state.TitheTokens = data.TitheTokens;
         state.PartyInventory = data.PartyInventory?.ToList() ?? new List<string>();
 
+        state.Party.ExpeditionCache = data.ExpeditionCache?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();
         state.Party.DeadCharacters.Clear();
         if (data.DeadCharacters != null)
         {
             foreach (var d in data.DeadCharacters)
             {
+                var deadInventory = d.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();
                 state.Party.DeadCharacters.Add(new CharacterState(
                     d.Id, d.Name, d.ClassId,
                     Math.Max(1, d.Level), Math.Max(0, d.Xp),
                     d.BaseStats, 0, d.Equipment,
                     d.KnownAbilities, Math.Clamp(d.Row, 0, 1),
                     d.BranchChoice, d.BranchLevel6,
-                    d.TempModifiers, d.ResurrectionAttempts, d.BranchAdvancementLocked));
+                    d.TempModifiers, d.ResurrectionAttempts, d.BranchAdvancementLocked,
+                    deadInventory));
             }
         }
         state.SetAccusedFaction(data.AccusedFaction);

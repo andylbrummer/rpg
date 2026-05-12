@@ -122,27 +122,27 @@ public class GameState
         Party.SetMember(0, new CharacterState(
             new Guid("11111111-1111-1111-1111-111111111111"), "Kael", "bonewarden", 1, 0,
             new BaseStats(4, 3, 5, 4, 4), 17, Equipment.Empty,
-            new[] { "bone_spear", "tithe_touch" }, 0));
+            new[] { "bone_spear", "tithe_touch" }, 0, null, null, null, 0, false, Array.Empty<ComponentStack>()));
         Party.SetMember(1, new CharacterState(
             new Guid("22222222-2222-2222-2222-222222222222"), "Sera", "stillblade", 1, 0,
             new BaseStats(5, 5, 4, 3, 4), 14, Equipment.Empty,
-            new[] { "rend", "silence_strike" }, 0));
+            new[] { "rend", "silence_strike" }, 0, null, null, null, 0, false, Array.Empty<ComponentStack>()));
         Party.SetMember(2, new CharacterState(
             new Guid("33333333-3333-3333-3333-333333333333"), "Mira", "cauterist", 1, 0,
             new BaseStats(3, 5, 4, 5, 4), 14, Equipment.Empty,
-            new[] { "cauterize", "scalpel_dance" }, 0));
+            new[] { "cauterize", "scalpel_dance" }, 0, null, null, null, 0, false, Array.Empty<ComponentStack>()));
         Party.SetMember(3, new CharacterState(
             new Guid("44444444-4444-4444-4444-444444444444"), "Vex", "hollow", 1, 0,
             new BaseStats(4, 6, 3, 4, 4), 11, Equipment.Empty,
-            new[] { "shiv", "smoke_bomb" }, 1));
+            new[] { "shiv", "smoke_bomb" }, 1, null, null, null, 0, false, Array.Empty<ComponentStack>()));
         Party.SetMember(4, new CharacterState(
             new Guid("55555555-5555-5555-5555-555555555555"), "Nyx", "stillblade", 1, 0,
             new BaseStats(5, 5, 4, 3, 4), 14, Equipment.Empty,
-            new[] { "rend", "silence_strike" }, 1));
+            new[] { "rend", "silence_strike" }, 1, null, null, null, 0, false, Array.Empty<ComponentStack>()));
         Party.SetMember(5, new CharacterState(
             new Guid("66666666-6666-6666-6666-666666666666"), "Orin", "bonewarden", 1, 0,
             new BaseStats(4, 3, 5, 4, 4), 17, Equipment.Empty,
-            new[] { "bone_spear", "tithe_touch" }, 1));
+            new[] { "bone_spear", "tithe_touch" }, 1, null, null, null, 0, false, Array.Empty<ComponentStack>()));
     }
 
     private void InitializeTown()
