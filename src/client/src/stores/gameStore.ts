@@ -31,6 +31,7 @@ function createGameStore() {
     subscribe,
     sendAction: (action: PlayerAction) => client.sendAction(action),
     errorStore,
+    __testSetState: set,
   };
 }
 

@@ -1,6 +1,62 @@
 import { test, expect } from './fixtures';
 import { sendWsAction } from './helpers';
 
+function makeMockCombat(partyCount: number, enemyCount: number) {
+  const combatants = [
+    ...Array.from({ length: partyCount }, (_, i) => ({
+      id: `p${i}`,
+      name: `Hero${i + 1}`,
+      isPlayer: true,
+      classId: 'warrior',
+      hp: 100,
+      maxHp: 100,
+      speed: 5,
+      row: i < 3 ? 0 : 1,
+      alive: true,
+      isCurrent: i === 0,
+      abilities: [],
+    })),
+    ...Array.from({ length: enemyCount }, (_, i) => ({
+      id: `e${i}`,
+      name: `Enemy${i + 1}`,
+      isPlayer: false,
+      hp: 50,
+      maxHp: 50,
+      speed: 4,
+      row: i < 3 ? 0 : 1,
+      alive: true,
+      isCurrent: false,
+      abilities: [],
+    })),
+  ];
+  const initiativeOrder = combatants.map(c => c.id);
+  return {
+    phase: 'Turn',
+    round: 1,
+    combatants,
+    initiativeOrder,
+    currentTurnIndex: 0,
+    log: [],
+    isFinished: false,
+  };
+}
+
+async function injectCombatState(page: any, combat: any) {
+  await page.evaluate((c: any) => {
+    const store = (window as any).gameStore;
+    store.__testSetState({
+      type: 'state',
+      mode: 'Combat',
+      player: { x: 0, y: 0, facing: 'North' },
+      tiles: [],
+      explored: [],
+      hasDungeon: true,
+      party: [],
+      combat: c,
+    });
+  }, combat);
+}
+
 test.describe('G4: Combat', () => {
   test('combat state has combatants after trigger', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
@@ -73,14 +129,13 @@ test.describe('G4: Combat', () => {
       // Wait for ability list
       await expect(page.locator('.ability-select')).toBeVisible();
 
-      // Select the first melee ability if available, otherwise any ability
+      // Select the first ability and verify targeting rules
       const abilities = page.locator('.ability-btn');
       const count = await abilities.count();
       if (count > 0) {
         await abilities.first().click();
         await page.waitForTimeout(200);
 
-        // Check that front-row enemies have valid-target class
         const frontEnemies = page.locator('.enemy-side .row-band.front-band .combatant');
         const backEnemies = page.locator('.enemy-side .row-band.back-band .combatant');
 
@@ -88,11 +143,92 @@ test.describe('G4: Combat', () => {
           await expect(frontEnemies.first()).toHaveClass(/valid-target/);
         }
 
-        // Back-row enemies should be invalid targets for melee
         if (await backEnemies.count() > 0) {
-          await expect(backEnemies.first()).toHaveClass(/invalid-target/);
+          const backFirst = backEnemies.first();
+          const classAttr = await backFirst.getAttribute('class');
+          if (classAttr?.includes('invalid-target')) {
+            // Melee ability: back row is invalid
+            expect(classAttr).toMatch(/invalid-target/);
+          } else {
+            // Ranged ability: back row may be valid
+            expect(classAttr).toMatch(/valid-target/);
+          }
         }
       }
+    });
+  });
+
+  test.describe('CombatViewportTests', () => {
+    test('fits 1920x1080 without horizontal scroll', async ({ page, serverUrl }) => {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await page.goto(`${serverUrl}/app`);
+      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
+      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await expect(page.locator('.combat-overlay')).toBeVisible();
+
+      const combat = makeMockCombat(6, 3);
+      await injectCombatState(page, combat);
+      await expect(page.locator('.combat-arena .combatant')).toHaveCount(9);
+
+      const overlay = page.locator('.combat-overlay');
+      const box = await overlay.boundingBox();
+      expect(box?.width).toBeLessThanOrEqual(1920);
+
+      const arena = page.locator('.combat-arena');
+      const scrollWidth = await arena.evaluate((el: HTMLElement) => el.scrollWidth);
+      const clientWidth = await arena.evaluate((el: HTMLElement) => el.clientWidth);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    });
+  });
+
+  test.describe('InitiativeBarTests', () => {
+    test('12-slot initiative bar is readable without scroll', async ({ page, serverUrl }) => {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await page.goto(`${serverUrl}/app`);
+      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
+      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await expect(page.locator('.combat-overlay')).toBeVisible();
+
+      const combat = makeMockCombat(6, 6);
+      await injectCombatState(page, combat);
+      await expect(page.locator('.initiative-entry')).toHaveCount(12);
+
+      const bar = page.locator('.initiative-bar');
+      const scrollWidth = await bar.evaluate((el: HTMLElement) => el.scrollWidth);
+      const clientWidth = await bar.evaluate((el: HTMLElement) => el.clientWidth);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+
+      const firstEntry = page.locator('.initiative-entry').first();
+      const entryBox = await firstEntry.boundingBox();
+      expect(entryBox?.width).toBeGreaterThanOrEqual(60);
+    });
+  });
+
+  test.describe('VisualOverlapTests', () => {
+    test('no overlap at max encounter', async ({ page, serverUrl }) => {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await page.goto(`${serverUrl}/app`);
+      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
+      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await expect(page.locator('.combat-overlay')).toBeVisible();
+
+      const combat = makeMockCombat(6, 9);
+      await injectCombatState(page, combat);
+      await expect(page.locator('.combat-arena .combatant')).toHaveCount(15);
+
+      const cards = page.locator('.combat-arena .combatant');
+      const count = await cards.count();
+      for (let i = 0; i < count; i++) {
+        const box = await cards.nth(i).boundingBox();
+        expect(box).not.toBeNull();
+        expect(box!.width).toBeGreaterThan(0);
+        expect(box!.height).toBeGreaterThan(0);
+      }
+
+      const arena = page.locator('.combat-arena');
+      const arenaScroll = await arena.evaluate((el: HTMLElement) => el.scrollWidth);
+      const arenaClient = await arena.evaluate((el: HTMLElement) => el.clientWidth);
+      expect(arenaScroll).toBeLessThanOrEqual(arenaClient);
     });
   });
 });

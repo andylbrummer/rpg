@@ -374,7 +374,6 @@
     flex: 0 0 auto;
     display: flex;
     gap: 0.25rem;
-    overflow-x: auto;
     padding: 0.25rem 0;
   }
 
@@ -388,7 +387,9 @@
     border-radius: 0.25rem;
     font-size: clamp(0.6rem, 1.2vw, 0.7rem);
     white-space: nowrap;
-    flex-shrink: 0;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .initiative-entry.active {
@@ -402,6 +403,9 @@
 
   .init-name {
     color: #ccc;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .combat-arena {
@@ -410,7 +414,7 @@
     justify-content: center;
     align-items: flex-start;
     gap: clamp(1rem, 3vw, 2rem);
-    overflow: auto;
+    overflow: hidden;
     min-height: 0;
     padding: 0.5rem;
   }
@@ -420,14 +424,15 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    min-width: clamp(10rem, 20vw, 16rem);
-    max-width: min(20rem, 30vw);
-    flex: 0 0 auto;
+    min-width: clamp(12rem, 22vw, 18rem);
+    max-width: min(22rem, 34vw);
+    flex: 1 1 auto;
   }
 
   .row-band {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 0.35rem;
     padding: 0.35rem;
     border-radius: 0.25rem;
@@ -449,6 +454,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     text-align: center;
+    width: 100%;
   }
 
   .party-side h3,
@@ -472,12 +478,14 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    padding: clamp(0.375rem, 1vh, 0.5rem);
+    padding: clamp(0.25rem, 0.8vh, 0.375rem);
     background: rgba(255, 255, 255, 0.05);
     border: 0.0625em solid #444;
     border-radius: 0.375rem;
     transition: border-color 0.15s;
     cursor: default;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .combatant.dead {
@@ -515,9 +523,12 @@
   }
 
   .combatant-name {
-    font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+    font-size: clamp(0.7rem, 1.4vw, 0.875rem);
     font-weight: bold;
     color: #eee;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .hp-bar {
