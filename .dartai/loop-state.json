@@ -6,11 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "1tAPFahcgTk1",
-    "title": "[1.5] T35c Fieldwright + Inkblood JSON content",
-    "iteration": 32
+    "dart_id": "JJpCD8PcZGul",
+    "title": "T51a Bloom Site content (segments + creatures + encounters)",
+    "iteration": 33
   },
-  "completed_tasks": 28,
+  "completed_tasks": 29,
   "total_tasks": 45,
-  "iteration": 32
+  "iteration": 33
 }
