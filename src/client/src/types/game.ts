@@ -59,6 +59,14 @@ export interface PartyMember {
   knownAbilities: string[];
 }
 
+export interface AbilityDef {
+  id: string;
+  name: string;
+  range?: string;
+  target?: string;
+  requiredRow?: string;
+}
+
 export interface Combatant {
   id: string;
   name: string;
@@ -70,6 +78,7 @@ export interface Combatant {
   row: number;
   alive: boolean;
   isCurrent: boolean;
+  abilities?: AbilityDef[];
 }
 
 export interface CombatLogEntry {

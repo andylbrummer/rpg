@@ -45,6 +45,35 @@
   }
 
   const town = $derived(gameState?.town);
+
+  const partyMembers = $derived(gameState?.party ?? []);
+  const frontRow = $derived(partyMembers.filter(m => m.row === 0));
+  const backRow = $derived(partyMembers.filter(m => m.row === 1));
+
+  let dragSlot = $state<number | null>(null);
+
+  function handleDragStart(slot: number) {
+    dragSlot = slot;
+  }
+
+  function handleDragEnd() {
+    dragSlot = null;
+  }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleDrop(e: DragEvent, targetRow: number) {
+    e.preventDefault();
+    if (dragSlot === null) return;
+    const member = partyMembers.find(m => m.slot === dragSlot);
+    if (!member) return;
+    if (member.row !== targetRow) {
+      onSwapRow(member.slot);
+    }
+    dragSlot = null;
+  }
 </script>
 
 <div class="town-menu">
@@ -56,6 +85,80 @@
   <div class="town-body">
     <div class="party-panel">
       <h2>Your Party</h2>
+      <div class="formation-grid">
+        <div
+          class="formation-row front-row"
+          ondragover={handleDragOver}
+          ondrop={(e) => handleDrop(e, 0)}
+          role="list"
+          aria-label="Front row"
+        >
+          <div class="row-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+            </svg>
+            <span>Front</span>
+          </div>
+          <div class="formation-slots">
+            {#each [0, 1, 2] as slot}
+              {@const member = partyMembers.find(m => m.slot === slot)}
+              <div class="formation-slot" class:empty={!member}>
+                {#if member}
+                  <div
+                    class="formation-card"
+                    draggable="true"
+                    ondragstart={() => handleDragStart(member.slot)}
+                    ondragend={handleDragEnd}
+                    role="button"
+                    tabindex="0"
+                    aria-grabbed={dragSlot === member.slot}
+                  >
+                    <div class="formation-portrait" style="background-color: {member.color}"></div>
+                    <span class="formation-name">{member.name}</span>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+
+        <div
+          class="formation-row back-row"
+          ondragover={handleDragOver}
+          ondrop={(e) => handleDrop(e, 1)}
+          role="list"
+          aria-label="Back row"
+        >
+          <div class="row-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+            </svg>
+            <span>Back</span>
+          </div>
+          <div class="formation-slots">
+            {#each [3, 4, 5] as slot}
+              {@const member = partyMembers.find(m => m.slot === slot)}
+              <div class="formation-slot" class:empty={!member}>
+                {#if member}
+                  <div
+                    class="formation-card"
+                    draggable="true"
+                    ondragstart={() => handleDragStart(member.slot)}
+                    ondragend={handleDragEnd}
+                    role="button"
+                    tabindex="0"
+                    aria-grabbed={dragSlot === member.slot}
+                  >
+                    <div class="formation-portrait" style="background-color: {member.color}"></div>
+                    <span class="formation-name">{member.name}</span>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+
       <div class="party-grid">
         {#each gameState?.party || [] as member (member.name)}
           <div
@@ -239,6 +342,98 @@
     margin: 0 0 0.5rem;
     font-size: clamp(0.875rem, 2vw, 1.1rem);
     color: #ccc;
+  }
+
+  .formation-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .formation-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 0.0625em solid #333;
+    border-radius: 0.375rem;
+  }
+
+  .formation-row.front-row {
+    border-color: #446644;
+  }
+
+  .formation-row.back-row {
+    border-color: #444466;
+  }
+
+  .row-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    width: 2.5rem;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    color: #888;
+    flex-shrink: 0;
+  }
+
+  .formation-slots {
+    display: flex;
+    gap: 0.5rem;
+    flex: 1 1 auto;
+  }
+
+  .formation-slot {
+    flex: 1 1 0;
+    min-width: 0;
+    aspect-ratio: 1;
+    max-height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 0.0625em dashed #444;
+    border-radius: 0.25rem;
+  }
+
+  .formation-slot.empty {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .formation-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.25rem;
+    cursor: grab;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+  }
+
+  .formation-card:active {
+    cursor: grabbing;
+  }
+
+  .formation-portrait {
+    width: clamp(1.5rem, 3vw, 2rem);
+    height: clamp(1.5rem, 3vw, 2rem);
+    border-radius: 50%;
+    border: 0.125em solid #666;
+    flex-shrink: 0;
+  }
+
+  .formation-name {
+    font-size: clamp(0.55rem, 1vw, 0.7rem);
+    color: #ccc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   .party-grid {

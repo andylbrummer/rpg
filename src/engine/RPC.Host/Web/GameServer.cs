@@ -829,6 +829,7 @@ public class GameServer
                 combatants = c.Combatants.Select(x =>
                 {
                     CharacterState? member = x.IsPlayer ? _gameState.Party.Members.FirstOrDefault(m => m.Id == x.Id) : (CharacterState?)null;
+                    var classDef = member?.ClassId is not null ? _classRegistry.Get(member.Value.ClassId) : null;
                     return new
                     {
                         id = x.Id,
@@ -840,7 +841,17 @@ public class GameServer
                         speed = x.Speed,
                         row = x.Row,
                         alive = x.IsAlive,
-                        isCurrent = c.CurrentActor?.Id == x.Id
+                        isCurrent = c.CurrentActor?.Id == x.Id,
+                        abilities = classDef?.Abilities
+                            .Where(a => member?.KnownAbilities.Contains(a.Id) == true && a.IsAvailableInRow(x.Row))
+                            .Select(a => new
+                            {
+                                id = a.Id,
+                                name = a.Name,
+                                range = a.Effect.Range,
+                                target = a.Effect.Target,
+                                requiredRow = a.RequiredRow
+                            }).ToArray() ?? Array.Empty<object>()
                     };
                 }).ToArray(),
                 initiativeOrder = c.InitiativeOrder,

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CombatState, Combatant } from '../types/game';
+  import { sendAction } from '../stores/gameStore';
   import CombatResultToast from './CombatResultToast.svelte';
 
   interface Props {
@@ -14,6 +15,7 @@
 
   let selectedTargetId = $state<string | null>(null);
   let selectedAction = $state('Attack');
+  let selectedAbilityId = $state<string | null>(null);
   let showResult = $state(false);
 
   $effect(() => {
@@ -51,7 +53,22 @@
   function submitAction() {
     const currentActor = getCurrentActor();
     if (!currentActor) return;
-    if (selectedAction === 'Attack' && !selectedTargetId) return;
+    if (selectedAction === 'UseAbility' && !selectedAbilityId) return;
+    if ((selectedAction === 'Attack' || selectedAction === 'UseAbility') && !selectedTargetId) return;
+
+    if (selectedAction === 'UseAbility' && selectedAbilityId) {
+      sendAction({
+        type: 'combat_action',
+        action: {
+          actorId: currentActor.id,
+          type: 'UseAbility',
+          targetId: selectedTargetId || undefined,
+          abilityId: selectedAbilityId,
+        },
+      });
+      return;
+    }
+
     const targetId = selectedAction === 'Attack' ? selectedTargetId! : '';
     onCombatAction(selectedAction, targetId);
   }
@@ -81,6 +98,41 @@
 
   function getParty(): Combatant[] {
     return combat?.combatants.filter(c => c.isPlayer) || [];
+  }
+
+  function getFrontRow(combatants: Combatant[]): Combatant[] {
+    return combatants.filter(c => c.row === 0);
+  }
+
+  function getBackRow(combatants: Combatant[]): Combatant[] {
+    return combatants.filter(c => c.row === 1);
+  }
+
+  function getCurrentAbilities(): { id: string; name: string; range?: string }[] {
+    const actor = getCurrentActor();
+    if (!actor || !actor.isPlayer) return [];
+    return actor.abilities?.map(a => ({ id: a.id, name: a.name, range: a.range })) ?? [];
+  }
+
+  function isValidTarget(enemy: Combatant): boolean {
+    if (!isPlayerTurn()) return false;
+    if (selectedAction === 'Attack') return true;
+    if (selectedAction !== 'UseAbility' || !selectedAbilityId) return false;
+    const ability = getCurrentAbilities().find(a => a.id === selectedAbilityId);
+    if (!ability) return false;
+    if (ability.range === 'melee') return enemy.row === 0;
+    return true;
+  }
+
+  function selectAction(action: string) {
+    selectedAction = action;
+    selectedAbilityId = null;
+    selectedTargetId = null;
+  }
+
+  function selectAbility(abilityId: string) {
+    selectedAbilityId = abilityId;
+    selectedTargetId = null;
   }
 
   const actions = ['Attack', 'Defend', 'Wait', 'UseAbility', 'UseItem'];
@@ -115,46 +167,96 @@
       <div class="combat-arena">
         <div class="party-side">
           <h3>Party</h3>
-          {#each getParty() as member}
-            <div
-              class="combatant"
-              class:dead={member.hp <= 0}
-              class:current-turn={member.isCurrent}
-            >
-              <div class="combatant-header">
-                <span class="combatant-name">{member.name}</span>
+          <div class="row-band front-band">
+            <span class="band-label">Front</span>
+            {#each getFrontRow(getParty()) as member}
+              <div
+                class="combatant"
+                class:dead={member.hp <= 0}
+                class:current-turn={member.isCurrent}
+              >
+                <div class="combatant-header">
+                  <span class="combatant-name">{member.name}</span>
+                </div>
+                <div class="hp-bar">
+                  <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
+                  <div class="hp-text">{member.hp}/{member.maxHp}</div>
+                </div>
               </div>
-              <div class="hp-bar">
-                <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
-                <div class="hp-text">{member.hp}/{member.maxHp}</div>
+            {/each}
+          </div>
+          <div class="row-band back-band">
+            <span class="band-label">Back</span>
+            {#each getBackRow(getParty()) as member}
+              <div
+                class="combatant"
+                class:dead={member.hp <= 0}
+                class:current-turn={member.isCurrent}
+              >
+                <div class="combatant-header">
+                  <span class="combatant-name">{member.name}</span>
+                </div>
+                <div class="hp-bar">
+                  <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
+                  <div class="hp-text">{member.hp}/{member.maxHp}</div>
+                </div>
               </div>
-            </div>
-          {/each}
+            {/each}
+          </div>
         </div>
 
         <div class="vs-divider">VS</div>
 
         <div class="enemy-side">
           <h3>Enemies</h3>
-          {#each getEnemies() as enemy}
-            <button
-              type="button"
-              class="combatant"
-              class:dead={enemy.hp <= 0}
-              class:selected={selectedTargetId === enemy.id && isPlayerTurn()}
-              class:current-turn={enemy.isCurrent}
-              onclick={() => { if (isPlayerTurn()) selectedTargetId = enemy.id; }}
-              disabled={!isPlayerTurn()}
-            >
-              <div class="combatant-header">
-                <span class="combatant-name">{enemy.name}</span>
-              </div>
-              <div class="hp-bar">
-                <div class="hp-fill" style="width: {(enemy.hp / enemy.maxHp) * 100}%"></div>
-                <div class="hp-text">{enemy.hp}/{enemy.maxHp}</div>
-              </div>
-            </button>
-          {/each}
+          <div class="row-band front-band">
+            <span class="band-label">Front</span>
+            {#each getFrontRow(getEnemies()) as enemy}
+              <button
+                type="button"
+                class="combatant"
+                class:dead={enemy.hp <= 0}
+                class:selected={selectedTargetId === enemy.id && isPlayerTurn()}
+                class:valid-target={isValidTarget(enemy)}
+                class:invalid-target={!isValidTarget(enemy) && selectedAction === 'UseAbility' && selectedAbilityId !== null}
+                class:current-turn={enemy.isCurrent}
+                onclick={() => { if (isPlayerTurn() && isValidTarget(enemy)) selectedTargetId = enemy.id; }}
+                disabled={!isPlayerTurn() || !isValidTarget(enemy)}
+              >
+                <div class="combatant-header">
+                  <span class="combatant-name">{enemy.name}</span>
+                </div>
+                <div class="hp-bar">
+                  <div class="hp-fill" style="width: {(enemy.hp / enemy.maxHp) * 100}%"></div>
+                  <div class="hp-text">{enemy.hp}/{enemy.maxHp}</div>
+                </div>
+              </button>
+            {/each}
+          </div>
+          <div class="row-band back-band">
+            <span class="band-label">Back</span>
+            {#each getBackRow(getEnemies()) as enemy}
+              <button
+                type="button"
+                class="combatant"
+                class:dead={enemy.hp <= 0}
+                class:selected={selectedTargetId === enemy.id && isPlayerTurn()}
+                class:valid-target={isValidTarget(enemy)}
+                class:invalid-target={!isValidTarget(enemy) && selectedAction === 'UseAbility' && selectedAbilityId !== null}
+                class:current-turn={enemy.isCurrent}
+                onclick={() => { if (isPlayerTurn() && isValidTarget(enemy)) selectedTargetId = enemy.id; }}
+                disabled={!isPlayerTurn() || !isValidTarget(enemy)}
+              >
+                <div class="combatant-header">
+                  <span class="combatant-name">{enemy.name}</span>
+                </div>
+                <div class="hp-bar">
+                  <div class="hp-fill" style="width: {(enemy.hp / enemy.maxHp) * 100}%"></div>
+                  <div class="hp-text">{enemy.hp}/{enemy.maxHp}</div>
+                </div>
+              </button>
+            {/each}
+          </div>
         </div>
       </div>
 
@@ -174,15 +276,36 @@
             <button
               class="action-btn"
               class:selected={selectedAction === action}
-              onclick={() => selectedAction = action}
+              onclick={() => selectAction(action)}
             >
               {getActionName(action)}
             </button>
           {/each}
         </div>
+        {#if selectedAction === 'UseAbility'}
+          <div class="ability-select">
+            {#each getCurrentAbilities() as ability}
+              <button
+                class="ability-btn"
+                class:selected={selectedAbilityId === ability.id}
+                onclick={() => selectAbility(ability.id)}
+              >
+                {ability.name}
+              </button>
+            {:else}
+              <span class="no-abilities">No abilities available</span>
+            {/each}
+          </div>
+        {/if}
         <div class="target-hint">
           {#if selectedAction === 'Attack'}
             Click an enemy to select target
+          {:else if selectedAction === 'UseAbility'}
+            {#if selectedAbilityId}
+              Click a highlighted enemy to target
+            {:else}
+              Select an ability
+            {/if}
           {:else}
             {getActionName(selectedAction)} selected
           {/if}
@@ -302,6 +425,32 @@
     flex: 0 0 auto;
   }
 
+  .row-band {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.35rem;
+    border-radius: 0.25rem;
+  }
+
+  .row-band.front-band {
+    background: rgba(68, 102, 68, 0.08);
+    border: 0.0625em solid rgba(68, 102, 68, 0.25);
+  }
+
+  .row-band.back-band {
+    background: rgba(68, 68, 102, 0.08);
+    border: 0.0625em solid rgba(68, 68, 102, 0.25);
+  }
+
+  .band-label {
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+
   .party-side h3,
   .enemy-side h3 {
     margin: 0 0 0.25rem;
@@ -347,6 +496,16 @@
   .enemy-side .combatant.selected {
     border-color: #44aaff;
     box-shadow: 0 0 0.25em rgba(68, 170, 255, 0.3);
+  }
+
+  .enemy-side .combatant.valid-target {
+    border-color: #44aa44;
+    box-shadow: 0 0 0.25em rgba(68, 170, 68, 0.3);
+  }
+
+  .enemy-side .combatant.invalid-target {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .combatant-header {
@@ -442,6 +601,39 @@
   .action-btn.selected {
     border-color: #d4a84b;
     background: rgba(212, 168, 75, 0.15);
+  }
+
+  .ability-select {
+    display: flex;
+    gap: 0.35rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .ability-btn {
+    padding: clamp(0.2rem, 0.8vh, 0.3rem) clamp(0.5rem, 1.5vw, 0.75rem);
+    background: rgba(100, 68, 170, 0.1);
+    border: 0.0625em solid #6644aa;
+    border-radius: 0.25rem;
+    color: #aa88cc;
+    cursor: pointer;
+    font-size: clamp(0.65rem, 1.3vw, 0.8rem);
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .ability-btn:hover {
+    background: rgba(100, 68, 170, 0.25);
+  }
+
+  .ability-btn.selected {
+    border-color: #d4a84b;
+    background: rgba(212, 168, 75, 0.15);
+  }
+
+  .no-abilities {
+    font-size: clamp(0.6rem, 1.2vw, 0.75rem);
+    color: #666;
+    font-style: italic;
   }
 
   .target-hint {
