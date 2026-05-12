@@ -6,14 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "lyvoV9EO1GSC",
-    "title": "[1.5] T43 Synergy detection engine",
-    "iteration": 19,
-    "status": "completed",
-    "phase_completed": "phase-9",
-    "failed_phase": null
+    "dart_id": "QLIbHVJbSUfz",
+    "title": "[1.5] T42 Reputation consequences",
+    "iteration": 20
   },
   "completed_tasks": 18,
   "total_tasks": 42,
-  "iteration": 19
+  "iteration": 20
 }
