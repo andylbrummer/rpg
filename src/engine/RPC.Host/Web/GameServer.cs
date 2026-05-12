@@ -596,6 +596,19 @@ public class GameServer
                         stateChanged = _gameState.ApplyDialogueReputation(choiceFactionId, choiceDelta);
                     }
                     break;
+                case "branch_choose":
+                    if (action.TargetId is string charId && action.Branch is string branch)
+                    {
+                        if (Guid.TryParse(charId, out var guid))
+                        {
+                            var member = _gameState.Party.Members.FirstOrDefault(m => m.Id == guid);
+                            if (member.Id != Guid.Empty && member.Level >= 3 && member.BranchChoice == null)
+                            {
+                                stateChanged = _gameState.ChooseBranch(guid, branch);
+                            }
+                        }
+                    }
+                    break;
                 default:
                     await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
                     return;
@@ -840,6 +853,7 @@ public class GameServer
                 return new
                 {
                     slot = i,
+                    id = c.Id.ToString(),
                     name = c.Name,
                     classId = c.ClassId,
                     className = classDef?.Name ?? c.ClassId,
@@ -850,6 +864,9 @@ public class GameServer
                     maxHp = effective.MaxHp,
                     row = c.Row,
                     alive = c.IsAlive,
+                    branchChoice = c.BranchChoice,
+                    awaitingBranchChoice = c.AwaitingBranchChoice,
+                    availableBranches = classDef?.AvailableBranches ?? Array.Empty<string>(),
                     stats = new
                     {
                         strength = c.BaseStats.Strength,
@@ -876,6 +893,7 @@ public class GameServer
                         .Where(a => a.IsAvailableInRow(c.Row))
                         .Select(a => a.Id)
                         .ToArray() ?? Array.Empty<string>(),
+                    abilities = classDef?.Abilities.Select(a => new { id = a.Id, name = a.Name, branch = a.Branch }).ToArray() ?? Array.Empty<object>(),
                 };
             }).ToArray();
 
@@ -1135,6 +1153,7 @@ public class PlayerAction
     public int? Slot { get; set; }
     public string? TargetId { get; set; }
     public int? Value { get; set; }
+    public string? Branch { get; set; }
 }
 
 public class ProtocolEnvelope

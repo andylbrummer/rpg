@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GameState, PartyMember } from '../types/game';
+  import { sendAction } from '../stores/gameStore';
   import CharacterSheet from './CharacterSheet.svelte';
   import OverworldMap from './OverworldMap.svelte';
 
@@ -90,6 +91,10 @@
   const frontRow = $derived(partyMembers.filter(m => m.row === 0));
   const backRow = $derived(partyMembers.filter(m => m.row === 1));
 
+  const pendingBranchMembers = $derived(
+    partyMembers.filter(m => m.awaitingBranchChoice && (m.availableBranches?.length ?? 0) > 0)
+  );
+
   let dragSlot = $state<number | null>(null);
 
   function handleDragStart(slot: number) {
@@ -113,6 +118,21 @@
       onSwapRow(member.slot);
     }
     dragSlot = null;
+  }
+
+  function formatBranchName(branchId: string): string {
+    return branchId
+      .split('_')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+
+  function getBranchAbilities(member: PartyMember, branch: string) {
+    return (member.classAbilities ?? []).filter(a => a.branch === branch);
+  }
+
+  function chooseBranch(characterId: string, branch: string) {
+    sendAction({ type: 'branch_choose', targetId: characterId, branch });
   }
 </script>
 
@@ -432,6 +452,39 @@
       </div>
     </div>
   </div>
+
+{#if pendingBranchMembers.length > 0}
+  {@const member = pendingBranchMembers[0]}
+  <div class="branch-modal-overlay" role="dialog" aria-label="Choose branch">
+    <div class="branch-modal-card">
+      <h2 class="branch-modal-title">{member.name} — Choose Path</h2>
+      <p class="branch-modal-subtitle">Level {member.level} {member.className}</p>
+      <div class="branch-options">
+        {#each (member.availableBranches ?? []) as branch}
+          <div class="branch-option">
+            <h3 class="branch-name">{formatBranchName(branch)}</h3>
+            <div class="branch-abilities">
+              {#each getBranchAbilities(member, branch) as ability}
+                <span class="branch-ability">{ability.name}</span>
+              {:else}
+                <span class="branch-ability-none">No preview available</span>
+              {/each}
+            </div>
+            <button
+              type="button"
+              class="branch-choose-btn"
+              onclick={() => chooseBranch(member.id, branch)}
+            >
+              Choose
+            </button>
+          </div>
+        {:else}
+          <p class="branch-empty">No branches available for this class.</p>
+        {/each}
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if sheetMember}
   <CharacterSheet
@@ -1062,5 +1115,106 @@
 
   .quest-status.completed {
     color: #44aa44;
+  }
+
+  .branch-modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 50;
+    pointer-events: auto;
+  }
+
+  .branch-modal-card {
+    background: #1a1a2e;
+    border: 1px solid #444;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    min-width: 320px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .branch-modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #d4a84b;
+  }
+
+  .branch-modal-subtitle {
+    margin: 0;
+    color: #888;
+    font-size: 0.875rem;
+  }
+
+  .branch-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .branch-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #333;
+    border-radius: 0.25rem;
+  }
+
+  .branch-name {
+    margin: 0;
+    font-size: 1rem;
+    color: #ccc;
+  }
+
+  .branch-abilities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .branch-ability {
+    padding: 0.15rem 0.375rem;
+    background: rgba(68, 170, 255, 0.1);
+    border: 1px solid #4488aa;
+    border-radius: 0.2rem;
+    color: #88ccff;
+    font-size: 0.75rem;
+  }
+
+  .branch-ability-none {
+    color: #666;
+    font-size: 0.75rem;
+    font-style: italic;
+  }
+
+  .branch-choose-btn {
+    margin-top: 0.25rem;
+    padding: 0.4rem 0.75rem;
+    background: rgba(68, 170, 68, 0.15);
+    border: 1px solid #44aa44;
+    border-radius: 0.25rem;
+    color: #88cc88;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.15s;
+  }
+
+  .branch-choose-btn:hover {
+    background: rgba(68, 170, 68, 0.3);
+  }
+
+  .branch-empty {
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    font-size: 0.875rem;
   }
 </style>

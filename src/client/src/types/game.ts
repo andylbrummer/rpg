@@ -44,6 +44,7 @@ export interface Equipment {
 
 export interface PartyMember {
   slot: number;
+  id: string;
   name: string;
   classId: string;
   className: string;
@@ -57,6 +58,10 @@ export interface PartyMember {
   stats: CharacterStats;
   equipment: Equipment;
   knownAbilities: string[];
+  branchChoice?: string;
+  awaitingBranchChoice?: boolean;
+  availableBranches?: string[];
+  classAbilities?: Array<{ id: string; name: string; branch?: string }>;
 }
 
 export interface AbilityDef {
@@ -256,7 +261,8 @@ export type PlayerAction =
   | { type: 'complete_mission'; targetId: string }
   | { type: 'fail_mission'; targetId: string }
   | { type: 'abandon_mission'; targetId: string }
-  | { type: 'dialogue_choice'; targetId: string; value: number };
+  | { type: 'dialogue_choice'; targetId: string; value: number }
+  | { type: 'branch_choose'; targetId: string; branch: string };
 
 export interface CombatAction {
   actorId: string;

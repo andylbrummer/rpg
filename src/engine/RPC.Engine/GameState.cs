@@ -680,6 +680,8 @@ public class GameState
     {
         var member = Party.Members.FirstOrDefault(m => m.Id == characterId);
         if (member.Id == Guid.Empty) return false;
+        if (member.Level < 3) return false;
+        if (member.BranchChoice != null) return false;
 
         if (_classRegistry?.Get(member.ClassId) is not { } classDef)
             return false;
