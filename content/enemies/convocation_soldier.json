@@ -1,0 +1,20 @@
+{
+  "id": "convocation_soldier",
+  "name": "Convocation Zealot",
+  "description": "A fanatical warrior bearing the twisted bloom-marks of the Convocation, fighting with reckless devotion.",
+  "stats": {
+    "str": 7,
+    "dex": 4,
+    "con": 5,
+    "int": 3,
+    "wil": 7
+  },
+  "hpBase": 20,
+  "speed": 5,
+  "ai": "zealot_aggressive",
+  "abilities": ["fervent_slash", "bloom_touch"],
+  "lootTable": [
+    { "itemId": "small_salve", "chance": 0.3 },
+    { "itemId": "cautery_knife", "chance": 0.1 }
+  ]
+}

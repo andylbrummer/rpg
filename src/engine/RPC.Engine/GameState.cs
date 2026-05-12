@@ -11,6 +11,7 @@ using RPC.Engine.Travel;
 namespace RPC.Engine;
 
 public record ActionLogEntry(int Turn, string Category, string Type, Dictionary<string, string> Payload);
+public record ParleyOffer(string EncounterId, string FactionId, string[] Options);
 
 public class JournalState
 {
@@ -76,6 +77,7 @@ public class GameState
     public TravelEncounterState? CurrentTravelEncounter { get; private set; }
     public int RolledTravelEncounterCount { get; private set; }
     public int ResolvedTravelEncounterCount { get; private set; }
+    public ParleyOffer? CurrentParley { get; private set; }
 
     public void ClearCombatResult()
     {
@@ -293,6 +295,37 @@ public class GameState
             });
         }
 
+        // Check for faction soldier parley or hostility
+        var factionId = _encounterTables?.GetEncounterFaction(encounter.Id);
+        if (factionId != null)
+        {
+            var rep = Reputation[factionId];
+            if (rep >= 25)
+            {
+                CurrentParley = new ParleyOffer(encounter.Id, factionId, ["Parley", "Fight"]);
+                _currentEncounterId = Guid.NewGuid().ToString();
+                Mode = GameMode.Exploration;
+                EmitActionLog("combat", "encounter_parley_available", new Dictionary<string, string>
+                {
+                    { "encounterId", _currentEncounterId },
+                    { "factionId", factionId }
+                });
+                LastUpdate = DateTime.UtcNow;
+                return;
+            }
+            else if (rep < -25)
+            {
+                // Hostile: reinforce the encounter
+                var reinforced = encounter.Enemies.Concat(new[] { new EnemySpawn("faction_soldier", 1) }).ToArray();
+                encounter = encounter with { Enemies = reinforced };
+            }
+        }
+
+        EnterCombat(encounter);
+    }
+
+    private void EnterCombat(EncounterDef encounter)
+    {
         _currentEncounterId = Guid.NewGuid().ToString();
         Combat = CombatEngine.Enter(Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)));
 
@@ -321,6 +354,38 @@ public class GameState
             }
         }
         LastUpdate = DateTime.UtcNow;
+    }
+
+    public bool ResolveParley(string choice)
+    {
+        if (CurrentParley == null) return false;
+
+        if (choice == "parley")
+        {
+            EmitActionLog("combat", "encounter_parleyed", new Dictionary<string, string>
+            {
+                { "encounterId", _currentEncounterId ?? "unknown" },
+                { "factionId", CurrentParley.FactionId }
+            });
+            CurrentParley = null;
+            Mode = GameMode.Exploration;
+            return true;
+        }
+        else
+        {
+            var encounter = _encounterTables?.GetEncounterById(CurrentParley.EncounterId);
+            if (encounter == null)
+            {
+                encounter = new EncounterDef("random", "Random Encounter", new[]
+                {
+                    new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
+                    new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
+                });
+            }
+            CurrentParley = null;
+            EnterCombat(encounter);
+            return true;
+        }
     }
 
     public bool SubmitCombatAction(CombatAction action)
@@ -578,6 +643,8 @@ public class GameState
         ActivateTravelEncounter(encounter);
     }
 
+    private static bool IsPatrolEncounter(string id) => id == "faction_patrol" || id.EndsWith("_patrol");
+
     private void ActivateTravelEncounter(TravelEncounterDef encounter)
     {
         bool hasMarcher = Party.Members.Any(m => m.ClassId == "marcher");
@@ -596,24 +663,45 @@ public class GameState
             repValue = Reputation[factionId];
         }
 
+        bool isHostilePatrol = IsPatrolEncounter(encounter.Id) && factionId != null && repValue < 0;
+
         string[]? options = null;
-        if (encounter.ResolutionType == TravelResolutionType.Dialogue)
+        string resolutionType;
+
+        if (isHostilePatrol)
         {
-            options = encounter.Id == "faction_patrol"
-                ? ["Bribe", "Bluff", "Attack"]
-                : ["Trade", "Ignore", "Help"];
+            resolutionType = "combat";
+        }
+        else if (encounter.ResolutionType == TravelResolutionType.Dialogue)
+        {
+            resolutionType = "dialogue";
+            if (IsPatrolEncounter(encounter.Id))
+            {
+                options = repValue >= 25
+                    ? ["Request intel", "Trade supplies", "Pass safely"]
+                    : ["Show papers", "Bribe", "Attack"];
+            }
+            else
+            {
+                options = encounter.Id == "merchant"
+                    ? ["Trade", "Ignore", "Rob"]
+                    : ["Trade", "Ignore", "Help"];
+            }
+        }
+        else
+        {
+            resolutionType = encounter.ResolutionType switch
+            {
+                TravelResolutionType.Combat => "combat",
+                TravelResolutionType.StatTest => "stat_test",
+                _ => "unknown"
+            };
         }
 
         CurrentTravelEncounter = new TravelEncounterState(
             encounter.Id,
             encounter.Name,
-            encounter.ResolutionType switch
-            {
-                TravelResolutionType.Combat => "combat",
-                TravelResolutionType.StatTest => "stat_test",
-                TravelResolutionType.Dialogue => "dialogue",
-                _ => "unknown"
-            },
+            resolutionType,
             encounter.StatName,
             factionId,
             repValue,
@@ -621,7 +709,31 @@ public class GameState
             priceTier,
             options);
 
-        if (encounter.ResolutionType == TravelResolutionType.Combat && encounter.Enemies != null)
+        if (isHostilePatrol)
+        {
+            var patrolEnemies = new[] { new EnemySpawn("faction_soldier", 2) };
+            var encounterDef = new EncounterDef(encounter.Id, encounter.Name, patrolEnemies, 15);
+            Combat = CombatEngine.Enter(Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
+            CurrentTravelEncounter = null;
+
+            if (Combat.IsFinished)
+            {
+                Mode = GameMode.Menu;
+                Combat = null;
+                ResolveTravelEncounter("auto");
+            }
+            else
+            {
+                Mode = GameMode.Combat;
+                var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+                Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
+                while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
+                {
+                    Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
+                }
+            }
+        }
+        else if (encounter.ResolutionType == TravelResolutionType.Combat && encounter.Enemies != null)
         {
             var encounterDef = new EncounterDef(encounter.Id, encounter.Name, encounter.Enemies, 15);
             Combat = CombatEngine.Enter(Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
@@ -685,6 +797,25 @@ public class GameState
                 { "choice", choice },
                 { "factionId", encounter.FactionId ?? "none" }
             });
+
+            // Apply reputation effects from travel dialogue choices
+            if (encounter.FactionId != null && IsPatrolEncounter(encounter.Id))
+            {
+                switch (choice)
+                {
+                    case "Attack":
+                        Reputation.ApplyDelta(encounter.FactionId, -5, "travel_encounter:attack_patrol");
+                        break;
+                    case "Request intel":
+                    case "Pass safely":
+                        Reputation.ApplyDelta(encounter.FactionId, 2, "travel_encounter:cooperate");
+                        break;
+                }
+            }
+            else if (encounter.Id == "refugees" && choice == "Help")
+            {
+                Reputation.ApplyDelta("bureau", 2, "travel_encounter:help_refugees");
+            }
         }
 
         EmitActionLog("overworld", "travel_encounter_resolved", new Dictionary<string, string>

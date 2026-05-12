@@ -165,6 +165,26 @@
         { "enemyId": "bloom_wretch", "count": 2, "rowOverride": 0 }
       ],
       "xpReward": 64
+    },
+    {
+      "id": "bs-bureau-patrol",
+      "weight": 8,
+      "dangerRating": 3,
+      "factionId": "bureau",
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 30
+    },
+    {
+      "id": "bs-convocation-patrol",
+      "weight": 8,
+      "dangerRating": 3,
+      "factionId": "convocation",
+      "enemies": [
+        { "enemyId": "convocation_soldier", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 30
     }
   ]
 }

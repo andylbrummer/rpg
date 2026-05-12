@@ -1,0 +1,20 @@
+{
+  "id": "bureau_soldier",
+  "name": "Bureau Enforcer",
+  "description": "A disciplined soldier in Bureau livery, armed with standard-issue gear and a bureaucrat's unshakable certainty.",
+  "stats": {
+    "str": 6,
+    "dex": 5,
+    "con": 6,
+    "int": 4,
+    "wil": 5
+  },
+  "hpBase": 22,
+  "speed": 4,
+  "ai": "soldier_tactical",
+  "abilities": ["bayonet_thrust", "suppress"],
+  "lootTable": [
+    { "itemId": "healing_draft", "chance": 0.3 },
+    { "itemId": "iron_mace", "chance": 0.1 }
+  ]
+}

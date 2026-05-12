@@ -30,6 +30,22 @@
         { "enemyId": "rat", "count": 1, "rowOverride": 0 },
         { "enemyId": "goblin_scavenger", "count": 1, "rowOverride": 1 }
       ]
+    },
+    {
+      "id": "be-bureau-patrol",
+      "weight": 8,
+      "factionId": "bureau",
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 2, "rowOverride": 0 }
+      ]
+    },
+    {
+      "id": "be-convocation-patrol",
+      "weight": 8,
+      "factionId": "convocation",
+      "enemies": [
+        { "enemyId": "convocation_soldier", "count": 2, "rowOverride": 0 }
+      ]
     }
   ]
 }

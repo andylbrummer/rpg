@@ -2,6 +2,15 @@ using System.Collections;
 
 namespace RPC.Engine;
 
+public enum AttitudeTier
+{
+    Hostile,    // -100 to -25
+    Suspicious, // -24 to 0
+    Neutral,    // 1 to 24
+    Friendly,   // 25 to 49
+    Allied      // 50 to 100
+}
+
 public record ReputationChange(string FactionId, int Delta, int NewValue, string Source);
 
 public class ReputationState : IEnumerable<KeyValuePair<string, int>>
@@ -56,6 +65,19 @@ public class ReputationState : IEnumerable<KeyValuePair<string, int>>
     public string? GetOpposedFaction(string factionId)
     {
         return _opposedPairs.TryGetValue(factionId, out var opposedId) ? opposedId : null;
+    }
+
+    public AttitudeTier GetAttitudeTier(string factionId)
+    {
+        var value = this[factionId];
+        return value switch
+        {
+            <= -25 => AttitudeTier.Hostile,
+            <= 0 => AttitudeTier.Suspicious,
+            <= 24 => AttitudeTier.Neutral,
+            <= 49 => AttitudeTier.Friendly,
+            _ => AttitudeTier.Allied
+        };
     }
 
     public void Clear() => _values.Clear();

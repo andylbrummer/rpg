@@ -597,6 +597,12 @@ public class GameServer
                         stateChanged = _gameState.ApplyDialogueReputation(choiceFactionId, choiceDelta);
                     }
                     break;
+                case "encounter_choice":
+                    if (action.TargetId is string encounterChoice)
+                    {
+                        stateChanged = _gameState.ResolveParley(encounterChoice);
+                    }
+                    break;
                 case "branch_choose":
                     if (action.TargetId is string charId && action.Branch is string branch)
                     {
@@ -1008,7 +1014,8 @@ public class GameServer
                 id = c.Id,
                 name = c.Name,
                 factionId = c.FactionId,
-                portrait = c.Portrait
+                portrait = c.Portrait,
+                attitude = _gameState.Reputation.GetAttitudeTier(c.FactionId).ToString().ToLowerInvariant()
             }).ToArray(),
             tavernRoster = _gameState.Town.TavernRoster.Select(r => new
             {
@@ -1100,6 +1107,12 @@ public class GameServer
             town,
             overworld,
             travelEncounter,
+            pendingParley = _gameState.CurrentParley != null ? new
+            {
+                encounterId = _gameState.CurrentParley.EncounterId,
+                factionId = _gameState.CurrentParley.FactionId,
+                options = _gameState.CurrentParley.Options
+            } : null,
             reputation = _gameState.Reputation.ToDictionary(r => r.Key, r => r.Value),
             evidence = new
             {

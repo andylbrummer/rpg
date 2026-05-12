@@ -42,15 +42,25 @@ public static class TravelEncounterTable
 {
     public static readonly TravelEncounterEntry[] Entries =
     [
-        new("faction_patrol", "Faction Patrol", 15, 2, TravelResolutionType.Dialogue,
+        new("faction_patrol", "Faction Patrol", 8, 2, TravelResolutionType.Dialogue,
             null, "bureau", null),
-        new("bloom_pocket", "Bloom Pocket", 15, 3, TravelResolutionType.StatTest,
+        new("bureau_patrol", "Bureau Patrol", 6, 2, TravelResolutionType.Dialogue,
+            null, "bureau", null),
+        new("convocation_patrol", "Convocation Patrol", 6, 2, TravelResolutionType.Dialogue,
+            null, "convocation", null),
+        new("stillness_patrol", "Stillness Patrol", 6, 2, TravelResolutionType.Dialogue,
+            null, "stillness", null),
+        new("cartography_patrol", "Cartography Patrol", 6, 2, TravelResolutionType.Dialogue,
+            null, "cartography", null),
+        new("inkblood_patrol", "Compact Patrol", 6, 2, TravelResolutionType.Dialogue,
+            null, "inkblood", null),
+        new("bloom_pocket", "Bloom Pocket", 12, 3, TravelResolutionType.StatTest,
             "constitution", null, null),
-        new("merchant", "Traveling Merchant", 20, 0, TravelResolutionType.Dialogue),
-        new("refugees", "Refugees", 15, 1, TravelResolutionType.Dialogue),
-        new("ambush", "Ambush", 20, 3, TravelResolutionType.Combat,
+        new("merchant", "Traveling Merchant", 18, 0, TravelResolutionType.Dialogue),
+        new("refugees", "Refugees", 12, 1, TravelResolutionType.Dialogue),
+        new("ambush", "Ambush", 16, 3, TravelResolutionType.Combat,
             null, null, [new EnemySpawn("goblin_scavenger", 2), new EnemySpawn("rat", 1)]),
-        new("environmental_hazard", "Environmental Hazard", 15, 2, TravelResolutionType.StatTest,
+        new("environmental_hazard", "Environmental Hazard", 12, 2, TravelResolutionType.StatTest,
             "dexterity", null, null)
     ];
 

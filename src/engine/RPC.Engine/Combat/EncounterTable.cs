@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace RPC.Engine.Combat;
 
-public record EncounterTableEntry(string? Id, int Weight, EnemySpawn[] Enemies, int XpReward = 10, int DangerRating = 1);
+public record EncounterTableEntry(string? Id, int Weight, EnemySpawn[] Enemies, int XpReward = 10, int DangerRating = 1, string? FactionId = null);
 
 public record EncounterTableDef(string Id, string Name, EncounterTableEntry[] Entries);
 
@@ -29,6 +29,19 @@ public class EncounterTableRegistry
             {
                 if (entry.Id == encounterId)
                     return new EncounterDef(encounterId, table.Name, entry.Enemies, entry.XpReward);
+            }
+        }
+        return null;
+    }
+
+    public string? GetEncounterFaction(string encounterId)
+    {
+        foreach (var table in _tables.Values)
+        {
+            foreach (var entry in table.Entries)
+            {
+                if (entry.Id == encounterId)
+                    return entry.FactionId;
             }
         }
         return null;
