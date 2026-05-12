@@ -6,11 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "0XLIT7UWfuyz",
-    "title": "T51a.1 AI behavior tag wiring in combat engine",
-    "iteration": 34
+    "dart_id": "XD5ZeGV6ZYEm",
+    "title": "T51a.2 Bloom creature enemy defs",
+    "iteration": 35
   },
-  "completed_tasks": 29,
+  "completed_tasks": 30,
   "total_tasks": 49,
-  "iteration": 34
+  "iteration": 35
 }
