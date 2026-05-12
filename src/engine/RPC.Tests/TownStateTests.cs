@@ -69,9 +69,9 @@ public class TownStateTests : IDisposable
         Assert.NotNull(gs.Town);
         Assert.Equal("the_reach", gs.Town.CurrentTownId);
         Assert.Equal(6, gs.Town.TavernRoster.Count);
-        Assert.Equal(4, gs.Town.AvailableMissions.Count);
+        Assert.True(gs.Town.AvailableMissions.Count >= 4, "Town should initialize with at least 4 available missions");
         Assert.Empty(gs.Town.VendorStock);
-        Assert.Equal(2, gs.Town.FactionContacts.Count);
+        Assert.True(gs.Town.FactionContacts.Count >= 2, "Town should initialize with at least 2 faction contacts");
     }
 
     [Fact]
@@ -114,9 +114,9 @@ public class TownStateTests : IDisposable
         var loaded = gs2.LoadGame(_testSavePath);
         Assert.True(loaded);
 
-        Assert.Equal(4, gs2.Town.AvailableMissions.Count);
+        Assert.Equal(gs.Town.AvailableMissions.Count, gs2.Town.AvailableMissions.Count);
         Assert.Empty(gs2.Town.VendorStock);
-        Assert.Equal(2, gs2.Town.FactionContacts.Count);
+        Assert.Equal(gs.Town.FactionContacts.Count, gs2.Town.FactionContacts.Count);
     }
 
     [Fact]
@@ -201,9 +201,12 @@ public class TownStateTests : IDisposable
     {
         var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
 
-        Assert.Equal(2, defs.Count);
+        Assert.Equal(5, defs.Count);
         Assert.Contains(defs, d => d.Id == "bureau");
         Assert.Contains(defs, d => d.Id == "convocation");
+        Assert.Contains(defs, d => d.Id == "stillness");
+        Assert.Contains(defs, d => d.Id == "inkblood");
+        Assert.Contains(defs, d => d.Id == "cartography");
     }
 
     [Fact]
@@ -270,8 +273,8 @@ public class TownStateTests : IDisposable
         var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
         foreach (var def in defs)
         {
-            Assert.Equal(2, def.Missions.Count);
-            Assert.All(def.Missions, m => Assert.Equal(5, m.RepReward));
+            Assert.True(def.Missions.Count >= 2, $"Faction {def.Id} should have at least 2 missions");
+            Assert.All(def.Missions, m => Assert.True(m.RepReward >= 5, $"Mission {m.Id} rep reward should be >= 5"));
         }
     }
 
@@ -281,7 +284,9 @@ public class TownStateTests : IDisposable
         var defs = FactionContentLoader.LoadAll("../../../../../../content/factions");
         foreach (var def in defs)
         {
-            Assert.Equal(25, def.RepThresholds.VendorAccess);
+            // Stillness is harder to access due to negative starter reputation
+            var expectedVendor = def.Id == "stillness" ? 20 : 25;
+            Assert.Equal(expectedVendor, def.RepThresholds.VendorAccess);
             Assert.Equal(50, def.RepThresholds.ExclusiveRecruit);
             Assert.Equal(75, def.RepThresholds.PatronOffice);
         }
@@ -307,10 +312,13 @@ public class TownStateTests : IDisposable
 
         var gs = new GameState(seed: 42);
 
-        Assert.Equal(2, gs.Town.FactionContacts.Count);
-        Assert.Equal(4, gs.Town.AvailableMissions.Count);
-        Assert.Equal(2, gs.Town.FactionVendors.Count);
+        Assert.Equal(5, gs.Town.FactionContacts.Count);
+        Assert.Equal(16, gs.Town.AvailableMissions.Count);
+        Assert.Equal(5, gs.Town.FactionVendors.Count);
         Assert.Equal(6, gs.Town.FactionVendors.First(v => v.FactionId == "bureau").Stock.Count);
         Assert.Equal(6, gs.Town.FactionVendors.First(v => v.FactionId == "convocation").Stock.Count);
+        Assert.Equal(8, gs.Town.FactionVendors.First(v => v.FactionId == "stillness").Stock.Count);
+        Assert.Equal(8, gs.Town.FactionVendors.First(v => v.FactionId == "inkblood").Stock.Count);
+        Assert.Equal(8, gs.Town.FactionVendors.First(v => v.FactionId == "cartography").Stock.Count);
     }
 }

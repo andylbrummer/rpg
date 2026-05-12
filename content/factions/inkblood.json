@@ -1,0 +1,63 @@
+{
+  "id": "inkblood",
+  "name": "Ossuary Compact",
+  "shortName": "Compact",
+  "contact": {
+    "id": "contact-inkblood",
+    "name": "Scribe-Mother Yrsa",
+    "portrait": "portrait_yrsa"
+  },
+  "vendorName": "Compact Scribe",
+  "identity": "The Ossuary Compact is a covenant older than the Reach itself, bound together not by loyalty or territory but by the shared practice of bone-ink necromancy. Its members — Inkbloods, Bonewardens, and the rare independent practitioners — believe that death is not an ending but a transaction. The dead owe debts. The living inherit obligations. And the proper application of ink, bone, and will can rewrite the terms of both.\n\nThe Compact operates through a network of ossuaries, scriptoriums, and black-market bone dealers scattered across the frozen wastes. Their primary trade is in written contracts with the dead: binding a restless spirit to service, trading years of unlife for a single favor, or negotiating passage through territory claimed by ancient grave-pacts. These contracts are written in blood-ink on flayed skin or carved into bone tablets, and breaking them carries consequences that make death look merciful.\n\nTo outsiders, the Compact is a macabre curiosity at best and a mortal threat at worst. Their methods are undeniably effective — a properly negotiated compact can turn a hostile wraith into an ally, seal a bloom-infected district against further spread, or grant temporary access to the memories of the long-dead. But the price is always more than it first appears, and the Compact's scribes are not above obscuring the fine print.",
+  "colorPrimary": "#8b2222",
+  "starterRep": 0,
+  "repThresholds": {
+    "vendorAccess": 25,
+    "exclusiveRecruit": 50,
+    "patronOffice": 75
+  },
+  "vendorStock": [
+    { "itemId": "cautery_knife", "name": "Cautery Knife", "price": 45, "quantity": 1 },
+    { "itemId": "iron_mace", "name": "Iron Mace", "price": 30, "quantity": 1 },
+    { "itemId": "restoration_balm", "name": "Restoration Balm", "price": 80, "quantity": 1 },
+    { "itemId": "ink_vial", "name": "Ink Vial", "price": 8, "quantity": 5 },
+    { "itemId": "bone_fragment", "name": "Bone Fragment", "price": 5, "quantity": 15 },
+    { "itemId": "healing_draft", "name": "Healing Draft", "price": 40, "quantity": 2 },
+    { "itemId": "leather_cap", "name": "Leather Cap", "price": 12, "quantity": 1 },
+    { "itemId": "cloth_vest", "name": "Cloth Vest", "price": 10, "quantity": 1 }
+  ],
+  "missions": [
+    {
+      "id": "mission-inkblood-1",
+      "title": "Bone Harvest",
+      "description": "Recover intact bone samples from a bloom-corrupted graveyard. The Compact's ink requires specific mineral compositions.",
+      "minLevel": 1,
+      "rewards": ["70g"],
+      "repReward": 5
+    },
+    {
+      "id": "mission-inkblood-2",
+      "title": "Inscribe the Wards",
+      "description": "Carry blood-ink ward stones to three settlements on the frontier. Protect them from bloom-spawn long enough for the ink to set.",
+      "minLevel": 1,
+      "rewards": ["90g"],
+      "repReward": 5
+    },
+    {
+      "id": "mission-inkblood-3",
+      "title": "Broken Compact",
+      "description": "A rogue Bonewarden has broken their compact and fled with a cache of signed bone tablets. Recover the tablets — the Bonewarden is optional.",
+      "minLevel": 3,
+      "rewards": ["110g"],
+      "repReward": 8
+    },
+    {
+      "id": "mission-inkblood-4",
+      "title": "The Dead Negotiate",
+      "description": "An ancient grave-pact has been triggered by Engine destabilization. Negotiate with the awakened dead to prevent a massacre — or forge a new compact.",
+      "minLevel": 5,
+      "rewards": ["140g"],
+      "repReward": 10
+    }
+  ]
+}

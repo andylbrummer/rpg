@@ -1,6 +1,8 @@
 using System.Text.Json;
+using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Models.Dungeons;
+using RPC.Engine.Overworld;
 using RPC.Engine.Town;
 
 namespace RPC.Engine.Save;
@@ -16,18 +18,61 @@ public class SaveData
     public SaveTownState? Town { get; set; }
     public SaveActionLogEntry[] ActionLog { get; set; } = Array.Empty<SaveActionLogEntry>();
     public Dictionary<string, int> Reputation { get; set; } = new();
+    public Dictionary<string, int> Evidence { get; set; } = new();
+    public string? SuspectedFaction { get; set; }
     public string? Settings { get; set; }
     public int OverworldTurns { get; set; } = 0;
     public string OverworldCurrentNodeId { get; set; } = "the_reach";
     public bool CampaignEnded { get; set; } = false;
+    public string? AccusedFaction { get; set; }
+    public bool MastermindAdvantage { get; set; } = false;
+    public bool FinalDungeonUnlocked { get; set; } = false;
     public int PartyGold { get; set; } = 500;
     public string[] PartyInventory { get; set; } = Array.Empty<string>();
     public SaveJournalState? Journal { get; set; }
+    public SaveCampaignConfig? CampaignConfig { get; set; }
+    public SaveOverworldNode[] OverworldNodes { get; set; } = Array.Empty<SaveOverworldNode>();
+    public SaveOverworldRoute[] OverworldRoutes { get; set; } = Array.Empty<SaveOverworldRoute>();
+    public int CurrentAct { get; set; } = 1;
+    public SaveWorldState? WorldState { get; set; }
+}
+
+public class SaveFactionTimeline
+{
+    public int Preparing { get; set; }
+    public int Executing { get; set; }
+}
+
+public class SaveWildcardTrigger
+{
+    public string FactionId { get; set; } = "";
+    public int TurnThreshold { get; set; }
+}
+
+public class SaveCampaignConfig
+{
+    public string Patron { get; set; } = "";
+    public string Threat { get; set; } = "";
+    public string Mastermind { get; set; } = "";
+    public string Scheme { get; set; } = "";
+    public string WildCard { get; set; } = "";
+    public string Complication { get; set; } = "";
+    public string[] EvidenceChain { get; set; } = Array.Empty<string>();
+    public Dictionary<string, SaveFactionTimeline> FactionTimelines { get; set; } = new();
+    public Dictionary<string, string> NpcCasting { get; set; } = new();
+    public SaveWildcardTrigger? WildcardTrigger { get; set; }
 }
 
 public class SaveJournalState
 {
     public string[] DiscoveredSynergies { get; set; } = Array.Empty<string>();
+}
+
+public class SaveWorldState
+{
+    public Dictionary<string, string> Settlements { get; set; } = new();
+    public string[] AccessibleDungeons { get; set; } = Array.Empty<string>();
+    public Dictionary<string, string[]> FactionTerritory { get; set; } = new();
 }
 
 public class SaveTownState
@@ -105,6 +150,25 @@ public class SaveActiveMission
     public string Status { get; set; } = "";
 }
 
+public class SaveOverworldNode
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Type { get; set; } = "";
+    public string[] FactionPresence { get; set; } = Array.Empty<string>();
+    public string? DungeonTemplateId { get; set; }
+}
+
+public class SaveOverworldRoute
+{
+    public string From { get; set; } = "";
+    public string To { get; set; } = "";
+    public int Distance { get; set; }
+    public int DangerRating { get; set; }
+    public string Terrain { get; set; } = "";
+    public string Status { get; set; } = "";
+}
+
 public class SavePartyMember
 {
     public Guid Id { get; set; }
@@ -118,6 +182,7 @@ public class SavePartyMember
     public string[] KnownAbilities { get; set; } = Array.Empty<string>();
     public int Row { get; set; }
     public string? BranchChoice { get; set; }
+    public string? BranchLevel6 { get; set; }
     public TempStatModifier[] TempModifiers { get; set; } = Array.Empty<TempStatModifier>();
 }
 
@@ -174,7 +239,7 @@ public static class SaveSystem
             var data = JsonSerializer.Deserialize<SaveData>(json, Options);
             if (data == null) return false;
 
-            if (data.SchemaVersion != 3 && data.SchemaVersion != 4 && data.SchemaVersion != 5)
+            if (data.SchemaVersion != 3 && data.SchemaVersion != 4 && data.SchemaVersion != 5 && data.SchemaVersion != 6)
             {
                 Console.Error.WriteLine(
                     $"Save file '{path}' has unsupported schema version {data.SchemaVersion}. Deleting; player starts new game.");
@@ -193,6 +258,9 @@ public static class SaveSystem
             RestoreOverworld(state, data);
             RestoreSettings(state, data);
             RestoreJournal(state, data);
+            RestoreCampaignConfig(state, data);
+            RestoreEvidence(state, data);
+            RestoreWorldState(state, data);
 
             return true;
         }
@@ -229,6 +297,7 @@ public static class SaveSystem
                     KnownAbilities = m.KnownAbilities,
                     Row = m.Row,
                     BranchChoice = m.BranchChoice,
+                    BranchLevel6 = m.BranchLevel6,
                     TempModifiers = m.TempModifiers
                 };
             }
@@ -236,7 +305,7 @@ public static class SaveSystem
 
         return new SaveData
         {
-            SchemaVersion = 5,
+            SchemaVersion = 6,
             Party = party,
             Player = new SavePlayer
             {
@@ -322,15 +391,65 @@ public static class SaveSystem
                 Payload = e.Payload
             }).ToArray(),
             Reputation = new Dictionary<string, int>(state.Reputation),
+            Evidence = new Dictionary<string, int>(state.Evidence.Counters),
+            SuspectedFaction = state.Evidence.SuspectedFaction,
             Settings = state.SettingsHash,
             PartyGold = state.PartyGold,
             PartyInventory = state.PartyInventory.ToArray(),
             OverworldTurns = state.Overworld.Turns,
             OverworldCurrentNodeId = state.Overworld.CurrentNodeId,
             CampaignEnded = state.CampaignEnded,
+            AccusedFaction = state.AccusedFaction,
+            MastermindAdvantage = state.MastermindAdvantage,
+            FinalDungeonUnlocked = state.FinalDungeonUnlocked,
             Journal = new SaveJournalState
             {
                 DiscoveredSynergies = state.Journal.DiscoveryOrder.ToArray()
+            },
+            CampaignConfig = state.CampaignConfig == null ? null : new SaveCampaignConfig
+            {
+                Patron = state.CampaignConfig.Patron,
+                Threat = state.CampaignConfig.Threat,
+                Mastermind = state.CampaignConfig.Mastermind,
+                Scheme = state.CampaignConfig.Scheme.ToString(),
+                WildCard = state.CampaignConfig.WildCard,
+                Complication = state.CampaignConfig.Complication.ToString(),
+                EvidenceChain = state.CampaignConfig.EvidenceChain.ToArray(),
+                FactionTimelines = state.CampaignConfig.FactionTimelines.ToDictionary(
+                    kv => kv.Key,
+                    kv => new SaveFactionTimeline { Preparing = kv.Value.Preparing, Executing = kv.Value.Executing }),
+                NpcCasting = new Dictionary<string, string>(state.CampaignConfig.NpcCasting),
+                WildcardTrigger = state.CampaignConfig.WildcardTrigger == null ? null : new SaveWildcardTrigger
+                {
+                    FactionId = state.CampaignConfig.WildcardTrigger.FactionId,
+                    TurnThreshold = state.CampaignConfig.WildcardTrigger.TurnThreshold
+                }
+            },
+            OverworldNodes = state.Overworld.Nodes.Values.Select(n => new SaveOverworldNode
+            {
+                Id = n.Id,
+                Name = n.Name,
+                Type = n.Type.ToString(),
+                FactionPresence = n.FactionPresence.ToArray(),
+                DungeonTemplateId = n.DungeonTemplateId
+            }).ToArray(),
+            OverworldRoutes = state.Overworld.Routes.Select(r => new SaveOverworldRoute
+            {
+                From = r.From,
+                To = r.To,
+                Distance = r.Distance,
+                DangerRating = r.DangerRating,
+                Terrain = r.Terrain,
+                Status = r.Status.ToString()
+            }).ToArray(),
+            CurrentAct = state.CurrentAct,
+            WorldState = new SaveWorldState
+            {
+                Settlements = new Dictionary<string, string>(state.WorldState.Settlements),
+                AccessibleDungeons = state.WorldState.AccessibleDungeons.ToArray(),
+                FactionTerritory = state.WorldState.FactionTerritory.ToDictionary(
+                    kv => kv.Key,
+                    kv => kv.Value.ToArray())
             }
         };
     }
@@ -349,7 +468,7 @@ public static class SaveSystem
                 state.Party.SetMember(i, new CharacterState(
                     s.Id, s.Name, s.ClassId, level, xp,
                     s.BaseStats, hp, s.Equipment,
-                    s.KnownAbilities, row, s.BranchChoice,
+                    s.KnownAbilities, row, s.BranchChoice, s.BranchLevel6,
                     s.TempModifiers));
             }
             else
@@ -453,12 +572,100 @@ public static class SaveSystem
         }
     }
 
+    private static void RestoreCampaignConfig(GameState state, SaveData data)
+    {
+        if (data.CampaignConfig == null) return;
+
+        if (!Enum.TryParse<SchemeType>(data.CampaignConfig.Scheme, out var scheme))
+            scheme = SchemeType.BloomHarvest;
+        if (!Enum.TryParse<ComplicationType>(data.CampaignConfig.Complication, out var complication))
+            complication = ComplicationType.BloomSiege;
+
+        state.CampaignConfig = new CampaignConfig
+        {
+            Patron = data.CampaignConfig.Patron,
+            Threat = data.CampaignConfig.Threat,
+            Mastermind = data.CampaignConfig.Mastermind,
+            Scheme = scheme,
+            WildCard = data.CampaignConfig.WildCard,
+            Complication = complication,
+            EvidenceChain = data.CampaignConfig.EvidenceChain.ToList(),
+            FactionTimelines = data.CampaignConfig.FactionTimelines.ToDictionary(
+                kv => kv.Key,
+                kv => new FactionTimeline(kv.Value.Preparing, kv.Value.Executing)),
+            NpcCasting = new Dictionary<string, string>(data.CampaignConfig.NpcCasting),
+            WildcardTrigger = data.CampaignConfig.WildcardTrigger == null ? null : new WildcardTrigger(
+                data.CampaignConfig.WildcardTrigger.FactionId,
+                data.CampaignConfig.WildcardTrigger.TurnThreshold)
+        };
+    }
+
     private static void RestoreOverworld(GameState state, SaveData data)
     {
         state.Overworld.Turns = Math.Max(0, data.OverworldTurns);
         state.Overworld.CurrentNodeId = string.IsNullOrEmpty(data.OverworldCurrentNodeId) ? "the_reach" : data.OverworldCurrentNodeId;
+
+        if (data.OverworldNodes?.Length > 0)
+        {
+            state.Overworld.Nodes.Clear();
+            foreach (var n in data.OverworldNodes)
+            {
+                if (Enum.TryParse<NodeType>(n.Type, out var nodeType))
+                {
+                    state.Overworld.Nodes[n.Id] = new OverworldNode(n.Id, n.Name, nodeType)
+                    {
+                        FactionPresence = n.FactionPresence?.ToList() ?? new List<string>(),
+                        DungeonTemplateId = n.DungeonTemplateId
+                    };
+                }
+            }
+        }
+
+        if (data.OverworldRoutes?.Length > 0)
+        {
+            state.Overworld.Routes.Clear();
+            foreach (var r in data.OverworldRoutes)
+            {
+                if (Enum.TryParse<RouteStatus>(r.Status, out var status))
+                {
+                    state.Overworld.Routes.Add(new OverworldRoute(r.From, r.To, r.Distance, r.DangerRating, r.Terrain)
+                    {
+                        Status = status
+                    });
+                }
+            }
+        }
+
         state.CampaignEnded = data.CampaignEnded;
         state.PartyGold = data.PartyGold;
         state.PartyInventory = data.PartyInventory?.ToList() ?? new List<string>();
+        state.SetAccusedFaction(data.AccusedFaction);
+        state.SetMastermindAdvantage(data.MastermindAdvantage);
+        state.SetFinalDungeonUnlocked(data.FinalDungeonUnlocked);
+    }
+
+    private static void RestoreEvidence(GameState state, SaveData data)
+    {
+        state.Evidence.Clear();
+        foreach (var kv in data.Evidence ?? new Dictionary<string, int>())
+        {
+            state.Evidence.SetCounter(kv.Key, kv.Value);
+        }
+        if (!string.IsNullOrEmpty(data.SuspectedFaction))
+        {
+            state.Evidence.SetSuspectedFaction(data.SuspectedFaction);
+        }
+    }
+
+    private static void RestoreWorldState(GameState state, SaveData data)
+    {
+        if (data.WorldState != null)
+        {
+            state.WorldState.Settlements = new Dictionary<string, string>(data.WorldState.Settlements);
+            state.WorldState.AccessibleDungeons = data.WorldState.AccessibleDungeons?.ToList() ?? new List<string>();
+            state.WorldState.FactionTerritory = data.WorldState.FactionTerritory?.ToDictionary(
+                kv => kv.Key,
+                kv => kv.Value.ToList()) ?? new Dictionary<string, List<string>>();
+        }
     }
 }

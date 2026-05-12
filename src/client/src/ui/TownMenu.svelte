@@ -457,14 +457,25 @@
 
 {#if pendingBranchMembers.length > 0}
   {@const member = pendingBranchMembers[0]}
+  {@const isLevel6 = member.level >= 6 && member.branchChoice != null}
   <div class="branch-modal-overlay" role="dialog" aria-label="Choose branch">
     <div class="branch-modal-card">
-      <h2 class="branch-modal-title">{member.name} — Choose Path</h2>
-      <p class="branch-modal-subtitle">Level {member.level} {member.className}</p>
+      <h2 class="branch-modal-title">
+        {member.name} — {isLevel6 ? 'Specialize' : 'Choose Path'}
+      </h2>
+      <p class="branch-modal-subtitle">
+        Level {isLevel6 ? 6 : 3} {member.className}
+        {#if isLevel6 && member.branchChoice}
+          <span class="branch-parent">({formatBranchName(member.branchChoice)} path)</span>
+        {/if}
+      </p>
       <div class="branch-options">
         {#each (member.availableBranches ?? []) as branch}
           <div class="branch-option">
             <h3 class="branch-name">{formatBranchName(branch)}</h3>
+            {#if !isLevel6 && (member as any).branchWarnings?.includes(branch)}
+              <p class="branch-warning">Warning: This path contains a faction-gated branch at level 6.</p>
+            {/if}
             <div class="branch-abilities">
               {#each getBranchAbilities(member, branch) as ability}
                 <span class="branch-ability">{ability.name}</span>
@@ -1152,6 +1163,18 @@
     margin: 0;
     color: #888;
     font-size: 0.875rem;
+  }
+
+  .branch-parent {
+    color: #aaa;
+    font-style: italic;
+  }
+
+  .branch-warning {
+    margin: 0.25rem 0;
+    color: #d4a84b;
+    font-size: 0.75rem;
+    font-style: italic;
   }
 
   .branch-options {

@@ -34,7 +34,7 @@
             "type": "object",
             "required": ["type"],
             "properties": {
-              "type": { "type": "string", "enum": ["none", "hp", "bone_fragment", "cautery_supply", "ink_vial", "engine_charge"] },
+              "type": { "type": "string", "enum": ["none", "hp", "bone_fragment", "cautery_supply", "ink_vial", "engine_charge", "quiver"] },
               "amount": { "type": "integer", "minimum": 1 }
             }
           },
@@ -68,6 +68,26 @@
     "availableBranches": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "branches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "requiresBranch": { "type": "string" },
+          "factionGate": {
+            "type": "object",
+            "required": ["faction", "threshold"],
+            "properties": {
+              "faction": { "type": "string" },
+              "threshold": { "type": "integer" }
+            }
+          },
+          "fallbackBranch": { "type": "string" }
+        }
+      }
     },
     "levelTable": {
       "type": "array",

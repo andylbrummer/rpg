@@ -33,10 +33,10 @@ public class BranchSystemTests
         return registry;
     }
 
-    private static CharacterState MakeChar(int level = 1, int xp = 0, string? branchChoice = null)
+    private static CharacterState MakeChar(int level = 1, int xp = 0, string? branchChoice = null, string? branchLevel6 = null)
         => new(new Guid("11111111-1111-1111-1111-111111111111"), "Hero", "test_class",
             level, xp, new BaseStats(5, 5, 5, 3, 3), 30, Equipment.Empty,
-            new[] { "base_attack" }, 0, branchChoice);
+            new[] { "base_attack" }, 0, branchChoice, branchLevel6);
 
     [Fact]
     public void CharacterState_Level3_NoBranchChoice_AwaitingBranchChoiceIsTrue()
@@ -111,6 +111,138 @@ public class BranchSystemTests
         Assert.Equal("branch_b", member.BranchChoice);
         Assert.Contains("branch_b_ult", member.KnownAbilities);
         Assert.DoesNotContain("branch_a_ult", member.KnownAbilities);
+    }
+
+    private static ClassRegistry MakeLevel6BranchRegistry()
+    {
+        var registry = new ClassRegistry();
+        var json = """
+            {
+              "id": "test_class",
+              "name": "Test Class",
+              "description": "Test",
+              "baseStats": { "strength": 5, "dexterity": 5, "constitution": 5, "intelligence": 3, "willpower": 3 },
+              "abilities": [
+                { "id": "base_attack", "name": "Base Attack", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d4", "range": "melee" }, "tags": ["physical"] },
+                { "id": "branch_a_ult", "name": "Branch A Ult", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "2d6+PWR", "range": "melee" }, "tags": ["physical"], "branch": "branch_a" },
+                { "id": "branch_b_ult", "name": "Branch B Ult", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d8+PWR", "range": "far" }, "tags": ["physical"], "branch": "branch_b" },
+                { "id": "branch_a6_ult", "name": "Branch A6 Ult", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "3d6+PWR", "range": "melee" }, "tags": ["physical"], "branch": "branch_a6" },
+                { "id": "branch_a6_fallback_ult", "name": "Branch A6 Fallback Ult", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "2d8+PWR", "range": "melee" }, "tags": ["physical"], "branch": "branch_a6_fallback" }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["base_attack"] },
+                { "level": 2, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
+                { "level": 3, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
+                { "level": 4, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
+                { "level": 5, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
+                { "level": 6, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] }
+              ],
+              "branches": [
+                { "id": "branch_a" },
+                { "id": "branch_b" },
+                { "id": "branch_a6", "requiresBranch": "branch_a", "factionGate": { "factionId": "bureau", "threshold": 30 }, "fallbackBranch": "branch_a6_fallback" },
+                { "id": "branch_a6_fallback", "requiresBranch": "branch_a" }
+              ]
+            }
+            """;
+        registry.LoadFromJson("test_class", json);
+        return registry;
+    }
+
+    [Fact]
+    public void CharacterState_Level6_NoBranchLevel6_AwaitingBranchChoiceIsTrue()
+    {
+        var c = MakeChar(level: 6, branchChoice: "branch_a");
+        Assert.True(c.AwaitingBranchChoice);
+    }
+
+    [Fact]
+    public void CharacterState_Level6_WithBranchLevel6_AwaitingBranchChoiceIsFalse()
+    {
+        var c = MakeChar(level: 6, branchChoice: "branch_a", branchLevel6: "branch_a6");
+        Assert.False(c.AwaitingBranchChoice);
+    }
+
+    [Fact]
+    public void ChooseBranch_Level6_ValidBranch_AddsBranchAbilities()
+    {
+        var registry = MakeLevel6BranchRegistry();
+        var gs = new GameState(seed: 1, classRegistry: registry);
+        gs.Party.SetMember(0, MakeChar(level: 6, branchChoice: "branch_a"));
+        gs.SetReputation("bureau", 40);
+
+        var result = gs.ChooseBranch(new Guid("11111111-1111-1111-1111-111111111111"), "branch_a6");
+
+        Assert.True(result);
+        var member = gs.Party.Members[0];
+        Assert.Equal("branch_a6", member.BranchLevel6);
+        Assert.Contains("branch_a6_ult", member.KnownAbilities);
+    }
+
+    [Fact]
+    public void ChooseBranch_Level6_InvalidBranch_ReturnsFalse()
+    {
+        var registry = MakeLevel6BranchRegistry();
+        var gs = new GameState(seed: 1, classRegistry: registry);
+        gs.Party.SetMember(0, MakeChar(level: 6, branchChoice: "branch_a"));
+
+        var result = gs.ChooseBranch(new Guid("11111111-1111-1111-1111-111111111111"), "branch_b");
+
+        Assert.False(result);
+        Assert.Null(gs.Party.Members[0].BranchLevel6);
+    }
+
+    [Fact]
+    public void ChooseBranch_Level6_FactionGate_BelowThreshold_FallsBack()
+    {
+        var registry = MakeLevel6BranchRegistry();
+        var gs = new GameState(seed: 1, classRegistry: registry);
+        gs.Party.SetMember(0, MakeChar(level: 6, branchChoice: "branch_a"));
+        gs.SetReputation("bureau", 10);
+
+        var result = gs.ChooseBranch(new Guid("11111111-1111-1111-1111-111111111111"), "branch_a6");
+
+        Assert.True(result);
+        var member = gs.Party.Members[0];
+        Assert.Equal("branch_a6_fallback", member.BranchLevel6);
+        Assert.Contains("branch_a6_fallback_ult", member.KnownAbilities);
+        Assert.Contains(gs.ActionLog, e => e.Category == "branch" && e.Type == "branch_fallback");
+    }
+
+    [Fact]
+    public void ChooseBranch_Level6_FactionGate_AboveThreshold_AssignsOriginal()
+    {
+        var registry = MakeLevel6BranchRegistry();
+        var gs = new GameState(seed: 1, classRegistry: registry);
+        gs.Party.SetMember(0, MakeChar(level: 6, branchChoice: "branch_a"));
+        gs.SetReputation("bureau", 50);
+
+        var result = gs.ChooseBranch(new Guid("11111111-1111-1111-1111-111111111111"), "branch_a6");
+
+        Assert.True(result);
+        var member = gs.Party.Members[0];
+        Assert.Equal("branch_a6", member.BranchLevel6);
+        Assert.Contains("branch_a6_ult", member.KnownAbilities);
+    }
+
+    [Fact]
+    public void HasPendingLevel6BranchChoices_True_WhenMissing()
+    {
+        var registry = MakeLevel6BranchRegistry();
+        var gs = new GameState(seed: 1, classRegistry: registry);
+        gs.Party.SetMember(0, MakeChar(level: 6, branchChoice: "branch_a"));
+
+        Assert.True(gs.HasPendingLevel6BranchChoices);
+    }
+
+    [Fact]
+    public void HasPendingLevel6BranchChoices_False_WhenResolved()
+    {
+        var registry = MakeLevel6BranchRegistry();
+        var gs = new GameState(seed: 1, classRegistry: registry);
+        gs.Party.SetMember(0, MakeChar(level: 6, branchChoice: "branch_a", branchLevel6: "branch_a6"));
+
+        Assert.False(gs.HasPendingLevel6BranchChoices);
     }
 }
 

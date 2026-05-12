@@ -1,3 +1,4 @@
+using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
 using RPC.Engine.Models.Dungeons;
@@ -25,6 +26,27 @@ public class JournalState
     public bool IsDiscovered(string id) => Discovered.Contains(id);
 }
 
+public enum FactionState
+{
+    Investigating,
+    Preparing,
+    Executing
+}
+
+public class WorldState
+{
+    public Dictionary<string, string> Settlements { get; set; } = new();
+    public List<string> AccessibleDungeons { get; set; } = new();
+    public Dictionary<string, List<string>> FactionTerritory { get; set; } = new();
+
+    public void Reset()
+    {
+        Settlements.Clear();
+        AccessibleDungeons.Clear();
+        FactionTerritory.Clear();
+    }
+}
+
 public class GameState
 {
     public Player Player { get; set; }
@@ -39,10 +61,17 @@ public class GameState
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
     public ReputationState Reputation { get; } = new();
+    public EvidenceState Evidence { get; } = new();
     public JournalState Journal { get; } = new();
     public int PartyGold { get; set; } = 500;
     public List<string> PartyInventory { get; set; } = new();
     public bool CampaignEnded { get; set; } = false;
+    public CampaignConfig? CampaignConfig { get; set; }
+    public WorldState WorldState { get; set; } = new();
+    public int CurrentAct => Overworld.Turns <= 15 ? 1 : Overworld.Turns <= 25 ? 2 : 3;
+    public string? AccusedFaction { get; private set; }
+    public bool MastermindAdvantage { get; private set; }
+    public bool FinalDungeonUnlocked { get; private set; }
     public string? SettingsHash { get; set; }
     public TravelEncounterState? CurrentTravelEncounter { get; private set; }
     public int RolledTravelEncounterCount { get; private set; }
@@ -138,6 +167,8 @@ public class GameState
     public string? CurrentDungeonType { get; internal set; }
 
     public bool HasPendingBranchChoices => Party.Members.Any(m => m.Id != Guid.Empty && m.AwaitingBranchChoice);
+
+    public bool HasPendingLevel6BranchChoices => Party.Members.Any(m => m.Id != Guid.Empty && m.Level >= 6 && m.BranchChoice != null && m.BranchLevel6 == null);
 
     public void EnterDungeon(Dungeon dungeon, string dungeonType)
     {
@@ -419,14 +450,54 @@ public class GameState
         IncrementTurns(1);
     }
 
+    public void GenerateOverworld(CampaignConfig config)
+    {
+        Overworld.GenerateFromConfig(config, _encounterRng);
+        SyncWorldStateFromOverworld();
+    }
+
+    public FactionState GetFactionState(string factionId)
+    {
+        if (CampaignConfig?.FactionTimelines.TryGetValue(factionId, out var timeline) == true)
+        {
+            if (Overworld.Turns >= timeline.Executing)
+                return FactionState.Executing;
+            if (Overworld.Turns >= timeline.Preparing)
+                return FactionState.Preparing;
+        }
+        return FactionState.Investigating;
+    }
+
+    private void SyncWorldStateFromOverworld()
+    {
+        WorldState.Settlements = Overworld.Nodes.Values
+            .Where(n => n.Type == NodeType.Town)
+            .ToDictionary(n => n.Id, _ => "pending");
+
+        WorldState.AccessibleDungeons = Overworld.Nodes.Values
+            .Where(n => n.Type == NodeType.Dungeon)
+            .Select(n => n.Id)
+            .ToList();
+
+        WorldState.FactionTerritory.Clear();
+        foreach (var node in Overworld.Nodes.Values)
+        {
+            foreach (var faction in node.FactionPresence)
+            {
+                if (!WorldState.FactionTerritory.ContainsKey(faction))
+                    WorldState.FactionTerritory[faction] = new List<string>();
+                if (!WorldState.FactionTerritory[faction].Contains(node.Id))
+                    WorldState.FactionTerritory[faction].Add(node.Id);
+            }
+        }
+    }
+
     public bool Travel(string targetId)
     {
         if (CampaignEnded) return false;
         if (HasPendingBranchChoices) return false;
         var fromNodeId = Overworld.CurrentNodeId;
-        var route = Overworld.Routes.FirstOrDefault(r =>
-            (r.From == fromNodeId && r.To == targetId) ||
-            (r.To == fromNodeId && r.From == targetId));
+        var route = Overworld.GetRoute(fromNodeId, targetId);
         var changed = Overworld.Travel(targetId);
         if (!changed) return false;
 
@@ -451,8 +522,7 @@ public class GameState
 
         if (RolledTravelEncounterCount == 0)
         {
-            var node = Overworld.Nodes.FirstOrDefault(n => n.Id == targetId);
-            if (node?.Type == "town")
+            if (Overworld.Nodes.TryGetValue(targetId, out var node) && node.Type == NodeType.Town)
             {
                 EmitActionLog("overworld", "town_reached", new Dictionary<string, string>
                 {
@@ -468,8 +538,20 @@ public class GameState
     private void IncrementTurns(int amount)
     {
         if (CampaignEnded || amount <= 0) return;
-        Overworld.Turns = Math.Min(15, Overworld.Turns + amount);
-        if (Overworld.Turns >= 15)
+        var oldTurn = Overworld.Turns;
+        Overworld.Turns = Math.Min(35, Overworld.Turns + amount);
+        var newTurn = Overworld.Turns;
+
+        if (oldTurn < 12 && newTurn >= 12)
+        {
+            EmitActionLog("campaign", "faction_progression", new Dictionary<string, string> { { "milestone", "12" } });
+        }
+        if (oldTurn < 22 && newTurn >= 22)
+        {
+            EmitActionLog("campaign", "faction_progression", new Dictionary<string, string> { { "milestone", "22" } });
+        }
+
+        if (Overworld.Turns >= 35)
         {
             CampaignEnded = true;
             CurrentDungeon = null;
@@ -628,8 +710,8 @@ public class GameState
 
         if (ResolvedTravelEncounterCount >= RolledTravelEncounterCount)
         {
-            var node = Overworld.Nodes.FirstOrDefault(n => n.Id == Overworld.CurrentNodeId);
-            if (node?.Type == "town")
+            var node = Overworld.Nodes.GetValueOrDefault(Overworld.CurrentNodeId);
+            if (node?.Type == NodeType.Town)
             {
                 EmitActionLog("overworld", "town_reached", new Dictionary<string, string>
                 {
@@ -653,6 +735,7 @@ public class GameState
         ExploredTiles.Clear();
         Town = new TownState();
         Overworld = new OverworldState();
+        WorldState.Reset();
         CampaignEnded = false;
         PartyGold = 500;
         PartyInventory.Clear();
@@ -663,6 +746,10 @@ public class GameState
         _currentEncounterId = null;
         _pendingTaggedEncounterTile = null;
         Reputation.Clear();
+        Evidence.Clear();
+        AccusedFaction = null;
+        MastermindAdvantage = false;
+        FinalDungeonUnlocked = false;
         SettingsHash = null;
         ClearTravelEncounters();
         LastUpdate = DateTime.UtcNow;
@@ -711,6 +798,7 @@ public class GameState
 
     public void ChooseSettlementFate(string settlementId, string fate)
     {
+        WorldState.Settlements[settlementId] = fate;
         EmitActionLog("dungeon", "settlement_fate_chosen", new Dictionary<string, string>
         {
             { "settlementId", settlementId },
@@ -736,23 +824,143 @@ public class GameState
         LastUpdate = DateTime.UtcNow;
     }
 
+    public void AddEvidence(string factionId, string source, int amount = 1)
+    {
+        var result = Evidence.AddEvidence(factionId, source, amount);
+        EmitActionLog("evidence", "evidence_added", new Dictionary<string, string>
+        {
+            { "factionId", result.FactionId },
+            { "amount", result.Amount.ToString() },
+            { "newValue", result.NewValue.ToString() },
+            { "source", result.Source },
+            { "threshold", result.ThresholdReached.ToString() }
+        });
+        LastUpdate = DateTime.UtcNow;
+    }
+
+    public int GetEvidenceThreshold(string factionId) => Evidence.GetThreshold(factionId);
+
+    public bool AccuseFaction(string factionId)
+    {
+        if (CampaignConfig == null) return false;
+        if (Evidence.GetThreshold(factionId) < 7) return false;
+        if (AccusedFaction != null) return false;
+
+        AccusedFaction = factionId;
+        var isCorrect = factionId == CampaignConfig.Mastermind;
+
+        if (isCorrect)
+        {
+            EmitActionLog("mastermind", "accusation_correct", new Dictionary<string, string>
+            {
+                { "factionId", factionId }
+            });
+        }
+        else
+        {
+            MastermindAdvantage = true;
+            ApplyReputationDelta(factionId, -20, "wrong_accusation");
+            EmitActionLog("mastermind", "accusation_wrong", new Dictionary<string, string>
+            {
+                { "factionId", factionId },
+                { "penalty", "-20" }
+            });
+        }
+
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    public bool UnlockFinalDungeon()
+    {
+        if (CampaignConfig == null) return false;
+        if (AccusedFaction != CampaignConfig.Mastermind) return false;
+        if (!Evidence.Counters.Values.Any(v => v >= 10)) return false;
+        if (FinalDungeonUnlocked) return false;
+
+        FinalDungeonUnlocked = true;
+        EmitActionLog("mastermind", "final_dungeon_unlocked", new Dictionary<string, string>
+        {
+            { "mastermind", CampaignConfig.Mastermind }
+        });
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    public void SetAccusedFaction(string? factionId)
+    {
+        AccusedFaction = factionId;
+    }
+
+    public void SetMastermindAdvantage(bool value)
+    {
+        MastermindAdvantage = value;
+    }
+
+    public void SetFinalDungeonUnlocked(bool value)
+    {
+        FinalDungeonUnlocked = value;
+    }
+
     public bool LoadGame(string? path = null) => Save.SaveSystem.Load(this, path);
 
     public bool ChooseBranch(Guid characterId, string branch)
     {
         var member = Party.Members.FirstOrDefault(m => m.Id == characterId);
-        if (member.Id == Guid.Empty) return false;
-        if (member.Level < 3) return false;
-        if (member.BranchChoice != null) return false;
+        if (member.Id == Guid.Empty || member.Level < 3) return false;
+        if (_classRegistry?.Get(member.ClassId) is not { } classDef) return false;
 
-        if (_classRegistry?.Get(member.ClassId) is not { } classDef)
-            return false;
+        if (member.BranchChoice == null && TryResolveLevel3Branch(member, branch, classDef, out var resolved3))
+        {
+            ApplyBranchToMember(member, resolved3, "3", classDef);
+            return true;
+        }
 
-        var available = classDef.AvailableBranches ?? Array.Empty<string>();
+        if (member.Level >= 6 && member.BranchLevel6 == null && TryResolveLevel6Branch(member, branch, classDef, out var resolved6))
+        {
+            ApplyBranchToMember(member, resolved6, "6", classDef);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryResolveLevel3Branch(CharacterState member, string branch, ClassDef classDef, out string resolvedBranch)
+    {
+        resolvedBranch = branch;
+        var available = classDef.AvailableBranches ?? classDef.Branches?.Where(b => b.RequiresBranch == null).Select(b => b.Id).ToArray() ?? Array.Empty<string>();
+        return available.Contains(branch);
+    }
+
+    private bool TryResolveLevel6Branch(CharacterState member, string branch, ClassDef classDef, out string resolvedBranch)
+    {
+        resolvedBranch = branch;
+        var available = classDef.Branches?.Where(b => b.RequiresBranch == member.BranchChoice).Select(b => b.Id).ToArray() ?? Array.Empty<string>();
         if (!available.Contains(branch)) return false;
 
+        var branchDef = classDef.Branches?.FirstOrDefault(b => b.Id == branch);
+        if (branchDef?.FactionGate is { } gate && Reputation[gate.FactionId] < gate.Threshold)
+        {
+            var fallback = branchDef.FallbackBranch;
+            if (string.IsNullOrEmpty(fallback)) return false;
+            resolvedBranch = fallback;
+
+            EmitActionLog("branch", "branch_fallback", new Dictionary<string, string>
+            {
+                { "characterId", member.Id.ToString() },
+                { "originalBranch", branch },
+                { "fallbackBranch", resolvedBranch },
+                { "factionId", gate.FactionId },
+                { "threshold", gate.Threshold.ToString() }
+            });
+        }
+        return true;
+    }
+
+    private void ApplyBranchToMember(CharacterState member, string resolvedBranch, string levelLabel, ClassDef classDef)
+    {
         var branchAbilities = classDef.Abilities
-            .Where(a => a.Branch == branch)
+            .Where(a => a.Branch == resolvedBranch)
             .Select(a => a.Id)
             .ToArray();
 
@@ -762,9 +970,18 @@ public class GameState
             .ToArray();
 
         var index = Array.IndexOf(Party.Members, member);
-        Party.SetMember(index, member with { BranchChoice = branch, KnownAbilities = newAbilities });
+        Party.SetMember(index, levelLabel == "3"
+            ? member with { BranchChoice = resolvedBranch, KnownAbilities = newAbilities }
+            : member with { BranchLevel6 = resolvedBranch, KnownAbilities = newAbilities });
+
+        EmitActionLog("branch", "branch_chosen", new Dictionary<string, string>
+        {
+            { "characterId", member.Id.ToString() },
+            { "branch", resolvedBranch },
+            { "level", levelLabel }
+        });
+
         LastUpdate = DateTime.UtcNow;
-        return true;
     }
 
     public bool RecruitFromTavern(string recruitId)

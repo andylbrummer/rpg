@@ -4,6 +4,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using RPC.Engine;
+using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
 using RPC.Engine.Content;
@@ -602,11 +603,17 @@ public class GameServer
                         if (Guid.TryParse(charId, out var guid))
                         {
                             var member = _gameState.Party.Members.FirstOrDefault(m => m.Id == guid);
-                            if (member.Id != Guid.Empty && member.Level >= 3 && member.BranchChoice == null)
+                            if (member.Id != Guid.Empty && member.AwaitingBranchChoice)
                             {
                                 stateChanged = _gameState.ChooseBranch(guid, branch);
                             }
                         }
+                    }
+                    break;
+                case "accuse_faction":
+                    if (action.TargetId is string accusedFactionId)
+                    {
+                        stateChanged = _gameState.AccuseFaction(accusedFactionId);
                     }
                     break;
                 default:
@@ -865,8 +872,16 @@ public class GameServer
                     row = c.Row,
                     alive = c.IsAlive,
                     branchChoice = c.BranchChoice,
+                    branchLevel6 = c.BranchLevel6,
                     awaitingBranchChoice = c.AwaitingBranchChoice,
-                    availableBranches = classDef?.AvailableBranches ?? Array.Empty<string>(),
+                    availableBranches = c.Level < 6
+                        ? (classDef?.AvailableBranches ?? classDef?.Branches?.Where(b => b.RequiresBranch == null).Select(b => b.Id).ToArray() ?? Array.Empty<string>())
+                        : (classDef?.Branches?.Where(b => b.RequiresBranch == c.BranchChoice).Select(b => b.Id).ToArray() ?? Array.Empty<string>()),
+                    branchWarnings = classDef?.Branches?
+                        .Where(b => b.RequiresBranch != null && b.FactionGate != null)
+                        .Select(b => b.RequiresBranch)
+                        .Distinct()
+                        .ToArray() ?? Array.Empty<string>(),
                     stats = new
                     {
                         strength = c.BaseStats.Strength,
@@ -1026,9 +1041,25 @@ public class GameServer
         var overworld = new
         {
             currentNodeId = _gameState.Overworld.CurrentNodeId,
-            nodes = _gameState.Overworld.Nodes.Select(n => new { id = n.Id, name = n.Name, type = n.Type }).ToArray(),
-            routes = _gameState.Overworld.Routes.Select(r => new { from = r.From, to = r.To, distance = r.Distance, dangerRating = r.DangerRating, terrain = r.Terrain }).ToArray(),
-            turns = _gameState.Overworld.Turns
+            nodes = _gameState.Overworld.Nodes.Values.Select(n => new
+            {
+                id = n.Id,
+                name = n.Name,
+                type = n.Type.ToString().ToLowerInvariant(),
+                factionPresence = n.FactionPresence,
+                dungeonTemplateId = n.DungeonTemplateId
+            }).ToArray(),
+            routes = _gameState.Overworld.Routes.Select(r => new
+            {
+                from = r.From,
+                to = r.To,
+                distance = r.Distance,
+                dangerRating = r.DangerRating,
+                terrain = r.Terrain,
+                status = r.Status.ToString().ToLowerInvariant()
+            }).ToArray(),
+            turns = _gameState.Overworld.Turns,
+            currentAct = _gameState.CurrentAct
         };
 
         object? travelEncounter = null;
@@ -1070,9 +1101,29 @@ public class GameServer
             overworld,
             travelEncounter,
             reputation = _gameState.Reputation.ToDictionary(r => r.Key, r => r.Value),
+            evidence = new
+            {
+                suspectedFaction = _gameState.Evidence.SuspectedFaction,
+                canConfront = _gameState.Evidence.Counters.Values.Any(v => v >= 5),
+                canAccuse = _gameState.Evidence.Counters.Values.Any(v => v >= 7),
+                hasIrrefutableProof = _gameState.Evidence.Counters.Values.Any(v => v >= 10),
+                accusedFaction = _gameState.AccusedFaction,
+                mastermindRevealed = _gameState.CampaignConfig != null && _gameState.AccusedFaction == _gameState.CampaignConfig.Mastermind,
+                mastermindAdvantage = _gameState.MastermindAdvantage,
+                finalDungeonUnlocked = _gameState.FinalDungeonUnlocked
+            },
             partyGold = _gameState.PartyGold,
             partyInventory = _gameState.PartyInventory.ToArray(),
             campaignEnded = _gameState.CampaignEnded,
+            factionStates = CampaignConfig.FactionPool.ToDictionary(
+                f => f,
+                f => _gameState.GetFactionState(f).ToString().ToLowerInvariant()),
+            worldState = new
+            {
+                settlements = _gameState.WorldState.Settlements,
+                accessibleDungeons = _gameState.WorldState.AccessibleDungeons,
+                factionTerritory = _gameState.WorldState.FactionTerritory
+            },
             actionLog = _gameState.ActionLog.Select(e => new
             {
                 turn = e.Turn,

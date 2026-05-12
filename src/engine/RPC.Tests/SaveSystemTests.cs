@@ -164,4 +164,22 @@ public class SaveSystemTests : IDisposable
 
         Assert.True(gs.ExploredTiles.Count <= 4096, $"Expected <= 4096 tiles, got {gs.ExploredTiles.Count}");
     }
+
+    [Fact]
+    public void SaveSystem_RoundTrip_PreservesBranchChoices()
+    {
+        var gs = new GameState(seed: 42);
+        var member = gs.Party.Members[0];
+        var updated = member with { BranchChoice = "branch_a", BranchLevel6 = "branch_a6" };
+        gs.Party.SetMember(0, updated);
+
+        gs.SaveGame(_testSavePath);
+        var gs2 = new GameState(seed: 99);
+        var loaded = gs2.LoadGame(_testSavePath);
+
+        Assert.True(loaded);
+        var loadedMember = gs2.Party.Members[0];
+        Assert.Equal("branch_a", loadedMember.BranchChoice);
+        Assert.Equal("branch_a6", loadedMember.BranchLevel6);
+    }
 }

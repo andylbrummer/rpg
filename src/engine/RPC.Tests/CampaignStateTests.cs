@@ -77,23 +77,23 @@ public class CampaignStateTests : IDisposable
     }
 
     [Fact]
-    public void TurnLimit_At15_CampaignEnds()
+    public void TurnLimit_At35_CampaignEnds()
     {
         var gs = new GameState(seed: 42);
-        gs.Overworld.Turns = 14;
+        gs.Overworld.Turns = 34;
         var dungeon = CreateTestDungeon();
 
         gs.EnterDungeon(dungeon, "test");
 
-        Assert.Equal(15, gs.Overworld.Turns);
+        Assert.Equal(35, gs.Overworld.Turns);
         Assert.True(gs.CampaignEnded);
     }
 
     [Fact]
-    public void TurnLimit_At15_ForcesReturnToTown()
+    public void TurnLimit_At35_ForcesReturnToTown()
     {
         var gs = new GameState(seed: 42);
-        gs.Overworld.Turns = 14;
+        gs.Overworld.Turns = 34;
         var dungeon = CreateTestDungeon();
 
         gs.EnterDungeon(dungeon, "test");
@@ -103,16 +103,16 @@ public class CampaignStateTests : IDisposable
     }
 
     [Fact]
-    public void TurnLimit_Exceeds15_ClampsTo15()
+    public void TurnLimit_Exceeds35_ClampsTo35()
     {
         var gs = new GameState(seed: 42);
-        gs.Overworld.Turns = 13;
+        gs.Overworld.Turns = 33;
         gs.Overworld.Routes.Clear();
         gs.Overworld.Routes.Add(new OverworldRoute("the_reach", "broken_engine", 5, 1, "caves"));
 
         gs.Travel("broken_engine");
 
-        Assert.Equal(15, gs.Overworld.Turns);
+        Assert.Equal(35, gs.Overworld.Turns);
         Assert.True(gs.CampaignEnded);
     }
 

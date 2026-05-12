@@ -1,0 +1,63 @@
+{
+  "id": "cartography",
+  "name": "The Reach Cartographers' Guild",
+  "shortName": "Cartographers",
+  "contact": {
+    "id": "contact-cartography",
+    "name": "Wayfinder Kael",
+    "portrait": "portrait_kael"
+  },
+  "vendorName": "Expedition Supplier",
+  "identity": "The Reach Cartographers' Guild is the only organization that pretends the world is worth understanding rather than simply surviving. While factions war over Engines and debate the morality of the blooms, the Cartographers walk the frozen wastes with measuring chains and sketchbooks, mapping what remains of the old empire's roads, charting bloom spread patterns, and documenting the slow geological death of the Reach.\n\nTheir work is painstaking, dangerous, and largely unappreciated. A completed map of a bloom zone is worth less than a single healing draft to most survivors. But the Guild persists, driven by a conviction that knowledge of the terrain is the first step toward any meaningful action. Their maps have saved countless expeditions from walking into dead zones, identified safe routes through contested territory, and revealed patterns in bloom behavior that even the Bureau's researchers missed.\n\nGuild members are explorers, surveyors, and pathfinders — hardy individuals who can read ice formations, estimate bloom growth rates from spore density, and navigate by starlight through whiteout storms. They trade in maps, survey equipment, and the kind of route knowledge that means the difference between reaching a settlement alive and freezing in a crevasse. Their trust is earned by respecting their data: alter a map without notation, and you are worse than an enemy. You are a vandal.",
+  "colorPrimary": "#b8860b",
+  "starterRep": 0,
+  "repThresholds": {
+    "vendorAccess": 25,
+    "exclusiveRecruit": 50,
+    "patronOffice": 75
+  },
+  "vendorStock": [
+    { "itemId": "rusty_sword", "name": "Rusty Sword", "price": 10, "quantity": 2 },
+    { "itemId": "wooden_buckler", "name": "Wooden Buckler", "price": 15, "quantity": 1 },
+    { "itemId": "healing_draft", "name": "Healing Draft", "price": 40, "quantity": 2 },
+    { "itemId": "antitoxin", "name": "Antitoxin", "price": 30, "quantity": 2 },
+    { "itemId": "small_salve", "name": "Small Salve", "price": 20, "quantity": 3 },
+    { "itemId": "steadying_drink", "name": "Steadying Drink", "price": 25, "quantity": 2 },
+    { "itemId": "scale_mail", "name": "Scale Mail", "price": 35, "quantity": 1 },
+    { "itemId": "engine_charge", "name": "Engine Charge", "price": 15, "quantity": 3 }
+  ],
+  "missions": [
+    {
+      "id": "mission-cartography-1",
+      "title": "Survey the Frontier",
+      "description": "Map three uncharted hexes along the northern frontier. Mark bloom concentrations, safe campsites, and any intact structures.",
+      "minLevel": 1,
+      "rewards": ["85g"],
+      "repReward": 5
+    },
+    {
+      "id": "mission-cartography-2",
+      "title": "Escort the Surveyors",
+      "description": "Protect a Guild survey team mapping an active bloom zone. Keep them alive until they finish their measurements.",
+      "minLevel": 1,
+      "rewards": ["75g"],
+      "repReward": 5
+    },
+    {
+      "id": "mission-cartography-3",
+      "title": "The Lost Expedition",
+      "description": "A Guild survey team vanished three weeks ago in the Shattermelt. Follow their route, recover their maps, and determine their fate.",
+      "minLevel": 3,
+      "rewards": ["100g"],
+      "repReward": 8
+    },
+    {
+      "id": "mission-cartography-4",
+      "title": "Chart the Spread",
+      "description": "Map the exact boundary of a new bloom outbreak and project its growth vector. The Bureau and Convocation both want this data — choose who receives it.",
+      "minLevel": 5,
+      "rewards": ["130g"],
+      "repReward": 10
+    }
+  ]
+}

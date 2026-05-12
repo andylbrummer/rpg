@@ -1,0 +1,63 @@
+{
+  "id": "stillness",
+  "name": "The Stillness",
+  "shortName": "Stillness",
+  "contact": {
+    "id": "contact-stillness",
+    "name": "Null-Vector Silas",
+    "portrait": "portrait_silas"
+  },
+  "vendorName": "Void-Peddler",
+  "identity": "The Stillness is not a faction in any conventional sense. It has no hierarchy, no charter, no meetings. Its members are drawn together by a single shared conviction: that the blooms are not a corruption of reality but a restoration of it. The world, they believe, was meant to end. The old empire's Engines were a desperate act of postponement, and every day the Reach clings to existence is another day of suffering that need not continue.\n\nStillness agents are quiet, patient, and absolutely committed. They do not seek glory or power. They seek the cessation of all things — the gentle unraveling of the thread that keeps the world stitched together. Some work through sabotage: disabling Engines, breaking quarantines, spreading bloom spores into water supplies. Others work through persuasion, convincing the desperate that extinction is a mercy and that the silence beyond the bloom is not oblivion but peace.\n\nTo outsiders, the Stillness is a death cult. To its members, it is the only honest faction in the Reach. They do not pretend the blooms can be stopped. They do not pretend the empire will return. They look at the frozen wastes, the dying towns, the endless struggle, and they ask a simple question: why keep fighting? Their answer is as cold and final as the void between stars.",
+  "colorPrimary": "#2a2a3a",
+  "starterRep": -10,
+  "repThresholds": {
+    "vendorAccess": 20,
+    "exclusiveRecruit": 50,
+    "patronOffice": 75
+  },
+  "vendorStock": [
+    { "itemId": "hollow_dagger", "name": "Hollow Dagger", "price": 35, "quantity": 1 },
+    { "itemId": "rusty_sword", "name": "Rusty Sword", "price": 10, "quantity": 2 },
+    { "itemId": "small_salve", "name": "Small Salve", "price": 20, "quantity": 3 },
+    { "itemId": "steadying_drink", "name": "Steadying Drink", "price": 25, "quantity": 2 },
+    { "itemId": "clear_mind", "name": "Clear Mind", "price": 25, "quantity": 2 },
+    { "itemId": "bone_fragment", "name": "Bone Fragment", "price": 5, "quantity": 10 },
+    { "itemId": "ink_vial", "name": "Ink Vial", "price": 8, "quantity": 5 },
+    { "itemId": "cloth_vest", "name": "Cloth Vest", "price": 10, "quantity": 1 }
+  ],
+  "missions": [
+    {
+      "id": "mission-stillness-1",
+      "title": "Seed the Silence",
+      "description": "Plant null-wards at three active Engine sites. The wards will not destroy the Engines, only make them unreliable. That is enough.",
+      "minLevel": 1,
+      "rewards": ["80g"],
+      "repReward": 5
+    },
+    {
+      "id": "mission-stillness-2",
+      "title": "Whispers in the Dark",
+      "description": "Distribute Stillness pamphlets in a Bureau-controlled settlement without being identified. Let doubt take root.",
+      "minLevel": 1,
+      "rewards": ["60g"],
+      "repReward": 5
+    },
+    {
+      "id": "mission-stillness-3",
+      "title": "Unravel the Stitch",
+      "description": "Locate a minor Engine relay and disable its containment field. Do not linger to see what emerges.",
+      "minLevel": 3,
+      "rewards": ["120g"],
+      "repReward": 8
+    },
+    {
+      "id": "mission-stillness-4",
+      "title": "The Last Witness",
+      "description": "A Bureau archivist has discovered evidence of Stillness infiltration. Ensure the evidence — and the archivist — cease to be.",
+      "minLevel": 5,
+      "rewards": ["150g"],
+      "repReward": 10
+    }
+  ]
+}

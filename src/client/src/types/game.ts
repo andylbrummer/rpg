@@ -215,6 +215,13 @@ export interface ActionLogEntry {
   payload: Record<string, string>;
 }
 
+export interface EvidenceState {
+  suspectedFaction?: string;
+  canConfront: boolean;
+  canAccuse: boolean;
+  hasIrrefutableProof: boolean;
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -230,6 +237,7 @@ export interface GameState {
   overworld?: OverworldState;
   travelEncounter?: TravelEncounter;
   reputation?: Record<string, number>;
+  evidence?: EvidenceState;
   partyGold?: number;
   partyInventory?: string[];
   campaignEnded?: boolean;

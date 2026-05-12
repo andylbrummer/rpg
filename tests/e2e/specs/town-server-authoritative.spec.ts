@@ -42,8 +42,8 @@ test.describe('Town: server-authoritative state', () => {
     const factionSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const vendorSection = page.locator('.town-services h2:has-text("Vendor") + .service-list');
 
-    await expect(missionsSection.locator('.service-item')).toHaveCount(4);
-    await expect(factionSection.locator('.contact-card')).toHaveCount(2);
+    await expect(missionsSection.locator('.service-item')).toHaveCount(16);
+    await expect(factionSection.locator('.contact-card')).toHaveCount(5);
     await expect(vendorSection.locator('.empty-state')).toBeVisible();
   });
 

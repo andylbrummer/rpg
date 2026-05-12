@@ -1,0 +1,68 @@
+{
+  "id": "ashmouth",
+  "name": "Ashmouth",
+  "description": "Agitator and front-line leader who inspires allies and manipulates enemies through intimidation and negotiation. Pays with vitality to command the battlefield.",
+  "baseStats": {
+    "strength": 5,
+    "dexterity": 4,
+    "constitution": 5,
+    "intelligence": 3,
+    "willpower": 4
+  },
+  "abilities": [
+    {
+      "id": "bash",
+      "name": "Bash",
+      "cost": { "type": "none" },
+      "effect": { "type": "damage", "value": "1d8+PWR", "range": "melee" },
+      "tags": ["physical", "melee"]
+    },
+    {
+      "id": "shove",
+      "name": "Shove",
+      "cost": { "type": "none" },
+      "effect": { "type": "damage", "value": "1d6+PWR", "range": "melee", "extra": "knockback" },
+      "tags": ["physical", "melee"]
+    },
+    {
+      "id": "war_cry",
+      "name": "War Cry",
+      "cost": { "type": "hp", "amount": 2 },
+      "effect": { "type": "buff", "stat": "power", "value": 3, "duration": 2, "target": "ally_group" },
+      "tags": ["social", "buff", "agitator"]
+    },
+    {
+      "id": "rally",
+      "name": "Rally",
+      "cost": { "type": "hp", "amount": 3 },
+      "effect": { "type": "heal", "value": "1d6+WIL", "target": "ally" },
+      "tags": ["social", "heal", "agitator"]
+    },
+    {
+      "id": "negotiate",
+      "name": "Negotiate",
+      "cost": { "type": "none" },
+      "effect": { "type": "negotiate", "target": "faction_soldier" },
+      "tags": ["social", "dialogue", "agitator"]
+    },
+    {
+      "id": "intimidate",
+      "name": "Intimidate",
+      "cost": { "type": "hp", "amount": 2 },
+      "effect": { "type": "debuff", "stat": "accuracy", "value": -3, "duration": 2, "target": "enemy_group" },
+      "tags": ["social", "debuff", "agitator"]
+    }
+  ],
+  "levelTable": [
+    { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["bash", "shove"] },
+    { "level": 2, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 1 }, "newAbilities": ["war_cry"] },
+    { "level": 3, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 0 }, "newAbilities": ["rally"] },
+    { "level": 4, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 1 }, "newAbilities": ["negotiate"] },
+    { "level": 5, "hpGain": 4, "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 0 }, "newAbilities": ["intimidate"] },
+    { "level": 6, "hpGain": 3, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
+    { "level": 7, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 1 }, "newAbilities": [] },
+    { "level": 8, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
+    { "level": 9, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
+    { "level": 10, "hpGain": 5, "statGain": { "strength": 1, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 1 }, "newAbilities": [] }
+  ]
+}

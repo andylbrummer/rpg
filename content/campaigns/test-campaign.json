@@ -1,0 +1,42 @@
+{
+  "patron": "bureau",
+  "threat": "convocation",
+  "mastermind": "bureau",
+  "scheme": "ManufacturedCrisis",
+  "wildCard": "stillness",
+  "complication": "MissingTeam",
+  "evidenceChain": [
+    "contradictory_orders",
+    "missing_patrol_log",
+    "engine_site_anomaly",
+    "contact_evasion",
+    "recovered_memo",
+    "operational_diversion",
+    "witness_statement",
+    "supply_requisition_fraud",
+    "bloomsite_precedence",
+    "sealed_vault_reference",
+    "final_confrontation_proof"
+  ],
+  "factionTimelines": {
+    "bureau": { "preparing": 1, "executing": 8 },
+    "convocation": { "preparing": 3, "executing": 10 },
+    "cartography": { "preparing": 5, "executing": 12 },
+    "stillness": { "preparing": 7, "executing": 14 },
+    "inkblood": { "preparing": 9, "executing": 16 }
+  },
+  "npcCasting": {
+    "patron_contact": "npc_voss",
+    "patron_quartermaster": "npc_sera",
+    "threat_agent": "npc_lyra",
+    "threat_operative": "npc_kael",
+    "mastermind_lieutenant": "npc_mira",
+    "wild_card_emissary": "npc_vex",
+    "town_innkeeper": "npc_nyx",
+    "missing_team_leader": "npc_orin"
+  },
+  "wildcardTrigger": {
+    "factionId": "inkblood",
+    "turnThreshold": 12
+  }
+}

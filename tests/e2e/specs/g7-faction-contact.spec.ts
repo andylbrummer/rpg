@@ -11,7 +11,7 @@ test.describe('Faction contacts in town', () => {
 
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const contacts = contactSection.locator('.contact-card');
-    await expect(contacts).toHaveCount(2);
+    await expect(contacts).toHaveCount(5);
 
     const bureauContact = contacts.filter({ hasText: 'Agent Voss' });
     await expect(bureauContact.locator('.dialogue-line.greeting')).toBeVisible();
@@ -107,12 +107,21 @@ test.describe('Faction contacts in town', () => {
 
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const contacts = contactSection.locator('.contact-card');
-    await expect(contacts).toHaveCount(2);
+    await expect(contacts).toHaveCount(5);
 
     const bureauContact = contacts.filter({ hasText: 'Agent Voss' });
     await expect(bureauContact.locator('.contact-faction')).toHaveText('bureau');
 
     const convocationContact = contacts.filter({ hasText: 'Seer Maren' });
     await expect(convocationContact.locator('.contact-faction')).toHaveText('convocation');
+
+    const stillnessContact = contacts.filter({ hasText: 'Null-Vector Silas' });
+    await expect(stillnessContact.locator('.contact-faction')).toHaveText('stillness');
+
+    const inkbloodContact = contacts.filter({ hasText: 'Scribe-Mother Yrsa' });
+    await expect(inkbloodContact.locator('.contact-faction')).toHaveText('inkblood');
+
+    const cartographyContact = contacts.filter({ hasText: 'Wayfinder Kael' });
+    await expect(cartographyContact.locator('.contact-faction')).toHaveText('cartography');
   });
 });

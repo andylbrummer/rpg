@@ -22,6 +22,8 @@ public class ContentValidationTests
     [InlineData("hollow")]
     [InlineData("fieldwright")]
     [InlineData("inkblood")]
+    [InlineData("marcher")]
+    [InlineData("ashmouth")]
     public void ClassJson_IsValid(string classId)
     {
         var path = $"../../../../../../content/classes/{classId}.json";
@@ -174,7 +176,7 @@ public class ContentValidationTests
     [Fact]
     public void AllClasses_AbilityIdsAreGloballyUnique()
     {
-        var classIds = new[] { "bonewarden", "stillblade", "cauterist", "hollow", "fieldwright", "inkblood" };
+        var classIds = new[] { "bonewarden", "stillblade", "cauterist", "hollow", "fieldwright", "inkblood", "marcher", "ashmouth" };
         var allAbilityIds = new HashSet<string>();
 
         foreach (var classId in classIds)

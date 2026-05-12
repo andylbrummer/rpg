@@ -21,6 +21,7 @@ public readonly record struct CharacterState(
     string[] KnownAbilities,
     int Row,
     string? BranchChoice = null,
+    string? BranchLevel6 = null,
     TempStatModifier[]? TempModifiers = null)
 {
     public TempStatModifier[] TempModifiers { get; init; } = TempModifiers ?? Array.Empty<TempStatModifier>();
@@ -82,7 +83,7 @@ public readonly record struct CharacterState(
 
     public bool IsAlive => CurrentHp > 0;
 
-    public bool AwaitingBranchChoice => Level >= 3 && BranchChoice == null;
+    public bool AwaitingBranchChoice => (Level >= 3 && BranchChoice == null) || (Level >= 6 && BranchLevel6 == null);
 }
 
 public readonly record struct Equipment(
@@ -108,6 +109,14 @@ public readonly record struct Equipment(
     }
 }
 
+public record FactionGate(string FactionId, int Threshold);
+
+public record BranchDef(
+    string Id,
+    string? RequiresBranch = null,
+    string? FallbackBranch = null,
+    FactionGate? FactionGate = null);
+
 public record ClassDef(
     string Id,
     string Name,
@@ -115,7 +124,8 @@ public record ClassDef(
     BaseStats BaseStats,
     AbilityDef[] Abilities,
     LevelTableEntry[] LevelTable,
-    string[]? AvailableBranches = null);
+    string[]? AvailableBranches = null,
+    BranchDef[]? Branches = null);
 
 public record AbilityDef(
     string Id,
