@@ -6,11 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "O0UMp1NfChUC",
-    "title": "[1.5] Fix: T45 e2e field-notes-toggle visibility",
-    "iteration": 29
+    "dart_id": "Da2Z1EANDtjP",
+    "title": "[1.5] T35a Combat summon/deployable system",
+    "iteration": 30
   },
-  "completed_tasks": 25,
+  "completed_tasks": 26,
   "total_tasks": 45,
-  "iteration": 29
+  "iteration": 30
 }
