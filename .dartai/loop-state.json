@@ -8,9 +8,12 @@
   "current_task": {
     "dart_id": "VTz2lM9fSxUK",
     "title": "[1.5] T51e Action log expansion",
-    "iteration": 28
+    "iteration": 28,
+    "status": "completed",
+    "phase_completed": "phase-9",
+    "failed_phase": null
   },
-  "completed_tasks": 24,
+  "completed_tasks": 25,
   "total_tasks": 45,
   "iteration": 28
 }
