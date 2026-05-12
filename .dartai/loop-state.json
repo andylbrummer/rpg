@@ -8,9 +8,12 @@
   "current_task": {
     "dart_id": "lyvoV9EO1GSC",
     "title": "[1.5] T43 Synergy detection engine",
-    "iteration": 19
+    "iteration": 19,
+    "status": "completed",
+    "phase_completed": "phase-9",
+    "failed_phase": null
   },
-  "completed_tasks": 17,
+  "completed_tasks": 18,
   "total_tasks": 42,
   "iteration": 19
 }

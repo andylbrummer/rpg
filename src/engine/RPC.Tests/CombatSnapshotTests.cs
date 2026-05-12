@@ -290,4 +290,77 @@ public class CombatSnapshotTests
         Assert.True(damageA > damageB,
             $"Expected front-only party to deal more damage. A={damageA}, B={damageB}");
     }
+
+    [Fact]
+    public void Snapshot_SeededPairs_VersusWithout_SynergyDamageDiffers()
+    {
+        var registry = new ClassRegistry();
+        var json = """
+            {
+              "id": "striker",
+              "name": "Striker",
+              "description": "Test",
+              "baseStats": { "strength": 5, "dexterity": 5, "constitution": 5, "intelligence": 3, "willpower": 3 },
+              "abilities": [
+                { "id": "slash", "name": "Slash", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d6+PWR", "range": "melee" }, "tags": ["physical"] },
+                { "id": "thrust", "name": "Thrust", "cost": { "type": "none" }, "effect": { "type": "damage", "value": "1d6+PWR", "range": "melee" }, "tags": ["physical"] }
+              ],
+              "levelTable": [
+                { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["slash", "thrust"] }
+              ]
+            }
+            """;
+        registry.LoadFromJson("striker", json);
+
+        static CharacterState MakeStriker(string name, int row)
+            => new(new Guid(name.PadRight(16).Take(16).Select(c => (byte)c).ToArray()),
+                name, "striker", 1, 0,
+                new BaseStats(5, 5, 5, 3, 3),
+                60, Equipment.Empty,
+                new[] { "slash", "thrust" }, row);
+
+        var party = new PartyState();
+        party.SetMember(0, MakeStriker("A1", 0));
+        party.SetMember(1, MakeStriker("A2", 0));
+        party.SetMember(2, MakeStriker("A3", 0));
+
+        var encounter = new EncounterDef("e1", "Test", new[] { new EnemySpawn("rat", 6, 0) });
+
+        int RunCombat(int seed, bool withSynergy)
+        {
+            if (withSynergy)
+                SynergyRegistry.Register("slash", "thrust", new SynergyEffect("bonus_damage", 3));
+            else
+                SynergyRegistry.Clear();
+
+            var state = CombatEngine.Enter(party, encounter, new GameRandom(seed));
+            var rng = new GameRandom(seed);
+            int playerTurns = 0;
+            int steps = 0;
+            while (!state.IsFinished && steps < 200 && playerTurns < 6)
+            {
+                var actor = state.CurrentActor;
+                if (actor?.IsPlayer == true)
+                {
+                    var target = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
+                    var ability = playerTurns % 2 == 0 ? "slash" : "thrust";
+                    state = CombatEngine.Tick(state,
+                        new CombatAction(actor.Value.Id, ActionType.UseAbility, target.Id, ability, null), rng, registry);
+                    playerTurns++;
+                }
+                else
+                {
+                    state = CombatEngine.Tick(state, null, rng, registry);
+                }
+                steps++;
+            }
+            return state.Combatants.Where(c => !c.IsPlayer).Sum(e => e.MaxHp - e.Hp);
+        }
+
+        var damageWith = RunCombat(99, true);
+        var damageWithout = RunCombat(99, false);
+
+        Assert.True(damageWith > damageWithout,
+            $"Expected synergy combat to deal more damage. With={damageWith}, Without={damageWithout}");
+    }
 }

@@ -65,7 +65,8 @@ public static class CombatEngine
             Log = new List<CombatLogEntry>(state.Log)
             {
                 new(Guid.Empty, $"Round {state.Round} begins", state.Round)
-            }
+            },
+            AbilitiesUsedThisRound = new HashSet<string>()
         };
     }
 
@@ -153,6 +154,8 @@ public static class CombatEngine
                             newLog.Add(new(action.ActorId,
                                 $"{actor.Name} uses {action.AbilityId} on {target.Name}", state.Round));
                         }
+
+                        ApplySynergies(action.AbilityId, actor, targetIdx);
                     }
                 }
                 break;
@@ -170,12 +173,29 @@ public static class CombatEngine
                 break;
         }
 
+        void ApplySynergies(string abilityId, Combatant a, int idx)
+        {
+            foreach (var used in state.AbilitiesUsedThisRound)
+            {
+                var syn = SynergyRegistry.Lookup(abilityId, used);
+                if (syn is not null)
+                    ApplySynergyEffect(syn, a, new SynergyContext(newCombatants, newLog, state.Round, idx));
+            }
+        }
+
+        var updatedAbilities = new HashSet<string>(state.AbilitiesUsedThisRound);
+        if (action.Type == ActionType.UseAbility && action.AbilityId is not null)
+        {
+            updatedAbilities.Add(action.AbilityId);
+        }
+
         return state with
         {
             Combatants = newCombatants,
             Log = newLog,
             PendingAction = null,
-            Phase = CombatPhase.CheckEnd
+            Phase = CombatPhase.CheckEnd,
+            AbilitiesUsedThisRound = updatedAbilities
         };
     }
 
@@ -218,6 +238,41 @@ public static class CombatEngine
         return Math.Max(1, roll + bonus);
     }
 
+    private record struct SynergyContext(
+        Combatant[] Combatants,
+        List<CombatLogEntry> Log,
+        int Round,
+        int TargetIdx);
+
+    private static void ApplySynergyEffect(SynergyEffect synergy, Combatant actor, SynergyContext ctx)
+    {
+        var target = ctx.Combatants[ctx.TargetIdx];
+        switch (synergy.Type)
+        {
+            case "bonus_damage":
+                var bonus = Math.Max(0, synergy.Value);
+                ctx.Combatants[ctx.TargetIdx] = target with { Hp = Math.Max(0, target.Hp - bonus) };
+                ctx.Log.Add(new(actor.Id,
+                    $"{actor.Name} synergy deals {bonus} bonus damage to {target.Name}", ctx.Round));
+                break;
+
+            case "apply_status":
+                var effects = new List<StatusEffect>(target.StatusEffects)
+                {
+                    new(synergy.StatusType ?? "unknown", synergy.StatusDuration ?? 1, synergy.Value)
+                };
+                ctx.Combatants[ctx.TargetIdx] = target with { StatusEffects = effects };
+                ctx.Log.Add(new(actor.Id,
+                    $"{actor.Name} synergy applies {synergy.StatusType} to {target.Name}", ctx.Round));
+                break;
+
+            default:
+                ctx.Log.Add(new(actor.Id,
+                    $"{actor.Name} synergy triggers with {target.Name}", ctx.Round));
+                break;
+        }
+    }
+
     private static CombatState CheckEnd(CombatState state)
     {
         if (state.AllEnemiesDead)
@@ -247,7 +302,8 @@ public static class CombatEngine
             {
                 Round = state.Round + 1,
                 CurrentTurnIndex = 0,
-                Phase = CombatPhase.RoundStart
+                Phase = CombatPhase.RoundStart,
+                AbilitiesUsedThisRound = new HashSet<string>()
             };
         }
 

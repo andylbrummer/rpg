@@ -56,6 +56,8 @@ public record CombatState(
     CombatPhase Phase,
     int XpReward = 10)
 {
+    public HashSet<string> AbilitiesUsedThisRound { get; init; } = new();
+
     public Combatant? CurrentActor =>
         Phase == CombatPhase.Turn && CurrentTurnIndex < InitiativeOrder.Length
             ? Combatants.FirstOrDefault(c => c.Id == InitiativeOrder[CurrentTurnIndex] && c.IsAlive)
