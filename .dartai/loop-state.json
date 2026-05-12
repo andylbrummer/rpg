@@ -1,19 +1,13 @@
 {
-  "status": "active",
+  "status": "review",
   "dartboard": "Personal/rpg",
   "runner_id": "beagle-ab2-3871289",
   "runner_email": "claude@anthropic.com",
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
-  "current_task": {
-    "dart_id": "oNTgHLbOOwv0",
-    "title": "T51c Bloom Site integration tests",
-    "iteration": 44,
-    "status": "completed",
-    "phase_completed": "phase-9",
-    "failed_phase": null
-  },
+  "current_task": null,
   "completed_tasks": 39,
   "total_tasks": 54,
-  "iteration": 44
+  "iteration": 44,
+  "note": "Main backlog appears clear. All Phase 1 and Phase 1.5 tasks completed or split+completed. Remaining: blocked parent tasks in Parking lot (children done)."
 }
