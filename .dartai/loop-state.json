@@ -6,11 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "8oCalY1uWsBE",
-    "title": "T51b-3 Pulsating geometry & particle effects",
-    "iteration": 41
+    "dart_id": "BklWWXHW5ptG",
+    "title": "T51b-4 Creature model material variants",
+    "iteration": 42
   },
-  "completed_tasks": 35,
+  "completed_tasks": 36,
   "total_tasks": 54,
-  "iteration": 41
+  "iteration": 42
 }
