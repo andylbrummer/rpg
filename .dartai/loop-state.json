@@ -6,11 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "i71APG3Mwn3r",
-    "title": "T51b-5 Ambient audio placeholder",
-    "iteration": 43
+    "dart_id": "oNTgHLbOOwv0",
+    "title": "T51c Bloom Site integration tests",
+    "iteration": 44
   },
-  "completed_tasks": 37,
+  "completed_tasks": 38,
   "total_tasks": 54,
-  "iteration": 43
+  "iteration": 44
 }
