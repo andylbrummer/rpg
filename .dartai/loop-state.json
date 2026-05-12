@@ -6,12 +6,12 @@
   "started_at": "2026-05-12T10:18:00-05:00",
   "loop_task_id": "oQCov9S7gsKK",
   "current_task": {
-    "dart_id": "jJRADn9PlDzv",
-    "title": "T80 Mastermind discovery flow",
-    "iteration": 5
+    "dart_id": "T1bIpld8b3LQ",
+    "title": "T70 Node-based overworld",
+    "iteration": 6
   },
-  "completed_tasks": 4,
+  "completed_tasks": 5,
   "total_tasks": 39,
-  "iteration": 5,
+  "iteration": 6,
   "phase": "Phase 2: Strategic Depth"
 }
