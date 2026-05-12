@@ -2,6 +2,7 @@ using RPC.Engine.Character;
 using RPC.Engine.Combat;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
+using RPC.Engine.Overworld;
 using RPC.Engine.Party;
 using RPC.Engine.Town;
 
@@ -17,6 +18,7 @@ public class GameState
     public DateTime LastUpdate { get; set; }
     public PartyState Party { get; set; } = new();
     public TownState Town { get; set; } = new();
+    public OverworldState Overworld { get; set; } = new();
     public CombatState? Combat { get; private set; }
     public CombatResult? LastCombatResult { get; private set; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
@@ -49,6 +51,7 @@ public class GameState
         ExploredTiles = new BoundedTileSet(_exploredTilesSet, _exploredTilesOrder, MaxExploredTiles);
         InitializeDefaultParty();
         InitializeTown();
+        Overworld = new OverworldState();
         Mode = GameMode.Menu; // Start in town/hub
     }
 
@@ -363,6 +366,13 @@ public class GameState
         LastUpdate = DateTime.UtcNow;
     }
 
+    public bool Travel(string targetId)
+    {
+        var changed = Overworld.Travel(targetId);
+        if (changed) LastUpdate = DateTime.UtcNow;
+        return changed;
+    }
+
     public void Reset()
     {
         Mode = GameMode.Menu;
@@ -373,6 +383,7 @@ public class GameState
         Player = new Player(new Position(32, 32), Direction.North);
         ExploredTiles.Clear();
         Town = new TownState();
+        Overworld = new OverworldState();
         InitializeDefaultParty();
         InitializeTown();
         ActionLog.Clear();

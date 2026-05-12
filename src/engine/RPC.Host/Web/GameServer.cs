@@ -524,6 +524,12 @@ public class GameServer
                         stateChanged = _gameState.PurchaseVendorItem(itemId);
                     }
                     break;
+                case "travel":
+                    if (action.TargetId is string travelTarget)
+                    {
+                        stateChanged = _gameState.Travel(travelTarget);
+                    }
+                    break;
                 default:
                     await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
                     return;
@@ -912,6 +918,14 @@ public class GameServer
             viewedMissions = _gameState.Town.ViewedMissions.ToArray()
         };
 
+        var overworld = new
+        {
+            currentNodeId = _gameState.Overworld.CurrentNodeId,
+            nodes = _gameState.Overworld.Nodes.Select(n => new { id = n.Id, name = n.Name, type = n.Type }).ToArray(),
+            routes = _gameState.Overworld.Routes.Select(r => new { from = r.From, to = r.To, distance = r.Distance, dangerRating = r.DangerRating, terrain = r.Terrain }).ToArray(),
+            turns = _gameState.Overworld.Turns
+        };
+
         var state = new
         {
             type = "state",
@@ -928,7 +942,8 @@ public class GameServer
             party,
             combat,
             combatResult,
-            town
+            town,
+            overworld
         };
 
         _gameState.ClearCombatResult();

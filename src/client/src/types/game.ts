@@ -143,6 +143,27 @@ export interface TownState {
   viewedMissions: string[];
 }
 
+export interface OverworldNode {
+  id: string;
+  name: string;
+  type: 'town' | 'dungeon_entrance';
+}
+
+export interface OverworldRoute {
+  from: string;
+  to: string;
+  distance: number;
+  dangerRating: number;
+  terrain: string;
+}
+
+export interface OverworldState {
+  currentNodeId: string;
+  nodes: OverworldNode[];
+  routes: OverworldRoute[];
+  turns: number;
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -154,6 +175,7 @@ export interface GameState {
   combat?: CombatState;
   combatResult?: CombatResult;
   town?: TownState;
+  overworld?: OverworldState;
 }
 
 export type PlayerAction =
@@ -175,7 +197,8 @@ export type PlayerAction =
   | { type: 'swap_row'; slot: number }
   | { type: 'tavern_recruit'; targetId: string }
   | { type: 'mission_accept'; targetId: string }
-  | { type: 'vendor_purchase'; targetId: string };
+  | { type: 'vendor_purchase'; targetId: string }
+  | { type: 'travel'; targetId: string };
 
 export interface CombatAction {
   actorId: string;

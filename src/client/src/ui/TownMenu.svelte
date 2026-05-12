@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { GameState, PartyMember } from '../types/game';
   import CharacterSheet from './CharacterSheet.svelte';
+  import OverworldMap from './OverworldMap.svelte';
 
   interface Props {
     gameState: GameState | null;
@@ -11,6 +12,7 @@
     onTavernRecruit: (id: string) => void;
     onMissionAccept: (id: string) => void;
     onVendorPurchase: (id: string) => void;
+    onTravel: (targetId: string) => void;
   }
 
   let {
@@ -21,11 +23,13 @@
     onSwapRow,
     onTavernRecruit,
     onMissionAccept,
-    onVendorPurchase
+    onVendorPurchase,
+    onTravel
   }: Props = $props();
 
   let selectedCharacter = $state<string | null>(null);
   let sheetMember = $state<PartyMember | null>(null);
+  let showMap = $state(false);
 
   const dungeonTypes = [
     { id: 'broken_engine', name: 'Broken Engine', level: 1, desc: 'Shallow caves infested with goblins.' },
@@ -275,6 +279,7 @@
       </div>
 
       <div class="utility-actions">
+        <button class="utility-btn" onclick={() => showMap = true}>Overworld Map</button>
         <button class="utility-btn save-btn" onclick={onSave}>Save Game</button>
         <button class="utility-btn reset-btn" onclick={onReset}>Reset Game</button>
       </div>
@@ -286,6 +291,14 @@
     member={sheetMember}
     onClose={() => sheetMember = null}
     onSwapRow={onSwapRow}
+  />
+{/if}
+
+{#if showMap && gameState?.overworld}
+  <OverworldMap
+    overworld={gameState.overworld}
+    onTravel={onTravel}
+    onClose={() => showMap = false}
   />
 {/if}
 

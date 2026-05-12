@@ -254,6 +254,10 @@
   function handleVendorPurchase(id: string) {
     sendAction({ type: 'vendor_purchase', targetId: id });
   }
+
+  function handleTravel(targetId: string) {
+    sendAction({ type: 'travel', targetId });
+  }
 </script>
 
 <main class="game">
@@ -287,6 +291,7 @@
           onTavernRecruit={handleTavernRecruit}
           onMissionAccept={handleMissionAccept}
           onVendorPurchase={handleVendorPurchase}
+          onTravel={handleTravel}
         />
       {/if}
       {#if gameState?.mode === 'Combat'}
