@@ -2,12 +2,15 @@
   "status": "active",
   "dartboard": "Personal/rpg",
   "runner_id": "beagle-ab2-3871289",
+  "runner_email": "claude@anthropic.com",
+  "started_at": "2026-05-11T14:17:57-05:00",
+  "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "VPvv467qYRVz",
-    "title": "[1.5] T49 Travel encounters",
-    "iteration": 13,
-    "status": "completed",
-    "phase_completed": "phase-9",
-    "failed_phase": null
-  }
+    "dart_id": "YO0KGOWO08hg",
+    "title": "[1.5] T50 Turn counter",
+    "iteration": 14
+  },
+  "completed_tasks": 13,
+  "total_tasks": 40,
+  "iteration": 14
 }
