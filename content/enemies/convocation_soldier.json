@@ -11,6 +11,7 @@
   },
   "hpBase": 20,
   "speed": 5,
+  "factionId": "convocation",
   "ai": "zealot_aggressive",
   "abilities": ["fervent_slash", "bloom_touch"],
   "lootTable": [

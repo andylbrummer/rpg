@@ -295,14 +295,20 @@ public class GameState
             });
         }
 
-        // Check for faction soldier parley or hostility
+        // Check for faction soldier parley, Ashmouth negotiation, or hostility
         var factionId = _encounterTables?.GetEncounterFaction(encounter.Id);
         if (factionId != null)
         {
             var rep = Reputation[factionId];
-            if (rep >= 25)
+            var hasAshmouth = Party.Members.Any(m => m.ClassId == "ashmouth" && m.IsAlive);
+            var options = new List<string>();
+            if (rep >= 25) options.Add("Parley");
+            if (hasAshmouth) options.Add("Negotiate");
+            options.Add("Fight");
+
+            if (options.Count > 1) // More than just "Fight"
             {
-                CurrentParley = new ParleyOffer(encounter.Id, factionId, ["Parley", "Fight"]);
+                CurrentParley = new ParleyOffer(encounter.Id, factionId, options.ToArray());
                 _currentEncounterId = Guid.NewGuid().ToString();
                 Mode = GameMode.Exploration;
                 EmitActionLog("combat", "encounter_parley_available", new Dictionary<string, string>
@@ -371,6 +377,10 @@ public class GameState
             Mode = GameMode.Exploration;
             return true;
         }
+        else if (choice == "negotiate")
+        {
+            return ResolveAshmouthNegotiation();
+        }
         else
         {
             var encounter = _encounterTables?.GetEncounterById(CurrentParley.EncounterId);
@@ -385,6 +395,113 @@ public class GameState
             CurrentParley = null;
             EnterCombat(encounter);
             return true;
+        }
+    }
+
+    private bool ResolveAshmouthNegotiation()
+    {
+        if (CurrentParley == null) return false;
+
+        var factionId = CurrentParley.FactionId;
+        var encounter = _encounterTables?.GetEncounterById(CurrentParley.EncounterId);
+
+        var ashmouth = Party.Members
+            .Where(m => m.ClassId == "ashmouth" && m.IsAlive)
+            .OrderByDescending(m => m.Level)
+            .FirstOrDefault();
+
+        if (ashmouth.Id == Guid.Empty)
+        {
+            CurrentParley = null;
+            return false;
+        }
+
+        // Enemy leader level approximated by encounter danger
+        var leaderLevel = 2;
+        var repModifier = Reputation[factionId] / 10;
+        var successThreshold = leaderLevel - repModifier;
+        var roll = _encounterRng.Roll(1, 6);
+        var total = ashmouth.Level + roll;
+
+        if (total >= successThreshold + 3)
+        {
+            // Complete success
+            EmitActionLog("combat", "negotiation_complete_success", new Dictionary<string, string>
+            {
+                { "encounterId", _currentEncounterId ?? "unknown" },
+                { "factionId", factionId },
+                { "ashmouthLevel", ashmouth.Level.ToString() },
+                { "roll", roll.ToString() }
+            });
+            CurrentParley = null;
+            Mode = GameMode.Exploration;
+            return true;
+        }
+        else if (total >= successThreshold)
+        {
+            // Partial success
+            EmitActionLog("combat", "negotiation_partial_success", new Dictionary<string, string>
+            {
+                { "encounterId", _currentEncounterId ?? "unknown" },
+                { "factionId", factionId },
+                { "ashmouthLevel", ashmouth.Level.ToString() },
+                { "roll", roll.ToString() }
+            });
+            CurrentParley = null;
+            Mode = GameMode.Exploration;
+            return true;
+        }
+        else
+        {
+            // Failure - combat with surprise round
+            EmitActionLog("combat", "negotiation_failure", new Dictionary<string, string>
+            {
+                { "encounterId", _currentEncounterId ?? "unknown" },
+                { "factionId", factionId },
+                { "ashmouthLevel", ashmouth.Level.ToString() },
+                { "roll", roll.ToString() }
+            });
+
+            if (encounter == null)
+            {
+                encounter = new EncounterDef("random", "Random Encounter", new[]
+                {
+                    new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
+                    new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
+                });
+            }
+            CurrentParley = null;
+            EnterCombatWithSurprise(encounter);
+            return true;
+        }
+    }
+
+    private void EnterCombatWithSurprise(EncounterDef encounter)
+    {
+        EnterCombat(encounter);
+
+        if (Combat != null && !Combat.IsFinished)
+        {
+            var enemies = Combat.Combatants.Where(c => !c.IsPlayer && c.IsAlive).ToArray();
+            var players = Combat.Combatants.Where(c => c.IsPlayer && c.IsAlive).ToArray();
+
+            var newCombatants = Combat.Combatants.ToArray();
+            var newLog = new List<CombatLogEntry>(Combat.Log);
+
+            foreach (var enemy in enemies)
+            {
+                if (players.Length == 0) break;
+                var target = players[_encounterRng.Roll(0, players.Length - 1)];
+                var targetIdx = Array.FindIndex(newCombatants, c => c.Id == target.Id);
+                if (targetIdx < 0) continue;
+
+                var damage = _encounterRng.Roll(1, 4) + 1;
+                var newHp = Math.Max(0, target.Hp - damage);
+                newCombatants[targetIdx] = newCombatants[targetIdx] with { Hp = newHp };
+                newLog.Add(new(enemy.Id, $"{enemy.Name} surprises {target.Name} for {damage} damage!", Combat.Round));
+            }
+
+            Combat = Combat with { Combatants = newCombatants, Log = newLog };
         }
     }
 

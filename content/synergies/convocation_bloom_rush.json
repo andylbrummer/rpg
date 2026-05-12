@@ -1,0 +1,14 @@
+{
+  "id": "syn-convocation-bloom-rush",
+  "abilities": ["fervent_slash", "bloom_touch"],
+  "anti": false,
+  "effect": {
+    "type": "apply_status",
+    "value": 3,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Convocation zealots channel bloom energy through their blades.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

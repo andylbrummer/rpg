@@ -1,0 +1,14 @@
+{
+  "id": "syn-bureau-flanking-maneuver",
+  "abilities": ["bayonet_thrust", "suppress"],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 5,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Two Bureau soldiers coordinating fire create a deadly crossfire.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

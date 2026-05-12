@@ -13,7 +13,8 @@ public record EnemyDef(
     int Speed,
     string Ai,
     string[] Abilities,
-    LootEntry[] LootTable);
+    LootEntry[] LootTable,
+    string? FactionId = null);
 
 public record LootEntry(string ItemId, double Chance);
 

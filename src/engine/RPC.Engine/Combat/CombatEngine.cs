@@ -99,20 +99,41 @@ public static class CombatEngine
             return new CombatAction(actor.Id, ActionType.Wait, null, null, null);
 
         var behavior = actor.AiBehavior?.ToLowerInvariant() ?? "";
+
+        // Faction soldier retreat check
+        if (behavior == "soldier_tactical" && ShouldRetreat(state, actor))
+        {
+            return new CombatAction(actor.Id, ActionType.Flee, null, null, null);
+        }
+
         var target = SelectTarget(state, actor, targets, behavior, rng);
-        var (actionType, abilityId) = ChooseAction(actor, behavior);
+        var (actionType, abilityId) = ChooseAction(actor, behavior, state);
 
         return new CombatAction(actor.Id, actionType, target.Id, abilityId, null);
+    }
+
+    private static bool ShouldRetreat(CombatState state, Combatant actor)
+    {
+        var allies = state.Combatants.Where(c => !c.IsPlayer && c.IsAlive).ToArray();
+        var enemies = state.Combatants.Where(c => c.IsPlayer && c.IsAlive).ToArray();
+
+        if (enemies.Length == 0) return false;
+
+        var allyHp = allies.Sum(a => a.Hp);
+        var enemyHp = enemies.Sum(e => e.Hp);
+
+        return allyHp < enemyHp * 0.5;
     }
 
     private static Combatant SelectTarget(CombatState state, Combatant actor, Combatant[] targets, string behavior, GameRandom rng)
     {
         return behavior switch
         {
-            "aggressive" => targets.OrderBy(t => t.Hp).ThenBy(t => t.Id).First(),
+            "aggressive" or "zealot_aggressive" => targets.OrderBy(t => t.Hp).ThenBy(t => t.Id).First(),
             "pack_hunter" => SelectPackHunterTarget(state, targets),
             "ranged_priority" => targets.OrderByDescending(t => t.Row).ThenBy(t => t.Id).First(),
             "defensive" => targets.OrderByDescending(t => t.Power).ThenByDescending(t => t.MaxHp).ThenBy(t => t.Id).First(),
+            "soldier_tactical" => targets.OrderBy(t => t.Hp).ThenBy(t => t.Id).First(),
             _ => DefaultTarget(actor, targets, rng)
         };
     }
@@ -139,13 +160,14 @@ public static class CombatEngine
             : targets[rng.Next(targets.Length)];
     }
 
-    private static (ActionType Type, string? AbilityId) ChooseAction(Combatant actor, string behavior)
+    private static (ActionType Type, string? AbilityId) ChooseAction(Combatant actor, string behavior, CombatState state)
     {
         var abilityId = behavior switch
         {
             "aggressive" or "pack_hunter" => FindMatchingAbility(actor, "melee"),
             "ranged_priority" => FindMatchingAbility(actor, "ranged"),
             "defensive" => FindMatchingAbility(actor, "defensive"),
+            "soldier_tactical" or "zealot_aggressive" => ChooseSoldierAbility(actor, state),
             _ => null
         };
 
@@ -157,6 +179,23 @@ public static class CombatEngine
             : (ActionType.Attack, null);
     }
 
+    private static string? ChooseSoldierAbility(Combatant actor, CombatState state)
+    {
+        if (actor.Abilities == null || actor.Abilities.Length == 0)
+            return null;
+
+        // If another ability from this actor's list was used this round, pick a different one
+        var usedThisRound = state.AbilitiesUsedThisRound
+            .Where(a => actor.Abilities.Contains(a))
+            .ToHashSet();
+
+        var available = actor.Abilities.Where(a => !usedThisRound.Contains(a)).ToArray();
+        if (available.Length > 0)
+            return available[0];
+
+        return actor.Abilities[0];
+    }
+
     private static string? FindMatchingAbility(Combatant actor, string category)
     {
         if (actor.Abilities == null || actor.Abilities.Length == 0)
@@ -165,8 +204,8 @@ public static class CombatEngine
         var keywords = category switch
         {
             "ranged" => new[] { "arrow", "shot", "bolt", "ranged", "throw" },
-            "melee" => new[] { "slash", "strike", "bite", "crack", "rend", "shiv", "spear", "blade" },
-            "defensive" => new[] { "ward", "shield", "block", "stance", "heal", "buff", "guard" },
+            "melee" => new[] { "slash", "strike", "bite", "crack", "rend", "shiv", "spear", "blade", "thrust" },
+            "defensive" => new[] { "ward", "shield", "block", "stance", "heal", "buff", "guard", "suppress" },
             _ => Array.Empty<string>()
         };
 
@@ -242,6 +281,17 @@ public static class CombatEngine
 
             case ActionType.Defend:
                 newLog.Add(new(action.ActorId, $"{actor.Name} takes a defensive stance", state.Round));
+                break;
+
+            case ActionType.Flee:
+                {
+                    var actorIdx = Array.FindIndex(newCombatants, c => c.Id == action.ActorId);
+                    if (actorIdx >= 0)
+                    {
+                        newCombatants[actorIdx] = newCombatants[actorIdx] with { Hp = 0 };
+                        newLog.Add(new(action.ActorId, $"{actor.Name} flees", state.Round));
+                    }
+                }
                 break;
 
             case ActionType.Wait:
@@ -519,6 +569,18 @@ public static class CombatEngine
                 var speed = def?.Speed ?? 5;
                 var name = def?.Name ?? spawn.EnemyId;
 
+                // Apply faction equipment modifiers
+                if (def?.FactionId == "bureau")
+                {
+                    hp += 2; // Bureau armor bonus
+                }
+
+                var statusEffects = new List<StatusEffect>();
+                if (def?.FactionId == "convocation")
+                {
+                    statusEffects.Add(new StatusEffect("bloom_resistance", 999, null));
+                }
+
                 enemies.Add(new Combatant(
                     id,
                     $"{name}_{i + 1}",
@@ -527,7 +589,7 @@ public static class CombatEngine
                     hp + 3,
                     speed + rng.Roll(-1, 1),
                     spawn.RowOverride ?? (rng.Next(2) == 0 ? 0 : 1),
-                    new List<StatusEffect>(),
+                    statusEffects,
                     def?.Stats.Strength ?? 0,
                     null,
                     false,

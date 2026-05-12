@@ -11,6 +11,7 @@
   },
   "hpBase": 22,
   "speed": 4,
+  "factionId": "bureau",
   "ai": "soldier_tactical",
   "abilities": ["bayonet_thrust", "suppress"],
   "lootTable": [
