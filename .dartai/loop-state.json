@@ -2,12 +2,15 @@
   "status": "active",
   "dartboard": "Personal/rpg",
   "runner_id": "beagle-ab2-3871289",
+  "runner_email": "claude@anthropic.com",
+  "started_at": "2026-05-11T14:17:57-05:00",
+  "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "lIesMtVVe97F",
-    "title": "[1.5] T35a Branch choice UI",
-    "iteration": 27,
-    "status": "completed",
-    "phase_completed": "phase-9",
-    "failed_phase": null
-  }
+    "dart_id": "VTz2lM9fSxUK",
+    "title": "[1.5] T51e Action log expansion",
+    "iteration": 28
+  },
+  "completed_tasks": 24,
+  "total_tasks": 45,
+  "iteration": 28
 }
