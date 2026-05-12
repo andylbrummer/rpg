@@ -1,0 +1,20 @@
+{
+  "id": "bloom_wretch",
+  "name": "Bloom Wretch",
+  "description": "A shambling humanoid covered in fungal growths, still smoldering with residual ash from the blight.",
+  "stats": {
+    "str": 10,
+    "dex": 6,
+    "con": 8,
+    "int": 2,
+    "wil": 4
+  },
+  "hpBase": 14,
+  "speed": 5,
+  "ai": "aggressive",
+  "abilities": ["ash_claw", "smolder"],
+  "lootTable": [
+    { "itemId": "ash_residue", "chance": 0.5 },
+    { "itemId": "bone_fragment", "chance": 0.3 }
+  ]
+}

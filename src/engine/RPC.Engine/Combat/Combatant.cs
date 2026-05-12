@@ -1,3 +1,5 @@
+using RPC.Engine.Character;
+
 namespace RPC.Engine.Combat;
 
 public readonly record struct Combatant(
@@ -10,8 +12,15 @@ public readonly record struct Combatant(
     int Row,
     List<StatusEffect> StatusEffects,
     int Power = 0,
-    string? ClassId = null)
+    string? ClassId = null,
+    bool IsSummoned = false,
+    int SummonDuration = 0,
+    TempStatModifier[]? TempModifiers = null,
+    string? AiBehavior = null,
+    string[]? Abilities = null)
 {
+    public TempStatModifier[] TempModifiers { get; init; } = TempModifiers ?? Array.Empty<TempStatModifier>();
+
     public bool IsAlive => Hp > 0;
     public bool IsFrontRow => Row == 0;
 }
@@ -57,6 +66,7 @@ public record CombatState(
     int XpReward = 10)
 {
     public HashSet<string> AbilitiesUsedThisRound { get; init; } = new();
+    public Dictionary<int, Guid> SummonSlotAssignments { get; init; } = new();
 
     public Combatant? CurrentActor =>
         Phase == CombatPhase.Turn && CurrentTurnIndex < InitiativeOrder.Length
@@ -64,7 +74,7 @@ public record CombatState(
             : null;
 
     public bool AllEnemiesDead => Combatants.All(c => c.IsPlayer || !c.IsAlive);
-    public bool AllPlayersDead => Combatants.All(c => !c.IsPlayer || !c.IsAlive);
+    public bool AllPlayersDead => Combatants.All(c => !c.IsPlayer || c.IsSummoned || !c.IsAlive);
     public bool IsFinished => Phase == CombatPhase.Ended;
 }
 

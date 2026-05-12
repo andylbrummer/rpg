@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace RPC.Engine.Combat;
 
-public record EncounterTableEntry(string? Id, int Weight, EnemySpawn[] Enemies, int XpReward = 10);
+public record EncounterTableEntry(string? Id, int Weight, EnemySpawn[] Enemies, int XpReward = 10, int DangerRating = 1);
 
 public record EncounterTableDef(string Id, string Name, EncounterTableEntry[] Entries);
 
@@ -34,17 +34,21 @@ public class EncounterTableRegistry
         return null;
     }
 
-    public EncounterDef RollEncounter(string id, GameRandom rng)
+    public EncounterDef RollEncounter(string id, GameRandom rng, int dangerRating = 5)
     {
         var table = Get(id);
         if (table == null || table.Entries.Length == 0)
             return new EncounterDef("default", "Default", Array.Empty<EnemySpawn>(), 0);
 
-        var totalWeight = table.Entries.Sum(e => e.Weight);
+        var eligible = table.Entries.Where(e => e.DangerRating <= dangerRating).ToArray();
+        if (eligible.Length == 0)
+            eligible = table.Entries;
+
+        var totalWeight = eligible.Sum(e => e.Weight);
         var roll = rng.Roll(1, totalWeight);
 
         var cumulative = 0;
-        foreach (var entry in table.Entries)
+        foreach (var entry in eligible)
         {
             cumulative += entry.Weight;
             if (roll <= cumulative)
@@ -54,7 +58,7 @@ public class EncounterTableRegistry
         }
 
         // Fallback to last entry
-        var last = table.Entries[^1];
+        var last = eligible[^1];
         return new EncounterDef(last.Id ?? $"{id}_encounter", table.Name, last.Enemies, last.XpReward);
     }
 }

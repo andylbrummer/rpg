@@ -1,0 +1,14 @@
+{
+  "id": "spore_corridor",
+  "name": "Spore Corridor",
+  "description": "A claustrophobic tunnel where the walls pulse with faint bioluminescence. Spore clouds thicken toward the ceiling.",
+  "tags": ["corridor", "bloom_site"],
+  "width": 1,
+  "height": 4,
+  "tiles": [
+    { "x": 1, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 1, "y": 3, "type": "Floor" },
+    { "x": 1, "y": 4, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" }
+  ]
+}

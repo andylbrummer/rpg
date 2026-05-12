@@ -1,0 +1,67 @@
+{
+  "id": "fieldwright",
+  "name": "Fieldwright",
+  "description": "Tinkerer and battlefield engineer. Deploys automated sentries, repairs allies, and manipulates the field with charged contraptions.",
+  "baseStats": {
+    "strength": 3,
+    "dexterity": 4,
+    "constitution": 5,
+    "intelligence": 6,
+    "willpower": 3
+  },
+  "abilities": [
+    {
+      "id": "wrench_strike",
+      "name": "Wrench Strike",
+      "cost": { "type": "none" },
+      "effect": { "type": "damage", "value": "1d6+PWR", "range": "melee" },
+      "tags": ["physical", "melee"]
+    },
+    {
+      "id": "deploy_sentry",
+      "name": "Deploy Sentry",
+      "cost": { "type": "engine_charge", "amount": 1 },
+      "effect": { "type": "summon", "unit": "sentry_turret", "duration": 3 },
+      "tags": ["summon", "deployable"],
+      "requiredRow": "back"
+    },
+    {
+      "id": "overcharge",
+      "name": "Overcharge",
+      "cost": { "type": "engine_charge", "amount": 1 },
+      "effect": { "type": "buff", "stat": "power", "value": 3, "duration": 2, "target": "ally" },
+      "tags": ["buff", "support"]
+    },
+    {
+      "id": "repair_pulse",
+      "name": "Repair Pulse",
+      "cost": { "type": "engine_charge", "amount": 1 },
+      "effect": { "type": "heal", "value": "1d6+INT", "target": "ally" },
+      "tags": ["heal", "support"]
+    },
+    {
+      "id": "barricade",
+      "name": "Barricade",
+      "cost": { "type": "engine_charge", "amount": 2 },
+      "effect": { "type": "summon", "unit": "scrap_barricade", "duration": 3 },
+      "tags": ["summon", "defense"],
+      "requiredRow": "back"
+    },
+    {
+      "id": "coil_overload",
+      "name": "Coil Overload",
+      "cost": { "type": "engine_charge", "amount": 2 },
+      "effect": { "type": "damage", "value": "1d8+INT", "range": "short", "extra": "area" },
+      "tags": ["area", "lightning"],
+      "requiredRow": "back",
+      "rowChangeCost": "action"
+    }
+  ],
+  "levelTable": [
+    { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["wrench_strike", "deploy_sentry"] },
+    { "level": 2, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 1, "willpower": 0 }, "newAbilities": ["overcharge"] },
+    { "level": 3, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 1, "constitution": 0, "intelligence": 1, "willpower": 0 }, "newAbilities": ["repair_pulse"] },
+    { "level": 4, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 1 }, "newAbilities": ["barricade"] },
+    { "level": 5, "hpGain": 4, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 1, "willpower": 1 }, "newAbilities": ["coil_overload"] }
+  ]
+}

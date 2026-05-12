@@ -43,6 +43,8 @@
     stillblade: '#6B8E9F',
     cauterist: '#B85C38',
     hollow: '#6B6B6B',
+    fieldwright: '#7A8B69',
+    inkblood: '#7A4B6B',
   };
 
   function selectCharacter(name: string) {

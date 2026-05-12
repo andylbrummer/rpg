@@ -2,6 +2,13 @@ using RPC.Engine.Content;
 
 namespace RPC.Engine.Character;
 
+public readonly record struct TempStatModifier(string Stat, int Delta, int Duration, string Source)
+{
+    public TempStatModifier Decrement() => this with { Duration = Duration - 1 };
+}
+
+public readonly record struct MemoryCost(string Stat, int Amount, int Duration);
+
 public readonly record struct CharacterState(
     Guid Id,
     string Name,
@@ -12,11 +19,66 @@ public readonly record struct CharacterState(
     int CurrentHp,
     Equipment Equipment,
     string[] KnownAbilities,
-    int Row, // 0 = front, 1 = back
-    string? BranchChoice = null)
+    int Row,
+    string? BranchChoice = null,
+    TempStatModifier[]? TempModifiers = null)
 {
+    public TempStatModifier[] TempModifiers { get; init; } = TempModifiers ?? Array.Empty<TempStatModifier>();
+
     public EffectiveStats GetEffectiveStats(ItemRegistry? items = null)
-        => EffectiveStats.FromBase(BaseStats + Equipment.StatBonus(items), Level);
+    {
+        var baseWithEquipment = BaseStats + Equipment.StatBonus(items);
+        var modifiedBase = ApplyTempModifiers(baseWithEquipment);
+        var effective = EffectiveStats.FromBase(modifiedBase, Level);
+
+        var maxHp = effective.MaxHp;
+        var speed = effective.Speed;
+        var accuracy = effective.Accuracy;
+        var evade = effective.Evade;
+        var power = effective.Power;
+
+        foreach (var mod in TempModifiers ?? Array.Empty<TempStatModifier>())
+        {
+            switch (mod.Stat.ToLowerInvariant())
+            {
+                case "maxhp": maxHp += mod.Delta; break;
+                case "speed": speed += mod.Delta; break;
+                case "accuracy": accuracy += mod.Delta; break;
+                case "evade": evade += mod.Delta; break;
+                case "power": power += mod.Delta; break;
+            }
+        }
+
+        return new EffectiveStats(
+            Math.Max(1, maxHp),
+            Math.Max(1, speed),
+            Math.Max(0, accuracy),
+            Math.Max(0, evade),
+            Math.Max(0, power));
+    }
+
+    private BaseStats ApplyTempModifiers(BaseStats baseStats)
+    {
+        var str = baseStats.Strength;
+        var dex = baseStats.Dexterity;
+        var con = baseStats.Constitution;
+        var inte = baseStats.Intelligence;
+        var wil = baseStats.Willpower;
+
+        foreach (var mod in TempModifiers ?? Array.Empty<TempStatModifier>())
+        {
+            switch (mod.Stat.ToLowerInvariant())
+            {
+                case "strength": str += mod.Delta; break;
+                case "dexterity": dex += mod.Delta; break;
+                case "constitution": con += mod.Delta; break;
+                case "intelligence": inte += mod.Delta; break;
+                case "willpower": wil += mod.Delta; break;
+            }
+        }
+
+        return new BaseStats(str, dex, con, inte, wil);
+    }
 
     public bool IsAlive => CurrentHp > 0;
 
@@ -63,7 +125,8 @@ public record AbilityDef(
     string[] Tags,
     string? RequiredRow = null,
     string? RowChangeCost = null,
-    string? Branch = null)
+    string? Branch = null,
+    MemoryCost? MemoryCost = null)
 {
     public bool IsAvailableInRow(int row)
         => RequiredRow == null

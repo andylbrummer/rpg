@@ -118,6 +118,7 @@ public class SavePartyMember
     public string[] KnownAbilities { get; set; } = Array.Empty<string>();
     public int Row { get; set; }
     public string? BranchChoice { get; set; }
+    public TempStatModifier[] TempModifiers { get; set; } = Array.Empty<TempStatModifier>();
 }
 
 public class SavePlayer
@@ -173,7 +174,7 @@ public static class SaveSystem
             var data = JsonSerializer.Deserialize<SaveData>(json, Options);
             if (data == null) return false;
 
-            if (data.SchemaVersion != 3 && data.SchemaVersion != 4)
+            if (data.SchemaVersion != 3 && data.SchemaVersion != 4 && data.SchemaVersion != 5)
             {
                 Console.Error.WriteLine(
                     $"Save file '{path}' has unsupported schema version {data.SchemaVersion}. Deleting; player starts new game.");
@@ -227,14 +228,15 @@ public static class SaveSystem
                     Equipment = m.Equipment,
                     KnownAbilities = m.KnownAbilities,
                     Row = m.Row,
-                    BranchChoice = m.BranchChoice
+                    BranchChoice = m.BranchChoice,
+                    TempModifiers = m.TempModifiers
                 };
             }
         }
 
         return new SaveData
         {
-            SchemaVersion = 4,
+            SchemaVersion = 5,
             Party = party,
             Player = new SavePlayer
             {
@@ -347,7 +349,8 @@ public static class SaveSystem
                 state.Party.SetMember(i, new CharacterState(
                     s.Id, s.Name, s.ClassId, level, xp,
                     s.BaseStats, hp, s.Equipment,
-                    s.KnownAbilities, row, s.BranchChoice));
+                    s.KnownAbilities, row, s.BranchChoice,
+                    s.TempModifiers));
             }
             else
             {

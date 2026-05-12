@@ -1,6 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using RPC.Engine.Character;
+using RPC.Engine.Combat;
+using RPC.Engine.Dungeons;
+using RPC.Engine.Models.Dungeons;
 
 namespace RPC.Tests;
 
@@ -17,6 +20,8 @@ public class ContentValidationTests
     [InlineData("stillblade")]
     [InlineData("cauterist")]
     [InlineData("hollow")]
+    [InlineData("fieldwright")]
+    [InlineData("inkblood")]
     public void ClassJson_IsValid(string classId)
     {
         var path = $"../../../../../../content/classes/{classId}.json";
@@ -43,10 +48,133 @@ public class ContentValidationTests
         Assert.Contains(classDef.LevelTable, e => e.Level == 1);
     }
 
+    [Theory]
+    [InlineData("bloom_mite")]
+    [InlineData("bloom_wretch")]
+    [InlineData("bloom_sporeling")]
+    [InlineData("rat")]
+    [InlineData("goblin_scavenger")]
+    [InlineData("bone_archer")]
+    public void EnemyJson_IsValid(string enemyId)
+    {
+        var path = $"../../../../../../content/enemies/{enemyId}.json";
+        Assert.True(File.Exists(path), $"Missing enemy file: {path}");
+
+        var json = File.ReadAllText(path);
+        var enemyDef = JsonSerializer.Deserialize<EnemyDef>(json, JsonOptions);
+
+        Assert.NotNull(enemyDef);
+        Assert.Equal(enemyId, enemyDef.Id);
+        Assert.NotEmpty(enemyDef.Name);
+        Assert.NotEmpty(enemyDef.Description);
+        Assert.True(enemyDef.HpBase > 0);
+        Assert.True(enemyDef.Speed > 0);
+        Assert.NotEmpty(enemyDef.Ai);
+        Assert.NotEmpty(enemyDef.Abilities);
+        Assert.All(enemyDef.LootTable, l =>
+        {
+            Assert.False(string.IsNullOrEmpty(l.ItemId));
+            Assert.InRange(l.Chance, 0.0, 1.0);
+        });
+    }
+
+    [Theory]
+    [InlineData("sewers")]
+    [InlineData("crypt")]
+    [InlineData("broken_engine")]
+    [InlineData("boss")]
+    [InlineData("bloom_site")]
+    public void EncounterJson_IsValid(string tableId)
+    {
+        var path = $"../../../../../../content/encounters/{tableId}.json";
+        Assert.True(File.Exists(path), $"Missing encounter file: {path}");
+
+        var json = File.ReadAllText(path);
+        var registry = new EncounterTableRegistry();
+        registry.LoadFromJson(tableId, json);
+
+        var table = registry.Get(tableId);
+        Assert.NotNull(table);
+        Assert.Equal(tableId, table.Id);
+        Assert.NotEmpty(table.Name);
+        Assert.NotEmpty(table.Entries);
+
+        var enemyFiles = Directory.GetFiles("../../../../../../content/enemies", "*.json")
+            .Select(f => Path.GetFileNameWithoutExtension(f))
+            .ToHashSet();
+
+        Assert.All(table.Entries, e =>
+        {
+            Assert.True(e.Weight > 0, "Entry weight must be positive");
+            Assert.NotEmpty(e.Enemies);
+            Assert.All(e.Enemies, enemy =>
+            {
+                Assert.False(string.IsNullOrEmpty(enemy.EnemyId));
+                Assert.True(enemy.Count > 0);
+                Assert.True(enemyFiles.Contains(enemy.EnemyId),
+                    $"Referenced enemy not found: {enemy.EnemyId}");
+            });
+        });
+    }
+
+    [Fact]
+    public void BloomSiteEncounterJson_HasDangerRatingGroups()
+    {
+        var path = "../../../../../../content/encounters/bloom_site.json";
+        var json = File.ReadAllText(path);
+        var registry = new EncounterTableRegistry();
+        registry.LoadFromJson("bloom_site", json);
+
+        var table = registry.Get("bloom_site");
+        Assert.NotNull(table);
+        var groups = table.Entries.GroupBy(e => e.DangerRating).ToDictionary(g => g.Key, g => g.ToArray());
+        for (int dr = 1; dr <= 5; dr++)
+        {
+            Assert.True(groups.ContainsKey(dr), $"Missing dangerRating {dr} entries");
+            Assert.NotEmpty(groups[dr]);
+        }
+    }
+
+    [Fact]
+    public void BloomSiteSegments_AreValid()
+    {
+        var dir = "../../../../../../content/segments/bloom-site";
+        Assert.True(Directory.Exists(dir), "Missing bloom-site segments directory");
+
+        var segments = SegmentLoader.LoadFromDirectory(dir);
+        Assert.Equal(5, segments.Count);
+
+        var expectedIds = new[] { "bloom_entrance", "spore_corridor", "bloom_chamber", "decay_lab", "spore_nest" };
+        foreach (var id in expectedIds)
+        {
+            var segment = segments.FirstOrDefault(s => s.Id == id);
+            Assert.NotNull(segment);
+            Assert.NotEmpty(segment.Name);
+            Assert.NotEmpty(segment.Tiles);
+        }
+
+        foreach (var segment in segments)
+        {
+            foreach (var tile in segment.Tiles.Where(t => t.IsExit))
+            {
+                Assert.NotNull(tile.ExitDirection);
+                var border = tile.ExitDirection.Value switch
+                {
+                    Direction.North => tile.North,
+                    Direction.South => tile.South,
+                    Direction.East => tile.East,
+                    Direction.West => tile.West,
+                    _ => null
+                };
+                Assert.Equal(BorderType.Door, border);
+            }
+        }
+    }
+
     [Fact]
     public void AllClasses_AbilityIdsAreGloballyUnique()
     {
-        var classIds = new[] { "bonewarden", "stillblade", "cauterist", "hollow" };
+        var classIds = new[] { "bonewarden", "stillblade", "cauterist", "hollow", "fieldwright", "inkblood" };
         var allAbilityIds = new HashSet<string>();
 
         foreach (var classId in classIds)

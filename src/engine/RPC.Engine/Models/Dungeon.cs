@@ -13,7 +13,8 @@ public enum BorderType
     None,
     Wall,
     Door,
-    SecretDoor
+    SecretDoor,
+    BreakableWall
 }
 
 public readonly record struct Tile(
@@ -79,7 +80,7 @@ public class Dungeon
         if (!tile.IsWalkable) return false;
 
         var border = tile.GetBorder(dir);
-        if (border is BorderType.Wall or BorderType.SecretDoor)
+        if (border is BorderType.Wall or BorderType.SecretDoor or BorderType.BreakableWall)
             return false;
 
         var to = from.Move(dir);

@@ -56,7 +56,7 @@ public static class TavernRecruitGenerator
 
     private static readonly string[] Classes = new[]
     {
-        "bonewarden", "stillblade", "cauterist", "hollow"
+        "bonewarden", "stillblade", "cauterist", "hollow", "fieldwright", "inkblood"
     };
 
     private static readonly BaseStats[] BaseStatPresets = new[]
@@ -65,6 +65,8 @@ public static class TavernRecruitGenerator
         new BaseStats(5, 5, 4, 3, 4),
         new BaseStats(3, 5, 4, 5, 4),
         new BaseStats(4, 6, 3, 4, 4),
+        new BaseStats(3, 4, 5, 6, 3),
+        new BaseStats(3, 4, 4, 5, 6),
     };
 
     public static List<TavernRecruit> GenerateRoster(int seed)

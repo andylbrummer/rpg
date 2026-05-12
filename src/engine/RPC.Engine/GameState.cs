@@ -347,7 +347,7 @@ public class GameState
                 {
                     var index = Array.IndexOf(Party.Members, member);
                     var newXp = member.Xp + Combat.XpReward;
-                    var updated = member with { CurrentHp = combatant.Hp, Xp = newXp };
+                    var updated = member with { CurrentHp = combatant.Hp, Xp = newXp, TempModifiers = combatant.TempModifiers };
 
                     // Check for level ups
                     if (_classRegistry?.Get(member.ClassId) is { } classDef)
@@ -402,7 +402,7 @@ public class GameState
             if (member.Id == Guid.Empty) continue;
             var maxHp = member.GetEffectiveStats().MaxHp;
             var index = Array.IndexOf(Party.Members, member);
-            Party.SetMember(index, member with { CurrentHp = maxHp });
+            Party.SetMember(index, member with { CurrentHp = maxHp, TempModifiers = Array.Empty<TempStatModifier>() });
         }
         LastUpdate = DateTime.UtcNow;
     }
@@ -430,6 +430,13 @@ public class GameState
         var changed = Overworld.Travel(targetId);
         if (!changed) return false;
 
+        EmitActionLog("overworld", "travel_started", new Dictionary<string, string>
+        {
+            { "from", fromNodeId },
+            { "to", targetId },
+            { "distance", route?.Distance.ToString() ?? "0" }
+        });
+
         if (route != null)
         {
             IncrementTurns(route.Distance);
@@ -440,6 +447,18 @@ public class GameState
         if (route != null)
         {
             RollTravelEncounters(route.DangerRating);
+        }
+
+        if (RolledTravelEncounterCount == 0)
+        {
+            var node = Overworld.Nodes.FirstOrDefault(n => n.Id == targetId);
+            if (node?.Type == "town")
+            {
+                EmitActionLog("overworld", "town_reached", new Dictionary<string, string>
+                {
+                    { "townId", targetId }
+                });
+            }
         }
 
         LastUpdate = DateTime.UtcNow;
@@ -586,6 +605,13 @@ public class GameState
             });
         }
 
+        EmitActionLog("overworld", "travel_encounter_resolved", new Dictionary<string, string>
+        {
+            { "encounterId", encounter.Id },
+            { "resolutionType", encounter.ResolutionType },
+            { "choice", choice }
+        });
+
         ResolvedTravelEncounterCount++;
         CurrentTravelEncounter = null;
 
@@ -597,6 +623,18 @@ public class GameState
             if (next != null)
             {
                 ActivateTravelEncounter(next);
+            }
+        }
+
+        if (ResolvedTravelEncounterCount >= RolledTravelEncounterCount)
+        {
+            var node = Overworld.Nodes.FirstOrDefault(n => n.Id == Overworld.CurrentNodeId);
+            if (node?.Type == "town")
+            {
+                EmitActionLog("overworld", "town_reached", new Dictionary<string, string>
+                {
+                    { "townId", Overworld.CurrentNodeId }
+                });
             }
         }
 
@@ -648,6 +686,10 @@ public class GameState
     {
         _actionLogTurn++;
         ActionLog.Add(new ActionLogEntry(_actionLogTurn, category, type, new Dictionary<string, string>(payload)));
+        if (ActionLog.Count >= 1000)
+        {
+            Console.Error.WriteLine($"[DEV] ActionLog size warning: {ActionLog.Count} events. Consider log rotation.");
+        }
     }
 
     public void RestoreActionLog(List<ActionLogEntry> entries)
@@ -655,6 +697,26 @@ public class GameState
         ActionLog.Clear();
         ActionLog.AddRange(entries);
         _actionLogTurn = entries.Count > 0 ? entries.Max(e => e.Turn) : 0;
+    }
+
+    public void DiscoverSecret(string secretType, string secretId)
+    {
+        EmitActionLog("dungeon", "secret_discovered", new Dictionary<string, string>
+        {
+            { "secretType", secretType },
+            { "secretId", secretId }
+        });
+        LastUpdate = DateTime.UtcNow;
+    }
+
+    public void ChooseSettlementFate(string settlementId, string fate)
+    {
+        EmitActionLog("dungeon", "settlement_fate_chosen", new Dictionary<string, string>
+        {
+            { "settlementId", settlementId },
+            { "fate", fate }
+        });
+        LastUpdate = DateTime.UtcNow;
     }
 
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path);
@@ -750,8 +812,30 @@ public class GameState
             _ => (5, -2),
         };
 
+        var vendorThreshold = Town.FactionVendors.FirstOrDefault(v => v.FactionId == mission.FactionId)?.Threshold ?? 25;
+        var oldPrimaryRep = Reputation[mission.FactionId];
+        var wasUnlocked = oldPrimaryRep >= vendorThreshold;
+
         var source = $"mission_complete_{mission.Type.ToString().ToLower()}";
         ApplyMissionReputation(mission.FactionId, primaryDelta, opposedDelta, source);
+
+        EmitActionLog("faction", "mission_completed", new Dictionary<string, string>
+        {
+            { "missionId", mission.Id },
+            { "factionId", mission.FactionId },
+            { "type", mission.Type.ToString().ToLower() }
+        });
+
+        var newPrimaryRep = Reputation[mission.FactionId];
+        if (!wasUnlocked && newPrimaryRep >= vendorThreshold)
+        {
+            EmitActionLog("faction", "vendor_unlocked", new Dictionary<string, string>
+            {
+                { "factionId", mission.FactionId },
+                { "threshold", vendorThreshold.ToString() }
+            });
+        }
+
         LastUpdate = DateTime.UtcNow;
         return true;
     }
@@ -765,6 +849,13 @@ public class GameState
         Town.QuestLog[index] = mission with { Status = "failed" };
 
         ApplyMissionReputation(mission.FactionId, -3, 1, "mission_failed");
+
+        EmitActionLog("faction", "mission_failed", new Dictionary<string, string>
+        {
+            { "missionId", mission.Id },
+            { "factionId", mission.FactionId }
+        });
+
         LastUpdate = DateTime.UtcNow;
         return true;
     }

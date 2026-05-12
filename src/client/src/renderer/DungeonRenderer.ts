@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import type { GameState, Tile } from '../types/game';
+import { getTheme, type DungeonTheme } from './DungeonTheme';
+import { BloomCluster, BloomParticleSystem } from './BloomEffects';
+import { getCreatureMaterials, type CreatureMaterialSet } from './CreatureMaterials';
 
 export class DungeonRenderer {
   private scene: THREE.Scene;
@@ -12,9 +15,18 @@ export class DungeonRenderer {
   private currentState: GameState | null = null;
   private isDisposed = false;
   private torchLight: THREE.PointLight;
+  private ambientLight: THREE.AmbientLight;
+  private fillLight: THREE.DirectionalLight;
+  private rimLight: THREE.DirectionalLight;
   private wallTexture: THREE.CanvasTexture;
   private floorTexture: THREE.CanvasTexture;
   private doorTexture: THREE.CanvasTexture;
+  private currentTheme: DungeonTheme;
+  private currentDungeonType: string | undefined;
+  private bloomClusters: BloomCluster[] = [];
+  private bloomParticles: BloomParticleSystem[] = [];
+  private bloomEffectsAdded = false;
+  private creatureMeshes: Map<string, THREE.Mesh> = new Map();
 
   static isSupported(): boolean {
     try {
@@ -32,15 +44,18 @@ export class DungeonRenderer {
     const width = Math.max(container.clientWidth || MIN_WIDTH, MIN_WIDTH);
     const height = Math.max(container.clientHeight || MIN_HEIGHT, MIN_HEIGHT);
 
+    // Theme setup
+    this.currentTheme = getTheme(undefined);
+
     // Generate procedural textures
-    this.wallTexture = this.createBrickTexture();
-    this.floorTexture = this.createStoneTileTexture();
-    this.doorTexture = this.createWoodTexture();
+    this.wallTexture = this.createBrickTexture(this.currentTheme);
+    this.floorTexture = this.createStoneTileTexture(this.currentTheme);
+    this.doorTexture = this.createWoodTexture(this.currentTheme);
 
     // Scene setup
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x111111);
-    this.scene.fog = new THREE.Fog(0x111111, 10, 30);
+    this.scene.background = new THREE.Color(this.currentTheme.backgroundColor);
+    this.scene.fog = new THREE.Fog(this.currentTheme.fogColor, 10, 30);
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
@@ -60,10 +75,10 @@ export class DungeonRenderer {
     container.appendChild(this.renderer.domElement);
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0x666666, 0.4);
-    this.scene.add(ambientLight);
+    this.ambientLight = new THREE.AmbientLight(this.currentTheme.ambientColor, 0.4);
+    this.scene.add(this.ambientLight);
 
-    this.torchLight = new THREE.PointLight(0xffaa44, 2, 25);
+    this.torchLight = new THREE.PointLight(this.currentTheme.torchColor, this.currentTheme.glowIntensity, 25);
     this.torchLight.position.set(0, 2, 0);
     this.torchLight.castShadow = true;
     this.torchLight.shadow.mapSize.width = 512;
@@ -71,14 +86,14 @@ export class DungeonRenderer {
     this.scene.add(this.torchLight);
 
     // Fill light from above
-    const fillLight = new THREE.DirectionalLight(0xaaccff, 0.3);
-    fillLight.position.set(5, 10, 5);
-    this.scene.add(fillLight);
+    this.fillLight = new THREE.DirectionalLight(this.currentTheme.fillColor, 0.3);
+    this.fillLight.position.set(5, 10, 5);
+    this.scene.add(this.fillLight);
 
     // Rim light for depth
-    const rimLight = new THREE.DirectionalLight(0xffddaa, 0.2);
-    rimLight.position.set(-5, 3, -5);
-    this.scene.add(rimLight);
+    this.rimLight = new THREE.DirectionalLight(this.currentTheme.rimColor, 0.2);
+    this.rimLight.position.set(-5, 3, -5);
+    this.scene.add(this.rimLight);
 
     // Handle resize
     window.addEventListener('resize', () => this.handleResize(container));
@@ -87,17 +102,15 @@ export class DungeonRenderer {
     this.animate();
   }
 
-  private createBrickTexture(): THREE.CanvasTexture {
+  private createBrickTexture(theme: DungeonTheme): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
 
-    // Base color
-    ctx.fillStyle = '#7a5c4a';
+    ctx.fillStyle = theme.wallColor;
     ctx.fillRect(0, 0, 256, 256);
 
-    // Brick rows
     const brickHeight = 32;
     const brickWidth = 64;
     const rows = 256 / brickHeight;
@@ -108,14 +121,11 @@ export class DungeonRenderer {
         const x = col * brickWidth + offset;
         const y = row * brickHeight;
 
-        // Slight color variation per brick
-        const hue = 20 + Math.random() * 10;
-        const sat = 30 + Math.random() * 15;
-        const light = 40 + Math.random() * 10;
-        ctx.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
+        ctx.globalAlpha = 0.08 + Math.random() * 0.16;
+        ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000';
         ctx.fillRect(x + 1, y + 1, brickWidth - 2, brickHeight - 2);
+        ctx.globalAlpha = 1.0;
 
-        // Add some noise/texture
         for (let i = 0; i < 8; i++) {
           const nx = x + Math.random() * brickWidth;
           const ny = y + Math.random() * brickHeight;
@@ -132,17 +142,15 @@ export class DungeonRenderer {
     return texture;
   }
 
-  private createStoneTileTexture(): THREE.CanvasTexture {
+  private createStoneTileTexture(theme: DungeonTheme): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
 
-    // Base stone color
-    ctx.fillStyle = '#555555';
+    ctx.fillStyle = theme.floorColor;
     ctx.fillRect(0, 0, 256, 256);
 
-    // Tile grid
     const tileSize = 64;
     const cols = 256 / tileSize;
     const rows = 256 / tileSize;
@@ -152,12 +160,11 @@ export class DungeonRenderer {
         const x = col * tileSize;
         const y = row * tileSize;
 
-        // Tile color variation
-        const light = 45 + Math.random() * 15;
-        ctx.fillStyle = `hsl(0, 0%, ${light}%)`;
+        ctx.globalAlpha = 0.08 + Math.random() * 0.16;
+        ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000';
         ctx.fillRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
+        ctx.globalAlpha = 1.0;
 
-        // Stone noise
         for (let i = 0; i < 20; i++) {
           const nx = x + Math.random() * tileSize;
           const ny = y + Math.random() * tileSize;
@@ -175,20 +182,19 @@ export class DungeonRenderer {
     return texture;
   }
 
-  private createWoodTexture(): THREE.CanvasTexture {
+  private createWoodTexture(theme: DungeonTheme): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 128;
     const ctx = canvas.getContext('2d')!;
 
-    ctx.fillStyle = '#654321';
+    ctx.fillStyle = theme.doorColor;
     ctx.fillRect(0, 0, 128, 128);
 
-    // Wood grain lines
     for (let i = 0; i < 20; i++) {
       const y = Math.random() * 128;
       const width = 1 + Math.random() * 2;
-      ctx.fillStyle = `rgba(60, 40, 20, ${0.2 + Math.random() * 0.3})`;
+      ctx.fillStyle = `rgba(0,0,0,${0.2 + Math.random() * 0.3})`;
       ctx.fillRect(0, y, 128, width);
     }
 
@@ -201,13 +207,42 @@ export class DungeonRenderer {
   updateState(state: GameState): void {
     this.currentState = state;
 
+    const dungeonType = state.dungeonType;
+    if (dungeonType !== this.currentDungeonType) {
+      this.currentDungeonType = dungeonType;
+      this.currentTheme = getTheme(dungeonType);
+      this.applyTheme(this.currentTheme);
+    }
+
     if (state.hasDungeon) {
       this.renderTiles(state.tiles);
       this.updateCamera(state.player);
       this.updateTorch(state.player);
+      this.updateCreatures(state);
     } else {
       this.renderDefaultScene();
     }
+  }
+
+  private applyTheme(theme: DungeonTheme): void {
+    this.scene.background = new THREE.Color(theme.backgroundColor);
+    this.scene.fog = new THREE.Fog(theme.fogColor, 10, 30);
+
+    this.ambientLight.color.setHex(theme.ambientColor);
+    this.torchLight.color.setHex(theme.torchColor);
+    this.torchLight.intensity = theme.glowIntensity;
+    this.fillLight.color.setHex(theme.fillColor);
+    this.rimLight.color.setHex(theme.rimColor);
+
+    this.wallTexture.dispose();
+    this.floorTexture.dispose();
+    this.doorTexture.dispose();
+    this.wallTexture = this.createBrickTexture(theme);
+    this.floorTexture = this.createStoneTileTexture(theme);
+    this.doorTexture = this.createWoodTexture(theme);
+
+    this.clearTiles();
+    this.clearCreatures();
   }
 
   private updateTorch(player: { x: number; y: number }): void {
@@ -218,6 +253,7 @@ export class DungeonRenderer {
 
   private renderDefaultScene(): void {
     this.clearTiles();
+    this.clearCreatures();
 
     // Add a simple floor
     const geometry = new THREE.PlaneGeometry(10, 10);
@@ -234,7 +270,7 @@ export class DungeonRenderer {
 
     // Add a visible marker
     const markerGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-    const markerMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const markerMat = new THREE.MeshStandardMaterial({ color: this.currentTheme.accentColor });
     const marker = new THREE.Mesh(markerGeo, markerMat);
     marker.position.set(0, 0.5, 0);
     this.tileMeshes.set('marker', marker);
@@ -252,6 +288,105 @@ export class DungeonRenderer {
       (mesh.material as THREE.Material).dispose();
     }
     this.tileMeshes.clear();
+    this.clearBloomEffects();
+  }
+
+  private clearCreatures(): void {
+    for (const [, mesh] of this.creatureMeshes) {
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    }
+    this.creatureMeshes.clear();
+  }
+
+  private clearBloomEffects(): void {
+    for (const cluster of this.bloomClusters) {
+      this.scene.remove(cluster.mesh);
+      cluster.dispose();
+    }
+    this.bloomClusters = [];
+    for (const particles of this.bloomParticles) {
+      this.scene.remove(particles.points);
+      particles.dispose();
+    }
+    this.bloomParticles = [];
+    this.bloomEffectsAdded = false;
+  }
+
+  private updateCreatures(state: GameState): void {
+    if (state.mode !== 'Combat' || !state.combat) {
+      this.clearCreatures();
+      return;
+    }
+    const mats = getCreatureMaterials(this.currentDungeonType ?? '', this.currentTheme);
+    const enemies = state.combat.combatants.filter(c => !c.isPlayer && c.alive);
+    const alive = new Set(enemies.map(c => c.id));
+    for (const [id, mesh] of this.creatureMeshes) {
+      if (!alive.has(id)) {
+        this.scene.remove(mesh);
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+        this.creatureMeshes.delete(id);
+      }
+    }
+    const px = state.player.x * this.tileSize;
+    const pz = state.player.y * this.tileSize;
+    const rad = this.facingToRadians(state.player.facing);
+    const fx = Math.sin(rad);
+    const fz = -Math.cos(rad);
+    const rx = Math.cos(rad);
+    const rz = Math.sin(rad);
+    let fi = 0;
+    let bi = 0;
+    for (const e of enemies) {
+      if (this.creatureMeshes.has(e.id)) continue;
+      const front = e.row === 0;
+      const i = front ? fi++ : bi++;
+      const d = front ? 3 : 5;
+      const o = (i - 1) * 1.2;
+      const mesh = this.createCreatureMesh(mats);
+      mesh.position.set(px + fx * d + rx * o, 0.75, pz + fz * d + rz * o);
+      this.creatureMeshes.set(e.id, mesh);
+      this.scene.add(mesh);
+    }
+  }
+
+  private createCreatureMesh(mats: CreatureMaterialSet): THREE.Mesh {
+    const geo = new THREE.SphereGeometry(0.4, 16, 12);
+    const mat = new THREE.MeshStandardMaterial({
+      color: mats.body,
+      emissive: mats.emissive,
+      emissiveIntensity: mats.emissive ? 0.6 : 0,
+      roughness: 0.7,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    return mesh;
+  }
+
+  private addBloomEffects(tiles: Tile[]): void {
+    if (this.bloomEffectsAdded) return;
+    if (this.currentDungeonType !== 'bloom-site') return;
+
+    let floorIndex = 0;
+    for (const tile of tiles) {
+      if (tile.type !== 'Floor') continue;
+      if (floorIndex % 3 === 0) {
+        const fx = tile.x * this.tileSize;
+        const fz = tile.y * this.tileSize;
+        const cluster = new BloomCluster(new THREE.Vector3(fx, 0.15, fz), this.currentTheme);
+        this.bloomClusters.push(cluster);
+        this.scene.add(cluster.mesh);
+      }
+      floorIndex++;
+    }
+
+    const center = new THREE.Vector3(0, 0, 0);
+    const particles = new BloomParticleSystem(center, this.currentTheme, 80);
+    this.bloomParticles.push(particles);
+    this.scene.add(particles.points);
+    this.bloomEffectsAdded = true;
   }
 
   private renderTiles(tiles: Tile[]): void {
@@ -275,6 +410,8 @@ export class DungeonRenderer {
         this.tileMeshes.delete(key);
       }
     }
+
+    this.addBloomEffects(tiles);
 
     // Add or update tiles
     for (const tile of tiles) {
@@ -383,7 +520,7 @@ export class DungeonRenderer {
         roughness: 0.9,
         bumpMap: this.wallTexture,
         bumpScale: 0.1,
-        color: isSecret ? 0x998877 : 0xffffff
+        color: isSecret ? this.currentTheme.secretDoor : 0xffffff
       });
     }
 
@@ -416,7 +553,7 @@ export class DungeonRenderer {
       this.tileSize * 0.9
     );
     const material = new THREE.MeshStandardMaterial({
-      color: isUp ? 0xccaa66 : 0x886644,
+      color: isUp ? this.currentTheme.stairsUp : this.currentTheme.stairsDown,
       roughness: 0.8
     });
     const mesh = new THREE.Mesh(geometry, material);
@@ -469,11 +606,20 @@ export class DungeonRenderer {
   private animate(): void {
     if (this.isDisposed) return;
     requestAnimationFrame(() => this.animate());
+    const time = performance.now() * 0.001;
+    for (const cluster of this.bloomClusters) {
+      cluster.update(time);
+    }
+    for (const particles of this.bloomParticles) {
+      particles.update();
+    }
     this.renderer.render(this.scene, this.camera);
   }
 
   dispose(): void {
     this.isDisposed = true;
+    this.clearBloomEffects();
+    this.clearCreatures();
     this.renderer.dispose();
     this.wallTexture.dispose();
     this.floorTexture.dispose();

@@ -894,6 +894,7 @@ public class GameServer
                         .Select(a => a.Id)
                         .ToArray() ?? Array.Empty<string>(),
                     abilities = classDef?.Abilities.Select(a => new { id = a.Id, name = a.Name, branch = a.Branch }).ToArray() ?? Array.Empty<object>(),
+                    tempModifiers = c.TempModifiers.Select(m => new { stat = m.Stat, delta = m.Delta, duration = m.Duration, source = m.Source }).ToArray(),
                 };
             }).ToArray();
 
@@ -930,7 +931,8 @@ public class GameServer
                                 range = a.Effect.Range,
                                 target = a.Effect.Target,
                                 requiredRow = a.RequiredRow
-                            }).ToArray() ?? Array.Empty<object>()
+                            }).ToArray() ?? Array.Empty<object>(),
+                        tempModifiers = x.TempModifiers.Select(m => new { stat = m.Stat, delta = m.Delta, duration = m.Duration, source = m.Source }).ToArray(),
                     };
                 }).ToArray(),
                 initiativeOrder = c.InitiativeOrder,
@@ -1060,6 +1062,7 @@ public class GameServer
             tiles,
             explored,
             hasDungeon = _gameState.CurrentDungeon != null,
+            dungeonType = _gameState.CurrentDungeonType,
             party,
             combat,
             combatResult,

@@ -8,10 +8,12 @@
   import ExplorationHUD from './ui/ExplorationHUD.svelte';
   import FieldNotesPanel from './ui/FieldNotesPanel.svelte';
   import { DungeonRenderer } from './renderer/DungeonRenderer';
+  import { AmbientAudioManager } from './renderer/AmbientAudio';
   import type { GameState } from './types/game';
 
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | null = null;
+  const audioManager = new AmbientAudioManager();
   let gameState = $state<GameState | null>(null);
   let serverError = $state<{ code: string; message: string; recoverable: boolean } | null>(null);
   let combatCancelSignal = $state(0);
@@ -202,6 +204,7 @@
       const wasCombat = lastMode === 'Combat';
       lastMode = s?.mode ?? null;
       gameState = s;
+      audioManager.update(s?.dungeonType);
       clearPending();
       drainBuffer();
 
@@ -420,7 +423,7 @@
         <div class="game-info">
           <span class="mode-badge">{gameState?.mode || 'Menu'}</span>
           {#if gameState?.hasDungeon}
-            <span class="dungeon-badge">Dungeon</span>
+            <span class="dungeon-badge">{gameState.dungeonType ?? 'Dungeon'}</span>
           {/if}
           {#if gameState?.overworld != null}
             <span class="turn-counter" style="color: {turnColor(gameState.overworld.turns)}">

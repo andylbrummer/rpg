@@ -1,0 +1,170 @@
+{
+  "id": "bloom_site",
+  "name": "Bloom Site Encounters",
+  "entries": [
+    {
+      "id": "bs-d1-mites-pair",
+      "weight": 50,
+      "dangerRating": 1,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 12
+    },
+    {
+      "id": "bs-d1-mites-trio",
+      "weight": 50,
+      "dangerRating": 1,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 3, "rowOverride": 0 }
+      ],
+      "xpReward": 18
+    },
+    {
+      "id": "bs-d2-mites-wretch",
+      "weight": 40,
+      "dangerRating": 2,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 2, "rowOverride": 0 },
+        { "enemyId": "bloom_wretch", "count": 1, "rowOverride": 0 }
+      ],
+      "xpReward": 24
+    },
+    {
+      "id": "bs-d2-wretch-pair",
+      "weight": 30,
+      "dangerRating": 2,
+      "enemies": [
+        { "enemyId": "bloom_wretch", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 22
+    },
+    {
+      "id": "bs-d2-mites-trio",
+      "weight": 30,
+      "dangerRating": 2,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 3, "rowOverride": 0 }
+      ],
+      "xpReward": 18
+    },
+    {
+      "id": "bs-d3-wretch-sporeling",
+      "weight": 35,
+      "dangerRating": 3,
+      "enemies": [
+        { "enemyId": "bloom_wretch", "count": 2, "rowOverride": 0 },
+        { "enemyId": "bloom_sporeling", "count": 1, "rowOverride": 1 }
+      ],
+      "xpReward": 32
+    },
+    {
+      "id": "bs-d3-sporeling-pair",
+      "weight": 25,
+      "dangerRating": 3,
+      "enemies": [
+        { "enemyId": "bloom_sporeling", "count": 2, "rowOverride": 1 }
+      ],
+      "xpReward": 28
+    },
+    {
+      "id": "bs-d3-wretch-trio",
+      "weight": 20,
+      "dangerRating": 3,
+      "enemies": [
+        { "enemyId": "bloom_wretch", "count": 3, "rowOverride": 0 }
+      ],
+      "xpReward": 34
+    },
+    {
+      "id": "bs-d3-mites-wretch",
+      "weight": 20,
+      "dangerRating": 3,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 3, "rowOverride": 0 },
+        { "enemyId": "bloom_wretch", "count": 1, "rowOverride": 0 }
+      ],
+      "xpReward": 30
+    },
+    {
+      "id": "bs-d4-mixed-medium",
+      "weight": 30,
+      "dangerRating": 4,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 2, "rowOverride": 0 },
+        { "enemyId": "bloom_wretch", "count": 2, "rowOverride": 0 },
+        { "enemyId": "bloom_sporeling", "count": 1, "rowOverride": 1 }
+      ],
+      "xpReward": 48
+    },
+    {
+      "id": "bs-d4-wretches-sporelings",
+      "weight": 25,
+      "dangerRating": 4,
+      "enemies": [
+        { "enemyId": "bloom_wretch", "count": 3, "rowOverride": 0 },
+        { "enemyId": "bloom_sporeling", "count": 2, "rowOverride": 1 }
+      ],
+      "xpReward": 54
+    },
+    {
+      "id": "bs-d4-sporelings",
+      "weight": 20,
+      "dangerRating": 4,
+      "enemies": [
+        { "enemyId": "bloom_sporeling", "count": 3, "rowOverride": 1 }
+      ],
+      "xpReward": 42
+    },
+    {
+      "id": "bs-d4-mite-swarm",
+      "weight": 25,
+      "dangerRating": 4,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 5, "rowOverride": 0 }
+      ],
+      "xpReward": 36
+    },
+    {
+      "id": "bs-d5-full-mix",
+      "weight": 30,
+      "dangerRating": 5,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 3, "rowOverride": 0 },
+        { "enemyId": "bloom_wretch", "count": 3, "rowOverride": 0 },
+        { "enemyId": "bloom_sporeling", "count": 2, "rowOverride": 1 }
+      ],
+      "xpReward": 68
+    },
+    {
+      "id": "bs-d5-wretch-heavy",
+      "weight": 25,
+      "dangerRating": 5,
+      "enemies": [
+        { "enemyId": "bloom_wretch", "count": 4, "rowOverride": 0 },
+        { "enemyId": "bloom_sporeling", "count": 2, "rowOverride": 1 }
+      ],
+      "xpReward": 72
+    },
+    {
+      "id": "bs-d5-sporeling-heavy",
+      "weight": 25,
+      "dangerRating": 5,
+      "enemies": [
+        { "enemyId": "bloom_wretch", "count": 2, "rowOverride": 0 },
+        { "enemyId": "bloom_sporeling", "count": 4, "rowOverride": 1 }
+      ],
+      "xpReward": 66
+    },
+    {
+      "id": "bs-d5-mite-swarm",
+      "weight": 20,
+      "dangerRating": 5,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 6, "rowOverride": 0 },
+        { "enemyId": "bloom_wretch", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 64
+    }
+  ]
+}

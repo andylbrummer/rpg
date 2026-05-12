@@ -222,6 +222,7 @@ export interface GameState {
   tiles: Tile[];
   explored: Tile[];
   hasDungeon: boolean;
+  dungeonType?: string;
   party: PartyMember[];
   combat?: CombatState;
   combatResult?: CombatResult;

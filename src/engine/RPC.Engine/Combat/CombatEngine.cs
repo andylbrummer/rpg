@@ -49,7 +49,7 @@ public static class CombatEngine
             CombatPhase.RoundStart => StartRound(state, rng),
             CombatPhase.Turn => HandleTurn(state, action, rng),
             CombatPhase.Resolve => Resolve(state, rng, classes, actionLogEmitter),
-            CombatPhase.CheckEnd => CheckEnd(state),
+            CombatPhase.CheckEnd => CheckEnd(state, actionLogEmitter),
             _ => state
         };
     }
@@ -98,12 +98,86 @@ public static class CombatEngine
         if (targets.Length == 0)
             return new CombatAction(actor.Id, ActionType.Wait, null, null, null);
 
-        // Ranged AI prefers back row targets if in range, otherwise closest
-        var target = actor.Speed >= 6 && rng.Next(2) == 0
+        var behavior = actor.AiBehavior?.ToLowerInvariant() ?? "";
+        var target = SelectTarget(state, actor, targets, behavior, rng);
+        var (actionType, abilityId) = ChooseAction(actor, behavior);
+
+        return new CombatAction(actor.Id, actionType, target.Id, abilityId, null);
+    }
+
+    private static Combatant SelectTarget(CombatState state, Combatant actor, Combatant[] targets, string behavior, GameRandom rng)
+    {
+        return behavior switch
+        {
+            "aggressive" => targets.OrderBy(t => t.Hp).ThenBy(t => t.Id).First(),
+            "pack_hunter" => SelectPackHunterTarget(state, targets),
+            "ranged_priority" => targets.OrderByDescending(t => t.Row).ThenBy(t => t.Id).First(),
+            "defensive" => targets.OrderByDescending(t => t.Power).ThenByDescending(t => t.MaxHp).ThenBy(t => t.Id).First(),
+            _ => DefaultTarget(actor, targets, rng)
+        };
+    }
+
+    private static Combatant SelectPackHunterTarget(CombatState state, Combatant[] targets)
+    {
+        var enemyRows = state.Combatants
+            .Where(c => !c.IsPlayer && c.IsAlive)
+            .Select(c => c.Row)
+            .ToArray();
+
+        return targets
+            .Select(t => (Target: t, Count: enemyRows.Count(r => r == t.Row)))
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Target.Id)
+            .First()
+            .Target;
+    }
+
+    private static Combatant DefaultTarget(Combatant actor, Combatant[] targets, GameRandom rng)
+    {
+        return actor.Speed >= 6 && rng.Next(2) == 0
             ? targets.OrderByDescending(t => t.Row).First()
             : targets[rng.Next(targets.Length)];
+    }
 
-        return new CombatAction(actor.Id, ActionType.Attack, target.Id, null, null);
+    private static (ActionType Type, string? AbilityId) ChooseAction(Combatant actor, string behavior)
+    {
+        var abilityId = behavior switch
+        {
+            "aggressive" or "pack_hunter" => FindMatchingAbility(actor, "melee"),
+            "ranged_priority" => FindMatchingAbility(actor, "ranged"),
+            "defensive" => FindMatchingAbility(actor, "defensive"),
+            _ => null
+        };
+
+        if (abilityId != null)
+            return (ActionType.UseAbility, abilityId);
+
+        return behavior == "defensive"
+            ? (ActionType.Defend, null)
+            : (ActionType.Attack, null);
+    }
+
+    private static string? FindMatchingAbility(Combatant actor, string category)
+    {
+        if (actor.Abilities == null || actor.Abilities.Length == 0)
+            return null;
+
+        var keywords = category switch
+        {
+            "ranged" => new[] { "arrow", "shot", "bolt", "ranged", "throw" },
+            "melee" => new[] { "slash", "strike", "bite", "crack", "rend", "shiv", "spear", "blade" },
+            "defensive" => new[] { "ward", "shield", "block", "stance", "heal", "buff", "guard" },
+            _ => Array.Empty<string>()
+        };
+
+        foreach (var ability in actor.Abilities)
+        {
+            var lower = ability.ToLowerInvariant();
+            if (keywords.Any(k => lower.Contains(k)))
+                return ability;
+        }
+
+        return null;
     }
 
     private static CombatState Resolve(CombatState state, GameRandom rng, ClassRegistry? classes, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null)
@@ -130,6 +204,8 @@ public static class CombatEngine
                         newCombatants[targetIdx] = target with { Hp = newHp };
                         newLog.Add(new(action.ActorId,
                             $"{actor.Name} hits {target.Name} for {damage} damage", state.Round));
+                        if (target.IsSummoned && newHp == 0)
+                            newLog.Add(new(Guid.Empty, $"{target.Name} died", state.Round));
                     }
                 }
                 break;
@@ -138,7 +214,8 @@ public static class CombatEngine
                 if (action.AbilityId is not null && action.TargetId is not null)
                 {
                     var targetIdx = Array.FindIndex(newCombatants, c => c.Id == action.TargetId);
-                    if (targetIdx >= 0)
+                    var actorIdx = Array.FindIndex(newCombatants, c => c.Id == action.ActorId);
+                    if (targetIdx >= 0 && actorIdx >= 0)
                     {
                         var damage = ResolveAbilityDamage(actor, action.AbilityId, classes, rng);
                         var target = newCombatants[targetIdx];
@@ -148,6 +225,8 @@ public static class CombatEngine
                             newCombatants[targetIdx] = target with { Hp = newHp };
                             newLog.Add(new(action.ActorId,
                                 $"{actor.Name} uses {action.AbilityId} on {target.Name} for {damage} damage", state.Round));
+                            if (target.IsSummoned && newHp == 0)
+                                newLog.Add(new(Guid.Empty, $"{target.Name} died", state.Round));
                         }
                         else
                         {
@@ -155,6 +234,7 @@ public static class CombatEngine
                                 $"{actor.Name} uses {action.AbilityId} on {target.Name}", state.Round));
                         }
 
+                        ApplyMemoryCost(actorIdx, action.AbilityId, classes);
                         ApplySynergies(action.AbilityId, actor, targetIdx);
                     }
                 }
@@ -188,6 +268,35 @@ public static class CombatEngine
                     });
                 }
             }
+        }
+
+        void ApplyMemoryCost(int actorIdx, string abilityId, ClassRegistry? classRegistry)
+        {
+            var a = newCombatants[actorIdx];
+            if (string.IsNullOrEmpty(a.ClassId) || classRegistry is null)
+                return;
+
+            var def = classRegistry.Get(a.ClassId);
+            var ab = def?.Abilities.FirstOrDefault(x => x.Id == abilityId);
+            var mc = ab?.MemoryCost;
+            if (mc is null)
+                return;
+
+            var mod = new TempStatModifier(mc.Value.Stat, -mc.Value.Amount, mc.Value.Duration, abilityId);
+            var updatedMods = new List<TempStatModifier>(a.TempModifiers) { mod };
+
+            newCombatants[actorIdx] = a with { TempModifiers = updatedMods.ToArray() };
+            ApplyModifierToCombatant(ref newCombatants[actorIdx], mod);
+
+            newLog.Add(new(a.Id, $"{a.Name}'s {mc.Value.Stat} reduced by {mc.Value.Amount}", state.Round));
+            actionLogEmitter?.Invoke("combat", "stat_reduced", new Dictionary<string, string>
+            {
+                { "characterId", a.Id.ToString() },
+                { "stat", mc.Value.Stat },
+                { "amount", mc.Value.Amount.ToString() },
+                { "duration", mc.Value.Duration.ToString() },
+                { "source", abilityId }
+            });
         }
 
         var updatedAbilities = new HashSet<string>(state.AbilitiesUsedThisRound);
@@ -280,7 +389,7 @@ public static class CombatEngine
         }
     }
 
-    private static CombatState CheckEnd(CombatState state)
+    private static CombatState CheckEnd(CombatState state, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null)
     {
         if (state.AllEnemiesDead)
         {
@@ -305,12 +414,69 @@ public static class CombatEngine
         var nextIndex = state.CurrentTurnIndex + 1;
         if (nextIndex >= state.InitiativeOrder.Length)
         {
+            var newRound = state.Round + 1;
+            var newCombatants = state.Combatants.ToArray();
+            var newLog = new List<CombatLogEntry>(state.Log);
+            var expiredIds = new HashSet<Guid>();
+
+            for (int i = 0; i < newCombatants.Length; i++)
+            {
+                var c = newCombatants[i];
+                if (c.TempModifiers.Length > 0)
+                {
+                    var remaining = new List<TempStatModifier>();
+                    foreach (var mod in c.TempModifiers)
+                    {
+                        var decremented = mod.Decrement();
+                        if (decremented.Duration > 0)
+                        {
+                            remaining.Add(decremented);
+                        }
+                        else
+                        {
+                            RemoveModifierFromCombatant(ref c, mod);
+                            newLog.Add(new(Guid.Empty, $"{c.Name}'s {mod.Stat} restored", newRound));
+                            actionLogEmitter?.Invoke("combat", "stat_restored", new Dictionary<string, string>
+                            {
+                                { "characterId", c.Id.ToString() },
+                                { "stat", mod.Stat },
+                                { "source", mod.Source }
+                            });
+                        }
+                    }
+                    newCombatants[i] = c with { TempModifiers = remaining.ToArray() };
+                }
+
+                c = newCombatants[i];
+                if (c.IsSummoned && c.IsAlive && c.SummonDuration > 0)
+                {
+                    var newDuration = c.SummonDuration - 1;
+                    if (newDuration <= 0)
+                    {
+                        newCombatants[i] = c with { Hp = 0, SummonDuration = 0 };
+                        newLog.Add(new(Guid.Empty, $"{c.Name} expired", newRound));
+                        expiredIds.Add(c.Id);
+                    }
+                    else
+                    {
+                        newCombatants[i] = c with { SummonDuration = newDuration };
+                    }
+                }
+            }
+
+            var newAssignments = state.SummonSlotAssignments
+                .Where(kv => !expiredIds.Contains(kv.Value))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
             return state with
             {
-                Round = state.Round + 1,
+                Round = newRound,
                 CurrentTurnIndex = 0,
                 Phase = CombatPhase.RoundStart,
-                AbilitiesUsedThisRound = new HashSet<string>()
+                AbilitiesUsedThisRound = new HashSet<string>(),
+                Combatants = newCombatants,
+                Log = newLog,
+                SummonSlotAssignments = newAssignments
             };
         }
 
@@ -362,12 +528,96 @@ public static class CombatEngine
                     speed + rng.Roll(-1, 1),
                     spawn.RowOverride ?? (rng.Next(2) == 0 ? 0 : 1),
                     new List<StatusEffect>(),
-                    def?.Stats.Strength ?? 0
+                    def?.Stats.Strength ?? 0,
+                    null,
+                    false,
+                    0,
+                    null,
+                    def?.Ai,
+                    def?.Abilities
                 ));
                 enemyIndex++;
             }
         }
         return enemies.ToArray();
+    }
+
+    public static CombatState SummonAlly(CombatState state, PartyState party, SummonDef def, GameRandom rng)
+    {
+        var newAssignments = new Dictionary<int, Guid>(state.SummonSlotAssignments);
+
+        int slot = -1;
+        for (int i = 0; i < party.Members.Length; i++)
+        {
+            if (party.Members[i].Id == Guid.Empty && !newAssignments.ContainsKey(i))
+            {
+                slot = i;
+                break;
+            }
+        }
+
+        int row = slot >= 0 ? (slot < 3 ? 0 : 1) : def.Row;
+        var id = Guid.NewGuid();
+        var summon = new Combatant(
+            id,
+            def.Name,
+            true,
+            def.Hp,
+            def.Hp,
+            def.Speed,
+            row,
+            new List<StatusEffect>(),
+            def.Power,
+            null,
+            true,
+            def.Duration);
+
+        if (slot >= 0)
+            newAssignments[slot] = id;
+
+        var newCombatants = state.Combatants.Append(summon).ToArray();
+
+        return state with
+        {
+            Combatants = newCombatants,
+            Log = new List<CombatLogEntry>(state.Log)
+            {
+                new(Guid.Empty, $"{def.Name} summoned", state.Round)
+            },
+            SummonSlotAssignments = newAssignments
+        };
+    }
+
+
+
+    private static void ApplyModifierToCombatant(ref Combatant combatant, TempStatModifier mod)
+    {
+        var hp = combatant.Hp;
+        var maxHp = combatant.MaxHp;
+        var speed = combatant.Speed;
+        var power = combatant.Power;
+
+        switch (mod.Stat.ToLowerInvariant())
+        {
+            case "strength": power += mod.Delta; break;
+            case "dexterity": speed += mod.Delta; break;
+            case "constitution": maxHp += mod.Delta * 3; break;
+            case "maxhp": maxHp += mod.Delta; break;
+            case "speed": speed += mod.Delta; break;
+            case "power": power += mod.Delta; break;
+        }
+
+        if (hp > maxHp) hp = maxHp;
+        if (maxHp < 1) maxHp = 1;
+        if (speed < 1) speed = 1;
+        if (power < 0) power = 0;
+
+        combatant = combatant with { Hp = hp, MaxHp = maxHp, Speed = speed, Power = power };
+    }
+
+    private static void RemoveModifierFromCombatant(ref Combatant combatant, TempStatModifier mod)
+    {
+        ApplyModifierToCombatant(ref combatant, mod with { Delta = -mod.Delta });
     }
 
     private static Combatant ToCombatant(CharacterState character)
@@ -383,7 +633,12 @@ public static class CombatEngine
             character.Row,
             new List<StatusEffect>(),
             stats.Power,
-            character.ClassId
+            character.ClassId,
+            false,
+            0,
+            character.TempModifiers.ToArray()
         );
     }
 }
+
+public record SummonDef(string Id, string Name, int Hp, int Speed, int Power, int Duration, int Row = 0);

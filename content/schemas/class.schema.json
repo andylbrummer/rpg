@@ -53,6 +53,14 @@
           },
           "branch": {
             "type": "string"
+          },
+          "memoryCost": {
+            "type": "object",
+            "properties": {
+              "stat": { "type": "string", "enum": ["strength", "dexterity", "constitution", "intelligence", "willpower", "maxHp", "speed", "power"] },
+              "amount": { "type": "integer", "minimum": 1 },
+              "duration": { "type": "integer", "minimum": 1 }
+            }
           }
         }
       }

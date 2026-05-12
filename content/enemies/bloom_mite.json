@@ -1,0 +1,20 @@
+{
+  "id": "bloom_mite",
+  "name": "Bloom Mite",
+  "description": "A skittering insectoid swarmer no larger than a fist, its carapace pulsing with sickly green luminescence.",
+  "stats": {
+    "str": 4,
+    "dex": 10,
+    "con": 3,
+    "int": 1,
+    "wil": 3
+  },
+  "hpBase": 8,
+  "speed": 10,
+  "ai": "pack_hunter",
+  "abilities": ["bite", "spore_cloud"],
+  "lootTable": [
+    { "itemId": "mite_chitin", "chance": 0.4 },
+    { "itemId": "bloom_dust", "chance": 0.25 }
+  ]
+}
