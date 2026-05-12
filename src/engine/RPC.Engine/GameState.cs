@@ -5,6 +5,7 @@ using RPC.Engine.Dungeons;
 using RPC.Engine.Overworld;
 using RPC.Engine.Party;
 using RPC.Engine.Town;
+using RPC.Engine.Travel;
 
 namespace RPC.Engine;
 
@@ -25,6 +26,9 @@ public class GameState
     public List<ActionLogEntry> ActionLog { get; } = new();
     public ReputationState Reputation { get; } = new();
     public string? SettingsHash { get; set; }
+    public TravelEncounterState? CurrentTravelEncounter { get; private set; }
+    public int RolledTravelEncounterCount { get; private set; }
+    public int ResolvedTravelEncounterCount { get; private set; }
 
     public void ClearCombatResult()
     {
@@ -368,9 +372,169 @@ public class GameState
 
     public bool Travel(string targetId)
     {
+        var fromNodeId = Overworld.CurrentNodeId;
         var changed = Overworld.Travel(targetId);
-        if (changed) LastUpdate = DateTime.UtcNow;
-        return changed;
+        if (!changed) return false;
+
+        ClearTravelEncounters();
+
+        var route = Overworld.Routes.FirstOrDefault(r =>
+            (r.From == fromNodeId && r.To == targetId) ||
+            (r.To == fromNodeId && r.From == targetId));
+
+        if (route != null)
+        {
+            RollTravelEncounters(route.DangerRating);
+        }
+
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    private void ClearTravelEncounters()
+    {
+        CurrentTravelEncounter = null;
+        RolledTravelEncounterCount = 0;
+        ResolvedTravelEncounterCount = 0;
+    }
+
+    private void RollTravelEncounters(int dangerRating)
+    {
+        var count = TravelEncounterTable.RollEncounterCount(_encounterRng);
+        RolledTravelEncounterCount = count;
+        if (count == 0) return;
+
+        var encounter = TravelEncounterTable.RollEncounter(_encounterRng, dangerRating);
+        if (encounter == null) return;
+
+        ActivateTravelEncounter(encounter);
+    }
+
+    private void ActivateTravelEncounter(TravelEncounterDef encounter)
+    {
+        bool hasMarcher = Party.Members.Any(m => m.ClassId == "marcher");
+        bool hasAshmouth = Party.Members.Any(m => m.ClassId == "ashmouth");
+
+        bool surpriseRound = encounter.ResolutionType == TravelResolutionType.Combat
+            && encounter.Id == "ambush"
+            && !hasMarcher;
+
+        int priceTier = encounter.Id == "merchant" && hasAshmouth ? 1 : 0;
+
+        int repValue = 0;
+        string? factionId = encounter.FactionId;
+        if (factionId != null)
+        {
+            repValue = Reputation[factionId];
+        }
+
+        string[]? options = null;
+        if (encounter.ResolutionType == TravelResolutionType.Dialogue)
+        {
+            options = encounter.Id == "faction_patrol"
+                ? ["Bribe", "Bluff", "Attack"]
+                : ["Trade", "Ignore", "Help"];
+        }
+
+        CurrentTravelEncounter = new TravelEncounterState(
+            encounter.Id,
+            encounter.Name,
+            encounter.ResolutionType switch
+            {
+                TravelResolutionType.Combat => "combat",
+                TravelResolutionType.StatTest => "stat_test",
+                TravelResolutionType.Dialogue => "dialogue",
+                _ => "unknown"
+            },
+            encounter.StatName,
+            factionId,
+            repValue,
+            surpriseRound,
+            priceTier,
+            options);
+
+        if (encounter.ResolutionType == TravelResolutionType.Combat && encounter.Enemies != null)
+        {
+            var encounterDef = new EncounterDef(encounter.Id, encounter.Name, encounter.Enemies, 15);
+            Combat = CombatEngine.Enter(Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
+            CurrentTravelEncounter = null;
+
+            if (Combat.IsFinished)
+            {
+                Mode = GameMode.Menu;
+                Combat = null;
+                ResolveTravelEncounter("auto");
+            }
+            else
+            {
+                Mode = GameMode.Combat;
+                var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+                Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
+                while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
+                {
+                    Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
+                }
+            }
+        }
+    }
+
+    public bool ResolveTravelEncounter(string choice)
+    {
+        if (CurrentTravelEncounter == null) return false;
+
+        var encounter = CurrentTravelEncounter;
+        if (encounter.ResolutionType == "stat_test" && encounter.StatName != null)
+        {
+            var highestStat = Party.Members
+                .Where(m => m.IsAlive)
+                .Max(m => encounter.StatName switch
+                {
+                    "strength" => m.BaseStats.Strength,
+                    "dexterity" => m.BaseStats.Dexterity,
+                    "constitution" => m.BaseStats.Constitution,
+                    "intelligence" => m.BaseStats.Intelligence,
+                    "willpower" => m.BaseStats.Willpower,
+                    _ => 0
+                });
+
+            var roll = _encounterRng.Roll(1, 20);
+            var success = roll + highestStat >= 15;
+
+            EmitActionLog("travel", "stat_test", new Dictionary<string, string>
+            {
+                { "encounterId", encounter.Id },
+                { "stat", encounter.StatName },
+                { "highest", highestStat.ToString() },
+                { "roll", roll.ToString() },
+                { "success", success.ToString() }
+            });
+        }
+        else if (encounter.ResolutionType == "dialogue")
+        {
+            EmitActionLog("travel", "dialogue", new Dictionary<string, string>
+            {
+                { "encounterId", encounter.Id },
+                { "choice", choice },
+                { "factionId", encounter.FactionId ?? "none" }
+            });
+        }
+
+        ResolvedTravelEncounterCount++;
+        CurrentTravelEncounter = null;
+
+        if (ResolvedTravelEncounterCount < RolledTravelEncounterCount)
+        {
+            var route = Overworld.Routes.FirstOrDefault(r =>
+                r.From == Overworld.CurrentNodeId || r.To == Overworld.CurrentNodeId);
+            var next = TravelEncounterTable.RollEncounter(_encounterRng, route?.DangerRating ?? 0);
+            if (next != null)
+            {
+                ActivateTravelEncounter(next);
+            }
+        }
+
+        LastUpdate = DateTime.UtcNow;
+        return true;
     }
 
     public void Reset()
@@ -392,6 +556,7 @@ public class GameState
         _pendingTaggedEncounterTile = null;
         Reputation.Clear();
         SettingsHash = null;
+        ClearTravelEncounters();
         LastUpdate = DateTime.UtcNow;
     }
 

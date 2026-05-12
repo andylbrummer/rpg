@@ -48,6 +48,28 @@ test.describe('G9: Overworld Map UI', () => {
     await dialog.getByRole('button', { name: 'Travel' }).click();
     await expect(dialog).not.toBeVisible();
 
+    // Travel may trigger an encounter; handle all outcomes
+    await page.waitForTimeout(800);
+    const combatVisible = await page.locator('.combat-overlay').isVisible().catch(() => false);
+    const encounterVisible = await page.locator('.travel-encounter-overlay').isVisible().catch(() => false);
+
+    if (combatVisible) {
+      await expect(page.locator('.combat-overlay')).toBeVisible();
+      // Flee combat to return to menu
+      await sendWsAction(page, serverUrl, { type: 'flee_combat' });
+      await page.waitForTimeout(400);
+    } else if (encounterVisible) {
+      await expect(page.locator('.travel-encounter-overlay')).toBeVisible();
+      await page.locator('.travel-action-btn').first().click();
+      await page.waitForTimeout(400);
+    }
+
+    // Map may still be open behind the overlay; verify current node updated
+    const mapStillOpen = await page.getByRole('dialog', { name: 'Overworld map' }).isVisible().catch(() => false);
+    if (!mapStillOpen) {
+      await page.getByRole('button', { name: 'Overworld Map' }).click();
+      await expect(page.getByRole('dialog', { name: 'Overworld map' })).toBeVisible();
+    }
     await expect(page.locator('.node-group.current').getByText('Broken Engine')).toBeVisible();
   });
 

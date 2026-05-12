@@ -164,6 +164,18 @@ export interface OverworldState {
   turns: number;
 }
 
+export interface TravelEncounter {
+  id: string;
+  name: string;
+  resolutionType: 'combat' | 'stat_test' | 'dialogue';
+  statName?: string;
+  factionId?: string;
+  reputationValue: number;
+  hasSurpriseRound: boolean;
+  priceTier: number;
+  options?: string[];
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -176,6 +188,7 @@ export interface GameState {
   combatResult?: CombatResult;
   town?: TownState;
   overworld?: OverworldState;
+  travelEncounter?: TravelEncounter;
 }
 
 export type PlayerAction =
@@ -198,7 +211,8 @@ export type PlayerAction =
   | { type: 'tavern_recruit'; targetId: string }
   | { type: 'mission_accept'; targetId: string }
   | { type: 'vendor_purchase'; targetId: string }
-  | { type: 'travel'; targetId: string };
+  | { type: 'travel'; targetId: string }
+  | { type: 'resolve_travel_encounter'; targetId: string };
 
 export interface CombatAction {
   actorId: string;

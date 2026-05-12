@@ -258,6 +258,10 @@
   function handleTravel(targetId: string) {
     sendAction({ type: 'travel', targetId });
   }
+
+  function handleResolveEncounter(choice: string) {
+    sendAction({ type: 'resolve_travel_encounter', targetId: choice });
+  }
 </script>
 
 <main class="game">
@@ -313,6 +317,29 @@
           onRest={handleRest}
           onSave={handleSave}
         />
+      {/if}
+      {#if gameState?.travelEncounter && gameState?.mode === 'Menu'}
+        <div class="travel-encounter-overlay" role="dialog" aria-label="Travel encounter">
+          <div class="travel-encounter-card">
+            <h2 class="travel-encounter-title">{gameState.travelEncounter.name}</h2>
+            {#if gameState.travelEncounter.resolutionType === 'stat_test'}
+              <p class="travel-encounter-desc">Test: {gameState.travelEncounter.statName}</p>
+              <button class="travel-action-btn" on:click={() => handleResolveEncounter('roll')}>Roll</button>
+            {:else if gameState.travelEncounter.resolutionType === 'dialogue'}
+              <p class="travel-encounter-desc">Diplomatic encounter</p>
+              {#if gameState.travelEncounter.options}
+                <div class="travel-options">
+                  {#each gameState.travelEncounter.options as opt}
+                    <button class="travel-action-btn" on:click={() => handleResolveEncounter(opt)}>{opt}</button>
+                  {/each}
+                </div>
+              {/if}
+            {:else}
+              <p class="travel-encounter-desc">Unexpected encounter</p>
+              <button class="travel-action-btn" on:click={() => handleResolveEncounter('continue')}>Continue</button>
+            {/if}
+          </div>
+        </div>
       {/if}
     </section>
     {#if gameState?.mode !== 'Combat'}
@@ -459,6 +486,61 @@
   .error-message {
     font-size: 0.875rem;
     color: #fff;
+  }
+
+  .travel-encounter-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 50;
+    pointer-events: auto;
+  }
+
+  .travel-encounter-card {
+    background: #1a1a2e;
+    border: 1px solid #444;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    min-width: 280px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .travel-encounter-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #d4a84b;
+  }
+
+  .travel-encounter-desc {
+    margin: 0;
+    color: #ccc;
+    font-size: 0.875rem;
+  }
+
+  .travel-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .travel-action-btn {
+    background: #2a2a4e;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+
+  .travel-action-btn:hover {
+    background: #3a3a5e;
   }
 
   @keyframes fadeIn {

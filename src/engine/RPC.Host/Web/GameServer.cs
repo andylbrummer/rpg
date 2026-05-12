@@ -530,6 +530,10 @@ public class GameServer
                         stateChanged = _gameState.Travel(travelTarget);
                     }
                     break;
+                case "resolve_travel_encounter":
+                    var choice = action.TargetId ?? "default";
+                    stateChanged = _gameState.ResolveTravelEncounter(choice);
+                    break;
                 default:
                     await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
                     return;
@@ -926,6 +930,24 @@ public class GameServer
             turns = _gameState.Overworld.Turns
         };
 
+        object? travelEncounter = null;
+        if (_gameState.CurrentTravelEncounter != null)
+        {
+            var te = _gameState.CurrentTravelEncounter;
+            travelEncounter = new
+            {
+                id = te.Id,
+                name = te.Name,
+                resolutionType = te.ResolutionType,
+                statName = te.StatName,
+                factionId = te.FactionId,
+                reputationValue = te.ReputationValue,
+                hasSurpriseRound = te.HasSurpriseRound,
+                priceTier = te.PriceTier,
+                options = te.Options
+            };
+        }
+
         var state = new
         {
             type = "state",
@@ -943,7 +965,8 @@ public class GameServer
             combat,
             combatResult,
             town,
-            overworld
+            overworld,
+            travelEncounter
         };
 
         _gameState.ClearCombatResult();
