@@ -5,12 +5,8 @@
   "runner_email": "claude@anthropic.com",
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
-  "current_task": {
-    "dart_id": "DM7yhRnFXfRP",
-    "title": "[1.5] T40 Reputation-gated vendor",
-    "iteration": 17
-  },
-  "completed_tasks": 15,
+  "current_task": null,
+  "completed_tasks": 16,
   "total_tasks": 42,
   "iteration": 17
 }

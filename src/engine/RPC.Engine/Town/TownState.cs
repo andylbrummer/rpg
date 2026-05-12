@@ -7,21 +7,24 @@ public class TownState
     public string CurrentTownId { get; set; } = "the_reach";
     public List<MissionOffer> AvailableMissions { get; set; } = new();
     public List<VendorItem> VendorStock { get; set; } = new();
+    public List<FactionVendor> FactionVendors { get; set; } = new();
     public List<FactionContact> FactionContacts { get; set; } = new();
     public List<TavernRecruit> TavernRoster { get; set; } = new();
     public List<string> ViewedMissions { get; set; } = new();
     public List<ActiveMission> QuestLog { get; set; } = new();
 }
 
-public record MissionOffer(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward = 0, string FactionId = "");
-
 public record VendorItem(string ItemId, string Name, int Price, int Quantity);
+
+public record FactionVendor(string FactionId, string Name, int Threshold, List<VendorItem> Stock);
 
 public record TavernRecruit(string Id, string Name, string ClassId, int Level, BaseStats BaseStats, int Cost);
 
 public record FactionContact(string Id, string Name, string FactionId, string Portrait);
 
 public record ActiveMission(string Id, string Title, string Description, int RepReward, string FactionId, string Status);
+
+public record MissionOffer(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward = 0, string FactionId = "");
 
 public static class TavernRecruitGenerator
 {
@@ -96,5 +99,42 @@ public static class FactionContactGenerator
             new("mission-convocation-1", "Gather Bloom Samples", "Collect rare flora from the Hollow.", 1, new[] { "75g" }, 10, "convocation"),
             new("mission-convocation-2", "Scout the Crypt", "Investigate whispering echoes.", 1, new[] { "60g" }, 5, "convocation")
         };
+    }
+}
+
+public static class FactionVendorGenerator
+{
+    public static List<FactionVendor> GenerateStock()
+    {
+        return new List<FactionVendor>
+        {
+            new("bureau", "Bureau Quartermaster", 25, new List<VendorItem>
+            {
+                new("healing_draft", "Healing Draft", 35, 3),
+                new("iron_mace", "Iron Mace", 25, 1),
+                new("antitoxin", "Antitoxin", 25, 2)
+            }),
+            new("convocation", "Convocation Arcanist", 25, new List<VendorItem>
+            {
+                new("small_salve", "Small Salve", 15, 5),
+                new("cautery_knife", "Cautery Knife", 40, 1),
+                new("clear_mind", "Clear Mind", 20, 2)
+            })
+        };
+    }
+}
+
+public static class VendorFilter
+{
+    public static List<FactionVendor> GetAvailableVendors(TownState town, ReputationState reputation)
+    {
+        return town.FactionVendors
+            .Where(v => reputation[v.FactionId] >= v.Threshold)
+            .ToList();
+    }
+
+    public static bool IsVendorVisible(string factionId, ReputationState reputation)
+    {
+        return reputation[factionId] > -25;
     }
 }

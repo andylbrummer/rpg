@@ -121,6 +121,13 @@ export interface VendorItem {
   quantity: number;
 }
 
+export interface FactionVendor {
+  factionId: string;
+  name: string;
+  threshold: number;
+  stock: VendorItem[];
+}
+
 export interface TavernRecruit {
   id: string;
   name: string;
@@ -156,6 +163,7 @@ export interface TownState {
   currentTownId: string;
   availableMissions: MissionOffer[];
   vendorStock: VendorItem[];
+  factionVendors: FactionVendor[];
   factionContacts: FactionContact[];
   tavernRoster: TavernRecruit[];
   viewedMissions: string[];
@@ -209,6 +217,8 @@ export interface GameState {
   overworld?: OverworldState;
   travelEncounter?: TravelEncounter;
   reputation?: Record<string, number>;
+  partyGold?: number;
+  partyInventory?: string[];
   campaignEnded?: boolean;
 }
 

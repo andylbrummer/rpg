@@ -77,6 +77,8 @@
 
   const town = $derived(gameState?.town);
   const reputation = $derived(gameState?.reputation ?? {});
+  const partyGold = $derived(gameState?.partyGold ?? 0);
+  const partyInventory = $derived(gameState?.partyInventory ?? []);
 
   const partyMembers = $derived(gameState?.party ?? []);
   const frontRow = $derived(partyMembers.filter(m => m.row === 0));
@@ -116,7 +118,10 @@
 
   <div class="town-body">
     <div class="party-panel">
-      <h2>Your Party</h2>
+      <div class="party-header-row">
+        <h2>Your Party</h2>
+        <span class="gold-badge">{partyGold}g</span>
+      </div>
       <div class="formation-grid">
         <div
           class="formation-row front-row"
@@ -285,6 +290,47 @@
             <div class="empty-state">No items in stock.</div>
           {/each}
         </div>
+
+        {#each town?.factionVendors || [] as vendor (vendor.factionId)}
+          {@const rep = reputation[vendor.factionId] || 0}
+          {@const isVisible = rep > -25}
+          {@const isUnlocked = rep >= vendor.threshold}
+          {#if isVisible}
+            <h2 class:locked-heading={!isUnlocked}>{vendor.name}</h2>
+            <div class="service-list">
+              {#each vendor.stock as item (item.itemId)}
+                <div class="service-item" class:locked-item={!isUnlocked}>
+                  <div class="item-name">{item.name}</div>
+                  <div class="item-price">{item.price}g (x{item.quantity})</div>
+                  {#if isUnlocked}
+                    <button
+                      type="button"
+                      class="action-btn"
+                      onclick={() => onVendorPurchase(item.itemId)}
+                    >
+                      Buy
+                    </button>
+                  {:else}
+                    <span class="lock-text">Requires {vendor.threshold} {vendor.factionId} reputation</span>
+                  {/if}
+                </div>
+              {:else}
+                <div class="empty-state">No items in stock.</div>
+              {/each}
+            </div>
+          {/if}
+        {/each}
+
+        {#if partyInventory.length > 0}
+          <h2>Inventory</h2>
+          <div class="service-list">
+            {#each partyInventory as itemId}
+              <div class="service-item">
+                <div class="item-name">{itemId}</div>
+              </div>
+            {/each}
+          </div>
+        {/if}
 
         <h2>Faction Contacts</h2>
         <div class="service-list">
@@ -685,6 +731,41 @@
     font-weight: bold;
     min-width: 3rem;
     text-align: right;
+  }
+
+  .party-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .gold-badge {
+    padding: 0.2rem 0.5rem;
+    background: rgba(212, 168, 75, 0.15);
+    border: 0.0625em solid #d4a84b;
+    border-radius: 0.25rem;
+    color: #d4a84b;
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
+    font-weight: bold;
+  }
+
+  .locked-heading {
+    color: #666;
+    font-style: italic;
+  }
+
+  .locked-item {
+    opacity: 0.6;
+    background: rgba(255, 255, 255, 0.01);
+    border-color: #222;
+  }
+
+  .lock-text {
+    color: #c44;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    font-style: italic;
+    flex-shrink: 0;
   }
 
   .mission-title,

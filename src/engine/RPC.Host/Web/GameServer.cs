@@ -917,6 +917,19 @@ public class GameServer
                 price = v.Price,
                 quantity = v.Quantity
             }).ToArray(),
+            factionVendors = _gameState.Town.FactionVendors.Select(fv => new
+            {
+                factionId = fv.FactionId,
+                name = fv.Name,
+                threshold = fv.Threshold,
+                stock = fv.Stock.Select(v => new
+                {
+                    itemId = v.ItemId,
+                    name = v.Name,
+                    price = v.Price,
+                    quantity = v.Quantity
+                }).ToArray()
+            }).ToArray(),
             factionContacts = _gameState.Town.FactionContacts.Select(c => new
             {
                 id = c.Id,
@@ -998,6 +1011,8 @@ public class GameServer
             overworld,
             travelEncounter,
             reputation = _gameState.Reputation.ToDictionary(r => r.Key, r => r.Value),
+            partyGold = _gameState.PartyGold,
+            partyInventory = _gameState.PartyInventory.ToArray(),
             campaignEnded = _gameState.CampaignEnded
         };
 

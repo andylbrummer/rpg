@@ -25,6 +25,8 @@ public class GameState
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
     public ReputationState Reputation { get; } = new();
+    public int PartyGold { get; set; } = 500;
+    public List<string> PartyInventory { get; set; } = new();
     public bool CampaignEnded { get; set; } = false;
     public string? SettingsHash { get; set; }
     public TravelEncounterState? CurrentTravelEncounter { get; private set; }
@@ -101,6 +103,10 @@ public class GameState
         if (Town.AvailableMissions.Count == 0)
         {
             Town.AvailableMissions = FactionContactGenerator.GenerateMissions();
+        }
+        if (Town.FactionVendors.Count == 0)
+        {
+            Town.FactionVendors = FactionVendorGenerator.GenerateStock();
         }
         if (string.IsNullOrEmpty(Town.CurrentTownId))
         {
@@ -578,6 +584,8 @@ public class GameState
         Town = new TownState();
         Overworld = new OverworldState();
         CampaignEnded = false;
+        PartyGold = 500;
+        PartyInventory.Clear();
         InitializeDefaultParty();
         InitializeTown();
         ActionLog.Clear();
@@ -687,10 +695,33 @@ public class GameState
 
     public bool PurchaseVendorItem(string itemId)
     {
-        var item = Town.VendorStock.FirstOrDefault(v => v.ItemId == itemId);
-        if (item == null) return false;
+        var genericItem = Town.VendorStock.FirstOrDefault(v => v.ItemId == itemId);
+        if (genericItem != null)
+            return CompletePurchase(itemId, genericItem.Price, Town.VendorStock, null);
 
-        Town.VendorStock.Remove(item);
+        foreach (var vendor in Town.FactionVendors)
+        {
+            var item = vendor.Stock.FirstOrDefault(v => v.ItemId == itemId);
+            if (item != null)
+            {
+                if (Reputation[vendor.FactionId] < vendor.Threshold) return false;
+                return CompletePurchase(itemId, item.Price, vendor.Stock, vendor.FactionId);
+            }
+        }
+
+        return false;
+    }
+
+    private bool CompletePurchase(string itemId, int price, List<VendorItem> stock, string? factionId)
+    {
+        if (PartyGold < price) return false;
+        PartyGold -= price;
+        PartyInventory.Add(itemId);
+        var item = stock.First(v => v.ItemId == itemId);
+        stock.Remove(item);
+        var payload = new Dictionary<string, string> { { "itemId", itemId }, { "price", price.ToString() } };
+        if (factionId != null) payload["factionId"] = factionId;
+        EmitActionLog("town", "vendor_purchase", payload);
         LastUpdate = DateTime.UtcNow;
         return true;
     }

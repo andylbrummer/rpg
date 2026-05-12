@@ -20,6 +20,8 @@ public class SaveData
     public int OverworldTurns { get; set; } = 0;
     public string OverworldCurrentNodeId { get; set; } = "the_reach";
     public bool CampaignEnded { get; set; } = false;
+    public int PartyGold { get; set; } = 500;
+    public string[] PartyInventory { get; set; } = Array.Empty<string>();
 }
 
 public class SaveTownState
@@ -27,6 +29,7 @@ public class SaveTownState
     public string CurrentTownId { get; set; } = "the_reach";
     public SaveMissionOffer[] AvailableMissions { get; set; } = Array.Empty<SaveMissionOffer>();
     public SaveVendorItem[] VendorStock { get; set; } = Array.Empty<SaveVendorItem>();
+    public SaveFactionVendor[] FactionVendors { get; set; } = Array.Empty<SaveFactionVendor>();
     public SaveFactionContact[] FactionContacts { get; set; } = Array.Empty<SaveFactionContact>();
     public SaveTavernRecruit[] TavernRoster { get; set; } = Array.Empty<SaveTavernRecruit>();
     public string[] ViewedMissions { get; set; } = Array.Empty<string>();
@@ -50,6 +53,14 @@ public class SaveVendorItem
     public string Name { get; set; } = "";
     public int Price { get; set; }
     public int Quantity { get; set; }
+}
+
+public class SaveFactionVendor
+{
+    public string FactionId { get; set; } = "";
+    public string Name { get; set; } = "";
+    public int Threshold { get; set; }
+    public SaveVendorItem[] Stock { get; set; } = Array.Empty<SaveVendorItem>();
 }
 
 public class SaveActionLogEntry
@@ -247,6 +258,21 @@ public static class SaveSystem
                         Price = v.Price,
                         Quantity = v.Quantity
                     }).ToArray(),
+                FactionVendors = state.Town.FactionVendors
+                    .Select(fv => new SaveFactionVendor
+                    {
+                        FactionId = fv.FactionId,
+                        Name = fv.Name,
+                        Threshold = fv.Threshold,
+                        Stock = fv.Stock
+                            .Select(v => new SaveVendorItem
+                            {
+                                ItemId = v.ItemId,
+                                Name = v.Name,
+                                Price = v.Price,
+                                Quantity = v.Quantity
+                            }).ToArray()
+                    }).ToArray(),
                 FactionContacts = state.Town.FactionContacts
                     .Select(c => new SaveFactionContact
                     {
@@ -286,6 +312,8 @@ public static class SaveSystem
             }).ToArray(),
             Reputation = new Dictionary<string, int>(state.Reputation),
             Settings = state.SettingsHash,
+            PartyGold = state.PartyGold,
+            PartyInventory = state.PartyInventory.ToArray(),
             OverworldTurns = state.Overworld.Turns,
             OverworldCurrentNodeId = state.Overworld.CurrentNodeId,
             CampaignEnded = state.CampaignEnded
@@ -349,6 +377,13 @@ public static class SaveSystem
             state.Town.VendorStock = data.Town.VendorStock
                 .Select(v => new VendorItem(v.ItemId, v.Name, v.Price, v.Quantity))
                 .ToList();
+            state.Town.FactionVendors = data.Town.FactionVendors
+                .Select(fv => new FactionVendor(
+                    fv.FactionId,
+                    fv.Name,
+                    fv.Threshold,
+                    fv.Stock.Select(v => new VendorItem(v.ItemId, v.Name, v.Price, v.Quantity)).ToList()))
+                .ToList();
             state.Town.FactionContacts = data.Town.FactionContacts
                 .Select(c => new FactionContact(c.Id, c.Name, c.FactionId, c.Portrait))
                 .ToList();
@@ -394,5 +429,7 @@ public static class SaveSystem
         state.Overworld.Turns = Math.Max(0, data.OverworldTurns);
         state.Overworld.CurrentNodeId = string.IsNullOrEmpty(data.OverworldCurrentNodeId) ? "the_reach" : data.OverworldCurrentNodeId;
         state.CampaignEnded = data.CampaignEnded;
+        state.PartyGold = data.PartyGold;
+        state.PartyInventory = data.PartyInventory?.ToList() ?? new List<string>();
     }
 }
