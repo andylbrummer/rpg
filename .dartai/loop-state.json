@@ -6,12 +6,12 @@
   "started_at": "2026-05-12T10:18:00-05:00",
   "loop_task_id": "oQCov9S7gsKK",
   "current_task": {
-    "dart_id": "T1bIpld8b3LQ",
-    "title": "T70 Node-based overworld",
-    "iteration": 6
+    "dart_id": "kHXqUDbX7wRP",
+    "title": "T82 Turn counter + world state",
+    "iteration": 7
   },
-  "completed_tasks": 5,
+  "completed_tasks": 6,
   "total_tasks": 39,
-  "iteration": 6,
+  "iteration": 7,
   "phase": "Phase 2: Strategic Depth"
 }
