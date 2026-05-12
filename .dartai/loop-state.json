@@ -2,12 +2,15 @@
   "status": "active",
   "dartboard": "Personal/rpg",
   "runner_id": "beagle-ab2-3871289",
+  "runner_email": "claude@anthropic.com",
+  "started_at": "2026-05-11T14:17:57-05:00",
+  "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "31nRlMjDyJ12",
-    "title": "[1.5] T46 Field Notes journal",
-    "iteration": 25,
-    "status": "completed",
-    "phase_completed": "phase-9",
-    "failed_phase": null
-  }
+    "dart_id": "GWUaVbvcVM3z",
+    "title": "[1.5] T35b Branch system engine",
+    "iteration": 26
+  },
+  "completed_tasks": 22,
+  "total_tasks": 45,
+  "iteration": 26
 }
