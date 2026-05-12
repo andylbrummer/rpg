@@ -6,11 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "TSAfWUpJkQRu",
-    "title": "T51a.4 Bloom Site segments batch 1",
-    "iteration": 37
+    "dart_id": "xoisPCYpWhQa",
+    "title": "T51b Bloom Site client theme (visuals + audio)",
+    "iteration": 38
   },
-  "completed_tasks": 32,
+  "completed_tasks": 33,
   "total_tasks": 49,
-  "iteration": 37
+  "iteration": 38
 }
