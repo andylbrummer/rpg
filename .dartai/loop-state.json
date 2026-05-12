@@ -6,14 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "VTz2lM9fSxUK",
-    "title": "[1.5] T51e Action log expansion",
-    "iteration": 28,
-    "status": "completed",
-    "phase_completed": "phase-9",
-    "failed_phase": null
+    "dart_id": "O0UMp1NfChUC",
+    "title": "[1.5] Fix: T45 e2e field-notes-toggle visibility",
+    "iteration": 29
   },
   "completed_tasks": 25,
   "total_tasks": 45,
-  "iteration": 28
+  "iteration": 29
 }
