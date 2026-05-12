@@ -6,11 +6,11 @@
   "started_at": "2026-05-11T14:17:57-05:00",
   "loop_task_id": "HL32DgPRLVfQ",
   "current_task": {
-    "dart_id": "Da2Z1EANDtjP",
-    "title": "[1.5] T35a Combat summon/deployable system",
-    "iteration": 30
+    "dart_id": "MNWdE9sruOXc",
+    "title": "[1.5] T35b Memory cost / temp stat reduction system",
+    "iteration": 31
   },
-  "completed_tasks": 26,
+  "completed_tasks": 27,
   "total_tasks": 45,
-  "iteration": 30
+  "iteration": 31
 }
