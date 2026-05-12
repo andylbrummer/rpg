@@ -1,5 +1,8 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using RPC.Engine.Dungeons;
+using RPC.Engine.Models.Dungeons;
 
 namespace ContentPack;
 
@@ -28,6 +31,17 @@ class Program
             .OrderBy(f => f)
             .ToList();
 
+        foreach (var file in jsonFiles)
+        {
+            var relativePath = Path.GetRelativePath(contentDir, file).Replace('\\', '/');
+            if (relativePath.Contains("/segments/") || relativePath.StartsWith("segments/"))
+            {
+                var json = File.ReadAllText(file);
+                var result = ValidateSegment(file, json);
+                if (result != 0) return result;
+            }
+        }
+
         var manifest = new Manifest
         {
             Version = 1,
@@ -42,6 +56,101 @@ class Program
         CompileRpk(contentDir, jsonFiles, rpkPath);
         Console.WriteLine($"Wrote pack: {rpkPath} ({new FileInfo(rpkPath).Length} bytes)");
 
+        return 0;
+    }
+
+    static int ValidateSegment(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        RoomSegment? segment;
+        try
+        {
+            segment = JsonSerializer.Deserialize<RoomSegment>(json, options);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        if (segment == null)
+        {
+            Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+            return 1;
+        }
+
+        var seen = new HashSet<(int, int)>();
+        foreach (var tile in segment.Tiles)
+        {
+            if (!seen.Add((tile.X, tile.Y)))
+            {
+                var line = FindLineNumber(json, tile.X, tile.Y);
+                Console.WriteLine($"FAIL: {filePath}:{line} - Duplicate tile at ({tile.X}, {tile.Y})");
+                return 1;
+            }
+        }
+
+        if (segment.Tiles.Count > 1)
+        {
+            foreach (var tile in segment.Tiles)
+            {
+                bool hasNeighbor = segment.Tiles.Any(t =>
+                    !ReferenceEquals(t, tile) &&
+                    Math.Abs(t.X - tile.X) + Math.Abs(t.Y - tile.Y) == 1);
+                if (!hasNeighbor)
+                {
+                    var line = FindLineNumber(json, tile.X, tile.Y);
+                    Console.WriteLine($"FAIL: {filePath}:{line} - Orphan tile at ({tile.X}, {tile.Y})");
+                    return 1;
+                }
+            }
+        }
+
+        foreach (var tile in segment.Tiles)
+        {
+            if (tile.IsExit)
+            {
+                if (tile.ExitDirection == null)
+                {
+                    var line = FindLineNumber(json, tile.X, tile.Y);
+                    Console.WriteLine($"FAIL: {filePath}:{line} - Exit tile at ({tile.X}, {tile.Y}) missing exitDirection");
+                    return 1;
+                }
+
+                var border = tile.ExitDirection.Value switch
+                {
+                    Direction.North => tile.North,
+                    Direction.South => tile.South,
+                    Direction.East => tile.East,
+                    Direction.West => tile.West,
+                    _ => null
+                };
+
+                if (border != BorderType.Door)
+                {
+                    var line = FindLineNumber(json, tile.X, tile.Y);
+                    Console.WriteLine($"FAIL: {filePath}:{line} - Exit tile at ({tile.X}, {tile.Y}) has {tile.ExitDirection} border '{border}' but expected 'Door'");
+                    return 1;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    static int FindLineNumber(string text, int x, int y)
+    {
+        var lines = text.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Contains($"\"x\": {x}") && lines[i].Contains($"\"y\": {y}"))
+                return i + 1;
+        }
         return 0;
     }
 

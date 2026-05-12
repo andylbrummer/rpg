@@ -23,8 +23,10 @@ public class GameServer
     private readonly EncounterTableRegistry _encounterTables;
     private readonly ClassRegistry _classRegistry;
     private readonly ItemRegistry _itemRegistry;
+    private readonly List<RoomSegment> _segments;
+    private readonly FileSystemWatcher? _segmentWatcher;
 
-    public GameServer(int port = 8080)
+    public GameServer(int port = 8080, bool isDev = false)
     {
         _listener = new HttpListener();
         Port = port;
@@ -43,6 +45,11 @@ public class GameServer
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
+        _segments = LoadSegments();
+        if (isDev)
+        {
+            _segmentWatcher = StartSegmentWatcher();
+        }
     }
 
     private static string? FindContentDir(params string[] subPath)
@@ -600,11 +607,18 @@ public class GameServer
         var seed = dungeonType.GetHashCode();
         var builder = new DungeonBuilder(seed: seed);
 
-        builder.AddSegment(CreateEntranceRoom());
-        builder.AddSegment(CreateCorridor());
-        builder.AddSegment(CreateChamber());
-        builder.AddSegment(CreateDeadEnd());
-        builder.AddSegment(CreateBossRoom());
+        var orderedIds = new[] { "entrance", "corridor", "chamber", "dead_end", "boss_room" };
+        var ordered = orderedIds
+            .Select(id => _segments.FirstOrDefault(s => s.Id == id))
+            .Where(s => s != null)
+            .Cast<RoomSegment>()
+            .Concat(_segments.Where(s => !orderedIds.Contains(s.Id)))
+            .ToList();
+
+        foreach (var segment in ordered)
+        {
+            builder.AddSegment(segment);
+        }
 
         var dungeonNames = new Dictionary<string, string>
         {
@@ -621,89 +635,71 @@ public class GameServer
         _gameState.EnterDungeon(dungeon, dungeonType);
     }
 
-    private static RoomSegment CreateEntranceRoom()
+    private static List<RoomSegment> LoadSegments()
     {
-        return new RoomSegment
-        {
-            Id = "entrance",
-            Name = "Entrance Hall",
-            Tags = new() { "entrance" },
-            Tiles = new()
-            {
-                new() { X = 0, Y = 0, Type = TileType.Floor },
-                new() { X = 1, Y = 0, Type = TileType.Floor, North = BorderType.Door, IsExit = true, ExitDirection = Direction.North },
-                new() { X = 2, Y = 0, Type = TileType.Floor },
-                new() { X = 0, Y = 1, Type = TileType.Floor },
-                new() { X = 1, Y = 1, Type = TileType.Floor },
-                new() { X = 2, Y = 1, Type = TileType.Floor },
-            }
-        };
+        var dir = FindContentDir("content", "segments", "broken-engine");
+        if (dir != null)
+            return SegmentLoader.LoadFromDirectory(dir);
+        return new List<RoomSegment>();
     }
 
-    private static RoomSegment CreateCorridor()
+    private FileSystemWatcher? StartSegmentWatcher()
     {
-        return new RoomSegment
+        var dir = FindContentDir("content", "segments", "broken-engine");
+        if (dir == null) return null;
+
+        var watcher = new FileSystemWatcher(dir, "*.json")
         {
-            Id = "corridor",
-            Name = "Corridor",
-            Tiles = new()
-            {
-                new() { X = 0, Y = 0, Type = TileType.Floor, South = BorderType.Door, IsExit = true, ExitDirection = Direction.South },
-                new() { X = 0, Y = -1, Type = TileType.Floor },
-                new() { X = 0, Y = -2, Type = TileType.Floor },
-                new() { X = 0, Y = -3, Type = TileType.Floor, North = BorderType.Door, IsExit = true, ExitDirection = Direction.North },
-            }
+            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName
         };
+        watcher.Changed += (_, _) => ReloadSegments();
+        watcher.Created += (_, _) => ReloadSegments();
+        watcher.Deleted += (_, _) => ReloadSegments();
+        watcher.EnableRaisingEvents = true;
+        return watcher;
     }
 
-    private static RoomSegment CreateChamber()
+    private void ReloadSegments()
     {
-        return new RoomSegment
+        try
         {
-            Id = "chamber",
-            Name = "Small Chamber",
-            Tiles = new()
-            {
-                new() { X = 0, Y = 1, Type = TileType.Floor, South = BorderType.Door, IsExit = true, ExitDirection = Direction.South },
-                new() { X = -1, Y = 0, Type = TileType.Floor },
-                new() { X = 0, Y = 0, Type = TileType.Floor },
-                new() { X = 1, Y = 0, Type = TileType.Floor },
-                new() { X = -1, Y = -1, Type = TileType.Floor },
-                new() { X = 0, Y = -1, Type = TileType.Floor },
-                new() { X = 1, Y = -1, Type = TileType.Floor },
-            }
-        };
+            var dir = FindContentDir("content", "segments", "broken-engine");
+            if (dir == null) return;
+
+            var reloaded = SegmentLoader.LoadFromDirectory(dir);
+            _segments.Clear();
+            _segments.AddRange(reloaded);
+            _ = BroadcastContentReload();
+        }
+        catch { }
     }
 
-    private static RoomSegment CreateDeadEnd()
+    private async Task BroadcastContentReload()
     {
-        return new RoomSegment
+        List<ClientConnection> clients;
+        lock (_clients)
         {
-            Id = "dead_end",
-            Name = "Dead End",
-            Tiles = new()
-            {
-                new() { X = 0, Y = 1, Type = TileType.Floor, South = BorderType.Door, IsExit = true, ExitDirection = Direction.South },
-                new() { X = 0, Y = 0, Type = TileType.Floor },
-            }
-        };
-    }
+            clients = _clients.ToList();
+        }
 
-    private static RoomSegment CreateBossRoom()
-    {
-        return new RoomSegment
+        foreach (var client in clients)
         {
-            Id = "boss_room",
-            Name = "Boss Room",
-            Tags = new() { "encounter:boss-encounter-1" },
-            Tiles = new()
+            try
             {
-                new() { X = 0, Y = 0, Type = TileType.Floor, South = BorderType.Door, IsExit = true, ExitDirection = Direction.South },
-                new() { X = -1, Y = -1, Type = TileType.Floor },
-                new() { X = 0, Y = -1, Type = TileType.Floor },
-                new() { X = 1, Y = -1, Type = TileType.Floor },
+                if (client.Socket.State == WebSocketState.Open)
+                {
+                    var envelope = new ProtocolEnvelope
+                    {
+                        V = 2,
+                        Type = "content.reload",
+                        Seq = client.NextServerSeq(),
+                        Payload = new { category = "segments" }
+                    };
+                    await SendEnvelope(client.Socket, envelope);
+                }
             }
-        };
+            catch { }
+        }
     }
 
     private static void TagBossTile(Dungeon dungeon)

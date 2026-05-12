@@ -8,4 +8,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\engine\RPC.Engine\RPC.Engine.csproj" />
+  </ItemGroup>
+
 </Project>

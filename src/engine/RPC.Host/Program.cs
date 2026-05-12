@@ -8,11 +8,13 @@ class Program
     [STAThread]
     static void Main(string[] args)
     {
-        var server = new GameServer(port: 19421);
-        server.Start();
-
         var isDev = args.Contains("--dev");
         var isHeadless = args.Contains("--headless");
+        var portArg = args.FirstOrDefault(a => a.StartsWith("--port="));
+        var port = portArg != null && int.TryParse(portArg.Substring(7), out var p) ? p : 19421;
+
+        var server = new GameServer(port: port, isDev: isDev);
+        server.Start();
 
         if (isHeadless)
         {
