@@ -6,12 +6,12 @@
   "started_at": "2026-05-12T10:18:00-05:00",
   "loop_task_id": "oQCov9S7gsKK",
   "current_task": {
-    "dart_id": "XuMfKFWlkIqz",
-    "title": "T79 Evidence system",
-    "iteration": 4
+    "dart_id": "jJRADn9PlDzv",
+    "title": "T80 Mastermind discovery flow",
+    "iteration": 5
   },
-  "completed_tasks": 3,
+  "completed_tasks": 4,
   "total_tasks": 39,
-  "iteration": 4,
+  "iteration": 5,
   "phase": "Phase 2: Strategic Depth"
 }
