@@ -67,9 +67,9 @@ public class TownStateTests : IDisposable
         Assert.NotNull(gs.Town);
         Assert.Equal("the_reach", gs.Town.CurrentTownId);
         Assert.Equal(6, gs.Town.TavernRoster.Count);
-        Assert.Empty(gs.Town.AvailableMissions);
+        Assert.Equal(4, gs.Town.AvailableMissions.Count);
         Assert.Empty(gs.Town.VendorStock);
-        Assert.Empty(gs.Town.FactionContacts);
+        Assert.Equal(2, gs.Town.FactionContacts.Count);
     }
 
     [Fact]
@@ -112,9 +112,9 @@ public class TownStateTests : IDisposable
         var loaded = gs2.LoadGame(_testSavePath);
         Assert.True(loaded);
 
-        Assert.Empty(gs2.Town.AvailableMissions);
+        Assert.Equal(4, gs2.Town.AvailableMissions.Count);
         Assert.Empty(gs2.Town.VendorStock);
-        Assert.Empty(gs2.Town.FactionContacts);
+        Assert.Equal(2, gs2.Town.FactionContacts.Count);
     }
 
     [Fact]
@@ -156,11 +156,15 @@ public class TownStateTests : IDisposable
     public void AcceptMission_RemovesFromAvailable()
     {
         var gs = new GameState(seed: 1);
-        gs.Town.AvailableMissions.Add(new MissionOffer("m1", "Test", "Desc", 1, new[] { "gold" }));
+        var initialCount = gs.Town.AvailableMissions.Count;
+        var mission = gs.Town.AvailableMissions[0];
 
-        var result = gs.AcceptMission("m1");
+        var result = gs.AcceptMission(mission.Id);
         Assert.True(result);
-        Assert.Empty(gs.Town.AvailableMissions);
+        Assert.Equal(initialCount - 1, gs.Town.AvailableMissions.Count);
+        Assert.Single(gs.Town.QuestLog);
+        Assert.Equal(mission.Id, gs.Town.QuestLog[0].Id);
+        Assert.Equal("active", gs.Town.QuestLog[0].Status);
     }
 
     [Fact]

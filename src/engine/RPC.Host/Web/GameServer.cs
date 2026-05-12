@@ -534,6 +534,19 @@ public class GameServer
                     var choice = action.TargetId ?? "default";
                     stateChanged = _gameState.ResolveTravelEncounter(choice);
                     break;
+                case "set_reputation":
+                    if (action.TargetId is string factionId && action.Value is int repValue)
+                    {
+                        _gameState.SetReputation(factionId, repValue);
+                        stateChanged = true;
+                    }
+                    break;
+                case "complete_mission":
+                    if (action.TargetId is string completeMissionId)
+                    {
+                        stateChanged = _gameState.CompleteMission(completeMissionId);
+                    }
+                    break;
                 default:
                     await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
                     return;
@@ -893,7 +906,9 @@ public class GameServer
                 title = m.Title,
                 description = m.Description,
                 minLevel = m.MinLevel,
-                rewards = m.Rewards
+                rewards = m.Rewards,
+                repReward = m.RepReward,
+                factionId = m.FactionId
             }).ToArray(),
             vendorStock = _gameState.Town.VendorStock.Select(v => new
             {
@@ -902,7 +917,13 @@ public class GameServer
                 price = v.Price,
                 quantity = v.Quantity
             }).ToArray(),
-            factionContacts = _gameState.Town.FactionContacts.ToArray(),
+            factionContacts = _gameState.Town.FactionContacts.Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                factionId = c.FactionId,
+                portrait = c.Portrait
+            }).ToArray(),
             tavernRoster = _gameState.Town.TavernRoster.Select(r => new
             {
                 id = r.Id,
@@ -919,7 +940,16 @@ public class GameServer
                 },
                 cost = r.Cost
             }).ToArray(),
-            viewedMissions = _gameState.Town.ViewedMissions.ToArray()
+            viewedMissions = _gameState.Town.ViewedMissions.ToArray(),
+            questLog = _gameState.Town.QuestLog.Select(q => new
+            {
+                id = q.Id,
+                title = q.Title,
+                description = q.Description,
+                repReward = q.RepReward,
+                factionId = q.FactionId,
+                status = q.Status
+            }).ToArray()
         };
 
         var overworld = new
@@ -967,6 +997,7 @@ public class GameServer
             town,
             overworld,
             travelEncounter,
+            reputation = _gameState.Reputation.ToDictionary(r => r.Key, r => r.Value),
             campaignEnded = _gameState.CampaignEnded
         };
 
@@ -1043,6 +1074,7 @@ public class PlayerAction
     public string? DungeonType { get; set; }
     public int? Slot { get; set; }
     public string? TargetId { get; set; }
+    public int? Value { get; set; }
 }
 
 public class ProtocolEnvelope

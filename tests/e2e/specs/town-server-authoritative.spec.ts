@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { sendWsAction } from './helpers';
 
 test.describe('Town: server-authoritative state', () => {
   test('initial state includes tavern roster with 6 recruits', async ({ page, serverUrl }) => {
@@ -30,18 +31,26 @@ test.describe('Town: server-authoritative state', () => {
     expect(afterNames).toEqual(beforeNames);
   });
 
-  test('missions and vendor sections render empty without errors', async ({ page, serverUrl }) => {
+  test('missions, faction contacts, and vendor sections render without errors', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
+    await sendWsAction(page, serverUrl, { type: 'reset_game' });
+    await page.waitForTimeout(500);
+
     const missionsSection = page.locator('.town-services h2:has-text("Missions") + .service-list');
+    const factionSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const vendorSection = page.locator('.town-services h2:has-text("Vendor") + .service-list');
 
-    await expect(missionsSection.locator('.empty-state')).toBeVisible();
+    await expect(missionsSection.locator('.service-item')).toHaveCount(4);
+    await expect(factionSection.locator('.contact-card')).toHaveCount(2);
     await expect(vendorSection.locator('.empty-state')).toBeVisible();
   });
 
   test('websocket state message includes town object', async ({ page, serverUrl }) => {
+    await sendWsAction(page, serverUrl, { type: 'reset_game' });
+    await page.waitForTimeout(500);
+
     const captured = await page.evaluate((url) => {
       return new Promise<any>((resolve) => {
         const ws = new WebSocket(`ws://${new URL(url).host}/`);
@@ -66,6 +75,9 @@ test.describe('Town: server-authoritative state', () => {
     expect(Array.isArray(captured.town.tavernRoster)).toBe(true);
     expect(captured.town.tavernRoster.length).toBe(6);
     expect(Array.isArray(captured.town.availableMissions)).toBe(true);
+    expect(captured.town.availableMissions.length).toBe(4);
+    expect(Array.isArray(captured.town.factionContacts)).toBe(true);
+    expect(captured.town.factionContacts.length).toBe(2);
     expect(Array.isArray(captured.town.vendorStock)).toBe(true);
   });
 });

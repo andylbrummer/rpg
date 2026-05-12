@@ -110,6 +110,8 @@ export interface MissionOffer {
   description: string;
   minLevel: number;
   rewards: string[];
+  repReward: number;
+  factionId: string;
 }
 
 export interface VendorItem {
@@ -134,13 +136,30 @@ export interface TavernRecruit {
   cost: number;
 }
 
+export interface FactionContact {
+  id: string;
+  name: string;
+  factionId: string;
+  portrait: string;
+}
+
+export interface ActiveMission {
+  id: string;
+  title: string;
+  description: string;
+  repReward: number;
+  factionId: string;
+  status: string;
+}
+
 export interface TownState {
   currentTownId: string;
   availableMissions: MissionOffer[];
   vendorStock: VendorItem[];
-  factionContacts: string[];
+  factionContacts: FactionContact[];
   tavernRoster: TavernRecruit[];
   viewedMissions: string[];
+  questLog: ActiveMission[];
 }
 
 export interface OverworldNode {
@@ -189,6 +208,7 @@ export interface GameState {
   town?: TownState;
   overworld?: OverworldState;
   travelEncounter?: TravelEncounter;
+  reputation?: Record<string, number>;
   campaignEnded?: boolean;
 }
 
@@ -213,7 +233,9 @@ export type PlayerAction =
   | { type: 'mission_accept'; targetId: string }
   | { type: 'vendor_purchase'; targetId: string }
   | { type: 'travel'; targetId: string }
-  | { type: 'resolve_travel_encounter'; targetId: string };
+  | { type: 'resolve_travel_encounter'; targetId: string }
+  | { type: 'set_reputation'; targetId: string; value: number }
+  | { type: 'complete_mission'; targetId: string };
 
 export interface CombatAction {
   actorId: string;

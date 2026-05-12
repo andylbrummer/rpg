@@ -94,6 +94,14 @@ public class GameState
         {
             Town.TavernRoster = TavernRecruitGenerator.GenerateRoster(_seed);
         }
+        if (Town.FactionContacts.Count == 0)
+        {
+            Town.FactionContacts = FactionContactGenerator.GenerateContacts();
+        }
+        if (Town.AvailableMissions.Count == 0)
+        {
+            Town.AvailableMissions = FactionContactGenerator.GenerateMissions();
+        }
         if (string.IsNullOrEmpty(Town.CurrentTownId))
         {
             Town.CurrentTownId = "the_reach";
@@ -654,8 +662,27 @@ public class GameState
         if (mission == null) return false;
 
         Town.AvailableMissions.Remove(mission);
+        Town.QuestLog.Add(new ActiveMission(mission.Id, mission.Title, mission.Description, mission.RepReward, mission.FactionId, "active"));
         LastUpdate = DateTime.UtcNow;
         return true;
+    }
+
+    public bool CompleteMission(string missionId)
+    {
+        var mission = Town.QuestLog.FirstOrDefault(m => m.Id == missionId && m.Status == "active");
+        if (mission == null) return false;
+
+        var index = Town.QuestLog.FindIndex(m => m.Id == missionId);
+        Town.QuestLog[index] = mission with { Status = "completed" };
+        ApplyReputationDelta(mission.FactionId, mission.RepReward, "mission_complete");
+        LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    public void SetReputation(string factionId, int value)
+    {
+        Reputation[factionId] = value;
+        LastUpdate = DateTime.UtcNow;
     }
 
     public bool PurchaseVendorItem(string itemId)

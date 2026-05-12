@@ -202,7 +202,7 @@ public class SaveSchemaV2Tests : IDisposable
     {
         var json = """
             {
-              "schemaVersion": 2,
+              "schemaVersion": 3,
               "party": [null,null,null,null,null,null],
               "player": { "x": 0, "y": 0, "facing": "North" },
               "exploredTiles": [], "mode": "Menu",

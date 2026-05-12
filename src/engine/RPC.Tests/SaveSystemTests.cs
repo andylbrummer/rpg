@@ -73,7 +73,7 @@ public class SaveSystemTests : IDisposable
     {
         var json = """
             {
-              "schemaVersion": 2,
+              "schemaVersion": 3,
               "party": [
                 null,
                 null,
@@ -111,7 +111,7 @@ public class SaveSystemTests : IDisposable
     {
         var json = """
             {
-              "schemaVersion": 2,
+              "schemaVersion": 3,
               "party": [
                 null,
                 null,

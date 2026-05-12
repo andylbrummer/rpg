@@ -48,7 +48,35 @@
     selectedCharacter = selectedCharacter === name ? null : name;
   }
 
+  function getFactionMissions(factionId: string) {
+    return town?.availableMissions.filter(m => m.factionId === factionId) ?? [];
+  }
+
+  function greetingForRep(rep: number): string {
+    if (rep < 0) return '"What do you want?"';
+    if (rep >= 30) return '"Good to see you again."';
+    return '"Hello."';
+  }
+
+  function dismissiveLineForFaction(factionId: string): string {
+    return factionId === 'bureau'
+      ? '"The Bureau has no business with you."'
+      : '"The Convocation does not suffer fools."';
+  }
+
+  function rumorForFaction(factionId: string): string {
+    return factionId === 'bureau'
+      ? '"Rumor: A patrol went missing near the sewers."'
+      : '"Rumor: The Bloom whispers differently tonight."';
+  }
+
+  const factionColors: Record<string, string> = {
+    bureau: '#4488aa',
+    convocation: '#aa44aa',
+  };
+
   const town = $derived(gameState?.town);
+  const reputation = $derived(gameState?.reputation ?? {});
 
   const partyMembers = $derived(gameState?.party ?? []);
   const frontRow = $derived(partyMembers.filter(m => m.row === 0));
@@ -255,6 +283,69 @@
             </div>
           {:else}
             <div class="empty-state">No items in stock.</div>
+          {/each}
+        </div>
+
+        <h2>Faction Contacts</h2>
+        <div class="service-list">
+          {#each town?.factionContacts || [] as contact (contact.id)}
+            <div class="contact-card">
+              <div class="contact-header">
+                <div class="contact-portrait" style="background-color: {factionColors[contact.factionId] || '#888'}"></div>
+                <div class="contact-info">
+                  <span class="contact-name">{contact.name}</span>
+                  <span class="contact-faction" style="color: {factionColors[contact.factionId] || '#888'}">{contact.factionId}</span>
+                </div>
+                <div class="contact-rep">
+                  <div class="rep-bar">
+                    <div class="rep-fill" style="width: {Math.max(0, ((reputation[contact.factionId] || 0) + 100) / 2)}%"></div>
+                  </div>
+                  <span class="rep-value">{reputation[contact.factionId] || 0}</span>
+                </div>
+              </div>
+              <div class="contact-dialogue">
+                <p class="dialogue-line greeting">{greetingForRep(reputation[contact.factionId] || 0)}</p>
+                {#if (reputation[contact.factionId] || 0) <= 0}
+                  <p class="dialogue-line dismissive">{dismissiveLineForFaction(contact.factionId)}</p>
+                {/if}
+                {#if (reputation[contact.factionId] || 0) >= 10}
+                  <p class="dialogue-line rumor">{rumorForFaction(contact.factionId)}</p>
+                {/if}
+                {#if (reputation[contact.factionId] || 0) >= 20}
+                  {#each getFactionMissions(contact.factionId) as mission (mission.id)}
+                    <div class="mission-offer">
+                      <div class="mission-offer-text">
+                        <span class="mission-offer-title">{mission.title}</span>
+                        <span class="mission-offer-desc">{mission.description}</span>
+                      </div>
+                      <button
+                        type="button"
+                        class="action-btn"
+                        onclick={() => onMissionAccept(mission.id)}
+                      >
+                        Accept
+                      </button>
+                    </div>
+                  {:else}
+                    <p class="dialogue-line empty">No missions currently available.</p>
+                  {/each}
+                {/if}
+              </div>
+            </div>
+          {:else}
+            <div class="empty-state">No faction contacts.</div>
+          {/each}
+        </div>
+
+        <h2>Quest Log</h2>
+        <div class="service-list">
+          {#each town?.questLog || [] as quest (quest.id)}
+            <div class="service-item">
+              <div class="quest-title">{quest.title}</div>
+              <span class="quest-status" class:completed={quest.status === 'completed'}>{quest.status}</span>
+            </div>
+          {:else}
+            <div class="empty-state">No active quests.</div>
           {/each}
         </div>
       </div>
@@ -733,4 +824,147 @@
 
   .save-btn { border-color: #444466; color: #8888cc; }
   .reset-btn { border-color: #664444; color: #cc8888; }
+
+  .contact-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 0.0625em solid #333;
+    border-radius: 0.25rem;
+  }
+
+  .contact-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .contact-portrait {
+    width: clamp(1.5rem, 3vw, 2rem);
+    height: clamp(1.5rem, 3vw, 2rem);
+    border-radius: 50%;
+    border: 0.125em solid #666;
+    flex-shrink: 0;
+  }
+
+  .contact-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .contact-name {
+    font-size: clamp(0.7rem, 1.4vw, 0.8rem);
+    font-weight: bold;
+    color: #eee;
+  }
+
+  .contact-faction {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    text-transform: capitalize;
+  }
+
+  .contact-rep {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+    flex-shrink: 0;
+  }
+
+  .rep-bar {
+    width: 3rem;
+    height: 0.375rem;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 0.2rem;
+    overflow: hidden;
+  }
+
+  .rep-fill {
+    height: 100%;
+    background: #d4a84b;
+    border-radius: 0.2rem;
+    transition: width 0.3s;
+  }
+
+  .rep-value {
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    color: #aaa;
+  }
+
+  .contact-dialogue {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-left: 0.25rem;
+  }
+
+  .dialogue-line {
+    margin: 0;
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    color: #aaa;
+  }
+
+  .dialogue-line.greeting {
+    color: #ccc;
+  }
+
+  .dialogue-line.dismissive {
+    color: #c44;
+    font-style: italic;
+  }
+
+  .dialogue-line.rumor {
+    color: #88ccff;
+    font-style: italic;
+  }
+
+  .mission-offer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+  }
+
+  .mission-offer-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .mission-offer-title {
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
+    color: #eee;
+    font-weight: bold;
+  }
+
+  .mission-offer-desc {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    color: #888;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .quest-title {
+    color: #eee;
+    font-weight: bold;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .quest-status {
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    color: #d4a84b;
+    text-transform: capitalize;
+    flex-shrink: 0;
+  }
+
+  .quest-status.completed {
+    color: #44aa44;
+  }
 </style>

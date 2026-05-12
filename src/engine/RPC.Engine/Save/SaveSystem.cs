@@ -27,9 +27,10 @@ public class SaveTownState
     public string CurrentTownId { get; set; } = "the_reach";
     public SaveMissionOffer[] AvailableMissions { get; set; } = Array.Empty<SaveMissionOffer>();
     public SaveVendorItem[] VendorStock { get; set; } = Array.Empty<SaveVendorItem>();
-    public string[] FactionContacts { get; set; } = Array.Empty<string>();
+    public SaveFactionContact[] FactionContacts { get; set; } = Array.Empty<SaveFactionContact>();
     public SaveTavernRecruit[] TavernRoster { get; set; } = Array.Empty<SaveTavernRecruit>();
     public string[] ViewedMissions { get; set; } = Array.Empty<string>();
+    public SaveActiveMission[] QuestLog { get; set; } = Array.Empty<SaveActiveMission>();
 }
 
 public class SaveMissionOffer
@@ -39,6 +40,8 @@ public class SaveMissionOffer
     public string Description { get; set; } = "";
     public int MinLevel { get; set; }
     public string[] Rewards { get; set; } = Array.Empty<string>();
+    public int RepReward { get; set; }
+    public string FactionId { get; set; } = "";
 }
 
 public class SaveVendorItem
@@ -65,6 +68,24 @@ public class SaveTavernRecruit
     public int Level { get; set; }
     public BaseStats BaseStats { get; set; }
     public int Cost { get; set; }
+}
+
+public class SaveFactionContact
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string FactionId { get; set; } = "";
+    public string Portrait { get; set; } = "";
+}
+
+public class SaveActiveMission
+{
+    public string Id { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
+    public int RepReward { get; set; }
+    public string FactionId { get; set; } = "";
+    public string Status { get; set; } = "";
 }
 
 public class SavePartyMember
@@ -134,7 +155,7 @@ public static class SaveSystem
             var data = JsonSerializer.Deserialize<SaveData>(json, Options);
             if (data == null) return false;
 
-            if (data.SchemaVersion != 2)
+            if (data.SchemaVersion != 3)
             {
                 Console.Error.WriteLine(
                     $"Save file '{path}' has unsupported schema version {data.SchemaVersion}. Deleting; player starts new game.");
@@ -193,7 +214,7 @@ public static class SaveSystem
 
         return new SaveData
         {
-            SchemaVersion = 2,
+            SchemaVersion = 3,
             Party = party,
             Player = new SavePlayer
             {
@@ -214,7 +235,9 @@ public static class SaveSystem
                         Title = m.Title,
                         Description = m.Description,
                         MinLevel = m.MinLevel,
-                        Rewards = m.Rewards
+                        Rewards = m.Rewards,
+                        RepReward = m.RepReward,
+                        FactionId = m.FactionId
                     }).ToArray(),
                 VendorStock = state.Town.VendorStock
                     .Select(v => new SaveVendorItem
@@ -224,7 +247,14 @@ public static class SaveSystem
                         Price = v.Price,
                         Quantity = v.Quantity
                     }).ToArray(),
-                FactionContacts = state.Town.FactionContacts.ToArray(),
+                FactionContacts = state.Town.FactionContacts
+                    .Select(c => new SaveFactionContact
+                    {
+                        Id = c.Id,
+                        Name = c.Name,
+                        FactionId = c.FactionId,
+                        Portrait = c.Portrait
+                    }).ToArray(),
                 TavernRoster = state.Town.TavernRoster
                     .Select(r => new SaveTavernRecruit
                     {
@@ -235,7 +265,17 @@ public static class SaveSystem
                         BaseStats = r.BaseStats,
                         Cost = r.Cost
                     }).ToArray(),
-                ViewedMissions = state.Town.ViewedMissions.ToArray()
+                ViewedMissions = state.Town.ViewedMissions.ToArray(),
+                QuestLog = state.Town.QuestLog
+                    .Select(q => new SaveActiveMission
+                    {
+                        Id = q.Id,
+                        Title = q.Title,
+                        Description = q.Description,
+                        RepReward = q.RepReward,
+                        FactionId = q.FactionId,
+                        Status = q.Status
+                    }).ToArray()
             },
             ActionLog = state.ActionLog.Select(e => new SaveActionLogEntry
             {
@@ -304,16 +344,21 @@ public static class SaveSystem
         {
             state.Town.CurrentTownId = data.Town.CurrentTownId;
             state.Town.AvailableMissions = data.Town.AvailableMissions
-                .Select(m => new MissionOffer(m.Id, m.Title, m.Description, m.MinLevel, m.Rewards))
+                .Select(m => new MissionOffer(m.Id, m.Title, m.Description, m.MinLevel, m.Rewards, m.RepReward, m.FactionId))
                 .ToList();
             state.Town.VendorStock = data.Town.VendorStock
                 .Select(v => new VendorItem(v.ItemId, v.Name, v.Price, v.Quantity))
                 .ToList();
-            state.Town.FactionContacts = data.Town.FactionContacts.ToList();
+            state.Town.FactionContacts = data.Town.FactionContacts
+                .Select(c => new FactionContact(c.Id, c.Name, c.FactionId, c.Portrait))
+                .ToList();
             state.Town.TavernRoster = data.Town.TavernRoster
                 .Select(r => new TavernRecruit(r.Id, r.Name, r.ClassId, r.Level, r.BaseStats, r.Cost))
                 .ToList();
             state.Town.ViewedMissions = data.Town.ViewedMissions.ToList();
+            state.Town.QuestLog = data.Town.QuestLog
+                .Select(q => new ActiveMission(q.Id, q.Title, q.Description, q.RepReward, q.FactionId, q.Status))
+                .ToList();
         }
     }
 

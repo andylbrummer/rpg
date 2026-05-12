@@ -7,16 +7,21 @@ public class TownState
     public string CurrentTownId { get; set; } = "the_reach";
     public List<MissionOffer> AvailableMissions { get; set; } = new();
     public List<VendorItem> VendorStock { get; set; } = new();
-    public List<string> FactionContacts { get; set; } = new();
+    public List<FactionContact> FactionContacts { get; set; } = new();
     public List<TavernRecruit> TavernRoster { get; set; } = new();
     public List<string> ViewedMissions { get; set; } = new();
+    public List<ActiveMission> QuestLog { get; set; } = new();
 }
 
-public record MissionOffer(string Id, string Title, string Description, int MinLevel, string[] Rewards);
+public record MissionOffer(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward = 0, string FactionId = "");
 
 public record VendorItem(string ItemId, string Name, int Price, int Quantity);
 
 public record TavernRecruit(string Id, string Name, string ClassId, int Level, BaseStats BaseStats, int Cost);
+
+public record FactionContact(string Id, string Name, string FactionId, string Portrait);
+
+public record ActiveMission(string Id, string Title, string Description, int RepReward, string FactionId, string Status);
 
 public static class TavernRecruitGenerator
 {
@@ -68,5 +73,28 @@ public static class TavernRecruitGenerator
         }
 
         return roster;
+    }
+}
+
+public static class FactionContactGenerator
+{
+    public static List<FactionContact> GenerateContacts()
+    {
+        return new List<FactionContact>
+        {
+            new("contact-bureau", "Agent Voss", "bureau", "portrait_voss"),
+            new("contact-convocation", "Seer Maren", "convocation", "portrait_maren")
+        };
+    }
+
+    public static List<MissionOffer> GenerateMissions()
+    {
+        return new List<MissionOffer>
+        {
+            new("mission-bureau-1", "Cleanse the Sewers", "Eliminate the rat infestation beneath the Reach.", 1, new[] { "100g" }, 10, "bureau"),
+            new("mission-bureau-2", "Patrol the Walls", "Guard the outer perimeter for one night.", 1, new[] { "50g" }, 5, "bureau"),
+            new("mission-convocation-1", "Gather Bloom Samples", "Collect rare flora from the Hollow.", 1, new[] { "75g" }, 10, "convocation"),
+            new("mission-convocation-2", "Scout the Crypt", "Investigate whispering echoes.", 1, new[] { "60g" }, 5, "convocation")
+        };
     }
 }
