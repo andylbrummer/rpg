@@ -42,6 +42,12 @@ export interface Equipment {
   accessory2: string | null;
 }
 
+export interface ComponentStack {
+  itemId: string;
+  count: number;
+  maxStack: number;
+}
+
 export interface PartyMember {
   slot: number;
   id: string;
@@ -62,6 +68,7 @@ export interface PartyMember {
   awaitingBranchChoice?: boolean;
   availableBranches?: string[];
   classAbilities?: Array<{ id: string; name: string; branch?: string }>;
+  componentInventory: ComponentStack[];
 }
 
 export interface AbilityDef {
@@ -240,6 +247,7 @@ export interface GameState {
   evidence?: EvidenceState;
   partyGold?: number;
   partyInventory?: string[];
+  expeditionCache?: ComponentStack[];
   campaignEnded?: boolean;
   actionLog?: ActionLogEntry[];
 }
@@ -271,7 +279,9 @@ export type PlayerAction =
   | { type: 'fail_mission'; targetId: string }
   | { type: 'abandon_mission'; targetId: string }
   | { type: 'dialogue_choice'; targetId: string; value: number }
-  | { type: 'branch_choose'; targetId: string; branch: string };
+  | { type: 'branch_choose'; targetId: string; branch: string }
+  | { type: 'transfer_to_cache'; slot: number; targetId: string; value: number }
+  | { type: 'transfer_from_cache'; slot: number; targetId: string; value: number };
 
 export interface CombatAction {
   actorId: string;

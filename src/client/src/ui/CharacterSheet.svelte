@@ -5,9 +5,19 @@
     member: PartyMember;
     onClose: () => void;
     onSwapRow: (slot: number) => void;
+    onTransferToCache: (itemId: string, count: number) => void;
+    onTransferFromCache: (itemId: string, count: number) => void;
+    expeditionCache: import('../types/game').ComponentStack[];
   }
 
-  let { member, onClose, onSwapRow }: Props = $props();
+  let { member, onClose, onSwapRow, onTransferToCache, onTransferFromCache, expeditionCache }: Props = $props();
+
+  function getStockColor(count: number): string {
+    if (count <= 1) return '#ff4444';
+    if (count <= 2) return '#ff8800';
+    if (count <= 3) return '#ffcc00';
+    return '#aaaaaa';
+  }
 
   const statLabels: Record<string, string> = {
     strength: 'STR',
@@ -100,6 +110,38 @@
         {/each}
       </div>
     </div>
+
+    <div class="sheet-section">
+      <h3>Components</h3>
+      {#if member.componentInventory.length === 0}
+        <div class="empty-inventory">No components</div>
+      {:else}
+        <div class="component-list">
+          {#each member.componentInventory as stack}
+            <div class="component-row">
+              <span class="component-name" style="color: {getStockColor(stack.count)}">{stack.itemId}</span>
+              <span class="component-count" style="color: {getStockColor(stack.count)}">{stack.count}/{stack.maxStack}</span>
+              <button class="transfer-btn" onclick={() => onTransferToCache(stack.itemId, Math.min(stack.count, 5))}>→ Cache</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    {#if expeditionCache.length > 0}
+      <div class="sheet-section">
+        <h3>Expedition Cache</h3>
+        <div class="component-list">
+          {#each expeditionCache as stack}
+            <div class="component-row">
+              <span class="component-name">{stack.itemId}</span>
+              <span class="component-count">{stack.count}/{stack.maxStack}</span>
+              <button class="transfer-btn" onclick={() => onTransferFromCache(stack.itemId, Math.min(stack.count, 5))}>→ {member.name}</button>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -312,5 +354,54 @@
     border-radius: 0.2rem;
     font-size: clamp(0.65rem, 1.3vw, 0.75rem);
     color: #bbb;
+  }
+
+  .empty-inventory {
+    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+    color: #666;
+    font-style: italic;
+    padding: 0.5rem;
+    text-align: center;
+  }
+
+  .component-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .component-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.3rem 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 0.2rem;
+    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+    gap: 0.5rem;
+  }
+
+  .component-name {
+    flex: 1;
+    text-transform: capitalize;
+  }
+
+  .component-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .transfer-btn {
+    padding: 0.15rem 0.4rem;
+    background: rgba(68, 170, 255, 0.15);
+    border: 0.0625em solid #4488aa;
+    border-radius: 0.2rem;
+    color: #88ccff;
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .transfer-btn:hover {
+    background: rgba(68, 170, 255, 0.3);
   }
 </style>

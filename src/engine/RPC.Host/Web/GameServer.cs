@@ -9,6 +9,7 @@ using RPC.Engine.Character;
 using RPC.Engine.Combat;
 using RPC.Engine.Content;
 using RPC.Engine.Dungeons;
+using RPC.Engine.Inventory;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Town;
 
@@ -622,6 +623,20 @@ public class GameServer
                         stateChanged = _gameState.AccuseFaction(accusedFactionId);
                     }
                     break;
+                case "transfer_to_cache":
+                    if (action.Slot is int toCacheSlot && action.TargetId is string toCacheItemId && action.Value is int toCacheCount)
+                    {
+                        ComponentInventorySystem.TransferToExpeditionCache(_gameState.Party, toCacheSlot, toCacheItemId, toCacheCount);
+                        stateChanged = true;
+                    }
+                    break;
+                case "transfer_from_cache":
+                    if (action.Slot is int fromCacheSlot && action.TargetId is string fromCacheItemId && action.Value is int fromCacheCount)
+                    {
+                        ComponentInventorySystem.TransferFromExpeditionCache(_gameState.Party, fromCacheSlot, fromCacheItemId, fromCacheCount);
+                        stateChanged = true;
+                    }
+                    break;
                 default:
                     await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
                     return;
@@ -916,6 +931,7 @@ public class GameServer
                         .ToArray() ?? Array.Empty<string>(),
                     abilities = classDef?.Abilities.Select(a => new { id = a.Id, name = a.Name, branch = a.Branch }).ToArray() ?? Array.Empty<object>(),
                     tempModifiers = c.TempModifiers.Select(m => new { stat = m.Stat, delta = m.Delta, duration = m.Duration, source = m.Source }).ToArray(),
+                    componentInventory = c.ComponentInventory.Select(ci => new { itemId = ci.ItemId, count = ci.Count, maxStack = ci.MaxStack }).ToArray(),
                 };
             }).ToArray();
 
@@ -1127,6 +1143,7 @@ public class GameServer
             },
             partyGold = _gameState.PartyGold,
             partyInventory = _gameState.PartyInventory.ToArray(),
+            expeditionCache = _gameState.Party.ExpeditionCache.Select(c => new { itemId = c.ItemId, count = c.Count, maxStack = c.MaxStack }).ToArray(),
             campaignEnded = _gameState.CampaignEnded,
             factionStates = CampaignConfig.FactionPool.ToDictionary(
                 f => f,

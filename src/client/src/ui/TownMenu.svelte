@@ -504,6 +504,9 @@
     member={sheetMember}
     onClose={() => sheetMember = null}
     onSwapRow={onSwapRow}
+    onTransferToCache={(itemId, count) => sendAction({ type: 'transfer_to_cache', slot: sheetMember!.slot, targetId: itemId, value: count })}
+    onTransferFromCache={(itemId, count) => sendAction({ type: 'transfer_from_cache', slot: sheetMember!.slot, targetId: itemId, value: count })}
+    expeditionCache={gameState?.expeditionCache ?? []}
   />
 {/if}
 

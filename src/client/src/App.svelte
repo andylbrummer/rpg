@@ -7,6 +7,7 @@
   import PartyStatusBar from './ui/PartyStatusBar.svelte';
   import ExplorationHUD from './ui/ExplorationHUD.svelte';
   import FieldNotesPanel from './ui/FieldNotesPanel.svelte';
+  import CharacterSheet from './ui/CharacterSheet.svelte';
   import { DungeonRenderer } from './renderer/DungeonRenderer';
   import { AmbientAudioManager } from './renderer/AmbientAudio';
   import type { GameState } from './types/game';
@@ -23,6 +24,7 @@
   let synergyFlashTargetId = $state<string | null>(null);
   let showFieldNotes = $state(false);
   let replaySynergyId = $state<string | null>(null);
+  let selectedMemberSlot = $state<number | null>(null);
 
   const DISCOVERY_KEY = 'rpc_discovered_synergies';
   const REVEALED_KEY = 'rpc_revealed_synergies';
@@ -372,6 +374,22 @@
     sendAction({ type: 'swap_row', slot });
   }
 
+  function handleOpenInventory(slot: number) {
+    selectedMemberSlot = slot;
+  }
+
+  function handleTransferToCache(itemId: string, count: number) {
+    if (selectedMemberSlot !== null) {
+      sendAction({ type: 'transfer_to_cache', slot: selectedMemberSlot, targetId: itemId, value: count });
+    }
+  }
+
+  function handleTransferFromCache(itemId: string, count: number) {
+    if (selectedMemberSlot !== null) {
+      sendAction({ type: 'transfer_from_cache', slot: selectedMemberSlot, targetId: itemId, value: count });
+    }
+  }
+
   function handleTavernRecruit(id: string) {
     sendAction({ type: 'tavern_recruit', targetId: id });
   }
@@ -522,8 +540,21 @@
     </section>
     {#if gameState?.mode !== 'Combat'}
       <footer class="bottom-bar">
-        <PartyStatusBar party={gameState?.party || []} />
+        <PartyStatusBar party={gameState?.party || []} onOpenInventory={handleOpenInventory} />
       </footer>
+    {/if}
+    {#if selectedMemberSlot !== null && gameState?.party}
+      {@const member = gameState.party.find(m => m.slot === selectedMemberSlot)}
+      {#if member}
+        <CharacterSheet
+          {member}
+          onClose={() => selectedMemberSlot = null}
+          onSwapRow={handleSwapRow}
+          onTransferToCache={handleTransferToCache}
+          onTransferFromCache={handleTransferFromCache}
+          expeditionCache={gameState.expeditionCache ?? []}
+        />
+      {/if}
     {/if}
   </div>
 </main>
