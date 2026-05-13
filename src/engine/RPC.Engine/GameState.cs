@@ -219,6 +219,7 @@ public class GameState
         var px = Player.Position.X;
         var py = Player.Position.Y;
         var viewRadius = 3;
+        int newTiles = 0;
 
         for (int x = Math.Max(0, px - viewRadius); x < Math.Min(CurrentDungeon.Width, px + viewRadius + 1); x++)
         {
@@ -227,8 +228,26 @@ public class GameState
                 var tile = CurrentDungeon.Tiles[x, y];
                 if (tile.Type != TileType.Empty)
                 {
-                    ExploredTiles.Add($"{x},{y}");
+                    if (ExploredTiles.Add($"{x},{y}"))
+                        newTiles++;
                 }
+            }
+        }
+
+        if (newTiles > 0)
+        {
+            const int exploreXpPerTile = 5;
+            var totalExploreXp = newTiles * exploreXpPerTile;
+            for (int i = 0; i < Party.Members.Length; i++)
+            {
+                var member = Party.Members[i];
+                if (member.Id == Guid.Empty) continue;
+                var updated = member with { Xp = member.Xp + totalExploreXp };
+                if (_classRegistry?.Get(member.ClassId) is { } classDef)
+                {
+                    updated = LevelingSystem.CheckAndApplyLevelUps(updated, classDef);
+                }
+                Party.SetMember(i, updated);
             }
         }
     }
@@ -578,7 +597,7 @@ public class GameState
                         bool stabilized = combatant.StatusEffects.Any(s => s.Type == "stabilized");
                         if (stabilized)
                         {
-                            var saved = member with { CurrentHp = 1, Xp = member.Xp + Combat.XpReward, TempModifiers = combatant.TempModifiers };
+                            var saved = member with { CurrentHp = 1, Xp = member.Xp + Combat.XpReward * CurrentAct, TempModifiers = combatant.TempModifiers };
                             Party.SetMember(index, saved);
                             EmitActionLog("combat", "character_stabilized", new Dictionary<string, string>
                             {
@@ -599,7 +618,8 @@ public class GameState
                         continue;
                     }
 
-                    var newXp = member.Xp + Combat.XpReward;
+                    var scaledXpReward = Combat.XpReward * CurrentAct;
+                    var newXp = member.Xp + scaledXpReward;
                     var updated = member with { CurrentHp = combatant.Hp, Xp = newXp, TempModifiers = combatant.TempModifiers };
 
                     // Check for level ups
@@ -619,7 +639,7 @@ public class GameState
 
             LastCombatResult = new CombatResult(
                 allEnemiesDead,
-                Combat.XpReward,
+                Combat.XpReward * CurrentAct,
                 levelUps.ToArray(),
                 Combat.Round);
 
@@ -1480,11 +1500,26 @@ public class GameState
         var source = $"mission_complete_{mission.Type.ToString().ToLower()}";
         ApplyMissionReputation(mission.FactionId, primaryDelta, opposedDelta, source);
 
+        // Grant quest completion XP
+        var questXp = mission.Type == MissionType.Main ? 100 : 50;
+        for (int i = 0; i < Party.Members.Length; i++)
+        {
+            var member = Party.Members[i];
+            if (member.Id == Guid.Empty) continue;
+            var updated = member with { Xp = member.Xp + questXp };
+            if (_classRegistry?.Get(member.ClassId) is { } classDef)
+            {
+                updated = LevelingSystem.CheckAndApplyLevelUps(updated, classDef);
+            }
+            Party.SetMember(i, updated);
+        }
+
         EmitActionLog("faction", "mission_completed", new Dictionary<string, string>
         {
             { "missionId", mission.Id },
             { "factionId", mission.FactionId },
-            { "type", mission.Type.ToString().ToLower() }
+            { "type", mission.Type.ToString().ToLower() },
+            { "xpReward", questXp.ToString() }
         });
 
         var newPrimaryRep = Reputation[mission.FactionId];
@@ -1637,9 +1672,9 @@ public class BoundedTileSet
 
     public int Count => _set.Count;
 
-    public void Add(string key)
+    public bool Add(string key)
     {
-        if (_set.Contains(key)) return;
+        if (_set.Contains(key)) return false;
         if (_set.Count >= _max)
         {
             var oldest = _order.Dequeue();
@@ -1647,6 +1682,7 @@ public class BoundedTileSet
         }
         _set.Add(key);
         _order.Enqueue(key);
+        return true;
     }
 
     public void Clear()

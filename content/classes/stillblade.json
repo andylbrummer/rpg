@@ -13,37 +13,198 @@
     {
       "id": "rend",
       "name": "Rend",
-      "cost": { "type": "none" },
-      "effect": { "type": "damage", "value": "1d8+PWR", "range": "melee" },
-      "tags": ["physical", "slash"]
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "1d8+PWR",
+        "range": "melee"
+      },
+      "tags": [
+        "physical",
+        "slash"
+      ]
     },
     {
       "id": "silence_strike",
       "name": "Silence Strike",
-      "cost": { "type": "none" },
-      "effect": { "type": "damage", "value": "1d6+PWR", "range": "melee", "extra": "dispel_one_buff" },
-      "tags": ["physical", "anti_magic"]
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "1d6+PWR",
+        "range": "melee",
+        "extra": "dispel_one_buff"
+      },
+      "tags": [
+        "physical",
+        "anti_magic"
+      ]
     },
     {
       "id": "warding_stance",
       "name": "Warding Stance",
-      "cost": { "type": "none" },
-      "effect": { "type": "buff", "stat": "evade", "value": 4, "duration": 2, "target": "self" },
-      "tags": ["stance", "defense"]
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "evade",
+        "value": 4,
+        "duration": 2,
+        "target": "self"
+      },
+      "tags": [
+        "stance",
+        "defense"
+      ]
     },
     {
       "id": "break_magic",
       "name": "Break Magic",
-      "cost": { "type": "none" },
-      "effect": { "type": "dispel", "target": "enemy", "count": 2 },
-      "tags": ["anti_magic", "dispel"]
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "dispel",
+        "target": "enemy",
+        "count": 2
+      },
+      "tags": [
+        "anti_magic",
+        "dispel"
+      ]
     }
   ],
   "levelTable": [
-    { "level": 1, "hpGain": 0, "statGain": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": ["rend", "silence_strike"] },
-    { "level": 2, "hpGain": 3, "statGain": { "strength": 1, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 0 }, "newAbilities": ["warding_stance"] },
-    { "level": 3, "hpGain": 3, "statGain": { "strength": 1, "dexterity": 1, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] },
-    { "level": 4, "hpGain": 3, "statGain": { "strength": 0, "dexterity": 0, "constitution": 1, "intelligence": 0, "willpower": 1 }, "newAbilities": ["break_magic"] },
-    { "level": 5, "hpGain": 4, "statGain": { "strength": 1, "dexterity": 1, "constitution": 0, "intelligence": 0, "willpower": 0 }, "newAbilities": [] }
+    {
+      "level": 1,
+      "hpGain": 0,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": [
+        "rend",
+        "silence_strike"
+      ]
+    },
+    {
+      "level": 2,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": [
+        "warding_stance"
+      ]
+    },
+    {
+      "level": 3,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 1,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 4,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 1
+      },
+      "newAbilities": [
+        "break_magic"
+      ]
+    },
+    {
+      "level": 5,
+      "hpGain": 4,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 1,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 6,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 7,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 1,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 8,
+      "hpGain": 4,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 9,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 10,
+      "hpGain": 5,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 1,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 1
+      },
+      "newAbilities": []
+    }
   ]
 }
