@@ -248,6 +248,7 @@ export interface GameState {
   partyGold?: number;
   partyInventory?: string[];
   expeditionCache?: ComponentStack[];
+  downtimeCompleted?: string[];
   campaignEnded?: boolean;
   actionLog?: ActionLogEntry[];
 }
@@ -281,7 +282,8 @@ export type PlayerAction =
   | { type: 'dialogue_choice'; targetId: string; value: number }
   | { type: 'branch_choose'; targetId: string; branch: string }
   | { type: 'transfer_to_cache'; slot: number; targetId: string; value: number }
-  | { type: 'transfer_from_cache'; slot: number; targetId: string; value: number };
+  | { type: 'transfer_from_cache'; slot: number; targetId: string; value: number }
+  | { type: 'downtime_action'; targetId: string; downtimeAction: string };
 
 export interface CombatAction {
   actorId: string;

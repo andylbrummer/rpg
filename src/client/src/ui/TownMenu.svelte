@@ -92,6 +92,33 @@
   const partyMembers = $derived(gameState?.party ?? []);
   const frontRow = $derived(partyMembers.filter(m => m.row === 0));
   const backRow = $derived(partyMembers.filter(m => m.row === 1));
+  const downtimeCompleted = $derived(gameState?.downtimeCompleted ?? []);
+
+  const downtimeActions = [
+    { value: 'Rest', label: 'Rest' },
+    { value: 'Train', label: 'Train' },
+    { value: 'Craft', label: 'Craft' },
+    { value: 'Network', label: 'Network' },
+    { value: 'Investigate', label: 'Investigate' },
+    { value: 'LayLow', label: 'Lay Low' },
+    { value: 'TendBlooms', label: 'Tend Blooms' },
+  ];
+
+  function isDowntimeDone(member: PartyMember): boolean {
+    return downtimeCompleted.includes(member.id);
+  }
+
+  function sendDowntimeAction(memberId: string, action: string) {
+    sendAction({ type: 'downtime_action', targetId: memberId, downtimeAction: action });
+  }
+
+  function restAll() {
+    for (const member of partyMembers) {
+      if (member.id && !isDowntimeDone(member)) {
+        sendDowntimeAction(member.id, 'Rest');
+      }
+    }
+  }
 
   const pendingBranchMembers = $derived(
     partyMembers.filter(m => m.awaitingBranchChoice && (m.availableBranches?.length ?? 0) > 0)
@@ -424,6 +451,42 @@
             </div>
           {:else}
             <div class="empty-state">No active quests.</div>
+          {/each}
+        </div>
+
+        <h2>Downtime</h2>
+        <div class="service-list">
+          <div class="downtime-header">
+            <span class="downtime-info">One action per character per town visit</span>
+            <button type="button" class="action-btn" onclick={restAll}>Rest All</button>
+          </div>
+          {#each partyMembers as member (member.id)}
+            {#if member.id}
+              <div class="service-item downtime-row">
+                <div class="downtime-char">
+                  <span class="downtime-name">{member.name}</span>
+                  <span class="downtime-class">{member.className}</span>
+                </div>
+                {#if isDowntimeDone(member)}
+                  <span class="downtime-done">Done</span>
+                {:else}
+                  <select
+                    class="downtime-select"
+                    onchange={(e) => {
+                      const value = (e.target as HTMLSelectElement).value;
+                      if (value) sendDowntimeAction(member.id, value);
+                    }}
+                  >
+                    <option value="">Select action...</option>
+                    {#each downtimeActions as action}
+                      <option value={action.value}>{action.label}</option>
+                    {/each}
+                  </select>
+                {/if}
+              </div>
+            {/if}
+          {:else}
+            <div class="empty-state">No characters in party.</div>
           {/each}
         </div>
       </div>
@@ -1244,5 +1307,72 @@
     font-style: italic;
     text-align: center;
     font-size: 0.875rem;
+  }
+
+  .downtime-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+  }
+
+  .downtime-info {
+    color: #888;
+    font-style: italic;
+  }
+
+  .downtime-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .downtime-char {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .downtime-name {
+    color: #eee;
+    font-weight: bold;
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
+  }
+
+  .downtime-class {
+    color: #888;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+  }
+
+  .downtime-done {
+    color: #44aa44;
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+
+  .downtime-select {
+    padding: 0.2rem 0.375rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 0.0625em solid #444;
+    border-radius: 0.2rem;
+    color: #ccc;
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    cursor: pointer;
+    flex-shrink: 0;
+    min-width: 7rem;
+  }
+
+  .downtime-select:focus {
+    outline: none;
+    border-color: #d4a84b;
+  }
+
+  .downtime-select option {
+    background: #1a1a2e;
+    color: #ccc;
   }
 </style>
