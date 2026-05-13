@@ -454,6 +454,42 @@
           {/each}
         </div>
 
+        <h2>Bone Clerk</h2>
+        <div class="service-list">
+          <div class="bone-clerk-info">
+            <span class="tithe-tokens">Tithe Tokens: {gameState?.titheTokens ?? 0}</span>
+            <span class="clerk-desc">The Bone Clerk can return the dead to life, for a price.</span>
+          </div>
+          {#each gameState?.deadCharacters || [] as dead (dead.id)}
+            <div class="service-item dead-character-row">
+              <div class="dead-char-info">
+                <span class="dead-name">{dead.name}</span>
+                <span class="dead-class">{dead.classId}</span>
+                <span class="dead-level">Lv.{dead.level}</span>
+                {#if dead.resurrectionAttempts >= 2}
+                  <span class="dead-permanent">Permanently Lost</span>
+                {:else}
+                  <span class="dead-attempts">Attempts: {dead.resurrectionAttempts}/2</span>
+                {/if}
+              </div>
+              {#if dead.resurrectionAttempts < 2}
+                {@const cost = dead.resurrectionAttempts === 0 ? 500 : 1500}
+                {@const titheCost = dead.resurrectionAttempts === 0 ? 1 : 2}
+                <button
+                  type="button"
+                  class="action-btn"
+                  disabled={partyGold < cost || (gameState?.titheTokens ?? 0) < titheCost}
+                  onclick={() => sendAction({ type: 'resurrect_character', targetId: dead.id })}
+                >
+                  Resurrect ({cost}g, {titheCost} TT)
+                </button>
+              {/if}
+            </div>
+          {:else}
+            <div class="empty-state">No dead to resurrect.</div>
+          {/each}
+        </div>
+
         <h2>Downtime</h2>
         <div class="service-list">
           <div class="downtime-header">
@@ -1374,5 +1410,71 @@
   .downtime-select option {
     background: #1a1a2e;
     color: #ccc;
+  }
+
+  .bone-clerk-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .tithe-tokens {
+    color: #d4a84b;
+    font-weight: bold;
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
+  }
+
+  .clerk-desc {
+    color: #888;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    font-style: italic;
+  }
+
+  .dead-character-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .dead-char-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .dead-name {
+    color: #ccc;
+    font-weight: bold;
+    font-size: clamp(0.65rem, 1.3vw, 0.75rem);
+  }
+
+  .dead-class {
+    color: #888;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    text-transform: capitalize;
+  }
+
+  .dead-level {
+    color: #d4a84b;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+  }
+
+  .dead-attempts {
+    color: #d4a84b;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+  }
+
+  .dead-permanent {
+    color: #c44;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    font-weight: bold;
+  }
+
+  .action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 </style>

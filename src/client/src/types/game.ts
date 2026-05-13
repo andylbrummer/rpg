@@ -230,6 +230,15 @@ export interface EvidenceState {
   hasIrrefutableProof: boolean;
 }
 
+export interface DeadCharacter {
+  id: string;
+  name: string;
+  classId: string;
+  level: number;
+  resurrectionAttempts: number;
+  branchAdvancementLocked: boolean;
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -250,6 +259,8 @@ export interface GameState {
   partyInventory?: string[];
   expeditionCache?: ComponentStack[];
   downtimeCompleted?: string[];
+  deadCharacters?: DeadCharacter[];
+  titheTokens?: number;
   campaignEnded?: boolean;
   actionLog?: ActionLogEntry[];
 }
@@ -284,7 +295,8 @@ export type PlayerAction =
   | { type: 'branch_choose'; targetId: string; branch: string }
   | { type: 'transfer_to_cache'; slot: number; targetId: string; value: number }
   | { type: 'transfer_from_cache'; slot: number; targetId: string; value: number }
-  | { type: 'downtime_action'; targetId: string; downtimeAction: string };
+  | { type: 'downtime_action'; targetId: string; downtimeAction: string }
+  | { type: 'resurrect_character'; targetId: string };
 
 export interface CombatAction {
   actorId: string;

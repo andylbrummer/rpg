@@ -647,6 +647,16 @@ public class GameServer
                         }
                     }
                     break;
+                case "resurrect_character":
+                    if (action.TargetId is string resurrectCharIdStr)
+                    {
+                        if (Guid.TryParse(resurrectCharIdStr, out var resurrectCharId))
+                        {
+                            var result = _gameState.ResurrectCharacter(resurrectCharId);
+                            stateChanged = result != null && result.Success;
+                        }
+                    }
+                    break;
                 default:
                     await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
                     return;
@@ -1155,6 +1165,16 @@ public class GameServer
             partyInventory = _gameState.PartyInventory.ToArray(),
             expeditionCache = _gameState.Party.ExpeditionCache.Select(c => new { itemId = c.ItemId, count = c.Count, maxStack = c.MaxStack }).ToArray(),
             downtimeCompleted = _gameState.DowntimeCompleted.Select(id => id.ToString()).ToArray(),
+            deadCharacters = _gameState.Party.DeadCharacters.Select(c => new
+            {
+                id = c.Id.ToString(),
+                name = c.Name,
+                classId = c.ClassId,
+                level = c.Level,
+                resurrectionAttempts = c.ResurrectionAttempts,
+                branchAdvancementLocked = c.BranchAdvancementLocked
+            }).ToArray(),
+            titheTokens = _gameState.TitheTokens,
             campaignEnded = _gameState.CampaignEnded,
             factionStates = CampaignConfig.FactionPool.ToDictionary(
                 f => f,
