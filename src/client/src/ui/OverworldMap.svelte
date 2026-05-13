@@ -20,10 +20,19 @@
     new Map(overworld.nodes.map((node, i) => [node.id, getNodePosition(i)]))
   );
 
-  function routeColor(danger: number): string {
+  function routeColor(danger: number, status: string): string {
+    if (status === 'Blocked') return '#444';
+    if (status === 'BloomAffected') return '#a4a';
+    if (status === 'Contested') return '#a44';
     if (danger <= 2) return '#44aa44';
     if (danger === 3) return '#d4a84b';
     return '#c44';
+  }
+
+  function routeDashArray(status: string): string {
+    if (status === 'Blocked') return '4,4';
+    if (status === 'Contested') return '8,4';
+    return 'none';
   }
 
   function getRouteBetween(a: string, b: string) {
@@ -35,7 +44,7 @@
   function handleNodeClick(nodeId: string) {
     if (nodeId === overworld.currentNodeId) return;
     const r = getRouteBetween(nodeId, overworld.currentNodeId);
-    if (!r) return;
+    if (!r || r.status === 'Blocked') return;
     confirmTarget = nodeId;
   }
 
@@ -52,12 +61,13 @@
 
   function handleRouteEnter(
     e: MouseEvent,
-    r: { distance: number; dangerRating: number; terrain: string }
+    r: { distance: number; dangerRating: number; terrain: string; status: string }
   ) {
+    const statusLabel = r.status === 'BloomAffected' ? 'Bloom-Affected' : r.status;
     tooltip = {
       x: e.clientX + 12,
       y: e.clientY + 12,
-      text: `Distance: ${r.distance} turns | Danger: ${r.dangerRating} | Terrain: ${r.terrain}`,
+      text: `Distance: ${r.distance} turns | Danger: ${r.dangerRating} | Terrain: ${r.terrain} | Status: ${statusLabel}`,
     };
   }
 
@@ -85,11 +95,13 @@
           y1={fromPos.y}
           x2={toPos.x}
           y2={toPos.y}
-          stroke={routeColor(route.dangerRating)}
-          stroke-width="4"
+          stroke={routeColor(route.dangerRating, route.status)}
+          stroke-width={route.status === 'Blocked' ? 2 : 4}
+          stroke-dasharray={routeDashArray(route.status)}
+          opacity={route.status === 'Blocked' ? 0.4 : 1}
           class="route-line"
           role="img"
-          aria-label="Route danger {route.dangerRating}"
+          aria-label="Route danger {route.dangerRating} status {route.status}"
           onmouseenter={(e) => handleRouteEnter(e, route)}
           onmousemove={handleRouteMove}
           onmouseleave={handleRouteLeave}
@@ -139,6 +151,11 @@
     <div class="confirm-modal" role="alertdialog" aria-modal="true" aria-label="Confirm travel">
       <p>Travel to <strong>{targetNode?.name}</strong>?</p>
       <p class="cost">Cost: {routeToTarget?.distance ?? '?'} turns</p>
+      {#if routeToTarget?.status === 'Contested'}
+        <p class="warning">Warning: Route is contested. Increased danger.</p>
+      {:else if routeToTarget?.status === 'BloomAffected'}
+        <p class="warning">Warning: Bloom-affected route. Unusual encounters possible.</p>
+      {/if}
       <div class="confirm-actions">
         <button class="confirm-btn" onclick={confirmTravel}>Travel</button>
         <button class="cancel-btn" onclick={cancelTravel}>Cancel</button>
@@ -247,6 +264,12 @@
     background: rgba(170, 68, 68, 0.2);
     border: 1px solid #aa4444;
     color: #cc8888;
+  }
+
+  .warning {
+    color: #d4a84b;
+    font-size: 0.8rem;
+    font-style: italic;
   }
 
   .tooltip {

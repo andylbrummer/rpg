@@ -194,6 +194,7 @@ export interface OverworldRoute {
   distance: number;
   dangerRating: number;
   terrain: string;
+  status: 'Open' | 'Contested' | 'Blocked' | 'BloomAffected';
 }
 
 export interface OverworldState {

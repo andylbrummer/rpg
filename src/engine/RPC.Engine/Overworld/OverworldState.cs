@@ -51,6 +51,7 @@ public class OverworldState
         if (targetId == CurrentNodeId) return false;
         var route = GetRoute(CurrentNodeId, targetId);
         if (route == null) return false;
+        if (!RouteStatusSystem.CanTravel(route)) return false;
         CurrentNodeId = targetId;
         return true;
     }

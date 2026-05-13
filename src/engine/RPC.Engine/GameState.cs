@@ -774,6 +774,16 @@ public class GameState
         if (HasPendingBranchChoices) return false;
         var fromNodeId = Overworld.CurrentNodeId;
         var route = Overworld.GetRoute(fromNodeId, targetId);
+        if (route != null && !RouteStatusSystem.CanTravel(route))
+        {
+            EmitActionLog("overworld", "travel_blocked", new Dictionary<string, string>
+            {
+                { "from", fromNodeId },
+                { "to", targetId },
+                { "reason", route.Status.ToString() }
+            });
+            return false;
+        }
         var changed = Overworld.Travel(targetId);
         if (!changed) return false;
 
@@ -781,19 +791,22 @@ public class GameState
         {
             { "from", fromNodeId },
             { "to", targetId },
-            { "distance", route?.Distance.ToString() ?? "0" }
+            { "distance", route?.Distance.ToString() ?? "0" },
+            { "routeStatus", route?.Status.ToString() ?? "Open" }
         });
 
         if (route != null)
         {
-            IncrementTurns(route.Distance);
+            var effectiveDanger = RouteStatusSystem.GetEffectiveDangerRating(route);
+            IncrementTurns(route.Distance, effectiveDanger);
         }
 
         ClearTravelEncounters();
 
         if (route != null)
         {
-            RollTravelEncounters(route.DangerRating, route.Terrain);
+            var effectiveDanger = RouteStatusSystem.GetEffectiveDangerRating(route);
+            RollTravelEncounters(effectiveDanger, route.Terrain);
         }
 
         if (RolledTravelEncounterCount == 0)
@@ -812,7 +825,7 @@ public class GameState
         return true;
     }
 
-    private void IncrementTurns(int amount)
+    private void IncrementTurns(int amount, int? dangerOverride = null)
     {
         if (CampaignEnded || amount <= 0) return;
         var oldTurn = Overworld.Turns;
@@ -827,6 +840,9 @@ public class GameState
         {
             EmitActionLog("campaign", "faction_progression", new Dictionary<string, string> { { "milestone", "22" } });
         }
+
+        // Apply route status transitions at turn milestones
+        RouteStatusSystem.ApplyTurnMilestoneTransitions(Overworld, CampaignConfig, _encounterRng);
 
         if (Overworld.Turns >= 35)
         {
