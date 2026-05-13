@@ -637,6 +637,16 @@ public class GameServer
                         stateChanged = true;
                     }
                     break;
+                case "downtime_action":
+                    if (action.TargetId is string downtimeCharIdStr && action.DowntimeAction is string downtimeActionStr)
+                    {
+                        if (Guid.TryParse(downtimeCharIdStr, out var downtimeCharId) && Enum.TryParse<DowntimeAction>(downtimeActionStr, true, out var downtimeAction))
+                        {
+                            var result = _gameState.PerformDowntimeAction(downtimeCharId, downtimeAction);
+                            stateChanged = result != null && result.Success;
+                        }
+                    }
+                    break;
                 default:
                     await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
                     return;
@@ -1144,6 +1154,7 @@ public class GameServer
             partyGold = _gameState.PartyGold,
             partyInventory = _gameState.PartyInventory.ToArray(),
             expeditionCache = _gameState.Party.ExpeditionCache.Select(c => new { itemId = c.ItemId, count = c.Count, maxStack = c.MaxStack }).ToArray(),
+            downtimeCompleted = _gameState.DowntimeCompleted.Select(id => id.ToString()).ToArray(),
             campaignEnded = _gameState.CampaignEnded,
             factionStates = CampaignConfig.FactionPool.ToDictionary(
                 f => f,
@@ -1238,6 +1249,7 @@ public class PlayerAction
     public string? TargetId { get; set; }
     public int? Value { get; set; }
     public string? Branch { get; set; }
+    public string? DowntimeAction { get; set; }
 }
 
 public class ProtocolEnvelope

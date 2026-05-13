@@ -42,5 +42,16 @@
     "statBonus": null,
     "value": 8,
     "stackSize": 10
+  },
+  {
+    "id": "bloom_essence",
+    "name": "Bloom Essence",
+    "description": "A faintly luminescent extract from rare Hollow flora. Used in rituals and remedies.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNiIgZmlsbD0iIzdjZiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 6,
+    "stackSize": 15
   }
 ]

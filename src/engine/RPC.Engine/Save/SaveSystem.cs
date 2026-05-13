@@ -38,6 +38,7 @@ public class SaveData
     public SaveOverworldRoute[] OverworldRoutes { get; set; } = Array.Empty<SaveOverworldRoute>();
     public int CurrentAct { get; set; } = 1;
     public SaveWorldState? WorldState { get; set; }
+    public string[] DowntimeCompleted { get; set; } = Array.Empty<string>();
 }
 
 public class SaveFactionTimeline
@@ -274,6 +275,7 @@ public static class SaveSystem
             RestoreCampaignConfig(state, data);
             RestoreEvidence(state, data);
             RestoreWorldState(state, data);
+            RestoreDowntime(state, data);
 
             return true;
         }
@@ -494,7 +496,8 @@ public static class SaveSystem
                 FactionTerritory = state.WorldState.FactionTerritory.ToDictionary(
                     kv => kv.Key,
                     kv => kv.Value.ToArray())
-            }
+            },
+            DowntimeCompleted = state.DowntimeCompleted.Select(g => g.ToString()).ToArray()
         };
     }
 
@@ -732,5 +735,15 @@ public static class SaveSystem
                 kv => kv.Key,
                 kv => kv.Value.ToList()) ?? new Dictionary<string, List<string>>();
         }
+    }
+
+    private static void RestoreDowntime(GameState state, SaveData data)
+    {
+        var ids = (data.DowntimeCompleted ?? Array.Empty<string>())
+            .Select(s => Guid.TryParse(s, out var id) ? id : (Guid?)null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToList();
+        state.RestoreDowntimeState(ids);
     }
 }

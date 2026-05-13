@@ -87,6 +87,7 @@ public class GameState
     public int RolledTravelEncounterCount { get; private set; }
     public int ResolvedTravelEncounterCount { get; private set; }
     public ParleyOffer? CurrentParley { get; private set; }
+    public IReadOnlySet<Guid> DowntimeCompleted => _downtimeCompleted;
 
     public void ClearCombatResult()
     {
@@ -101,6 +102,7 @@ public class GameState
     private int _actionLogTurn = 0;
     private string? _currentEncounterId;
     private Position? _pendingTaggedEncounterTile;
+    private readonly HashSet<Guid> _downtimeCompleted = new();
 
     public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null)
     {
@@ -656,6 +658,36 @@ public class GameState
         LastUpdate = DateTime.UtcNow;
     }
 
+    public DowntimeResult? PerformDowntimeAction(Guid characterId, DowntimeAction action)
+    {
+        if (Mode != GameMode.Menu) return null;
+        if (_downtimeCompleted.Contains(characterId)) return null;
+
+        var character = Party.Members.FirstOrDefault(m => m.Id == characterId);
+        if (character.Id == Guid.Empty) return null;
+
+        var result = DowntimeSystem.PerformAction(character, action, Party, Reputation, Evidence, _encounterRng);
+        if (result.Success)
+        {
+            _downtimeCompleted.Add(characterId);
+            EmitActionLog("downtime", action.ToString().ToLowerInvariant(), new Dictionary<string, string>
+            {
+                { "characterId", characterId.ToString() },
+                { "characterName", character.Name },
+                { "action", action.ToString() },
+                { "message", result.Message }
+            });
+        }
+        return result;
+    }
+
+    public void RestoreDowntimeState(IEnumerable<Guid> ids)
+    {
+        _downtimeCompleted.Clear();
+        foreach (var id in ids)
+            _downtimeCompleted.Add(id);
+    }
+
     public void ReturnToTown()
     {
         if (CurrentDungeon != null)
@@ -666,6 +698,7 @@ public class GameState
         CurrentDungeon = null;
         LastUpdate = DateTime.UtcNow;
         IncrementTurns(1);
+        _downtimeCompleted.Clear();
     }
 
     public void GenerateOverworld(CampaignConfig config)
@@ -746,6 +779,7 @@ public class GameState
                 {
                     { "townId", targetId }
                 });
+                _downtimeCompleted.Clear();
             }
         }
 
@@ -1043,6 +1077,7 @@ public class GameState
                 {
                     { "townId", Overworld.CurrentNodeId }
                 });
+                _downtimeCompleted.Clear();
             }
         }
 
