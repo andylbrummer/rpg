@@ -735,7 +735,7 @@ public class GameState
 
         if (route != null)
         {
-            RollTravelEncounters(route.DangerRating);
+            RollTravelEncounters(route.DangerRating, route.Terrain);
         }
 
         if (RolledTravelEncounterCount == 0)
@@ -784,13 +784,13 @@ public class GameState
         ResolvedTravelEncounterCount = 0;
     }
 
-    private void RollTravelEncounters(int dangerRating)
+    private void RollTravelEncounters(int dangerRating, string terrain)
     {
-        var count = TravelEncounterTable.RollEncounterCount(_encounterRng);
+        var count = TravelEncounterTable.RollEncounterCount(_encounterRng, dangerRating);
         RolledTravelEncounterCount = count;
         if (count == 0) return;
 
-        var encounter = TravelEncounterTable.RollEncounter(_encounterRng, dangerRating);
+        var encounter = TravelEncounterTable.RollEncounter(_encounterRng, dangerRating, terrain);
         if (encounter == null) return;
 
         ActivateTravelEncounter(encounter);
@@ -802,6 +802,8 @@ public class GameState
     {
         bool hasMarcher = Party.Members.Any(m => m.ClassId == "marcher");
         bool hasAshmouth = Party.Members.Any(m => m.ClassId == "ashmouth");
+        bool hasHollow = Party.Members.Any(m => m.ClassId == "hollow");
+        bool hasCauterist = Party.Members.Any(m => m.ClassId == "cauterist");
 
         bool surpriseRound = encounter.ResolutionType == TravelResolutionType.Combat
             && encounter.Id == "ambush"
@@ -819,29 +821,69 @@ public class GameState
         bool isHostilePatrol = IsPatrolEncounter(encounter.Id) && factionId != null && repValue < 0;
 
         string[]? options = null;
-        string resolutionType;
+        string resolutionType = encounter.ResolutionType switch
+        {
+            TravelResolutionType.Combat => "combat",
+            TravelResolutionType.StatTest => "stat_test",
+            TravelResolutionType.Dialogue => "dialogue",
+            _ => "unknown"
+        };
+
+        // Class-specific encounter alternatives
+        string? classAlternative = encounter.ClassAlternative;
+
+        // Hollow Liar can talk through smuggler caches
+        if (classAlternative == "hollow_liar" && hasHollow && encounter.Id == "smuggler_cache")
+        {
+            resolutionType = "dialogue";
+        }
+
+        // Cauterist Scorcher can burn through environmental hazards
+        if (classAlternative == "cauterist_scorcher" && hasCauterist &&
+            (encounter.Id == "poison_thicket" || encounter.Id == "fungal_spores" || encounter.Id == "will_o_wisp"))
+        {
+            resolutionType = "dialogue";
+            options = ["Burn through", "Navigate normally"];
+        }
+
+        // Marcher Pathfinder can bypass terrain obstacles
+        if (classAlternative == "marcher_pathfinder" && hasMarcher &&
+            (encounter.Id == "rockslide" || encounter.Id == "narrow_pass" || encounter.Id == "cave_in" || encounter.Id == "sinking_mire"))
+        {
+            resolutionType = "dialogue";
+            options = ["Find alternate route", "Push through"];
+        }
+
+        // Ashmouth Broker gets better deals with bog merchants
+        if (classAlternative == "ashmouth_broker" && hasAshmouth && encounter.Id == "bog_merchant")
+        {
+            priceTier = 1;
+        }
 
         if (isHostilePatrol)
         {
             resolutionType = "combat";
         }
-        else if (encounter.ResolutionType == TravelResolutionType.Dialogue)
+        else if (resolutionType == "dialogue" || encounter.ResolutionType == TravelResolutionType.Dialogue)
         {
             resolutionType = "dialogue";
-            if (IsPatrolEncounter(encounter.Id))
+            if (options == null)
             {
-                options = repValue >= 25
-                    ? ["Request intel", "Trade supplies", "Pass safely"]
-                    : ["Show papers", "Bribe", "Attack"];
-            }
-            else
-            {
-                options = encounter.Id == "merchant"
-                    ? ["Trade", "Ignore", "Rob"]
-                    : ["Trade", "Ignore", "Help"];
+                if (IsPatrolEncounter(encounter.Id))
+                {
+                    options = repValue >= 25
+                        ? ["Request intel", "Trade supplies", "Pass safely"]
+                        : ["Show papers", "Bribe", "Attack"];
+                }
+                else
+                {
+                    options = encounter.Id == "merchant"
+                        ? ["Trade", "Ignore", "Rob"]
+                        : ["Trade", "Ignore", "Help"];
+                }
             }
         }
-        else
+        else if (resolutionType == "unknown")
         {
             resolutionType = encounter.ResolutionType switch
             {
@@ -985,7 +1027,7 @@ public class GameState
         {
             var route = Overworld.Routes.FirstOrDefault(r =>
                 r.From == Overworld.CurrentNodeId || r.To == Overworld.CurrentNodeId);
-            var next = TravelEncounterTable.RollEncounter(_encounterRng, route?.DangerRating ?? 0);
+            var next = TravelEncounterTable.RollEncounter(_encounterRng, route?.DangerRating ?? 0, route?.Terrain ?? "");
             if (next != null)
             {
                 ActivateTravelEncounter(next);
