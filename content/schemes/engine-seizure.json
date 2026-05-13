@@ -1,0 +1,84 @@
+{
+  "id": "EngineSeizure",
+  "name": "Engine Seizure",
+  "description": "Ancient engines from before the Collapse are being seized and weaponized. Each activation causes reality distortions, and the mastermind seeks to awaken the Prime Engine beneath the Reach.",
+  "finaleDungeonFeel": "A vast subterranean machine-temple of brass and crystal. Gears the size of houses turn endlessly. Arcane conduits pulse with violet energy. Steam vents hiss from ruptured pipes. The Prime Engine sits at the center, a sphere of compressed potential that warps space around it.",
+  "evidenceChain": [
+    "engine_site_anomaly",
+    "stolen_components_manifest",
+    "reality_distortion_reports",
+    "engineered_monster_remains",
+    "blackout_grid_map",
+    "core_breach_warnings",
+    "prime_engine_schematics"
+  ],
+  "events": [
+    {
+      "id": "engine_anomalies",
+      "name": "Engine Anomalies",
+      "description": "Minor reality distortions are being reported near old engine sites.",
+      "turnThreshold": 2,
+      "factionInvolved": "threat",
+      "effect": "reveal_node",
+      "targetNodeType": "dungeon_entrance",
+      "reputationDelta": 0
+    },
+    {
+      "id": "power_surge",
+      "name": "Power Surge",
+      "description": "A major power surge has disrupted the Reach's defenses for a night.",
+      "turnThreshold": 4,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -3,
+      "targetFaction": "convocation"
+    },
+    {
+      "id": "stolen_components",
+      "name": "Stolen Components",
+      "description": "A shipment of engine components was hijacked on the road.",
+      "turnThreshold": 6,
+      "factionInvolved": "threat",
+      "effect": "spawn_encounter",
+      "encounterType": "travel_convoy"
+    },
+    {
+      "id": "engineered_monsters",
+      "name": "Engineered Monsters",
+      "description": "Monsters fused with engine-tech have been spotted in the wilds.",
+      "turnThreshold": 8,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -5,
+      "targetFaction": "all"
+    },
+    {
+      "id": "blackout",
+      "name": "The Blackout",
+      "description": "A cascading power failure has plunged the outer districts into darkness.",
+      "turnThreshold": 10,
+      "factionInvolved": "patron",
+      "effect": "unlock_dungeon",
+      "dungeonType": "prime_engine"
+    },
+    {
+      "id": "core_breach",
+      "name": "Core Breach Imminent",
+      "description": "Engine readings indicate an imminent core breach beneath the Reach.",
+      "turnThreshold": 12,
+      "factionInvolved": "threat",
+      "effect": "world_state_change",
+      "worldStateKey": "engine_instability",
+      "worldStateValue": "critical"
+    },
+    {
+      "id": "confrontation",
+      "name": "The Prime Engine",
+      "description": "The Prime Engine has been located. It must be destroyed before it awakens fully.",
+      "turnThreshold": 14,
+      "factionInvolved": "threat",
+      "effect": "final_dungeon_unlocked",
+      "dungeonType": "prime_engine"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "id": "BloomSiege",
+  "name": "Bloom Siege",
+  "description": "The Bloom has become aggressive, actively sieging settlements and blocking major routes. Towns are fortified, but supplies are running low.",
+  "worldStateModifiers": {
+    "routeStatusChance": {
+      "bloomAffected": 0.4,
+      "blocked": 0.2
+    },
+    "townEffects": {
+      "supplyShortage": true,
+      "vendorPriceMultiplier": 1.5,
+      "recruitCostMultiplier": 1.3
+    },
+    "travelEffects": {
+      "encounterChanceBonus": 0.15,
+      "bloomEnemyWeight": 3
+    },
+    "reputationEffects": {
+      "bureau": -2,
+      "convocation": -2
+    }
+  },
+  "events": [
+    {
+      "id": "siege_begins",
+      "name": "Siege Begins",
+      "description": "Bloom creatures have surrounded the outer settlements.",
+      "turnThreshold": 3,
+      "effect": "block_routes",
+      "routeCount": 2
+    },
+    {
+      "id": "supply_crisis",
+      "name": "Supply Crisis",
+      "description": "Trade routes are cut. Prices have skyrocketed.",
+      "turnThreshold": 6,
+      "effect": "price_increase",
+      "multiplier": 1.5
+    },
+    {
+      "id": "breakout_attempt",
+      "name": "Breakout Attempt",
+      "description": "The Bureau leads a breakout attempt. Volunteers needed.",
+      "turnThreshold": 10,
+      "effect": "reputation_change",
+      "reputationDelta": 5,
+      "targetFaction": "bureau"
+    }
+  ]
+}

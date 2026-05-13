@@ -77,6 +77,8 @@ public class GameState
     public List<string> PartyInventory { get; set; } = new();
     public bool CampaignEnded { get; set; } = false;
     public CampaignConfig? CampaignConfig { get; set; }
+    public SchemeDef? CurrentScheme { get; set; }
+    public ComplicationDef? CurrentComplication { get; set; }
     public WorldState WorldState { get; set; } = new();
     public int CurrentAct => Overworld.Turns <= 15 ? 1 : Overworld.Turns <= 25 ? 2 : 3;
     public string? AccusedFaction { get; private set; }
@@ -703,7 +705,10 @@ public class GameState
 
     public void GenerateOverworld(CampaignConfig config)
     {
-        Overworld.GenerateFromConfig(config, _encounterRng);
+        CampaignConfig = config;
+        CurrentScheme = CampaignContentLoader.GetSchemeById(config.Scheme.ToString());
+        CurrentComplication = CampaignContentLoader.GetComplicationById(config.Complication.ToString());
+        Overworld.GenerateFromConfig(config, _encounterRng, CurrentComplication);
         SyncWorldStateFromOverworld();
     }
 

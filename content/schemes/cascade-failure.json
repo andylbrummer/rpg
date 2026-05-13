@@ -1,0 +1,84 @@
+{
+  "id": "CascadeFailure",
+  "name": "Cascade Failure",
+  "description": "Ley lines across the Reach are destabilizing, causing cascading magical failures. A faction is deliberately amplifying the instability to tear open the barrier between worlds and summon something through.",
+  "finaleDungeonFeel": "A shattered observatory where geometry no longer obeys natural laws. Corridors loop back on themselves. Gravity shifts without warning. Crystallized mana hangs in the air like frozen lightning. At the center, a rift pulses with an eye that watches from beyond.",
+  "evidenceChain": [
+    "minor_spell_accidents",
+    "ley_line_disruptions",
+    "reality_tear_sighting",
+    "afflicted_mage_testimony",
+    "convergence_readings",
+    "summoning_circle_evidence",
+    "rift_anchor_location"
+  ],
+  "events": [
+    {
+      "id": "spell_accidents",
+      "name": "Spell Accidents Multiply",
+      "description": "Mishaps with basic spells are becoming common across the Reach.",
+      "turnThreshold": 2,
+      "factionInvolved": "threat",
+      "effect": "reveal_node",
+      "targetNodeType": "dungeon_entrance",
+      "reputationDelta": 0
+    },
+    {
+      "id": "instability_grows",
+      "name": "Growing Instability",
+      "description": "The ley line disruptions are getting worse. Mages report headaches and visions.",
+      "turnThreshold": 4,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -3,
+      "targetFaction": "convocation"
+    },
+    {
+      "id": "reality_tear",
+      "name": "Reality Tear",
+      "description": "A tear in reality has opened briefly near the Hollow. Something looked through.",
+      "turnThreshold": 6,
+      "factionInvolved": "threat",
+      "effect": "spawn_encounter",
+      "encounterType": "travel_anomaly"
+    },
+    {
+      "id": "afflicted_mages",
+      "name": "Afflicted Mages",
+      "description": "Mages exposed to the instability have gone mad or vanished.",
+      "turnThreshold": 8,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -5,
+      "targetFaction": "all"
+    },
+    {
+      "id": "ley_line_nexus",
+      "name": "Ley Line Nexus Discovered",
+      "description": " scouts have mapped the convergence point of the destabilized ley lines.",
+      "turnThreshold": 10,
+      "factionInvolved": "patron",
+      "effect": "unlock_dungeon",
+      "dungeonType": "the_nexus"
+    },
+    {
+      "id": "convergence_event",
+      "name": "Convergence Event",
+      "description": "The ley lines are converging. The barrier between worlds is thinning dangerously.",
+      "turnThreshold": 12,
+      "factionInvolved": "threat",
+      "effect": "world_state_change",
+      "worldStateKey": "barrier_integrity",
+      "worldStateValue": "critical"
+    },
+    {
+      "id": "confrontation",
+      "name": "The Nexus",
+      "description": "The rift anchor has been found. It must be severed before the summoning completes.",
+      "turnThreshold": 14,
+      "factionInvolved": "threat",
+      "effect": "final_dungeon_unlocked",
+      "dungeonType": "the_nexus"
+    }
+  ]
+}

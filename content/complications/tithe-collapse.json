@@ -1,0 +1,48 @@
+{
+  "id": "TitheCollapse",
+  "name": "Tithe Collapse",
+  "description": "The Bone Tithe system that sustains resurrection is failing. Tithe tokens are losing value, resurrection costs are spiking, and the dead may soon stay dead permanently.",
+  "worldStateModifiers": {
+    "resurrectionCostMultiplier": 2.0,
+    "titheTokenValue": 0.5,
+    "townEffects": {
+      "boneClerkClosed": false,
+      "panicBuying": true,
+      "vendorComponentPriceMultiplier": 1.4
+    },
+    "travelEffects": {
+      "encounterChanceBonus": 0.0
+    },
+    "reputationEffects": {
+      "stillness": -3,
+      "bureau": -1
+    }
+  },
+  "events": [
+    {
+      "id": "tithe_instability",
+      "name": "Tithe Instability",
+      "description": "The Bone Tithe network is experiencing instability. Resurrection costs have risen.",
+      "turnThreshold": 3,
+      "effect": "price_increase",
+      "multiplier": 1.5
+    },
+    {
+      "id": "token_crash",
+      "name": "Token Crash",
+      "description": "Tithe tokens have lost half their value on the black market.",
+      "turnThreshold": 6,
+      "effect": "tithe_devaluation",
+      "tokenMultiplier": 0.5
+    },
+    {
+      "id": "stabilization_effort",
+      "name": "Stabilization Effort",
+      "description": "The Bureau is attempting to stabilize the Tithe network. Aid them?",
+      "turnThreshold": 12,
+      "effect": "reputation_change",
+      "reputationDelta": 5,
+      "targetFaction": "bureau"
+    }
+  ]
+}

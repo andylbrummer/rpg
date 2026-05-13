@@ -69,14 +69,14 @@ public class OverworldState
             (r.To == from && r.From == to));
     }
 
-    public void GenerateFromConfig(CampaignConfig config, GameRandom rng)
+    public void GenerateFromConfig(CampaignConfig config, GameRandom rng, ComplicationDef? complication = null)
     {
         Nodes.Clear();
         Routes.Clear();
 
         var nodeIds = BuildNodes(config, rng);
         BuildRoutes(nodeIds, rng, config);
-        ApplyComplication(config, rng);
+        ApplyComplication(config, rng, complication);
     }
 
     private List<string> BuildNodes(CampaignConfig config, GameRandom rng)
@@ -169,10 +169,11 @@ public class OverworldState
         Routes.Add(new OverworldRoute(from, to, distance, danger, terrain));
     }
 
-    private void ApplyComplication(CampaignConfig config, GameRandom rng)
+    private void ApplyComplication(CampaignConfig config, GameRandom rng, ComplicationDef? complication = null)
     {
         if (Routes.Count == 0) return;
 
+        // Apply complication-specific route effects
         switch (config.Complication)
         {
             case ComplicationType.ClosingPasses:
@@ -184,6 +185,41 @@ public class OverworldState
             case ComplicationType.BloomSiege:
                 BloomAffectRandomRoute(rng);
                 break;
+            case ComplicationType.TitheCollapse:
+                // No direct route effect, but town prices are affected via ComplicationDef
+                break;
+            case ComplicationType.ErraticEngine:
+                BlockRandomRoute(rng);
+                break;
+            case ComplicationType.MissingTeam:
+                // No direct route effect
+                break;
+        }
+
+        // Apply content-defined world-state modifiers
+        if (complication?.WorldStateModifiers.RouteStatusChance != null)
+        {
+            ApplyRouteStatusModifiers(rng, complication.WorldStateModifiers.RouteStatusChance);
+        }
+    }
+
+    private void ApplyRouteStatusModifiers(GameRandom rng, Dictionary<string, double> modifiers)
+    {
+        foreach (var route in Routes)
+        {
+            var roll = rng.Roll(1, 100) / 100.0;
+            if (modifiers.TryGetValue("bloomAffected", out var bloomChance) && roll <= bloomChance)
+            {
+                route.Status = RouteStatus.BloomAffected;
+            }
+            else if (modifiers.TryGetValue("blocked", out var blockChance) && roll <= blockChance)
+            {
+                route.Status = RouteStatus.Blocked;
+            }
+            else if (modifiers.TryGetValue("contested", out var contestChance) && roll <= contestChance)
+            {
+                route.Status = RouteStatus.Contested;
+            }
         }
     }
 

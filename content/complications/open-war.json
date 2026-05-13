@@ -1,0 +1,50 @@
+{
+  "id": "OpenWar",
+  "name": "Open War",
+  "description": "Two major factions have declared open war. Their soldiers clash on the roads, settlements choose sides, and neutrality is no longer an option.",
+  "worldStateModifiers": {
+    "routeStatusChance": {
+      "contested": 0.5,
+      "blocked": 0.1
+    },
+    "townEffects": {
+      "factionAlignmentRequired": true,
+      "neutralVendorPenalty": true
+    },
+    "travelEffects": {
+      "encounterChanceBonus": 0.2,
+      "factionPatrolWeight": 4
+    },
+    "reputationEffects": {
+      "bureau": 0,
+      "convocation": 0
+    }
+  },
+  "events": [
+    {
+      "id": "war_declared",
+      "name": "War Declared",
+      "description": "Open hostilities have erupted between major factions.",
+      "turnThreshold": 3,
+      "effect": "contest_routes",
+      "routeCount": 3
+    },
+    {
+      "id": "forced_alignment",
+      "name": "Forced Alignment",
+      "description": "Settlements are demanding you choose a side.",
+      "turnThreshold": 6,
+      "effect": "reputation_gate",
+      "minimumRep": 10
+    },
+    {
+      "id": "ceasefire_rumor",
+      "name": "Ceasefire Rumor",
+      "description": "Whispers of a possible ceasefire circulate. The war may end soon.",
+      "turnThreshold": 12,
+      "effect": "reputation_change",
+      "reputationDelta": 3,
+      "targetFaction": "all"
+    }
+  ]
+}

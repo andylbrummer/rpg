@@ -1,0 +1,84 @@
+{
+  "id": "BloomHarvest",
+  "name": "Bloom Harvest",
+  "description": "A faction is systematically harvesting Bloom essence from the Hollow, using it to empower their rituals and create an army of bloom-touched soldiers. The Harvest must be stopped before the Reach is consumed.",
+  "finaleDungeonFeel": "An overgrown cathedral of living bloom. Walls pulse with bioluminescent veins. Roots choke the corridors. The air is thick with spores that drift like snow. At the heart, a massive bloom-heart throbs with stolen essence, tended by zealots who have become one with the growth.",
+  "evidenceChain": [
+    "bloom_contaminated_water",
+    "missing_harvesters",
+    "convoy_manifest",
+    "bloom_touched_corpses",
+    "ritual_site_discovered",
+    "essence_extraction_tools",
+    "harvest_master_orders"
+  ],
+  "events": [
+    {
+      "id": "bloom_sightings",
+      "name": "Bloom Sightings Increase",
+      "description": "Reports of bloom-creature sightings have tripled near the Hollow border.",
+      "turnThreshold": 2,
+      "factionInvolved": "threat",
+      "effect": "reveal_node",
+      "targetNodeType": "dungeon_entrance",
+      "reputationDelta": 0
+    },
+    {
+      "id": "contaminated_well",
+      "name": "Contaminated Well",
+      "description": "A town well has been contaminated with bloom essence. The locals are getting sick.",
+      "turnThreshold": 4,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -3,
+      "targetFaction": "bureau"
+    },
+    {
+      "id": "harvester_convoy",
+      "name": "Harvest Convoy Spotted",
+      "description": "A convoy bearing bloom essence has been spotted on the roads.",
+      "turnThreshold": 6,
+      "factionInvolved": "threat",
+      "effect": "spawn_encounter",
+      "encounterType": "travel_convoy"
+    },
+    {
+      "id": "bloom_creatures_attack",
+      "name": "Bloom Creature Attack",
+      "description": "Bloom-creatures have attacked a village near the Reach.",
+      "turnThreshold": 8,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -5,
+      "targetFaction": "all"
+    },
+    {
+      "id": "seized_ritual_site",
+      "name": "Ritual Site Discovered",
+      "description": " scouts have located a major bloom-essence ritual site.",
+      "turnThreshold": 10,
+      "factionInvolved": "patron",
+      "effect": "unlock_dungeon",
+      "dungeonType": "bloom_heart"
+    },
+    {
+      "id": "harvest_accelerates",
+      "name": "Harvest Accelerates",
+      "description": "The bloom harvest has intensified. The Hollow itself seems to be growing toward the Reach.",
+      "turnThreshold": 12,
+      "factionInvolved": "threat",
+      "effect": "world_state_change",
+      "worldStateKey": "bloom_spread",
+      "worldStateValue": "accelerating"
+    },
+    {
+      "id": "confrontation",
+      "name": "The Bloom Heart",
+      "description": "The source of the harvest has been found. A final expedition must destroy the bloom-heart before it's too late.",
+      "turnThreshold": 14,
+      "factionInvolved": "threat",
+      "effect": "final_dungeon_unlocked",
+      "dungeonType": "bloom_heart"
+    }
+  ]
+}
