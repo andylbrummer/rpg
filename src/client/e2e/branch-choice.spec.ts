@@ -6,6 +6,7 @@ test.describe('Branch Choice Modal', () => {
     await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 5000 });
 
     await page.evaluate(() => {
+      (window as any).__rpc_enableTestHooks();
       const gs = (window as any).gameStore;
       gs.__testSetState({
         type: 'state',
@@ -67,6 +68,7 @@ test.describe('Branch Choice Modal', () => {
     await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 5000 });
 
     await page.evaluate(() => {
+      (window as any).__rpc_enableTestHooks();
       const gs = (window as any).gameStore;
       gs.__testSetState({
         type: 'state',
@@ -131,6 +133,7 @@ test.describe('Branch Choice Modal', () => {
     await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 5000 });
 
     await page.evaluate(() => {
+      (window as any).__rpc_enableTestHooks();
       const gs = (window as any).gameStore;
       gs.__testSetState({
         type: 'state',

@@ -1,16 +1,11 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using RPC.Engine.Content;
 
 namespace RPC.Engine.Campaign;
 
 public static class CampaignContentLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        AllowTrailingCommas = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    private static readonly JsonSerializerOptions JsonOptions = ContentJsonOptions.Standard;
 
     public static List<SchemeDef> LoadSchemes(string? contentDir = null)
     {

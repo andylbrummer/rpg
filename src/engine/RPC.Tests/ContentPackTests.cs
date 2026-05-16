@@ -67,7 +67,8 @@ public class ContentPackTests
         Directory.CreateDirectory(contentDir);
         Directory.CreateDirectory(Path.Combine(contentDir, "classes"));
 
-        File.WriteAllText(Path.Combine(contentDir, "classes", "test.json"), "{\"test\":true}");
+        File.WriteAllText(Path.Combine(contentDir, "classes", "test.json"),
+            "{\"id\":\"test-class\",\"name\":\"Test\",\"tier\":1,\"hp\":10,\"mp\":5,\"strength\":1,\"defense\":1,\"magic\":1,\"resistance\":1,\"speed\":1,\"abilities\":[{\"id\":\"a1\",\"name\":\"A1\",\"power\":1,\"cost\":{\"type\":\"none\",\"amount\":null},\"target\":\"enemy\"},{\"id\":\"a2\",\"name\":\"A2\",\"power\":1,\"cost\":{\"type\":\"none\",\"amount\":null},\"target\":\"enemy\"},{\"id\":\"a3\",\"name\":\"A3\",\"power\":1,\"cost\":{\"type\":\"none\",\"amount\":null},\"target\":\"enemy\"}],\"tags\":[]}");
         File.WriteAllText(Path.Combine(contentDir, "manifest.json"), "{\"version\":1}");
 
         var result = RunCompiler(contentDir, outputDir);

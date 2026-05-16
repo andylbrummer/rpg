@@ -1,0 +1,17 @@
+{
+  "id": "ashmouth_marcher_focused_fire",
+  "abilities": [
+    "war_cry",
+    "volley"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "An Ashmouth's war cry directs the Marcher's volley with devastating precision.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

@@ -4,6 +4,8 @@ import { sendWsAction } from './helpers';
 test.describe('Town: server-authoritative state', () => {
   test('initial state includes tavern roster with 6 recruits', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    await sendWsAction(page, serverUrl, { type: 'reset_game' });
+    await page.waitForTimeout(500);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
     const recruitCards = page.locator('.town-services .service-item');
@@ -75,9 +77,9 @@ test.describe('Town: server-authoritative state', () => {
     expect(Array.isArray(captured.town.tavernRoster)).toBe(true);
     expect(captured.town.tavernRoster.length).toBe(6);
     expect(Array.isArray(captured.town.availableMissions)).toBe(true);
-    expect(captured.town.availableMissions.length).toBe(4);
+    expect(captured.town.availableMissions.length).toBe(20);
     expect(Array.isArray(captured.town.factionContacts)).toBe(true);
-    expect(captured.town.factionContacts.length).toBe(2);
+    expect(captured.town.factionContacts.length).toBe(5);
     expect(Array.isArray(captured.town.vendorStock)).toBe(true);
   });
 });

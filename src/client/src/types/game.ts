@@ -65,8 +65,10 @@ export interface PartyMember {
   equipment: Equipment;
   knownAbilities: string[];
   branchChoice?: string;
+  branchLevel6?: string;
   awaitingBranchChoice?: boolean;
   availableBranches?: string[];
+  branchWarnings?: string[];
   classAbilities?: Array<{ id: string; name: string; branch?: string }>;
   componentInventory: ComponentStack[];
 }
@@ -171,6 +173,16 @@ export interface ActiveMission {
   status: string;
 }
 
+export interface TownRumor {
+  id: string;
+  text: string;
+  truthStatus: string;
+  verified: boolean;
+  verificationResult: boolean | null;
+  relatedContentId: string | null;
+  relatedFactionId: string | null;
+}
+
 export interface TownState {
   currentTownId: string;
   availableMissions: MissionOffer[];
@@ -180,6 +192,7 @@ export interface TownState {
   tavernRoster: TavernRecruit[];
   viewedMissions: string[];
   questLog: ActiveMission[];
+  rumors: TownRumor[];
 }
 
 export interface OverworldNode {
@@ -223,6 +236,11 @@ export interface ActionLogEntry {
   payload: Record<string, string>;
 }
 
+export interface HeatState {
+  value: number;
+  tier: string;
+}
+
 export interface EvidenceState {
   suspectedFaction?: string;
   canConfront: boolean;
@@ -237,6 +255,8 @@ export interface DeadCharacter {
   level: number;
   resurrectionAttempts: number;
   branchAdvancementLocked: boolean;
+  resurrectionCost: number;
+  titheTokenCost: number;
 }
 
 export interface GameState {
@@ -254,6 +274,7 @@ export interface GameState {
   overworld?: OverworldState;
   travelEncounter?: TravelEncounter;
   reputation?: Record<string, number>;
+  heat?: HeatState;
   evidence?: EvidenceState;
   partyGold?: number;
   partyInventory?: string[];
@@ -263,8 +284,16 @@ export interface GameState {
   titheTokens?: number;
   campaignEnded?: boolean;
   actionLog?: ActionLogEntry[];
+  wildCardAlliance?: {
+    status: string;
+    factionId: string | null;
+    turn: number;
+  };
 }
 
+// Protocol actions are defined in the shared schema:
+// src/engine/RPC.Tests/Fixtures/protocol-schema.json
+// Keep this union in sync with the "actions" section.
 export type PlayerAction =
   | { type: 'move_forward' }
   | { type: 'move_back' }
@@ -273,7 +302,7 @@ export type PlayerAction =
   | { type: 'turn_left' }
   | { type: 'turn_right' }
   | { type: 'cancel' }
-  | { type: 'generate_dungeon' }
+  | { type: 'enter_combat' }
   | { type: 'enter_dungeon'; dungeonType: string }
   | { type: 'combat_action'; action: CombatAction }
   | { type: 'flee_combat' }
@@ -292,11 +321,15 @@ export type PlayerAction =
   | { type: 'fail_mission'; targetId: string }
   | { type: 'abandon_mission'; targetId: string }
   | { type: 'dialogue_choice'; targetId: string; value: number }
+  | { type: 'encounter_choice'; targetId: string }
   | { type: 'branch_choose'; targetId: string; branch: string }
+  | { type: 'accuse_faction'; targetId: string }
   | { type: 'transfer_to_cache'; slot: number; targetId: string; value: number }
   | { type: 'transfer_from_cache'; slot: number; targetId: string; value: number }
   | { type: 'downtime_action'; targetId: string; downtimeAction: string }
-  | { type: 'resurrect_character'; targetId: string };
+  | { type: 'resurrect_character'; targetId: string }
+  | { type: 'wildcard_alliance'; targetId: string }
+  | { type: 'rumor_verify'; targetId: string; source: string };
 
 export interface CombatAction {
   actorId: string;

@@ -1,0 +1,5 @@
+[
+  { "id": "inkblood_ritual", "text": "An Inkblood ritual at midnight can reveal the true name of any spirit in the Reach.", "truthStatus": "true", "relatedFactionId": "inkblood" },
+  { "id": "inkblood_contract", "text": "The Compact is offering binding contracts that grant immunity to bloom infection.", "truthStatus": "planted", "relatedFactionId": "inkblood" },
+  { "id": "inkblood_ossuary", "text": "The sealed ossuary beneath the Reach has been opened. Something walked out.", "truthStatus": "outdated", "relatedFactionId": "inkblood" }
+]

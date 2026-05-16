@@ -21,17 +21,17 @@
   );
 
   function routeColor(danger: number, status: string): string {
-    if (status === 'Blocked') return '#444';
-    if (status === 'BloomAffected') return '#a4a';
-    if (status === 'Contested') return '#a44';
+    if (status === 'blocked') return '#444';
+    if (status === 'bloomaffected') return '#a4a';
+    if (status === 'contested') return '#a44';
     if (danger <= 2) return '#44aa44';
     if (danger === 3) return '#d4a84b';
     return '#c44';
   }
 
   function routeDashArray(status: string): string {
-    if (status === 'Blocked') return '4,4';
-    if (status === 'Contested') return '8,4';
+    if (status === 'blocked') return '4,4';
+    if (status === 'contested') return '8,4';
     return 'none';
   }
 
@@ -44,7 +44,7 @@
   function handleNodeClick(nodeId: string) {
     if (nodeId === overworld.currentNodeId) return;
     const r = getRouteBetween(nodeId, overworld.currentNodeId);
-    if (!r || r.status === 'Blocked') return;
+    if (!r || r.status === 'blocked') return;
     confirmTarget = nodeId;
   }
 
@@ -63,7 +63,7 @@
     e: MouseEvent,
     r: { distance: number; dangerRating: number; terrain: string; status: string }
   ) {
-    const statusLabel = r.status === 'BloomAffected' ? 'Bloom-Affected' : r.status;
+    const statusLabel = r.status === 'bloomaffected' ? 'Bloom-Affected' : r.status;
     tooltip = {
       x: e.clientX + 12,
       y: e.clientY + 12,
@@ -96,9 +96,9 @@
           x2={toPos.x}
           y2={toPos.y}
           stroke={routeColor(route.dangerRating, route.status)}
-          stroke-width={route.status === 'Blocked' ? 2 : 4}
+          stroke-width={route.status === 'blocked' ? 2 : 4}
           stroke-dasharray={routeDashArray(route.status)}
-          opacity={route.status === 'Blocked' ? 0.4 : 1}
+          opacity={route.status === 'blocked' ? 0.4 : 1}
           class="route-line"
           role="img"
           aria-label="Route danger {route.dangerRating} status {route.status}"
@@ -151,9 +151,9 @@
     <div class="confirm-modal" role="alertdialog" aria-modal="true" aria-label="Confirm travel">
       <p>Travel to <strong>{targetNode?.name}</strong>?</p>
       <p class="cost">Cost: {routeToTarget?.distance ?? '?'} turns</p>
-      {#if routeToTarget?.status === 'Contested'}
+      {#if routeToTarget?.status === 'contested'}
         <p class="warning">Warning: Route is contested. Increased danger.</p>
-      {:else if routeToTarget?.status === 'BloomAffected'}
+      {:else if routeToTarget?.status === 'bloomaffected'}
         <p class="warning">Warning: Bloom-affected route. Unusual encounters possible.</p>
       {/if}
       <div class="confirm-actions">

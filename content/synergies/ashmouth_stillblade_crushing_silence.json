@@ -1,0 +1,17 @@
+{
+  "id": "ashmouth_stillblade_crushing_silence",
+  "abilities": [
+    "bash",
+    "silence_strike"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A crushing blow leaves the target staggered and vulnerable to silencing magic.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

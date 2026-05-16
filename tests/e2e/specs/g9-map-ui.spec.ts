@@ -24,7 +24,7 @@ test.describe('G9: Overworld Map UI', () => {
     await page.getByRole('button', { name: 'Overworld Map' }).click();
     const mapPanel = page.getByRole('dialog', { name: 'Overworld map' });
     await expect(mapPanel).toBeVisible();
-    const route = mapPanel.locator('[aria-label="Route danger 3"]');
+    const route = mapPanel.locator('[aria-label^="Route danger 3"]');
     await route.hover({ force: true });
     const tooltip = page.locator('.tooltip');
     await expect(tooltip).toBeVisible();

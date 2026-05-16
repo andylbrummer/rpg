@@ -1,0 +1,5 @@
+[
+  { "id": "stillness_sabotage", "text": "Stillness agents have been seen near the main Engine. They're planning something.", "truthStatus": "true", "relatedFactionId": "stillness" },
+  { "id": "stillness_peace", "text": "The Stillness leadership has called for a cease-fire. They want to negotiate.", "truthStatus": "planted", "relatedFactionId": "stillness" },
+  { "id": "stillness_recruit", "text": "The Stillness is recruiting from the desperate. They promise an end to suffering.", "truthStatus": "true", "relatedFactionId": "stillness" }
+]

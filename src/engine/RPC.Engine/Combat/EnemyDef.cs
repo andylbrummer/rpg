@@ -24,8 +24,7 @@ public class EnemyRegistry
 
     public void LoadFromJson(string id, string json)
     {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var def = JsonSerializer.Deserialize<EnemyDef>(json, options);
+        var def = JsonSerializer.Deserialize<EnemyDef>(json, ContentJsonOptions.CaseInsensitive);
         if (def is not null)
             _enemies[id] = def;
     }

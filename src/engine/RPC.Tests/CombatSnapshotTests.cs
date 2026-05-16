@@ -294,7 +294,8 @@ public class CombatSnapshotTests
     [Fact]
     public void Snapshot_Synergy_BonewardenCauterist_BoneLinkPyre_Triggers()
     {
-        SynergyRegistry.Register("bone_link", "pyre", new SynergyEffect("bonus_damage", 4));
+        var synergies = new SynergyRegistry();
+        synergies.Register("bone_link", "pyre", new SynergyEffect("bonus_damage", 4));
 
         var registry = new ClassRegistry();
         var bwJson = """
@@ -346,14 +347,14 @@ public class CombatSnapshotTests
                 var ability = abilitySequence[playerTurns];
                 state = CombatEngine.Tick(state,
                     new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
-                    rng, registry);
+                    rng, registry, synergies: synergies);
                 while (!state.IsFinished && state.Phase != CombatPhase.Turn)
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
                 playerTurns++;
             }
             else
             {
-                state = CombatEngine.Tick(state, null, rng, registry);
+                state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
             }
         }
 
@@ -364,7 +365,8 @@ public class CombatSnapshotTests
     [Fact]
     public void Snapshot_Synergy_StillbladeHollow_BackstepCheapShot_Triggers()
     {
-        SynergyRegistry.Register("backstep", "cheap_shot", new SynergyEffect("bonus_damage", 6));
+        var synergies = new SynergyRegistry();
+        synergies.Register("backstep", "cheap_shot", new SynergyEffect("bonus_damage", 6));
 
         var registry = new ClassRegistry();
         var sbJson = """
@@ -416,14 +418,14 @@ public class CombatSnapshotTests
                 var ability = abilitySequence[playerTurns];
                 state = CombatEngine.Tick(state,
                     new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
-                    rng, registry);
+                    rng, registry, synergies: synergies);
                 while (!state.IsFinished && state.Phase != CombatPhase.Turn)
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
                 playerTurns++;
             }
             else
             {
-                state = CombatEngine.Tick(state, null, rng, registry);
+                state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
             }
         }
 
@@ -434,7 +436,8 @@ public class CombatSnapshotTests
     [Fact]
     public void Snapshot_Synergy_FieldwrightInkblood_OverchargeKnowledgeBolt_Triggers()
     {
-        SynergyRegistry.Register("overcharge", "knowledge_bolt", new SynergyEffect("bonus_damage", 5));
+        var synergies = new SynergyRegistry();
+        synergies.Register("overcharge", "knowledge_bolt", new SynergyEffect("bonus_damage", 5));
 
         var registry = new ClassRegistry();
         var fwJson = """
@@ -486,14 +489,14 @@ public class CombatSnapshotTests
                 var ability = abilitySequence[playerTurns];
                 state = CombatEngine.Tick(state,
                     new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
-                    rng, registry);
+                    rng, registry, synergies: synergies);
                 while (!state.IsFinished && state.Phase != CombatPhase.Turn)
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
                 playerTurns++;
             }
             else
             {
-                state = CombatEngine.Tick(state, null, rng, registry);
+                state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
             }
         }
 
@@ -504,7 +507,8 @@ public class CombatSnapshotTests
     [Fact]
     public void Snapshot_Synergy_CauteristHollow_PurifyCheapShot_Triggers()
     {
-        SynergyRegistry.Register("purify", "cheap_shot", new SynergyEffect("apply_status", -3, "weakened", 2));
+        var synergies = new SynergyRegistry();
+        synergies.Register("purify", "cheap_shot", new SynergyEffect("apply_status", -3, "weakened", 2));
 
         var registry = new ClassRegistry();
         var caJson = """
@@ -556,14 +560,14 @@ public class CombatSnapshotTests
                 var ability = abilitySequence[playerTurns];
                 state = CombatEngine.Tick(state,
                     new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
-                    rng, registry);
+                    rng, registry, synergies: synergies);
                 while (!state.IsFinished && state.Phase != CombatPhase.Turn)
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
                 playerTurns++;
             }
             else
             {
-                state = CombatEngine.Tick(state, null, rng, registry);
+                state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
             }
         }
 
@@ -643,6 +647,7 @@ public class CombatSnapshotTests
     [Fact]
     public void Snapshot_SeededPairs_VersusWithout_SynergyDamageDiffers()
     {
+        var synergies = new SynergyRegistry();
         var registry = new ClassRegistry();
         var json = """
             {
@@ -678,9 +683,9 @@ public class CombatSnapshotTests
         int RunCombat(int seed, bool withSynergy)
         {
             if (withSynergy)
-                SynergyRegistry.Register("slash", "thrust", new SynergyEffect("bonus_damage", 3));
+                synergies.Register("slash", "thrust", new SynergyEffect("bonus_damage", 3));
             else
-                SynergyRegistry.Clear();
+                synergies.Clear();
 
             var state = CombatEngine.Enter(party, encounter, new GameRandom(seed));
             var rng = new GameRandom(seed);
@@ -694,12 +699,12 @@ public class CombatSnapshotTests
                     var target = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
                     var ability = playerTurns % 2 == 0 ? "slash" : "thrust";
                     state = CombatEngine.Tick(state,
-                        new CombatAction(actor.Value.Id, ActionType.UseAbility, target.Id, ability, null), rng, registry);
+                        new CombatAction(actor.Value.Id, ActionType.UseAbility, target.Id, ability, null), rng, registry, synergies: synergies);
                     playerTurns++;
                 }
                 else
                 {
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: synergies);
                 }
                 steps++;
             }

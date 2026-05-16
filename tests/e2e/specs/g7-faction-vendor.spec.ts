@@ -70,7 +70,7 @@ test.describe('Faction vendors in town', () => {
 
     const buyButton = page.locator('.town-services h2:has-text("Bureau Quartermaster") + .service-list .action-btn').first();
     await buyButton.click();
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(1200);
 
     const newGold = await goldBadge.textContent();
     expect(newGold).toBe('485g');

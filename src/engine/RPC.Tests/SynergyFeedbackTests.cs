@@ -5,6 +5,7 @@ using RPC.Engine.Party;
 
 namespace RPC.Tests;
 
+[Collection("SynergyTests")]
 public class SynergyFeedbackTests
 {
     private static CharacterState MakeChar(string name, int hp, int speed, int row = 0, string classId = "test")
@@ -14,15 +15,17 @@ public class SynergyFeedbackTests
             hp, Equipment.Empty,
             new[] { "ability_a", "ability_b" }, row);
 
+    private readonly SynergyRegistry _synergies = new();
+
     public SynergyFeedbackTests()
     {
-        SynergyRegistry.Clear();
+        _synergies.Clear();
     }
 
     [Fact]
     public void SynergyTrigger_EmitsActionLog_WithCorrectPayload()
     {
-        SynergyRegistry.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5), "test_synergy");
+        _synergies.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5), "test_synergy");
 
         var registry = new ClassRegistry();
         var json = """
@@ -42,7 +45,7 @@ public class SynergyFeedbackTests
             """;
         registry.LoadFromJson("synergy_test", json);
 
-        var gs = new GameState(seed: 42, classRegistry: registry);
+        var gs = new GameState(seed: 42, classRegistry: registry, synergies: _synergies);
         var party = new PartyState();
         party.SetMember(0, MakeChar("Hero", 20, 10, 0, "synergy_test"));
         party.SetMember(1, MakeChar("Ally", 20, 1, 0, "synergy_test"));
@@ -119,7 +122,7 @@ public class SynergyFeedbackTests
         registry.LoadFromJson("bonewarden", bwJson);
         registry.LoadFromJson("stillblade", sbJson);
 
-        var gs = new GameState(seed: 42, classRegistry: registry);
+        var gs = new GameState(seed: 42, classRegistry: registry, synergies: _synergies);
         var party = new PartyState();
         party.SetMember(0, new CharacterState(
             new Guid("11111111-1111-1111-1111-111111111111"), "Bone", "bonewarden", 1, 0,

@@ -5,11 +5,14 @@ namespace RPC.Tests;
 
 public class ReputationConsequenceTests
 {
+    private static readonly FactionContentRepository FactionRepo = new(FactionContentLoader.LoadAll("../../../../../../content/factions"));
+
+    private static GameState MakeGameState(int seed) => new(seed: seed, factionContent: FactionRepo);
     [Fact]
     public void CompleteMission_SideMission_AppliesPlus5PrimaryMinus2Opposed()
     {
         var gs = new GameState(seed: 1);
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", MissionStatus.Active, MissionType.Side));
 
         var result = gs.CompleteMission("m1");
 
@@ -22,7 +25,7 @@ public class ReputationConsequenceTests
     public void CompleteMission_MainMission_AppliesPlus8PrimaryMinus4Opposed()
     {
         var gs = new GameState(seed: 1);
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 8, "bureau", "active", MissionType.Main));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 8, "bureau", MissionStatus.Active, MissionType.Main));
 
         var result = gs.CompleteMission("m1");
 
@@ -35,7 +38,7 @@ public class ReputationConsequenceTests
     public void CompleteMission_ConvocationSideMission_AppliesPlus5PrimaryMinus2Opposed()
     {
         var gs = new GameState(seed: 1);
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "convocation", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "convocation", MissionStatus.Active, MissionType.Side));
 
         var result = gs.CompleteMission("m1");
 
@@ -48,7 +51,7 @@ public class ReputationConsequenceTests
     public void FailMission_AppliesMinus3PrimaryPlus1Opposed()
     {
         var gs = new GameState(seed: 1);
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", MissionStatus.Active, MissionType.Side));
 
         var result = gs.FailMission("m1");
 
@@ -61,7 +64,7 @@ public class ReputationConsequenceTests
     public void AbandonMission_AppliesMinus3PrimaryPlus1Opposed()
     {
         var gs = new GameState(seed: 1);
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", MissionStatus.Active, MissionType.Side));
 
         var result = gs.AbandonMission("m1");
 
@@ -97,7 +100,7 @@ public class ReputationConsequenceTests
     {
         var gs = new GameState(seed: 1);
         gs.ActionLog.Clear();
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", MissionStatus.Active, MissionType.Side));
 
         gs.CompleteMission("m1");
 
@@ -114,7 +117,7 @@ public class ReputationConsequenceTests
     {
         var gs = new GameState(seed: 1);
         gs.ActionLog.Clear();
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 8, "bureau", "active", MissionType.Main));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 8, "bureau", MissionStatus.Active, MissionType.Main));
 
         gs.CompleteMission("m1");
 
@@ -143,7 +146,7 @@ public class ReputationConsequenceTests
     [Fact]
     public void LockoutThreshold_Minus25_ContactRefusesInteraction()
     {
-        var gs = new GameState(seed: 1);
+        var gs = MakeGameState(1);
         gs.Reputation["convocation"] = -25;
 
         // Vendor should be hidden

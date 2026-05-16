@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 async function injectState(page: any, turns: number, campaignEnded = false) {
   await page.evaluate((state: any) => {
+    (window as any).__rpc_enableTestHooks();
     const store = (window as any).gameStore;
     store.__testSetState(state);
   }, {

@@ -1,0 +1,5 @@
+[
+  { "id": "cartography_new_pass", "text": "The Cartographers mapped a new mountain pass. Cuts two days off the northern route.", "truthStatus": "true", "relatedFactionId": "cartography" },
+  { "id": "cartography_old_road", "text": "The old imperial road east of the Reach is clear again. Safe passage guaranteed.", "truthStatus": "outdated", "relatedFactionId": "cartography" },
+  { "id": "cartography_surveyor", "text": "A surveyor found a bloom-free valley beyond the Broken Engine. Perfect for a settlement.", "truthStatus": "planted", "relatedFactionId": "cartography" }
+]

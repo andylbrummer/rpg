@@ -36,6 +36,7 @@
     { id: 'broken_engine', name: 'Broken Engine', level: 1, desc: 'Shallow caves infested with goblins.' },
     { id: 'sewers', name: 'Sewer Warrens', level: 3, desc: 'Crumbling ruins of a lost civilization.' },
     { id: 'crypt', name: 'Crypt of Whispers', level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
+    { id: 'bloom_site', name: 'Bloom Site', level: 4, desc: 'A fungal infestation spreading through abandoned machinery.' },
   ];
 
   const classColors: Record<string, string> = {
@@ -45,6 +46,8 @@
     hollow: '#6B6B6B',
     fieldwright: '#7A8B69',
     inkblood: '#7A4B6B',
+    marcher: '#5A7A5A',
+    ashmouth: '#8B5A3C',
   };
 
   function selectCharacter(name: string) {
@@ -61,32 +64,58 @@
     return '"Hello."';
   }
 
+  const factionDialogue: Record<string, { dismissive: string; rumor: string; hostility: string }> = {
+    bureau: {
+      dismissive: '"The Bureau has no business with you."',
+      rumor: '"Rumor: A patrol went missing near the sewers."',
+      hostility: '"You are not welcome here. Leave, or be removed."'
+    },
+    convocation: {
+      dismissive: '"The Convocation does not suffer fools."',
+      rumor: '"Rumor: The Bloom whispers differently tonight."',
+      hostility: '"Your presence offends the Convocation. Depart before we act."'
+    },
+    cartography: {
+      dismissive: '"The Collective does not guide those who cannot read their own path."',
+      rumor: '"Rumor: A new passage has opened beneath the eastern quarter."',
+      hostility: '"You are lost to us. Turn back before you lead others astray."'
+    },
+    inkblood: {
+      dismissive: '"The Scribes record many things. Your name is not among them."',
+      rumor: '"Rumor: A forgotten text in the deep archives speaks of what is to come."',
+      hostility: '"Your story ends here. We will ensure it is properly documented."'
+    },
+    stillness: {
+      dismissive: '"The Null has no use for noise. Be silent or be gone."',
+      rumor: '"Rumor: The silence between heartbeats grows longer each night."',
+      hostility: '"You disrupt the equilibrium. We will restore it."'
+    }
+  };
+
   function dismissiveLineForFaction(factionId: string): string {
-    return factionId === 'bureau'
-      ? '"The Bureau has no business with you."'
-      : '"The Convocation does not suffer fools."';
+    return factionDialogue[factionId]?.dismissive ?? '"We have nothing to discuss."';
   }
 
   function rumorForFaction(factionId: string): string {
-    return factionId === 'bureau'
-      ? '"Rumor: A patrol went missing near the sewers."'
-      : '"Rumor: The Bloom whispers differently tonight."';
+    return factionDialogue[factionId]?.rumor ?? '"Rumor: Something stirs in the dark."';
   }
 
   function hostilityLineForFaction(factionId: string): string {
-    return factionId === 'bureau'
-      ? '"You are not welcome here. Leave, or be removed."'
-      : '"Your presence offends the Convocation. Depart before we act."';
+    return factionDialogue[factionId]?.hostility ?? '"You are not welcome here."';
   }
 
   const factionColors: Record<string, string> = {
     bureau: '#4488aa',
     convocation: '#aa44aa',
+    cartography: '#b8860b',
+    inkblood: '#8b2222',
+    stillness: '#2a2a3a',
   };
 
   const town = $derived(gameState?.town);
   const reputation = $derived(gameState?.reputation ?? {});
   const partyGold = $derived(gameState?.partyGold ?? 0);
+  const heat = $derived(gameState?.heat);
   const partyInventory = $derived(gameState?.partyInventory ?? []);
 
   const partyMembers = $derived(gameState?.party ?? []);
@@ -175,7 +204,14 @@
     <div class="party-panel">
       <div class="party-header-row">
         <h2>Your Party</h2>
-        <span class="gold-badge">{partyGold}g</span>
+        <div class="header-badges">
+          <span class="gold-badge">{partyGold}g</span>
+          {#if heat && heat.value > 0}
+            <span class="heat-badge" class:heat-low={heat.value <= 20} class:heat-med={heat.value > 20 && heat.value <= 40} class:heat-high={heat.value > 40 && heat.value <= 60} class:heat-severe={heat.value > 60 && heat.value <= 80} class:heat-lockdown={heat.value > 80}>
+              Heat: {heat.value}
+            </span>
+          {/if}
+        </div>
       </div>
       <div class="formation-grid">
         <div
@@ -387,6 +423,35 @@
           </div>
         {/if}
 
+        <h2>Rumors</h2>
+        <div class="service-list">
+          {#each town?.rumors || [] as rumor (rumor.id)}
+            <div class="service-item rumor-row">
+              <div class="rumor-text">
+                <span class="rumor-quote">&ldquo;{rumor.text}&rdquo;</span>
+                {#if rumor.verified}
+                  <span class="rumor-badge" class:rumor-true={rumor.verificationResult === true} class:rumor-false={rumor.verificationResult === false}>
+                    {rumor.verificationResult === true ? 'Confirmed' : 'Debunked'}
+                  </span>
+                {:else}
+                  <span class="rumor-unverified">Unverified</span>
+                {/if}
+              </div>
+              {#if !rumor.verified}
+                <button
+                  type="button"
+                  class="action-btn"
+                  onclick={() => sendAction({ type: 'rumor_verify', targetId: rumor.id, source: 'Firsthand' })}
+                >
+                  Verify
+                </button>
+              {/if}
+            </div>
+          {:else}
+            <div class="empty-state">No rumors circulating.</div>
+          {/each}
+        </div>
+
         <h2>Faction Contacts</h2>
         <div class="service-list">
           {#each town?.factionContacts || [] as contact (contact.id)}
@@ -454,6 +519,31 @@
           {/each}
         </div>
 
+        {#if gameState?.wildCardAlliance?.status === 'offered'}
+          <h2>Wild Card Alliance</h2>
+          <div class="service-list">
+            <div class="service-item alliance-offer">
+              <div class="alliance-text">
+                <span class="alliance-faction">The {gameState.wildCardAlliance.factionId}</span>
+                <span class="alliance-desc">has offered an alliance. Their soldiers will assist you in combat, and their vendors will offer a 25% discount.</span>
+              </div>
+              <div class="alliance-buttons">
+                <button type="button" class="action-btn accept" onclick={() => sendAction({ type: 'wildcard_alliance', targetId: 'accept' })}>Accept</button>
+                <button type="button" class="action-btn refuse" onclick={() => sendAction({ type: 'wildcard_alliance', targetId: 'refuse' })}>Refuse</button>
+                <button type="button" class="action-btn ignore" onclick={() => sendAction({ type: 'wildcard_alliance', targetId: 'ignore' })}>Ignore</button>
+              </div>
+            </div>
+          </div>
+        {:else if gameState?.wildCardAlliance?.status === 'accepted'}
+          <h2>Wild Card Alliance</h2>
+          <div class="service-list">
+            <div class="service-item alliance-active">
+              <span class="alliance-faction">Allied with {gameState.wildCardAlliance.factionId}</span>
+              <span class="alliance-benefits">Combat assistance active. Vendor discount active.</span>
+            </div>
+          </div>
+        {/if}
+
         <h2>Bone Clerk</h2>
         <div class="service-list">
           <div class="bone-clerk-info">
@@ -473,15 +563,13 @@
                 {/if}
               </div>
               {#if dead.resurrectionAttempts < 2}
-                {@const cost = dead.resurrectionAttempts === 0 ? 500 : 1500}
-                {@const titheCost = dead.resurrectionAttempts === 0 ? 1 : 2}
                 <button
                   type="button"
                   class="action-btn"
-                  disabled={partyGold < cost || (gameState?.titheTokens ?? 0) < titheCost}
+                  disabled={partyGold < dead.resurrectionCost || (gameState?.titheTokens ?? 0) < dead.titheTokenCost}
                   onclick={() => sendAction({ type: 'resurrect_character', targetId: dead.id })}
                 >
-                  Resurrect ({cost}g, {titheCost} TT)
+                  Resurrect ({dead.resurrectionCost}g, {dead.titheTokenCost} TT)
                 </button>
               {/if}
             </div>
@@ -572,7 +660,7 @@
         {#each (member.availableBranches ?? []) as branch}
           <div class="branch-option">
             <h3 class="branch-name">{formatBranchName(branch)}</h3>
-            {#if !isLevel6 && (member as any).branchWarnings?.includes(branch)}
+            {#if !isLevel6 && member.branchWarnings?.includes(branch)}
               <p class="branch-warning">Warning: This path contains a faction-gated branch at level 6.</p>
             {/if}
             <div class="branch-abilities">
@@ -918,12 +1006,55 @@
     margin-bottom: 0.5rem;
   }
 
+  .header-badges {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
   .gold-badge {
     padding: 0.2rem 0.5rem;
     background: rgba(212, 168, 75, 0.15);
     border: 0.0625em solid #d4a84b;
     border-radius: 0.25rem;
     color: #d4a84b;
+  }
+
+  .heat-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: clamp(0.6rem, 1.2vw, 0.75rem);
+    font-weight: bold;
+  }
+
+  .heat-low {
+    background: rgba(68, 170, 68, 0.15);
+    border: 0.0625em solid #44aa44;
+    color: #88cc88;
+  }
+
+  .heat-med {
+    background: rgba(212, 168, 75, 0.15);
+    border: 0.0625em solid #d4a84b;
+    color: #d4a84b;
+  }
+
+  .heat-high {
+    background: rgba(212, 120, 60, 0.15);
+    border: 0.0625em solid #d4783c;
+    color: #e8a060;
+  }
+
+  .heat-severe {
+    background: rgba(204, 68, 68, 0.15);
+    border: 0.0625em solid #cc4444;
+    color: #cc8888;
+  }
+
+  .heat-lockdown {
+    background: rgba(140, 40, 40, 0.25);
+    border: 0.0625em solid #cc4444;
+    color: #ff6666;
     font-size: clamp(0.65rem, 1.3vw, 0.75rem);
     font-weight: bold;
   }
@@ -977,6 +1108,50 @@
 
   .action-btn:hover {
     background: rgba(68, 170, 68, 0.3);
+  }
+
+  .rumor-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .rumor-text {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    align-items: center;
+  }
+
+  .rumor-quote {
+    color: #ccc;
+    font-style: italic;
+  }
+
+  .rumor-badge {
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.2rem;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  .rumor-true {
+    background: rgba(68, 170, 68, 0.2);
+    color: #88cc88;
+    border: 0.0625em solid #44aa44;
+  }
+
+  .rumor-false {
+    background: rgba(204, 68, 68, 0.2);
+    color: #cc8888;
+    border: 0.0625em solid #cc4444;
+  }
+
+  .rumor-unverified {
+    color: #888;
+    font-size: clamp(0.55rem, 1vw, 0.65rem);
+    font-style: italic;
   }
 
   .empty-state {
@@ -1476,5 +1651,64 @@
   .action-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+
+  .alliance-offer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    background: rgba(212, 168, 75, 0.1);
+    border: 1px solid rgba(212, 168, 75, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .alliance-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .alliance-faction {
+    color: #d4a84b;
+    font-weight: bold;
+    text-transform: capitalize;
+  }
+
+  .alliance-desc {
+    color: #ccc;
+    font-size: clamp(0.65rem, 1.2vw, 0.8rem);
+  }
+
+  .alliance-buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .alliance-buttons .accept {
+    background: #4a7c3f;
+  }
+
+  .alliance-buttons .refuse {
+    background: #7c3f3f;
+  }
+
+  .alliance-buttons .ignore {
+    background: #555;
+  }
+
+  .alliance-active {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    background: rgba(74, 124, 63, 0.1);
+    border: 1px solid rgba(74, 124, 63, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .alliance-benefits {
+    color: #888;
+    font-size: clamp(0.65rem, 1.2vw, 0.8rem);
   }
 </style>

@@ -1,0 +1,6 @@
+[
+  { "id": "convocation_bloom_song", "text": "The Bloom whispers differently tonight. Those who listen say it speaks in the old tongue.", "truthStatus": "true", "relatedFactionId": "convocation" },
+  { "id": "convocation_cure_found", "text": "The Convocation claims to have found a cure for bloom-touch. They need test subjects.", "truthStatus": "planted", "relatedFactionId": "convocation" },
+  { "id": "convocation_meeting", "text": "Convocation agents are meeting in the hollow caves every third night.", "truthStatus": "true", "relatedContentId": "crypt", "relatedFactionId": "convocation" },
+  { "id": "convocation_defectors", "text": "Three Convocation researchers defected to the Bureau last week with stolen notes.", "truthStatus": "outdated", "relatedFactionId": "convocation" }
+]

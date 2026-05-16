@@ -55,41 +55,39 @@ test.describe('G9.5 Action Log Categories', () => {
     expect(travelStarted.payload.from).toBe('the_reach');
     expect(travelStarted.payload.to).toBe('broken_engine');
 
-    // Resolve any non-combat travel encounters
-    let encounterCount = 0;
-    for (let i = 0; i < 5; i++) {
-      const encounterVisible = await page.locator('.travel-encounter-overlay').isVisible().catch(() => false);
-      if (encounterVisible) {
-        encounterCount++;
-        await page.locator('.travel-action-btn').first().click();
-        await page.waitForTimeout(500);
-      } else {
-        break;
+    // Resolve any travel encounters (combat or non-combat)
+    let nonCombatEncounterCount = 0;
+    async function resolveTravelOutcome() {
+      for (let i = 0; i < 5; i++) {
+        const combatVisible = await page.locator('.combat-overlay').isVisible().catch(() => false);
+        const encounterVisible = await page.locator('.travel-encounter-overlay').isVisible().catch(() => false);
+        if (combatVisible) {
+          await sendWsAction(page, serverUrl, { type: 'flee_combat' });
+          await page.waitForTimeout(600);
+        } else if (encounterVisible) {
+          nonCombatEncounterCount++;
+          await page.locator('.travel-action-btn').first().click();
+          await page.waitForTimeout(500);
+        } else {
+          break;
+        }
       }
     }
+
+    await resolveTravelOutcome();
 
     // Travel back to the_reach
     await sendWsAction(page, serverUrl, { type: 'travel', targetId: 'the_reach' });
     await page.waitForTimeout(600);
 
-    // Resolve any non-combat travel encounters
-    for (let i = 0; i < 5; i++) {
-      const encounterVisible = await page.locator('.travel-encounter-overlay').isVisible().catch(() => false);
-      if (encounterVisible) {
-        encounterCount++;
-        await page.locator('.travel-action-btn').first().click();
-        await page.waitForTimeout(500);
-      } else {
-        break;
-      }
-    }
+    await resolveTravelOutcome();
 
     const res2 = await request.get(`${serverUrl}/api/action-log`);
     expect(res2.ok()).toBeTruthy();
     const log2 = await res2.json();
 
     const encounterResolved = log2.events.filter((e: any) => e.type === 'travel_encounter_resolved');
-    expect(encounterResolved.length).toBeGreaterThanOrEqual(encounterCount);
+    expect(encounterResolved.length).toBeGreaterThanOrEqual(nonCombatEncounterCount);
 
     const townReached = log2.events.find((e: any) => e.type === 'town_reached');
     expect(townReached).toBeTruthy();

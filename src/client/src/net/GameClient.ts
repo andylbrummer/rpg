@@ -89,6 +89,12 @@ export class GameClient {
           break;
         }
 
+        case 'content.reload': {
+          // Dev-only: content hot-reload notification. Ignored in production.
+          console.info('Content reload:', envelope.payload);
+          break;
+        }
+
         default:
           console.warn('Unknown envelope type:', envelope.type);
       }

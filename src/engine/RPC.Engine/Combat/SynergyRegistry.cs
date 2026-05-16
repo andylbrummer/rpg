@@ -1,14 +1,15 @@
 using System.Text.Json;
+using RPC.Engine.Content;
 
 namespace RPC.Engine.Combat;
 
 /// <summary>
-/// Static registry for ability synergies. Order-independent pair lookup.
+/// Instance registry for ability synergies. Order-independent pair lookup.
 /// Anti-synergy: Bonewarden + Stillblade — no positive cross-class effects registered.
 /// </summary>
-public static class SynergyRegistry
+public class SynergyRegistry
 {
-    private static readonly Dictionary<string, (string? Id, SynergyEffect Effect)> _effects = new();
+    private readonly Dictionary<string, (string? Id, SynergyEffect Effect)> _effects = new();
 
     public static string MakeKey(string a, string b)
     {
@@ -20,12 +21,12 @@ public static class SynergyRegistry
             : $"{b}|{a}";
     }
 
-    public static void Register(string a, string b, SynergyEffect effect, string? id = null)
+    public void Register(string a, string b, SynergyEffect effect, string? id = null)
     {
         _effects[MakeKey(a, b)] = (id, effect);
     }
 
-    public static SynergyEffect? Lookup(string a, string b)
+    public SynergyEffect? Lookup(string a, string b)
     {
         var key = MakeKey(a, b);
         if (string.IsNullOrEmpty(key))
@@ -34,7 +35,7 @@ public static class SynergyRegistry
         return _effects.TryGetValue(key, out var entry) ? entry.Effect : null;
     }
 
-    public static (string? Id, SynergyEffect Effect)? LookupWithId(string a, string b)
+    public (string? Id, SynergyEffect Effect)? LookupWithId(string a, string b)
     {
         var key = MakeKey(a, b);
         if (string.IsNullOrEmpty(key))
@@ -43,16 +44,13 @@ public static class SynergyRegistry
         return _effects.TryGetValue(key, out var entry) ? entry : null;
     }
 
-    public static void Clear() => _effects.Clear();
+    public void Clear() => _effects.Clear();
 
-    public static IReadOnlyDictionary<string, (string? Id, SynergyEffect Effect)> GetAll() => _effects;
+    public IReadOnlyDictionary<string, (string? Id, SynergyEffect Effect)> GetAll() => _effects;
 
-    public static void LoadFromJson(string json)
+    public void LoadFromJson(string json)
     {
-        var def = JsonSerializer.Deserialize<SynergyDef>(json, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        var def = JsonSerializer.Deserialize<SynergyDef>(json, ContentJsonOptions.Standard);
 
         if (def is null || def.Anti || def.Abilities.Length != 2)
             return;
@@ -64,7 +62,7 @@ public static class SynergyRegistry
         Register(def.Abilities[0], def.Abilities[1], effect, def.Id);
     }
 
-    public static void LoadFromDirectory(string directoryPath)
+    public void LoadFromDirectory(string directoryPath)
     {
         if (!Directory.Exists(directoryPath))
             return;

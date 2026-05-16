@@ -124,10 +124,17 @@
     return combatants.filter(c => c.row === 1);
   }
 
-  function getCurrentAbilities(): { id: string; name: string; range?: string }[] {
+  function getCurrentAbilities(): { id: string; name: string; range?: string; available: boolean }[] {
     const actor = getCurrentActor();
     if (!actor || !actor.isPlayer) return [];
-    return actor.abilities?.map(a => ({ id: a.id, name: a.name, range: a.range })) ?? [];
+    return actor.abilities?.map(a => ({
+      id: a.id,
+      name: a.name,
+      range: a.range,
+      available: !a.requiredRow
+        || (a.requiredRow === 'front' && actor.row === 0)
+        || (a.requiredRow === 'back' && actor.row === 1)
+    })) ?? [];
   }
 
   function isValidTarget(enemy: Combatant): boolean {
@@ -308,7 +315,10 @@
               <button
                 class="ability-btn"
                 class:selected={selectedAbilityId === ability.id}
-                onclick={() => selectAbility(ability.id)}
+                class:disabled={!ability.available}
+                onclick={() => ability.available && selectAbility(ability.id)}
+                disabled={!ability.available}
+                title={ability.available ? '' : 'Unavailable from this row'}
               >
                 {ability.name}
               </button>
@@ -659,6 +669,13 @@
   .ability-btn.selected {
     border-color: #d4a84b;
     background: rgba(212, 168, 75, 0.15);
+  }
+
+  .ability-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #444;
+    color: #666;
   }
 
   .no-abilities {

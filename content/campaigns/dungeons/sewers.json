@@ -1,0 +1,10 @@
+{
+  "id": "sewers",
+  "name": "Sewer Warrens",
+  "segmentPool": ["entrance", "corridor", "chamber", "dead_end", "boss_room"],
+  "segmentPriority": ["entrance", "corridor", "chamber", "dead_end", "boss_room"],
+  "targetRooms": 8,
+  "bossEncounterId": "boss-encounter-1",
+  "encounterTableId": "sewers",
+  "wanderingTableId": "sewers"
+}

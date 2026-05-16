@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { gameStore, sendAction, serverErrorStore } from './stores/gameStore';
+  import { gameStore, sendAction, serverErrorStore, bootstrapGameStore } from './stores/gameStore';
+  import { GameClient } from './net/GameClient';
   import TownMenu from './ui/TownMenu.svelte';
   import type { PlayerAction } from './types/game';
   import CombatOverlay from './ui/CombatOverlay.svelte';
@@ -8,9 +9,11 @@
   import ExplorationHUD from './ui/ExplorationHUD.svelte';
   import FieldNotesPanel from './ui/FieldNotesPanel.svelte';
   import CharacterSheet from './ui/CharacterSheet.svelte';
+  import SettingsPanel from './ui/SettingsPanel.svelte';
   import { DungeonRenderer } from './renderer/DungeonRenderer';
   import { AmbientAudioManager } from './renderer/AmbientAudio';
   import type { GameState } from './types/game';
+  import { loadBindings, keyToAction } from './config/keybindings';
 
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | null = null;
@@ -25,6 +28,8 @@
   let showFieldNotes = $state(false);
   let replaySynergyId = $state<string | null>(null);
   let selectedMemberSlot = $state<number | null>(null);
+  let showSettings = $state(false);
+  let keyBindings = $state(loadBindings());
 
   const DISCOVERY_KEY = 'rpc_discovered_synergies';
   const REVEALED_KEY = 'rpc_revealed_synergies';
@@ -170,33 +175,9 @@
     sendAction({ type: 'cancel' });
   }
 
-  function keyToAction(key: string): PlayerAction | null {
-    switch (key) {
-      case 'ArrowUp':
-      case 'w':
-      case 'W':
-        return { type: 'move_forward' };
-      case 'ArrowDown':
-      case 's':
-      case 'S':
-        return { type: 'move_back' };
-      case 'a':
-      case 'A':
-        return { type: 'strafe_left' };
-      case 'd':
-      case 'D':
-        return { type: 'strafe_right' };
-      case 'ArrowLeft':
-      case 'q':
-      case 'Q':
-        return { type: 'turn_left' };
-      case 'ArrowRight':
-      case 'e':
-      case 'E':
-        return { type: 'turn_right' };
-      default:
-        return null;
-    }
+  function resolveKeyToAction(key: string): PlayerAction | null {
+    const action = keyToAction(keyBindings, key);
+    return action ? { type: action } : null;
   }
 
   let lastMode: string | null = null;
@@ -272,7 +253,28 @@
   });
 
   onMount(() => {
+    // Explicit bootstrap: create client, wire store, connect
+    const client = new GameClient();
+    bootstrapGameStore(client);
+
+    if (typeof window !== 'undefined') {
+      // Expose test hooks unconditionally — e2e suite depends on window.gameClient
+      (window as any).gameClient = client;
+      (window as any).gameStore = gameStore;
+    }
+
+    gameStore.connect();
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (showSettings) {
+        // Let SettingsPanel handle its own key capture
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          showSettings = false;
+        }
+        return;
+      }
+
       if (e.key === 'Escape') {
         e.preventDefault();
         if (showFieldNotes) {
@@ -293,7 +295,7 @@
         return;
       }
 
-      const action = keyToAction(e.key);
+      const action = resolveKeyToAction(e.key);
       if (!action) return;
 
       if (gameState?.mode !== 'Exploration') return;
@@ -449,6 +451,7 @@
             </span>
           {/if}
           <button class="field-notes-toggle" onclick={() => showFieldNotes = true}>Field Notes</button>
+          <button class="settings-toggle" onclick={() => showSettings = true}>Settings</button>
         </div>
       </header>
     {/if}
@@ -526,6 +529,12 @@
           revealedIds={revealedSynergies}
           onClose={() => showFieldNotes = false}
           onReplay={(id) => { replaySynergyId = id; playBeep(); }}
+        />
+      {/if}
+      {#if showSettings}
+        <SettingsPanel
+          open={showSettings}
+          onClose={() => showSettings = false}
         />
       {/if}
       {#if replaySynergyId}
@@ -871,6 +880,22 @@
 
   .field-notes-toggle:hover {
     background: rgba(212, 168, 75, 0.3);
+  }
+
+  .settings-toggle {
+    padding: 0.2rem 0.5rem;
+    background: rgba(120, 160, 200, 0.15);
+    border: 1px solid #78a0c8;
+    border-radius: 0.25rem;
+    color: #78a0c8;
+    cursor: pointer;
+    font-size: clamp(0.6rem, 1.2vw, 0.75rem);
+    font-weight: bold;
+    margin-left: 0.5rem;
+  }
+
+  .settings-toggle:hover {
+    background: rgba(120, 160, 200, 0.3);
   }
 
   .replay-modal-overlay {

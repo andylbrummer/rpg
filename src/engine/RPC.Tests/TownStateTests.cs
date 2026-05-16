@@ -5,14 +5,19 @@ using RPC.Engine.Town;
 
 namespace RPC.Tests;
 
+[Collection("FactionContentTests")]
 public class TownStateTests : IDisposable
 {
     private readonly string _testSavePath;
+
+    private static readonly FactionContentRepository FactionRepo = new(FactionContentLoader.LoadAll("../../../../../../content/factions"));
 
     public TownStateTests()
     {
         _testSavePath = Path.Combine(Path.GetTempPath(), $"test_town_{Guid.NewGuid()}.json");
     }
+
+    private GameState MakeGameState(int seed) => new(seed: seed, factionContent: FactionRepo);
 
     public void Dispose()
     {
@@ -64,7 +69,7 @@ public class TownStateTests : IDisposable
     [Fact]
     public void GameState_InitializesTown_WithRoster()
     {
-        var gs = new GameState(seed: 42);
+        var gs = MakeGameState(42);
 
         Assert.NotNull(gs.Town);
         Assert.Equal("the_reach", gs.Town.CurrentTownId);
@@ -77,7 +82,7 @@ public class TownStateTests : IDisposable
     [Fact]
     public void SaveSystem_TownRoundTrip_PreservesRoster()
     {
-        var gs = new GameState(seed: 99);
+        var gs = MakeGameState(99);
         var originalRoster = gs.Town.TavernRoster;
         gs.Town.ViewedMissions.Add("mission_1");
 
@@ -107,7 +112,7 @@ public class TownStateTests : IDisposable
     [Fact]
     public void SaveSystem_TownRoundTrip_PreservesEmptyCollections()
     {
-        var gs = new GameState(seed: 77);
+        var gs = MakeGameState(77);
         gs.SaveGame(_testSavePath);
 
         var gs2 = new GameState(seed: 88);
@@ -157,7 +162,7 @@ public class TownStateTests : IDisposable
     [Fact]
     public void AcceptMission_RemovesFromAvailable()
     {
-        var gs = new GameState(seed: 1);
+        var gs = MakeGameState(1);
         var initialCount = gs.Town.AvailableMissions.Count;
         var mission = gs.Town.AvailableMissions[0];
 
@@ -166,7 +171,7 @@ public class TownStateTests : IDisposable
         Assert.Equal(initialCount - 1, gs.Town.AvailableMissions.Count);
         Assert.Single(gs.Town.QuestLog);
         Assert.Equal(mission.Id, gs.Town.QuestLog[0].Id);
-        Assert.Equal("active", gs.Town.QuestLog[0].Status);
+        Assert.Equal(MissionStatus.Active, gs.Town.QuestLog[0].Status);
     }
 
     [Fact]
@@ -180,7 +185,7 @@ public class TownStateTests : IDisposable
     [Fact]
     public void PurchaseVendorItem_RemovesFromStock()
     {
-        var gs = new GameState(seed: 1);
+        var gs = MakeGameState(1);
         gs.Town.VendorStock.Add(new VendorItem("i1", "Potion", 10, 3));
 
         var result = gs.PurchaseVendorItem("i1");
@@ -191,7 +196,7 @@ public class TownStateTests : IDisposable
     [Fact]
     public void PurchaseVendorItem_InvalidId_ReturnsFalse()
     {
-        var gs = new GameState(seed: 1);
+        var gs = MakeGameState(1);
         var result = gs.PurchaseVendorItem("nonexistent");
         Assert.False(result);
     }
@@ -306,11 +311,7 @@ public class TownStateTests : IDisposable
     [Fact]
     public void GameState_InitializesTown_WithFactionContentLoaded()
     {
-        var factionContent = FactionContentLoader.LoadAll("../../../../../../content/factions");
-        FactionContactGenerator.SetContent(factionContent);
-        FactionVendorGenerator.SetContent(factionContent);
-
-        var gs = new GameState(seed: 42);
+        var gs = MakeGameState(42);
 
         Assert.Equal(5, gs.Town.FactionContacts.Count);
         Assert.Equal(20, gs.Town.AvailableMissions.Count);

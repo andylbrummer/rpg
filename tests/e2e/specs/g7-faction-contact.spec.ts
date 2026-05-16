@@ -51,7 +51,7 @@ test.describe('Faction contacts in town', () => {
 
     await expect(bureauContact.locator('.dialogue-line.greeting')).toBeVisible();
     await expect(bureauContact.locator('.dialogue-line.rumor')).toBeVisible();
-    await expect(bureauContact.locator('.mission-offer')).toHaveCount(2);
+    await expect(bureauContact.locator('.mission-offer')).toHaveCount(4);
   });
 
   test('accepting mission updates quest log', async ({ page, serverUrl }) => {

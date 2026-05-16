@@ -2,43 +2,53 @@ import { writable } from 'svelte/store';
 import { GameClient } from '../net/GameClient';
 import type { GameState, PlayerAction, ErrorPayload } from '../types/game';
 
-const client = new GameClient();
-
-// Expose for e2e tests
-if (typeof window !== 'undefined') {
-  (window as any).gameClient = client;
+export interface GameStore {
+  subscribe: (callback: (state: GameState | null) => void) => () => void;
+  sendAction: (action: PlayerAction) => void;
+  errorStore: { subscribe: (callback: (error: ErrorPayload | null) => void) => () => void };
+  connect: () => void;
+  disconnect: () => void;
+  __testSetState: (state: GameState | null) => void;
 }
 
-function createGameStore() {
-  const { subscribe, set } = writable<GameState | null>(null);
+const state = writable<GameState | null>(null);
+const errorStore = writable<ErrorPayload | null>(null);
 
-  const errorStore = writable<ErrorPayload | null>(null);
+export const gameStore: GameStore = {
+  subscribe: state.subscribe,
+  sendAction: () => {
+    console.warn('sendAction called before game store bootstrap');
+  },
+  errorStore,
+  connect: () => {
+    console.warn('connect called before game store bootstrap');
+  },
+  disconnect: () => {
+    console.warn('disconnect called before game store bootstrap');
+  },
+  __testSetState: state.set,
+};
 
-  client.onState((state) => {
-    set(state);
+export let sendAction: (action: PlayerAction) => void = gameStore.sendAction;
+export let serverErrorStore: typeof errorStore = errorStore;
+
+export function bootstrapGameStore(client: GameClient): GameStore {
+  client.onState((s) => {
+    state.set(s);
   });
 
-  client.onError((error) => {
-    console.error('Server error:', error.code, error.message);
-    errorStore.set(error);
-    // Auto-clear after 4s
+  client.onError((err) => {
+    console.error('Server error:', err.code, err.message);
+    errorStore.set(err);
     setTimeout(() => errorStore.set(null), 4000);
   });
 
-  client.connect();
+  gameStore.sendAction = (action: PlayerAction) => client.sendAction(action);
+  gameStore.connect = () => client.connect();
+  gameStore.disconnect = () => client.disconnect();
 
-  return {
-    subscribe,
-    sendAction: (action: PlayerAction) => client.sendAction(action),
-    errorStore,
-    __testSetState: set,
-  };
-}
+  sendAction = gameStore.sendAction;
+  serverErrorStore = gameStore.errorStore;
 
-export const gameStore = createGameStore();
-export const sendAction = gameStore.sendAction;
-export const serverErrorStore = gameStore.errorStore;
-
-if (typeof window !== 'undefined') {
-  (window as any).gameStore = gameStore;
+  return gameStore;
 }

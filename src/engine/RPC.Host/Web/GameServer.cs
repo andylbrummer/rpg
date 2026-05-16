@@ -3,15 +3,20 @@ using System.Net;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using RPC.Content;
 using RPC.Engine;
 using RPC.Engine.Campaign;
 using RPC.Engine.Character;
+using RPC.Engine.Commands;
 using RPC.Engine.Combat;
 using RPC.Engine.Content;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Inventory;
 using RPC.Engine.Models.Dungeons;
+using RPC.Engine.Services;
 using RPC.Engine.Town;
+using System.IO;
 
 namespace RPC.Host.Web;
 
@@ -25,8 +30,14 @@ public class GameServer
     private readonly EncounterTableRegistry _encounterTables;
     private readonly ClassRegistry _classRegistry;
     private readonly ItemRegistry _itemRegistry;
+    private readonly SynergyRegistry _synergies;
     private readonly List<RoomSegment> _segments;
     private readonly FileSystemWatcher? _segmentWatcher;
+    private readonly GameCommandHandler _commandHandler;
+    private readonly StatePresenter _statePresenter;
+
+    private readonly IContentCatalog _catalog;
+    private readonly Dictionary<string, DungeonTemplate> _dungeonTemplates;
 
     public GameServer(int port = 8080, bool isDev = false)
     {
@@ -34,92 +45,146 @@ public class GameServer
         Port = port;
         _listener.Prefixes.Add($"http://localhost:{port}/");
         _listener.Prefixes.Add($"http://127.0.0.1:{port}/");
-        _encounterTables = LoadEncounterTables();
-        _classRegistry = LoadClassRegistry();
-        _itemRegistry = LoadItemRegistry();
-        LoadSynergies();
-        var factionContent = LoadFactionContent();
-        FactionContactGenerator.SetContent(factionContent);
-        FactionVendorGenerator.SetContent(factionContent);
-        _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry);
+
+        var rpkPath = FindRpkPath();
+        _catalog = rpkPath != null ? new RpkCatalog(rpkPath) : new FileSystemCatalog();
+        var contentHash = ReadContentHash(rpkPath);
+        LogContentPackInfo(rpkPath, contentHash);
+
+        _encounterTables = LoadEncounterTables(_catalog);
+        _classRegistry = LoadClassRegistry(_catalog);
+        _itemRegistry = LoadItemRegistry(_catalog);
+        _synergies = LoadSynergies(_catalog);
+        var factionContent = LoadFactionContent(_catalog);
+        var factionRepo = new FactionContentRepository(factionContent);
+        var rumorRepo = new RumorRepository(_catalog);
+        _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry, synergies: _synergies, factionContent: factionRepo, rumors: rumorRepo);
+        _gameState.ContentHash = contentHash;
         _gameState.LoadGame();
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
-        _segments = LoadSegments();
+        _dungeonTemplates = LoadDungeonTemplates(_catalog);
+        _segments = LoadSegments(_catalog);
+        _commandHandler = new GameCommandHandler(_gameState, _encounterTables, _segments, _dungeonTemplates);
+        _statePresenter = new StatePresenter(_classRegistry, _itemRegistry);
         if (isDev)
         {
             _segmentWatcher = StartSegmentWatcher();
         }
     }
 
-    private static string? FindContentDir(params string[] subPath)
+    private static string? FindRpkPath()
     {
         var baseDir = AppContext.BaseDirectory;
         for (int ups = 0; ups <= 8; ups++)
         {
             var parts = new List<string> { baseDir };
             for (int i = 0; i < ups; i++) parts.Add("..");
-            parts.AddRange(subPath);
+            parts.Add("content.rpk");
             var candidate = Path.GetFullPath(Path.Combine(parts.ToArray()));
-            if (Directory.Exists(candidate))
+            if (File.Exists(candidate))
                 return candidate;
         }
         return null;
     }
 
-    private static EncounterTableRegistry LoadEncounterTables()
+    private static string? ReadContentHash(string? rpkPath)
+    {
+        if (rpkPath == null) return null;
+        var manifestPath = Path.Combine(Path.GetDirectoryName(rpkPath)!, "manifest.json");
+        if (!File.Exists(manifestPath)) return null;
+        try
+        {
+            var json = File.ReadAllText(manifestPath);
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.GetProperty("contentHash").GetString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void LogContentPackInfo(string? rpkPath, string? contentHash)
+    {
+        if (rpkPath == null)
+        {
+            Console.WriteLine("[Content] Running from loose files (no .rpk found)");
+            return;
+        }
+
+        var manifestPath = Path.Combine(Path.GetDirectoryName(rpkPath)!, "manifest.json");
+        if (!File.Exists(manifestPath))
+        {
+            Console.WriteLine($"[Content] Loaded pack: {rpkPath} (no manifest found)");
+            return;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(manifestPath);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var version = root.GetProperty("version").GetInt32();
+            var hash = root.GetProperty("contentHash").GetString();
+            var fileCount = root.GetProperty("files").GetArrayLength();
+            Console.WriteLine($"[Content] Loaded pack v{version}, hash {hash?[..16]}.., {fileCount} files ({rpkPath})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Content] Loaded pack: {rpkPath} (manifest read failed: {ex.Message})");
+        }
+    }
+
+    private static EncounterTableRegistry LoadEncounterTables(IContentCatalog catalog)
     {
         var registry = new EncounterTableRegistry();
-        var fullDir = FindContentDir("content", "encounters");
-        if (fullDir != null)
+        foreach (var file in catalog.EnumerateFiles("encounters", "*.json"))
         {
-            foreach (var file in Directory.EnumerateFiles(fullDir, "*.json"))
-            {
-                var id = Path.GetFileNameWithoutExtension(file);
-                var json = File.ReadAllText(file);
+            var id = Path.GetFileNameWithoutExtension(file);
+            var json = catalog.GetString(file) ?? catalog.GetString($"encounters/{Path.GetFileName(file)}");
+            if (json != null)
                 registry.LoadFromJson(id, json);
-            }
         }
         return registry;
     }
 
-    private static ClassRegistry LoadClassRegistry()
+    private static ClassRegistry LoadClassRegistry(IContentCatalog catalog)
     {
         var registry = new ClassRegistry();
-        var fullDir = FindContentDir("content", "classes");
-        if (fullDir != null)
+        foreach (var file in catalog.EnumerateFiles("classes", "*.json"))
         {
-            foreach (var file in Directory.EnumerateFiles(fullDir, "*.json"))
-            {
-                var id = Path.GetFileNameWithoutExtension(file);
-                var json = File.ReadAllText(file);
+            var id = Path.GetFileNameWithoutExtension(file);
+            var json = catalog.GetString(file) ?? catalog.GetString($"classes/{Path.GetFileName(file)}");
+            if (json != null)
                 registry.LoadFromJson(id, json);
-            }
         }
         return registry;
     }
 
-    private static void LoadSynergies()
+    private static SynergyRegistry LoadSynergies(IContentCatalog catalog)
     {
-        var fullDir = FindContentDir("content", "synergies");
-        if (fullDir != null)
+        var registry = new SynergyRegistry();
+        foreach (var file in catalog.EnumerateFiles("synergies", "*.json"))
         {
-            SynergyRegistry.LoadFromDirectory(fullDir);
+            var json = catalog.GetString(file) ?? catalog.GetString($"synergies/{Path.GetFileName(file)}");
+            if (json != null)
+                registry.LoadFromJson(json);
         }
+        return registry;
     }
 
-    private static ItemRegistry LoadItemRegistry()
+    private static ItemRegistry LoadItemRegistry(IContentCatalog catalog)
     {
         var registry = new ItemRegistry();
-        var fullDir = FindContentDir("content", "items");
-        if (fullDir != null)
+        foreach (var file in catalog.EnumerateFiles("items", "*.json"))
         {
-            foreach (var file in Directory.EnumerateFiles(fullDir, "*.json"))
+            var json = catalog.GetString(file) ?? catalog.GetString($"items/{Path.GetFileName(file)}");
+            if (json != null)
             {
-                var json = File.ReadAllText(file);
                 var items = JsonSerializer.Deserialize<ItemDef[]>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 if (items != null)
                 {
@@ -131,23 +196,21 @@ public class GameServer
         return registry;
     }
 
-    private static List<FactionContentDef> LoadFactionContent()
+    private static List<FactionContentDef> LoadFactionContent(IContentCatalog catalog)
     {
-        var fullDir = FindContentDir("content", "factions");
-        if (fullDir != null)
+        var defs = new List<FactionContentDef>();
+        foreach (var file in catalog.EnumerateFiles("factions", "*.json"))
         {
-            return FactionContentLoader.LoadAll(fullDir);
+            var json = catalog.GetString(file) ?? catalog.GetString($"factions/{Path.GetFileName(file)}");
+            if (json != null)
+            {
+                var def = JsonSerializer.Deserialize<FactionContentDef>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowTrailingCommas = true });
+                if (def != null)
+                    defs.Add(def);
+            }
         }
-        return new List<FactionContentDef>();
+        return defs;
     }
-
-    private static readonly Dictionary<string, string> ClassColors = new()
-    {
-        ["bonewarden"] = "#8B7355",
-        ["stillblade"] = "#6B8E9F",
-        ["cauterist"] = "#B85C38",
-        ["hollow"] = "#6B6B6B",
-    };
 
     public int Port { get; private set; }
 
@@ -470,201 +533,27 @@ public class GameServer
                 return;
             }
 
-            bool stateChanged = false;
-
-            switch (action.Type)
+            ICommand cmd;
+            try
             {
-                case "move_forward":
-                    stateChanged = _gameState.TryMoveForward();
-                    break;
-                case "move_back":
-                    stateChanged = _gameState.TryMoveBack();
-                    break;
-                case "strafe_left":
-                    stateChanged = _gameState.TryStrafeLeft();
-                    break;
-                case "strafe_right":
-                    stateChanged = _gameState.TryStrafeRight();
-                    break;
-                case "turn_left":
-                    _gameState.TurnLeft();
-                    stateChanged = true;
-                    break;
-                case "turn_right":
-                    _gameState.TurnRight();
-                    stateChanged = true;
-                    break;
-                case "cancel":
-                    stateChanged = true;
-                    break;
-                case "combat_action":
-                    if (action.Action != null)
-                    {
-                        stateChanged = _gameState.SubmitCombatAction(action.Action);
-                    }
-                    break;
-                case "flee_combat":
-                    _gameState.FleeCombat();
-                    stateChanged = true;
-                    break;
-                case "enter_combat":
-                    _gameState.TriggerEncounter();
-                    stateChanged = true;
-                    break;
-                case "enter_dungeon":
-                    var dungeonType = action.DungeonType ?? "broken_engine";
-                    GenerateDungeon(dungeonType);
-                    stateChanged = true;
-                    break;
-                case "rest":
-                    _gameState.RestAtInn();
-                    stateChanged = true;
-                    break;
-                case "return_to_town":
-                    _gameState.ReturnToTown();
-                    stateChanged = true;
-                    break;
-                case "save_game":
-                    _gameState.SaveGame();
-                    stateChanged = true;
-                    break;
-                case "reset_game":
-                    _gameState.Reset();
-                    stateChanged = true;
-                    break;
-                case "swap_row":
-                    if (action.Slot is int slot)
-                    {
-                        _gameState.Party.SwapRows(slot);
-                        stateChanged = true;
-                    }
-                    break;
-                case "tavern_recruit":
-                    if (action.TargetId is string recruitId)
-                    {
-                        stateChanged = _gameState.RecruitFromTavern(recruitId);
-                    }
-                    break;
-                case "mission_accept":
-                    if (action.TargetId is string missionId)
-                    {
-                        stateChanged = _gameState.AcceptMission(missionId);
-                    }
-                    break;
-                case "vendor_purchase":
-                    if (action.TargetId is string itemId)
-                    {
-                        stateChanged = _gameState.PurchaseVendorItem(itemId);
-                    }
-                    break;
-                case "travel":
-                    if (action.TargetId is string travelTarget)
-                    {
-                        stateChanged = _gameState.Travel(travelTarget);
-                    }
-                    break;
-                case "resolve_travel_encounter":
-                    var choice = action.TargetId ?? "default";
-                    stateChanged = _gameState.ResolveTravelEncounter(choice);
-                    break;
-                case "set_reputation":
-                    if (action.TargetId is string factionId && action.Value is int repValue)
-                    {
-                        _gameState.SetReputation(factionId, repValue);
-                        stateChanged = true;
-                    }
-                    break;
-                case "complete_mission":
-                    if (action.TargetId is string completeMissionId)
-                    {
-                        stateChanged = _gameState.CompleteMission(completeMissionId);
-                    }
-                    break;
-                case "fail_mission":
-                    if (action.TargetId is string failMissionId)
-                    {
-                        stateChanged = _gameState.FailMission(failMissionId);
-                    }
-                    break;
-                case "abandon_mission":
-                    if (action.TargetId is string abandonMissionId)
-                    {
-                        stateChanged = _gameState.AbandonMission(abandonMissionId);
-                    }
-                    break;
-                case "dialogue_choice":
-                    if (action.TargetId is string choiceFactionId && action.Value is int choiceDelta)
-                    {
-                        stateChanged = _gameState.ApplyDialogueReputation(choiceFactionId, choiceDelta);
-                    }
-                    break;
-                case "encounter_choice":
-                    if (action.TargetId is string encounterChoice)
-                    {
-                        stateChanged = _gameState.ResolveParley(encounterChoice);
-                    }
-                    break;
-                case "branch_choose":
-                    if (action.TargetId is string charId && action.Branch is string branch)
-                    {
-                        if (Guid.TryParse(charId, out var guid))
-                        {
-                            var member = _gameState.Party.Members.FirstOrDefault(m => m.Id == guid);
-                            if (member.Id != Guid.Empty && member.AwaitingBranchChoice)
-                            {
-                                stateChanged = _gameState.ChooseBranch(guid, branch);
-                            }
-                        }
-                    }
-                    break;
-                case "accuse_faction":
-                    if (action.TargetId is string accusedFactionId)
-                    {
-                        stateChanged = _gameState.AccuseFaction(accusedFactionId);
-                    }
-                    break;
-                case "transfer_to_cache":
-                    if (action.Slot is int toCacheSlot && action.TargetId is string toCacheItemId && action.Value is int toCacheCount)
-                    {
-                        ComponentInventorySystem.TransferToExpeditionCache(_gameState.Party, toCacheSlot, toCacheItemId, toCacheCount);
-                        stateChanged = true;
-                    }
-                    break;
-                case "transfer_from_cache":
-                    if (action.Slot is int fromCacheSlot && action.TargetId is string fromCacheItemId && action.Value is int fromCacheCount)
-                    {
-                        ComponentInventorySystem.TransferFromExpeditionCache(_gameState.Party, fromCacheSlot, fromCacheItemId, fromCacheCount);
-                        stateChanged = true;
-                    }
-                    break;
-                case "downtime_action":
-                    if (action.TargetId is string downtimeCharIdStr && action.DowntimeAction is string downtimeActionStr)
-                    {
-                        if (Guid.TryParse(downtimeCharIdStr, out var downtimeCharId) && Enum.TryParse<DowntimeAction>(downtimeActionStr, true, out var downtimeAction))
-                        {
-                            var result = _gameState.PerformDowntimeAction(downtimeCharId, downtimeAction);
-                            stateChanged = result != null && result.Success;
-                        }
-                    }
-                    break;
-                case "resurrect_character":
-                    if (action.TargetId is string resurrectCharIdStr)
-                    {
-                        if (Guid.TryParse(resurrectCharIdStr, out var resurrectCharId))
-                        {
-                            var result = _gameState.ResurrectCharacter(resurrectCharId);
-                            stateChanged = result != null && result.Success;
-                        }
-                    }
-                    break;
-                default:
-                    await SendError(client, "invalid_action", $"Unknown action type: {action.Type}", recoverable: true, ackSeq: envelope.Seq);
-                    return;
+                cmd = CommandDispatcher.Parse(action);
+            }
+            catch (ArgumentException ex)
+            {
+                await SendError(client, "invalid_action", ex.Message, recoverable: true, ackSeq: envelope.Seq);
+                return;
             }
 
-            if (stateChanged)
+            var result = _commandHandler.Execute(cmd);
+
+            if (result.StateChanged)
             {
                 await BroadcastState(envelope.Seq);
+            }
+
+            if (result.ClearCombatResult)
+            {
+                _gameState.ClearCombatResult();
             }
         }
         catch (Exception ex)
@@ -673,51 +562,53 @@ public class GameServer
         }
     }
 
-    private void GenerateDungeon(string dungeonType)
+    private static readonly JsonSerializerOptions _segmentOptions = new()
     {
-        var seed = dungeonType.GetHashCode();
-        var builder = new DungeonBuilder(seed: seed);
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
-        var orderedIds = new[] { "entrance", "corridor", "chamber", "dead_end", "boss_room" };
-        var ordered = orderedIds
-            .Select(id => _segments.FirstOrDefault(s => s.Id == id))
-            .Where(s => s != null)
-            .Cast<RoomSegment>()
-            .Concat(_segments.Where(s => !orderedIds.Contains(s.Id)))
-            .ToList();
-
-        foreach (var segment in ordered)
+    private static List<RoomSegment> LoadSegments(IContentCatalog catalog)
+    {
+        var segments = new List<RoomSegment>();
+        foreach (var dir in new[] { "segments", "segments/broken-engine", "segments/bloom-site" })
         {
-            builder.AddSegment(segment);
+            foreach (var file in catalog.EnumerateFiles(dir, "*.json"))
+            {
+                var json = catalog.GetString(file) ?? catalog.GetString($"{dir.TrimEnd('/')}/{Path.GetFileName(file)}");
+                if (json != null)
+                {
+                    var segment = JsonSerializer.Deserialize<RoomSegment>(json, _segmentOptions);
+                    if (segment != null)
+                        segments.Add(segment);
+                }
+            }
         }
-
-        var dungeonNames = new Dictionary<string, string>
-        {
-            ["broken_engine"] = "Broken Engine",
-            ["crypt"] = "Crypt of Whispers",
-            ["sewers"] = "Sewer Warrens"
-        };
-
-        var name = dungeonNames.GetValueOrDefault(dungeonType, dungeonType);
-        var dungeon = builder.Build(name, 8, _encounterTables, dungeonType);
-        dungeon.WanderingTableId = dungeonType;
-        dungeon.EncounterTableId = dungeonType;
-        TagBossTile(dungeon);
-        _gameState.EnterDungeon(dungeon, dungeonType);
+        return segments;
     }
 
-    private static List<RoomSegment> LoadSegments()
+    private static Dictionary<string, DungeonTemplate> LoadDungeonTemplates(IContentCatalog catalog)
     {
-        var dir = FindContentDir("content", "segments", "broken-engine");
-        if (dir != null)
-            return SegmentLoader.LoadFromDirectory(dir);
-        return new List<RoomSegment>();
+        var templates = new Dictionary<string, DungeonTemplate>();
+        foreach (var file in catalog.EnumerateFiles("campaigns/dungeons", "*.json"))
+        {
+            var json = catalog.GetString(file);
+            if (json != null)
+            {
+                var template = JsonSerializer.Deserialize<DungeonTemplate>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowTrailingCommas = true });
+                if (template != null)
+                    templates[template.Id] = template;
+            }
+        }
+        return templates;
     }
 
     private FileSystemWatcher? StartSegmentWatcher()
     {
-        var dir = FindContentDir("content", "segments", "broken-engine");
-        if (dir == null) return null;
+        if (_catalog is not FileSystemCatalog fs) return null;
+        var dir = Path.Combine(fs.BaseDirectory, "segments", "broken-engine");
+        if (!Directory.Exists(dir)) return null;
 
         var watcher = new FileSystemWatcher(dir, "*.json")
         {
@@ -734,10 +625,7 @@ public class GameServer
     {
         try
         {
-            var dir = FindContentDir("content", "segments", "broken-engine");
-            if (dir == null) return;
-
-            var reloaded = SegmentLoader.LoadFromDirectory(dir);
+            var reloaded = LoadSegments(_catalog);
             _segments.Clear();
             _segments.AddRange(reloaded);
             _ = BroadcastContentReload();
@@ -773,38 +661,9 @@ public class GameServer
         }
     }
 
-    private static void TagBossTile(Dungeon dungeon)
-    {
-        for (int x = 0; x < dungeon.Width; x++)
-        {
-            for (int y = 0; y < dungeon.Height; y++)
-            {
-                if (dungeon.Tiles[x, y].Type == TileType.Floor)
-                {
-                    var entrance = new Position(x, y);
-                    var neighbors = new[]
-                    {
-                        entrance.Move(Direction.South),
-                        entrance.Move(Direction.North),
-                        entrance.Move(Direction.East),
-                        entrance.Move(Direction.West)
-                    };
-                    foreach (var n in neighbors)
-                    {
-                        if (dungeon.IsValidPosition(n) && dungeon.Tiles[n.X, n.Y].Type == TileType.Floor)
-                        {
-                            dungeon.Tiles[n.X, n.Y] = dungeon.Tiles[n.X, n.Y] with { EncounterId = "boss-encounter-1" };
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private async Task SendState(ClientConnection client)
     {
-        var state = CreateStateMessage();
+        var state = _statePresenter.CreateStateMessage(_gameState);
         var envelope = new ProtocolEnvelope
         {
             V = 2,
@@ -817,7 +676,7 @@ public class GameServer
 
     private async Task BroadcastState(int? ackSeq = null)
     {
-        var state = CreateStateMessage();
+        var state = _statePresenter.CreateStateMessage(_gameState);
         List<ClientConnection> clients;
         lock (_clients)
         {
@@ -858,345 +717,6 @@ public class GameServer
                 true,
                 _cts.Token);
         }
-    }
-
-    private object CreateStateMessage()
-    {
-        var tiles = new List<object>();
-        var explored = new List<object>();
-        if (_gameState.CurrentDungeon != null)
-        {
-            var px = _gameState.Player.Position.X;
-            var py = _gameState.Player.Position.Y;
-            var sendRadius = 8;
-
-            for (int x = Math.Max(0, px - sendRadius); x < Math.Min(_gameState.CurrentDungeon.Width, px + sendRadius + 1); x++)
-            {
-                for (int y = Math.Max(0, py - sendRadius); y < Math.Min(_gameState.CurrentDungeon.Height, py + sendRadius + 1); y++)
-                {
-                    var tile = _gameState.CurrentDungeon.Tiles[x, y];
-                    if (tile.Type != TileType.Empty)
-                    {
-                        tiles.Add(new { x, y, type = tile.Type.ToString(), north = tile.North.ToString(), south = tile.South.ToString(), east = tile.East.ToString(), west = tile.West.ToString() });
-                    }
-                }
-            }
-
-            foreach (var key in _gameState.ExploredTiles)
-            {
-                var parts = key.Split(',');
-                var x = int.Parse(parts[0]);
-                var y = int.Parse(parts[1]);
-                var tile = _gameState.CurrentDungeon.Tiles[x, y];
-                explored.Add(new { x, y, type = tile.Type.ToString(), north = tile.North.ToString(), south = tile.South.ToString(), east = tile.East.ToString(), west = tile.West.ToString() });
-            }
-        }
-
-        var party = _gameState.Party.Members
-            .Where(c => c.Id != Guid.Empty)
-            .Select((c, i) =>
-            {
-                var effective = c.GetEffectiveStats(_itemRegistry);
-                var classDef = _classRegistry.Get(c.ClassId);
-                return new
-                {
-                    slot = i,
-                    id = c.Id.ToString(),
-                    name = c.Name,
-                    classId = c.ClassId,
-                    className = classDef?.Name ?? c.ClassId,
-                    color = ClassColors.GetValueOrDefault(c.ClassId, "#888888"),
-                    level = c.Level,
-                    xp = c.Xp,
-                    hp = c.CurrentHp,
-                    maxHp = effective.MaxHp,
-                    row = c.Row,
-                    alive = c.IsAlive,
-                    branchChoice = c.BranchChoice,
-                    branchLevel6 = c.BranchLevel6,
-                    awaitingBranchChoice = c.AwaitingBranchChoice,
-                    availableBranches = c.Level < 6
-                        ? (classDef?.AvailableBranches ?? classDef?.Branches?.Where(b => b.RequiresBranch == null).Select(b => b.Id).ToArray() ?? Array.Empty<string>())
-                        : (classDef?.Branches?.Where(b => b.RequiresBranch == c.BranchChoice).Select(b => b.Id).ToArray() ?? Array.Empty<string>()),
-                    branchWarnings = classDef?.Branches?
-                        .Where(b => b.RequiresBranch != null && b.FactionGate != null)
-                        .Select(b => b.RequiresBranch)
-                        .Distinct()
-                        .ToArray() ?? Array.Empty<string>(),
-                    stats = new
-                    {
-                        strength = c.BaseStats.Strength,
-                        dexterity = c.BaseStats.Dexterity,
-                        constitution = c.BaseStats.Constitution,
-                        intelligence = c.BaseStats.Intelligence,
-                        willpower = c.BaseStats.Willpower,
-                        maxHp = effective.MaxHp,
-                        speed = effective.Speed,
-                        accuracy = effective.Accuracy,
-                        evade = effective.Evade,
-                        power = effective.Power,
-                    },
-                    equipment = new
-                    {
-                        mainHand = c.Equipment.MainHand,
-                        offHand = c.Equipment.OffHand,
-                        armor = c.Equipment.Armor,
-                        accessory1 = c.Equipment.Accessory1,
-                        accessory2 = c.Equipment.Accessory2,
-                    },
-                    knownAbilities = c.KnownAbilities,
-                    availableAbilities = classDef?.Abilities
-                        .Where(a => a.IsAvailableInRow(c.Row))
-                        .Select(a => a.Id)
-                        .ToArray() ?? Array.Empty<string>(),
-                    abilities = classDef?.Abilities.Select(a => new { id = a.Id, name = a.Name, branch = a.Branch }).ToArray() ?? Array.Empty<object>(),
-                    tempModifiers = c.TempModifiers.Select(m => new { stat = m.Stat, delta = m.Delta, duration = m.Duration, source = m.Source }).ToArray(),
-                    componentInventory = c.ComponentInventory.Select(ci => new { itemId = ci.ItemId, count = ci.Count, maxStack = ci.MaxStack }).ToArray(),
-                };
-            }).ToArray();
-
-        object? combat = null;
-        if (_gameState.Mode == GameMode.Combat && _gameState.Combat != null)
-        {
-            var c = _gameState.Combat;
-            combat = new
-            {
-                phase = c.Phase.ToString(),
-                round = c.Round,
-                combatants = c.Combatants.Select(x =>
-                {
-                    CharacterState? member = x.IsPlayer ? _gameState.Party.Members.FirstOrDefault(m => m.Id == x.Id) : (CharacterState?)null;
-                    var classDef = member?.ClassId is not null ? _classRegistry.Get(member.Value.ClassId) : null;
-                    return new
-                    {
-                        id = x.Id,
-                        name = x.Name,
-                        isPlayer = x.IsPlayer,
-                        classId = member?.ClassId,
-                        hp = x.Hp,
-                        maxHp = x.MaxHp,
-                        speed = x.Speed,
-                        row = x.Row,
-                        alive = x.IsAlive,
-                        isCurrent = c.CurrentActor?.Id == x.Id,
-                        abilities = classDef?.Abilities
-                            .Where(a => member?.KnownAbilities.Contains(a.Id) == true && a.IsAvailableInRow(x.Row))
-                            .Select(a => new
-                            {
-                                id = a.Id,
-                                name = a.Name,
-                                range = a.Effect.Range,
-                                target = a.Effect.Target,
-                                requiredRow = a.RequiredRow
-                            }).ToArray() ?? Array.Empty<object>(),
-                        tempModifiers = x.TempModifiers.Select(m => new { stat = m.Stat, delta = m.Delta, duration = m.Duration, source = m.Source }).ToArray(),
-                    };
-                }).ToArray(),
-                initiativeOrder = c.InitiativeOrder,
-                currentTurnIndex = c.CurrentTurnIndex,
-                log = c.Log.Select(l => new { actor = l.ActorId, message = l.Message, round = l.Round }).ToArray(),
-                isFinished = c.IsFinished
-            };
-        }
-
-        object? combatResult = null;
-        if (_gameState.LastCombatResult != null)
-        {
-            var r = _gameState.LastCombatResult;
-            combatResult = new
-            {
-                victory = r.Victory,
-                xpGained = r.XpGained,
-                levelUps = r.LevelUps,
-                roundCount = r.RoundCount
-            };
-        }
-
-        var town = new
-        {
-            currentTownId = _gameState.Town.CurrentTownId,
-            availableMissions = _gameState.Town.AvailableMissions.Select(m => new
-            {
-                id = m.Id,
-                title = m.Title,
-                description = m.Description,
-                minLevel = m.MinLevel,
-                rewards = m.Rewards,
-                repReward = m.RepReward,
-                factionId = m.FactionId
-            }).ToArray(),
-            vendorStock = _gameState.Town.VendorStock.Select(v => new
-            {
-                itemId = v.ItemId,
-                name = v.Name,
-                price = v.Price,
-                quantity = v.Quantity
-            }).ToArray(),
-            factionVendors = _gameState.Town.FactionVendors.Select(fv => new
-            {
-                factionId = fv.FactionId,
-                name = fv.Name,
-                threshold = fv.Threshold,
-                stock = fv.Stock.Select(v => new
-                {
-                    itemId = v.ItemId,
-                    name = v.Name,
-                    price = v.Price,
-                    quantity = v.Quantity
-                }).ToArray()
-            }).ToArray(),
-            factionContacts = _gameState.Town.FactionContacts.Select(c => new
-            {
-                id = c.Id,
-                name = c.Name,
-                factionId = c.FactionId,
-                portrait = c.Portrait,
-                attitude = _gameState.Reputation.GetAttitudeTier(c.FactionId).ToString().ToLowerInvariant()
-            }).ToArray(),
-            tavernRoster = _gameState.Town.TavernRoster.Select(r => new
-            {
-                id = r.Id,
-                name = r.Name,
-                classId = r.ClassId,
-                level = r.Level,
-                baseStats = new
-                {
-                    strength = r.BaseStats.Strength,
-                    dexterity = r.BaseStats.Dexterity,
-                    constitution = r.BaseStats.Constitution,
-                    intelligence = r.BaseStats.Intelligence,
-                    willpower = r.BaseStats.Willpower
-                },
-                cost = r.Cost
-            }).ToArray(),
-            viewedMissions = _gameState.Town.ViewedMissions.ToArray(),
-            questLog = _gameState.Town.QuestLog.Select(q => new
-            {
-                id = q.Id,
-                title = q.Title,
-                description = q.Description,
-                repReward = q.RepReward,
-                factionId = q.FactionId,
-                status = q.Status
-            }).ToArray()
-        };
-
-        var overworld = new
-        {
-            currentNodeId = _gameState.Overworld.CurrentNodeId,
-            nodes = _gameState.Overworld.Nodes.Values.Select(n => new
-            {
-                id = n.Id,
-                name = n.Name,
-                type = n.Type.ToString().ToLowerInvariant(),
-                factionPresence = n.FactionPresence,
-                dungeonTemplateId = n.DungeonTemplateId
-            }).ToArray(),
-            routes = _gameState.Overworld.Routes.Select(r => new
-            {
-                from = r.From,
-                to = r.To,
-                distance = r.Distance,
-                dangerRating = r.DangerRating,
-                terrain = r.Terrain,
-                status = r.Status.ToString().ToLowerInvariant()
-            }).ToArray(),
-            turns = _gameState.Overworld.Turns,
-            currentAct = _gameState.CurrentAct
-        };
-
-        object? travelEncounter = null;
-        if (_gameState.CurrentTravelEncounter != null)
-        {
-            var te = _gameState.CurrentTravelEncounter;
-            travelEncounter = new
-            {
-                id = te.Id,
-                name = te.Name,
-                resolutionType = te.ResolutionType,
-                statName = te.StatName,
-                factionId = te.FactionId,
-                reputationValue = te.ReputationValue,
-                hasSurpriseRound = te.HasSurpriseRound,
-                priceTier = te.PriceTier,
-                options = te.Options
-            };
-        }
-
-        var state = new
-        {
-            type = "state",
-            mode = _gameState.Mode.ToString(),
-            player = new
-            {
-                x = _gameState.Player.Position.X,
-                y = _gameState.Player.Position.Y,
-                facing = _gameState.Player.Facing.ToString()
-            },
-            tiles,
-            explored,
-            hasDungeon = _gameState.CurrentDungeon != null,
-            dungeonType = _gameState.CurrentDungeonType,
-            party,
-            combat,
-            combatResult,
-            town,
-            overworld,
-            travelEncounter,
-            pendingParley = _gameState.CurrentParley != null ? new
-            {
-                encounterId = _gameState.CurrentParley.EncounterId,
-                factionId = _gameState.CurrentParley.FactionId,
-                options = _gameState.CurrentParley.Options
-            } : null,
-            reputation = _gameState.Reputation.ToDictionary(r => r.Key, r => r.Value),
-            evidence = new
-            {
-                suspectedFaction = _gameState.Evidence.SuspectedFaction,
-                canConfront = _gameState.Evidence.Counters.Values.Any(v => v >= 5),
-                canAccuse = _gameState.Evidence.Counters.Values.Any(v => v >= 7),
-                hasIrrefutableProof = _gameState.Evidence.Counters.Values.Any(v => v >= 10),
-                accusedFaction = _gameState.AccusedFaction,
-                mastermindRevealed = _gameState.CampaignConfig != null && _gameState.AccusedFaction == _gameState.CampaignConfig.Mastermind,
-                mastermindAdvantage = _gameState.MastermindAdvantage,
-                finalDungeonUnlocked = _gameState.FinalDungeonUnlocked
-            },
-            partyGold = _gameState.PartyGold,
-            partyInventory = _gameState.PartyInventory.ToArray(),
-            expeditionCache = _gameState.Party.ExpeditionCache.Select(c => new { itemId = c.ItemId, count = c.Count, maxStack = c.MaxStack }).ToArray(),
-            downtimeCompleted = _gameState.DowntimeCompleted.Select(id => id.ToString()).ToArray(),
-            deadCharacters = _gameState.Party.DeadCharacters.Select(c => new
-            {
-                id = c.Id.ToString(),
-                name = c.Name,
-                classId = c.ClassId,
-                level = c.Level,
-                resurrectionAttempts = c.ResurrectionAttempts,
-                branchAdvancementLocked = c.BranchAdvancementLocked
-            }).ToArray(),
-            titheTokens = _gameState.TitheTokens,
-            campaignEnded = _gameState.CampaignEnded,
-            factionStates = CampaignConfig.FactionPool.ToDictionary(
-                f => f,
-                f => _gameState.GetFactionState(f).ToString().ToLowerInvariant()),
-            worldState = new
-            {
-                settlements = _gameState.WorldState.Settlements,
-                accessibleDungeons = _gameState.WorldState.AccessibleDungeons,
-                factionTerritory = _gameState.WorldState.FactionTerritory
-            },
-            actionLog = _gameState.ActionLog.Select(e => new
-            {
-                turn = e.Turn,
-                category = e.Category,
-                type = e.Type,
-                payload = e.Payload
-            }).ToArray()
-        };
-
-        _gameState.ClearCombatResult();
-
-        return state;
     }
 
     private async Task HandleStatus(HttpListenerContext context)
@@ -1258,18 +778,6 @@ public class GameServer
         await context.Response.OutputStream.WriteAsync(bytes);
         context.Response.Close();
     }
-}
-
-public class PlayerAction
-{
-    public string Type { get; set; } = "";
-    public CombatAction? Action { get; set; }
-    public string? DungeonType { get; set; }
-    public int? Slot { get; set; }
-    public string? TargetId { get; set; }
-    public int? Value { get; set; }
-    public string? Branch { get; set; }
-    public string? DowntimeAction { get; set; }
 }
 
 public class ProtocolEnvelope

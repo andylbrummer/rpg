@@ -1,5 +1,6 @@
 using System.Text.Json;
 using RPC.Engine.Character;
+using RPC.Engine.Content;
 
 namespace RPC.Engine.Town;
 
@@ -13,6 +14,7 @@ public class TownState
     public List<TavernRecruit> TavernRoster { get; set; } = new();
     public List<string> ViewedMissions { get; set; } = new();
     public List<ActiveMission> QuestLog { get; set; } = new();
+    public List<TownRumor> Rumors { get; set; } = new();
 }
 
 public record VendorItem(string ItemId, string Name, int Price, int Quantity);
@@ -23,9 +25,11 @@ public record TavernRecruit(string Id, string Name, string ClassId, int Level, B
 
 public enum MissionType { Side, Main }
 
+public enum MissionStatus { Active, Completed, Failed, Abandoned }
+
 public record FactionContact(string Id, string Name, string FactionId, string Portrait);
 
-public record ActiveMission(string Id, string Title, string Description, int RepReward, string FactionId, string Status, MissionType Type = MissionType.Side);
+public record ActiveMission(string Id, string Title, string Description, int RepReward, string FactionId, MissionStatus Status, MissionType Type = MissionType.Side);
 
 public record MissionOffer(string Id, string Title, string Description, int MinLevel, string[] Rewards, int RepReward = 0, string FactionId = "", MissionType Type = MissionType.Side);
 
@@ -105,11 +109,7 @@ public static class TavernRecruitGenerator
 
 public static class FactionContentLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        AllowTrailingCommas = true
-    };
+    private static readonly JsonSerializerOptions JsonOptions = ContentJsonOptions.Standard;
 
     public static List<FactionContentDef> LoadAll(string? contentDir = null)
     {
@@ -141,80 +141,6 @@ public static class FactionContentLoader
                 return candidate;
         }
         return null;
-    }
-}
-
-public static class FactionContactGenerator
-{
-    private static List<FactionContentDef>? _loaded;
-
-    public static void SetContent(List<FactionContentDef> defs) => _loaded = defs;
-
-    public static List<FactionContact> GenerateContacts()
-    {
-        if (_loaded != null)
-        {
-            return _loaded.Select(d => new FactionContact(d.Contact.Id, d.Contact.Name, d.Id, d.Contact.Portrait)).ToList();
-        }
-
-        return new List<FactionContact>
-        {
-            new("contact-bureau", "Agent Voss", "bureau", "portrait_voss"),
-            new("contact-convocation", "Seer Maren", "convocation", "portrait_maren")
-        };
-    }
-
-    public static List<MissionOffer> GenerateMissions()
-    {
-        if (_loaded != null)
-        {
-            return _loaded.SelectMany(d => d.Missions.Select(m =>
-                new MissionOffer(m.Id, m.Title, m.Description, m.MinLevel, m.Rewards, m.RepReward, d.Id, m.Type)))
-                .ToList();
-        }
-
-        return new List<MissionOffer>
-        {
-            new("mission-bureau-1", "Cleanse the Sewers", "Eliminate the rat infestation beneath the Reach.", 1, new[] { "100g" }, 10, "bureau", MissionType.Side),
-            new("mission-bureau-2", "Patrol the Walls", "Guard the outer perimeter for one night.", 1, new[] { "50g" }, 5, "bureau", MissionType.Side),
-            new("mission-convocation-1", "Gather Bloom Samples", "Collect rare flora from the Hollow.", 1, new[] { "75g" }, 10, "convocation", MissionType.Side),
-            new("mission-convocation-2", "Scout the Crypt", "Investigate whispering echoes.", 1, new[] { "60g" }, 5, "convocation", MissionType.Side)
-        };
-    }
-}
-
-public static class FactionVendorGenerator
-{
-    private static List<FactionContentDef>? _loaded;
-
-    public static void SetContent(List<FactionContentDef> defs) => _loaded = defs;
-
-    public static List<FactionVendor> GenerateStock()
-    {
-        if (_loaded != null)
-        {
-            return _loaded.Select(d => new FactionVendor(
-                d.Id,
-                d.VendorName,
-                d.RepThresholds.VendorAccess,
-                d.VendorStock)).ToList();
-        }
-
-        return new List<FactionVendor>
-        {
-            new("bureau", "Bureau Quartermaster", 25, new List<VendorItem>
-            {
-                new("healing_draft", "Healing Draft", 35, 3),
-                new("iron_mace", "Iron Mace", 25, 1),
-                new("antitoxin", "Antitoxin", 25, 2)
-            }),
-            new("convocation", "Convocation Arcanist", 25, new List<VendorItem>
-            {
-                new("small_salve", "Small Salve", 15, 5),
-                new("cautery_knife", "Cautery Knife", 40, 1),
-                new("clear_mind", "Clear Mind", 20, 2)
-            })
-        };
     }
 }
 

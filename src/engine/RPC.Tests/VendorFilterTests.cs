@@ -5,11 +5,13 @@ namespace RPC.Tests;
 
 public class VendorFilterTests
 {
+    private readonly FactionContentRepository _factionRepo = new(FactionContentLoader.LoadAll("../../../../../../content/factions"));
+
     [Fact]
     public void GetAvailableVendors_At24Rep_BureauVendorNotAvailable()
     {
         var town = new TownState();
-        town.FactionVendors = FactionVendorGenerator.GenerateStock();
+        town.FactionVendors = _factionRepo.GenerateVendors();
         var rep = new ReputationState();
         rep["bureau"] = 24;
 
@@ -22,7 +24,7 @@ public class VendorFilterTests
     public void GetAvailableVendors_At25Rep_BureauVendorAvailable()
     {
         var town = new TownState();
-        town.FactionVendors = FactionVendorGenerator.GenerateStock();
+        town.FactionVendors = _factionRepo.GenerateVendors();
         var rep = new ReputationState();
         rep["bureau"] = 25;
 
@@ -35,7 +37,7 @@ public class VendorFilterTests
     public void GetAvailableVendors_AtMinus25Rep_BureauVendorNotAvailable()
     {
         var town = new TownState();
-        town.FactionVendors = FactionVendorGenerator.GenerateStock();
+        town.FactionVendors = _factionRepo.GenerateVendors();
         var rep = new ReputationState();
         rep["bureau"] = -25;
 
@@ -48,7 +50,7 @@ public class VendorFilterTests
     public void GetAvailableVendors_AtMinus24Rep_BureauVendorNotAvailable()
     {
         var town = new TownState();
-        town.FactionVendors = FactionVendorGenerator.GenerateStock();
+        town.FactionVendors = _factionRepo.GenerateVendors();
         var rep = new ReputationState();
         rep["bureau"] = -24;
 
@@ -80,7 +82,7 @@ public class VendorFilterTests
     {
         var gs = new GameState(seed: 1);
         gs.PartyGold = 100;
-        gs.Town.FactionVendors = FactionVendorGenerator.GenerateStock();
+        gs.Town.FactionVendors = _factionRepo.GenerateVendors();
         gs.Reputation["bureau"] = 25;
 
         var itemId = gs.Town.FactionVendors[0].Stock[0].ItemId;
@@ -97,7 +99,7 @@ public class VendorFilterTests
     {
         var gs = new GameState(seed: 1);
         gs.PartyGold = 100;
-        gs.Town.FactionVendors = FactionVendorGenerator.GenerateStock();
+        gs.Town.FactionVendors = _factionRepo.GenerateVendors();
         gs.Reputation["bureau"] = 24;
 
         var itemId = gs.Town.FactionVendors[0].Stock[0].ItemId;
@@ -113,7 +115,7 @@ public class VendorFilterTests
     {
         var gs = new GameState(seed: 1);
         gs.PartyGold = 100;
-        gs.Town.FactionVendors = FactionVendorGenerator.GenerateStock();
+        gs.Town.FactionVendors = _factionRepo.GenerateVendors();
         gs.Reputation["bureau"] = -25;
 
         var itemId = gs.Town.FactionVendors[0].Stock[0].ItemId;
@@ -129,7 +131,7 @@ public class VendorFilterTests
     {
         var gs = new GameState(seed: 1);
         gs.PartyGold = 1;
-        gs.Town.FactionVendors = FactionVendorGenerator.GenerateStock();
+        gs.Town.FactionVendors = _factionRepo.GenerateVendors();
         gs.Reputation["bureau"] = 25;
 
         var itemId = gs.Town.FactionVendors[0].Stock[0].ItemId;

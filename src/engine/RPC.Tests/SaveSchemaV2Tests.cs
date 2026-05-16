@@ -51,7 +51,7 @@ public class SaveSchemaV2Tests : IDisposable
     }
 
     [Fact]
-    public void SaveSchemaV2_LoadV1_DeletesFileAndReturnsFalse()
+    public void SaveSchemaV2_LoadV1_QuarantinesFileAndReturnsFalse()
     {
         var v1Json = """
             {
@@ -82,15 +82,19 @@ public class SaveSchemaV2Tests : IDisposable
             var loaded = gs.LoadGame(_testSavePath);
 
             Assert.False(loaded);
-            Assert.False(File.Exists(_testSavePath), "v1 save file should be deleted");
+            Assert.False(File.Exists(_testSavePath), "v1 save file should be moved");
+            var quarantineFiles = Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, Path.GetFileName(_testSavePath) + ".quarantine.*");
+            Assert.Single(quarantineFiles);
 
             var logOutput = sw.ToString();
             Assert.Contains("unsupported schema version", logOutput);
-            Assert.Contains("Deleting", logOutput);
+            Assert.Contains("Quarantined", logOutput);
         }
         finally
         {
             Console.SetError(originalError);
+            foreach (var f in Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, Path.GetFileName(_testSavePath) + ".quarantine.*"))
+                File.Delete(f);
         }
     }
 
@@ -132,7 +136,7 @@ public class SaveSchemaV2Tests : IDisposable
     }
 
     [Fact]
-    public void SaveSchemaV2_LoadV1StringVersion_DeletesFileAndReturnsFalse()
+    public void SaveSchemaV2_LoadV1StringVersion_QuarantinesFileAndReturnsFalse()
     {
         var v1Json = """
             {
@@ -155,10 +159,14 @@ public class SaveSchemaV2Tests : IDisposable
 
             Assert.False(loaded);
             Assert.False(File.Exists(_testSavePath));
+            var quarantineFiles = Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, Path.GetFileName(_testSavePath) + ".quarantine.*");
+            Assert.Single(quarantineFiles);
         }
         finally
         {
             Console.SetError(originalError);
+            foreach (var f in Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, Path.GetFileName(_testSavePath) + ".quarantine.*"))
+                File.Delete(f);
         }
     }
 

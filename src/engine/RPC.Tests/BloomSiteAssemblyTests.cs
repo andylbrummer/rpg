@@ -61,6 +61,26 @@ public class BloomSiteAssemblyTests
     }
 
     [Fact]
+    public void BloomSite_DungeonTemplate_Loads()
+    {
+        var path = ContentPath("campaigns/dungeons/bloom-site.json");
+        Assert.True(File.Exists(path), "Missing bloom-site dungeon template");
+
+        var json = File.ReadAllText(path);
+        var template = JsonSerializer.Deserialize<DungeonTemplate>(json, JsonOptions);
+
+        Assert.NotNull(template);
+        Assert.Equal("bloom_site", template.Id);
+        Assert.Equal("Bloom Site", template.Name);
+        Assert.Equal(10, template.TargetRooms);
+        Assert.Equal("bs-d5-full-mix", template.BossEncounterId);
+        Assert.Equal("bloom_site", template.EncounterTableId);
+        Assert.Equal("bloom_site", template.WanderingTableId);
+        Assert.Contains("bloom_entrance", template.SegmentPool);
+        Assert.Contains("spore_nest", template.SegmentPool);
+    }
+
+    [Fact]
     public void BloomSite_EncounterTable_HasDangerRatings()
     {
         var path = ContentPath("encounters/bloom_site.json");

@@ -15,15 +15,12 @@ public class ContentValidationTests
         AllowTrailingCommas = true
     };
 
+    public static IEnumerable<object[]> ClassFiles => Directory
+        .GetFiles("../../../../../../content/classes", "*.json")
+        .Select(f => new object[] { Path.GetFileNameWithoutExtension(f) });
+
     [Theory]
-    [InlineData("bonewarden")]
-    [InlineData("stillblade")]
-    [InlineData("cauterist")]
-    [InlineData("hollow")]
-    [InlineData("fieldwright")]
-    [InlineData("inkblood")]
-    [InlineData("marcher")]
-    [InlineData("ashmouth")]
+    [MemberData(nameof(ClassFiles))]
     public void ClassJson_IsValid(string classId)
     {
         var path = $"../../../../../../content/classes/{classId}.json";
@@ -50,13 +47,12 @@ public class ContentValidationTests
         Assert.Contains(classDef.LevelTable, e => e.Level == 1);
     }
 
+    public static IEnumerable<object[]> EnemyFiles => Directory
+        .GetFiles("../../../../../../content/enemies", "*.json")
+        .Select(f => new object[] { Path.GetFileNameWithoutExtension(f) });
+
     [Theory]
-    [InlineData("bloom_mite")]
-    [InlineData("bloom_wretch")]
-    [InlineData("bloom_sporeling")]
-    [InlineData("rat")]
-    [InlineData("goblin_scavenger")]
-    [InlineData("bone_archer")]
+    [MemberData(nameof(EnemyFiles))]
     public void EnemyJson_IsValid(string enemyId)
     {
         var path = $"../../../../../../content/enemies/{enemyId}.json";
@@ -80,12 +76,12 @@ public class ContentValidationTests
         });
     }
 
+    public static IEnumerable<object[]> EncounterFiles => Directory
+        .GetFiles("../../../../../../content/encounters", "*.json")
+        .Select(f => new object[] { Path.GetFileNameWithoutExtension(f) });
+
     [Theory]
-    [InlineData("sewers")]
-    [InlineData("crypt")]
-    [InlineData("broken_engine")]
-    [InlineData("boss")]
-    [InlineData("bloom_site")]
+    [MemberData(nameof(EncounterFiles))]
     public void EncounterJson_IsValid(string tableId)
     {
         var path = $"../../../../../../content/encounters/{tableId}.json";
@@ -176,20 +172,19 @@ public class ContentValidationTests
     [Fact]
     public void AllClasses_AbilityIdsAreGloballyUnique()
     {
-        var classIds = new[] { "bonewarden", "stillblade", "cauterist", "hollow", "fieldwright", "inkblood", "marcher", "ashmouth" };
+        var classFiles = Directory.GetFiles("../../../../../../content/classes", "*.json");
         var allAbilityIds = new HashSet<string>();
 
-        foreach (var classId in classIds)
+        foreach (var file in classFiles)
         {
-            var path = $"../../../../../../content/classes/{classId}.json";
-            var json = File.ReadAllText(path);
+            var json = File.ReadAllText(file);
             var classDef = JsonSerializer.Deserialize<ClassDef>(json, JsonOptions);
             Assert.NotNull(classDef);
 
             foreach (var ability in classDef.Abilities)
             {
                 Assert.True(allAbilityIds.Add(ability.Id),
-                    $"Duplicate ability ID: {ability.Id} in {classId}");
+                    $"Duplicate ability ID: {ability.Id} in {Path.GetFileName(file)}");
             }
         }
     }

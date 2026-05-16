@@ -1,0 +1,10 @@
+{
+  "id": "broken_engine",
+  "name": "Broken Engine",
+  "segmentPool": ["entrance", "corridor", "chamber", "dead_end", "boss_room"],
+  "segmentPriority": ["entrance", "corridor", "chamber", "dead_end", "boss_room"],
+  "targetRooms": 8,
+  "bossEncounterId": "boss-encounter-1",
+  "encounterTableId": "broken_engine",
+  "wanderingTableId": "broken_engine"
+}

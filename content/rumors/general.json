@@ -1,0 +1,6 @@
+[
+  { "id": "general_rats_mutated", "text": "The rats in the lower districts have grown larger. Something in the water.", "truthStatus": "true" },
+  { "id": "general_merchant_road", "text": "A merchant caravan found a shortcut through the marshlands. No bloom sightings.", "truthStatus": "planted" },
+  { "id": "general_winter_early", "text": "Winter is coming early this year. The white storms will close the mountain passes.", "truthStatus": "outdated" },
+  { "id": "general_dungeon_loot", "text": "Scavengers found intact imperial weaponry in the Broken Engine lower levels.", "truthStatus": "true", "relatedContentId": "broken_engine" }
+]

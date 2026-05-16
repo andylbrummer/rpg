@@ -64,6 +64,42 @@ public class ProtocolEnvelopeTests : IDisposable
         await ws.SendAsync(Encoding.UTF8.GetBytes(json), WebSocketMessageType.Text, true, CancellationToken.None);
     }
 
+    private static async Task<JsonElement> WaitForStateAsync(ClientWebSocket ws, CancellationToken ct)
+    {
+        int clientSeq = 100;
+        while (!ct.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            var msgType = msg.GetProperty("type").GetString();
+            if (msgType == "state")
+                return msg;
+            if (msgType == "heartbeat.ping")
+            {
+                var pingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = clientSeq++, payload = new { pingSeq } });
+            }
+        }
+        throw new TimeoutException("Timed out waiting for state message");
+    }
+
+    private static async Task<JsonElement> WaitForErrorAsync(ClientWebSocket ws, CancellationToken ct)
+    {
+        int clientSeq = 100;
+        while (!ct.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            var msgType = msg.GetProperty("type").GetString();
+            if (msgType == "error")
+                return msg;
+            if (msgType == "heartbeat.ping")
+            {
+                var pingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = clientSeq++, payload = new { pingSeq } });
+            }
+        }
+        throw new TimeoutException("Timed out waiting for error message");
+    }
+
     [Fact]
     public async Task Hello_Sent_On_Connect_With_ProtocolVersion_2()
     {
@@ -228,5 +264,129 @@ public class ProtocolEnvelopeTests : IDisposable
         await SendAsync(ws, new { v = 2, type = "action", seq = 3, payload = new { type = "turn_left" } });
         var state = await ReceiveAsync(ws);
         Assert.Equal("state", state.GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task Stale_Protocol_Version_Returns_Error()
+    {
+        using var ws = await ConnectAsync();
+        await ReceiveAsync(ws); // hello
+
+        await SendAsync(ws, new { v = 1, type = "ready", seq = 1, payload = new { } });
+        var error = await WaitForErrorAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        Assert.Equal("malformed_payload", error.GetProperty("payload").GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Invalid_Action_Type_Returns_Error()
+    {
+        using var ws = await ConnectAsync();
+        await ReceiveAsync(ws); // hello
+
+        await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await WaitForStateAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "unknown_action_xyz" } });
+        var error = await WaitForErrorAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        Assert.Equal("invalid_action", error.GetProperty("payload").GetProperty("code").GetString());
+        Assert.True(error.GetProperty("payload").GetProperty("recoverable").GetBoolean());
+        Assert.Contains("unknown_action_xyz", error.GetProperty("payload").GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task Turn_Left_Changes_Player_Facing()
+    {
+        using var ws = await ConnectAsync();
+        await ReceiveAsync(ws); // hello
+
+        await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        var initialState = await WaitForStateAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+        Assert.Equal("North", initialState.GetProperty("payload").GetProperty("player").GetProperty("facing").GetString());
+
+        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "turn_left" } });
+        var state = await WaitForStateAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        Assert.Equal("West", state.GetProperty("payload").GetProperty("player").GetProperty("facing").GetString());
+    }
+
+    [Fact]
+    public async Task Turn_Right_Changes_Player_Facing()
+    {
+        using var ws = await ConnectAsync();
+        await ReceiveAsync(ws); // hello
+
+        await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        var initialState = await WaitForStateAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+        Assert.Equal("North", initialState.GetProperty("payload").GetProperty("player").GetProperty("facing").GetString());
+
+        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "turn_right" } });
+        var state = await WaitForStateAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        Assert.Equal("East", state.GetProperty("payload").GetProperty("player").GetProperty("facing").GetString());
+    }
+
+    [Fact]
+    public async Task Enter_Dungeon_Then_Move_Forward_Changes_Position()
+    {
+        using var ws = await ConnectAsync();
+        await ReceiveAsync(ws); // hello
+
+        await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        var initialState = await WaitForStateAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+        Assert.Equal("Menu", initialState.GetProperty("payload").GetProperty("mode").GetString());
+
+        // Enter dungeon
+        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "enter_dungeon", dungeonType = "broken_engine" } });
+
+        // Collect next message (could be state, error, or heartbeat)
+        JsonElement dungeonState = default;
+        var found = false;
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        int pongSeq = 200;
+        while (!cts.Token.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            var msgType = msg.GetProperty("type").GetString();
+            if (msgType == "state")
+            {
+                dungeonState = msg;
+                found = true;
+                break;
+            }
+            if (msgType == "error")
+            {
+                var code = msg.GetProperty("payload").GetProperty("code").GetString();
+                var errmsg = msg.GetProperty("payload").GetProperty("message").GetString();
+                Assert.Fail($"Received error instead of state: {code} - {errmsg}");
+            }
+            if (msgType == "heartbeat.ping")
+            {
+                var pingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = pongSeq++, payload = new { pingSeq } });
+            }
+        }
+        Assert.True(found, "Timed out waiting for state after enter_dungeon");
+
+        Assert.Equal("Exploration", dungeonState.GetProperty("payload").GetProperty("mode").GetString());
+        Assert.True(dungeonState.GetProperty("payload").GetProperty("hasDungeon").GetBoolean());
+
+        var startX = dungeonState.GetProperty("payload").GetProperty("player").GetProperty("x").GetInt32();
+        var startY = dungeonState.GetProperty("payload").GetProperty("player").GetProperty("y").GetInt32();
+
+        // Turn right to face East (entrance room has open space to the east)
+        await SendAsync(ws, new { v = 2, type = "action", seq = 3, payload = new { type = "turn_right" } });
+        await WaitForStateAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        // Move forward
+        await SendAsync(ws, new { v = 2, type = "action", seq = 4, payload = new { type = "move_forward" } });
+        var moveState = await WaitForStateAsync(ws, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        var endX = moveState.GetProperty("payload").GetProperty("player").GetProperty("x").GetInt32();
+        var endY = moveState.GetProperty("payload").GetProperty("player").GetProperty("y").GetInt32();
+
+        // Position should have changed (moved east from entrance)
+        Assert.True(endX != startX || endY != startY, $"Expected position to change from ({startX},{startY}) but got ({endX},{endY})");
     }
 }

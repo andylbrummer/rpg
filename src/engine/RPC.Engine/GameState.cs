@@ -5,6 +5,7 @@ using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Overworld;
 using RPC.Engine.Party;
+using RPC.Engine.Services;
 using RPC.Engine.Town;
 using RPC.Engine.Travel;
 
@@ -42,6 +43,15 @@ public enum FactionState
     Executing
 }
 
+public enum WildCardAllianceStatus
+{
+    None,
+    Offered,
+    Accepted,
+    Refused,
+    Ignored
+}
+
 public class WorldState
 {
     public Dictionary<string, string> Settlements { get; set; } = new();
@@ -65,13 +75,14 @@ public class GameState
     public PartyState Party { get; set; } = new();
     public TownState Town { get; set; } = new();
     public OverworldState Overworld { get; set; } = new();
-    public CombatState? Combat { get; private set; }
-    public CombatResult? LastCombatResult { get; private set; }
+    public CombatState? Combat { get; internal set; }
+    public CombatResult? LastCombatResult { get; internal set; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
     public ReputationState Reputation { get; } = new();
     public EvidenceState Evidence { get; } = new();
     public JournalState Journal { get; } = new();
+    public HeatState Heat { get; } = new();
     public int PartyGold { get; set; } = 500;
     public int TitheTokens { get; set; } = 0;
     public List<string> PartyInventory { get; set; } = new();
@@ -81,32 +92,41 @@ public class GameState
     public ComplicationDef? CurrentComplication { get; set; }
     public WorldState WorldState { get; set; } = new();
     public int CurrentAct => Overworld.Turns <= 15 ? 1 : Overworld.Turns <= 25 ? 2 : 3;
-    public string? AccusedFaction { get; private set; }
-    public bool MastermindAdvantage { get; private set; }
-    public bool FinalDungeonUnlocked { get; private set; }
+    public string? AccusedFaction { get; internal set; }
+    public bool MastermindAdvantage { get; internal set; }
+    public bool FinalDungeonUnlocked { get; internal set; }
     public string? SettingsHash { get; set; }
-    public TravelEncounterState? CurrentTravelEncounter { get; private set; }
-    public int RolledTravelEncounterCount { get; private set; }
-    public int ResolvedTravelEncounterCount { get; private set; }
-    public ParleyOffer? CurrentParley { get; private set; }
+    public TravelEncounterState? CurrentTravelEncounter { get; internal set; }
+    public int RolledTravelEncounterCount { get; internal set; }
+    public int ResolvedTravelEncounterCount { get; internal set; }
+    public ParleyOffer? CurrentParley { get; internal set; }
     public IReadOnlySet<Guid> DowntimeCompleted => _downtimeCompleted;
+    public WildCardAllianceStatus WildCardAllianceStatus { get; set; } = WildCardAllianceStatus.None;
+    public int WildCardAllianceTurn { get; set; } = 0;
 
     public void ClearCombatResult()
     {
         LastCombatResult = null;
     }
 
-    private readonly GameRandom _encounterRng;
+    internal readonly GameRandom _encounterRng;
     private readonly EncounterTableRegistry? _encounterTables;
     private readonly ClassRegistry? _classRegistry;
     private readonly int _seed;
-    private int _stepsSinceEncounter = 0;
+    internal int _stepsSinceEncounter = 0;
     private int _actionLogTurn = 0;
-    private string? _currentEncounterId;
-    private Position? _pendingTaggedEncounterTile;
-    private readonly HashSet<Guid> _downtimeCompleted = new();
+    internal string? _currentEncounterId;
+    internal Position? _pendingTaggedEncounterTile;
+    internal readonly HashSet<Guid> _downtimeCompleted = new();
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null)
+    private readonly CombatService _combatService;
+    private readonly ExplorationService _explorationService;
+    private readonly TownService _townService;
+    private readonly OverworldService _overworldService;
+    private readonly CampaignService _campaignService;
+    private readonly MissionService _missionService;
+
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null)
     {
         Player = new Player(new Position(32, 32), Direction.North);
         LastUpdate = DateTime.UtcNow;
@@ -115,10 +135,17 @@ public class GameState
         _encounterTables = encounterTables;
         _classRegistry = classRegistry;
         ExploredTiles = new BoundedTileSet(_exploredTilesSet, _exploredTilesOrder, MaxExploredTiles);
+        _townService = new TownService(factionContent, rumors);
         InitializeDefaultParty();
         InitializeTown();
         Overworld = new OverworldState();
         Mode = GameMode.Menu; // Start in town/hub
+
+        _combatService = new CombatService(_encounterTables, _classRegistry, _encounterRng, synergies);
+        _explorationService = new ExplorationService(_encounterTables, _classRegistry, _encounterRng);
+        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies);
+        _campaignService = new CampaignService(_classRegistry);
+        _missionService = new MissionService(_classRegistry);
     }
 
     private void InitializeDefaultParty()
@@ -157,15 +184,15 @@ public class GameState
         }
         if (Town.FactionContacts.Count == 0)
         {
-            Town.FactionContacts = FactionContactGenerator.GenerateContacts();
+            Town.FactionContacts = _townService.GenerateContacts();
         }
         if (Town.AvailableMissions.Count == 0)
         {
-            Town.AvailableMissions = FactionContactGenerator.GenerateMissions();
+            Town.AvailableMissions = _townService.GenerateMissions();
         }
         if (Town.FactionVendors.Count == 0)
         {
-            Town.FactionVendors = FactionVendorGenerator.GenerateStock();
+            Town.FactionVendors = _townService.GenerateVendors();
         }
         if (string.IsNullOrEmpty(Town.CurrentTownId))
         {
@@ -187,520 +214,47 @@ public class GameState
 
     public void EnterDungeon(Dungeon dungeon, string dungeonType)
     {
-        if (CampaignEnded) return;
-        if (HasPendingBranchChoices) return;
-        CurrentDungeon = dungeon;
-        CurrentDungeonType = dungeonType;
-        ExploredTiles.Clear();
-        _stepsSinceEncounter = 0;
-        _pendingTaggedEncounterTile = null;
-        Mode = GameMode.Exploration;
-        EmitActionLog("dungeon", "dungeon_entered", new Dictionary<string, string> { { "dungeonType", dungeonType } });
-        IncrementTurns(1);
-        // Find entrance position
-        for (int x = 0; x < dungeon.Width; x++)
-        {
-            for (int y = 0; y < dungeon.Height; y++)
-            {
-                if (dungeon.Tiles[x, y].Type == TileType.Floor)
-                {
-                    Player.Position = new Position(x, y);
-                    Player.Facing = Direction.North;
-                    ExploreAroundPlayer();
-                    return;
-                }
-            }
-        }
+        _explorationService.EnterDungeon(this, dungeon, dungeonType);
     }
 
     public void ExploreAroundPlayer()
     {
-        if (CurrentDungeon == null) return;
-        var px = Player.Position.X;
-        var py = Player.Position.Y;
-        var viewRadius = 3;
-        int newTiles = 0;
-
-        for (int x = Math.Max(0, px - viewRadius); x < Math.Min(CurrentDungeon.Width, px + viewRadius + 1); x++)
-        {
-            for (int y = Math.Max(0, py - viewRadius); y < Math.Min(CurrentDungeon.Height, py + viewRadius + 1); y++)
-            {
-                var tile = CurrentDungeon.Tiles[x, y];
-                if (tile.Type != TileType.Empty)
-                {
-                    if (ExploredTiles.Add($"{x},{y}"))
-                        newTiles++;
-                }
-            }
-        }
-
-        if (newTiles > 0)
-        {
-            const int exploreXpPerTile = 5;
-            var totalExploreXp = newTiles * exploreXpPerTile;
-            for (int i = 0; i < Party.Members.Length; i++)
-            {
-                var member = Party.Members[i];
-                if (member.Id == Guid.Empty) continue;
-                var updated = member with { Xp = member.Xp + totalExploreXp };
-                if (_classRegistry?.Get(member.ClassId) is { } classDef)
-                {
-                    updated = LevelingSystem.CheckAndApplyLevelUps(updated, classDef);
-                }
-                Party.SetMember(i, updated);
-            }
-        }
+        _explorationService.ExploreAroundPlayer(this);
     }
 
-    public bool TryMoveForward() => ExecuteMove(Player.Facing);
-    public bool TryMoveBack() => ExecuteMove(Player.Facing.Opposite());
-    public bool TryStrafeLeft() => ExecuteMove(Player.Facing.StrafeLeft());
-    public bool TryStrafeRight() => ExecuteMove(Player.Facing.StrafeRight());
+    public bool TryMoveForward() => _explorationService.TryMoveForward(this);
+    public bool TryMoveBack() => _explorationService.TryMoveBack(this);
+    public bool TryStrafeLeft() => _explorationService.TryStrafeLeft(this);
+    public bool TryStrafeRight() => _explorationService.TryStrafeRight(this);
 
-    private bool ExecuteMove(Direction dir)
-    {
-        if (CurrentDungeon == null) return false;
-        if (Mode == GameMode.Combat) return false;
-
-        var newPos = Player.Position.Move(dir);
-        if (CurrentDungeon.CanMoveTo(Player.Position, dir))
-        {
-            Player.Position = newPos;
-            ExploreAroundPlayer();
-            LastUpdate = DateTime.UtcNow;
-            _stepsSinceEncounter++;
-
-            var tile = CurrentDungeon.GetTile(newPos);
-            if (!string.IsNullOrEmpty(tile.EncounterId))
-            {
-                var encounter = _encounterTables?.GetEncounterById(tile.EncounterId);
-                if (encounter != null)
-                {
-                    _pendingTaggedEncounterTile = newPos;
-                    TriggerEncounter(encounter);
-                    return true;
-                }
-            }
-
-            var encounterChance = 0.05 + (_stepsSinceEncounter * 0.08);
-            if (_encounterRng.Roll(0, 99) < encounterChance * 100)
-            {
-                TriggerEncounter();
-            }
-
-            return true;
-        }
-        return false;
-    }
-
-    public void TurnLeft()
-    {
-        Player.TurnLeft();
-        LastUpdate = DateTime.UtcNow;
-    }
-
-    public void TurnRight()
-    {
-        Player.TurnRight();
-        LastUpdate = DateTime.UtcNow;
-    }
+    public void TurnLeft() => _explorationService.TurnLeft(this);
+    public void TurnRight() => _explorationService.TurnRight(this);
 
     public void TriggerEncounter(EncounterDef? encounter = null)
     {
-        _stepsSinceEncounter = 0;
-
-        if (encounter == null)
-        {
-            var tableId = CurrentDungeon?.WanderingTableId ?? CurrentDungeon?.EncounterTableId;
-            if (tableId != null && _encounterTables != null)
-            {
-                encounter = _encounterTables.RollEncounter(tableId, _encounterRng);
-            }
-        }
-
-        if (encounter == null)
-        {
-            encounter = new EncounterDef("random", "Random Encounter", new[]
-            {
-                new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
-                new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
-            });
-        }
-
-        // Check for faction soldier parley, Ashmouth negotiation, or hostility
-        var factionId = _encounterTables?.GetEncounterFaction(encounter.Id);
-        if (factionId != null)
-        {
-            var rep = Reputation[factionId];
-            var hasAshmouth = Party.Members.Any(m => m.ClassId == "ashmouth" && m.IsAlive);
-            var options = new List<string>();
-            if (rep >= 25) options.Add("Parley");
-            if (hasAshmouth) options.Add("Negotiate");
-            options.Add("Fight");
-
-            if (options.Count > 1) // More than just "Fight"
-            {
-                CurrentParley = new ParleyOffer(encounter.Id, factionId, options.ToArray());
-                _currentEncounterId = Guid.NewGuid().ToString();
-                Mode = GameMode.Exploration;
-                EmitActionLog("combat", "encounter_parley_available", new Dictionary<string, string>
-                {
-                    { "encounterId", _currentEncounterId },
-                    { "factionId", factionId }
-                });
-                LastUpdate = DateTime.UtcNow;
-                return;
-            }
-            else if (rep < -25)
-            {
-                // Hostile: reinforce the encounter
-                var reinforced = encounter.Enemies.Concat(new[] { new EnemySpawn("faction_soldier", 1) }).ToArray();
-                encounter = encounter with { Enemies = reinforced };
-            }
-        }
-
-        EnterCombat(encounter);
-    }
-
-    private void EnterCombat(EncounterDef encounter)
-    {
-        _currentEncounterId = Guid.NewGuid().ToString();
-        Combat = CombatEngine.Enter(Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)));
-
-        EmitActionLog("combat", "encounter_started", new Dictionary<string, string> { { "encounterId", _currentEncounterId } });
-
-        if (Combat.IsFinished)
-        {
-            Mode = GameMode.Exploration;
-            ClearTaggedEncounterTile(Combat.AllEnemiesDead);
-            if (Combat.AllEnemiesDead && _currentEncounterId != null)
-            {
-                EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", _currentEncounterId } });
-            }
-            Combat = null;
-        }
-        else
-        {
-            Mode = GameMode.Combat;
-
-            // Kick off the first round and auto-resolve any leading AI turns
-            var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-            Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
-            while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
-            {
-                Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
-            }
-        }
-        LastUpdate = DateTime.UtcNow;
+        _combatService.TriggerEncounter(this, encounter);
     }
 
     public bool ResolveParley(string choice)
     {
-        if (CurrentParley == null) return false;
-
-        if (choice == "parley")
-        {
-            EmitActionLog("combat", "encounter_parleyed", new Dictionary<string, string>
-            {
-                { "encounterId", _currentEncounterId ?? "unknown" },
-                { "factionId", CurrentParley.FactionId }
-            });
-            CurrentParley = null;
-            Mode = GameMode.Exploration;
-            return true;
-        }
-        else if (choice == "negotiate")
-        {
-            return ResolveAshmouthNegotiation();
-        }
-        else
-        {
-            var encounter = _encounterTables?.GetEncounterById(CurrentParley.EncounterId);
-            if (encounter == null)
-            {
-                encounter = new EncounterDef("random", "Random Encounter", new[]
-                {
-                    new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
-                    new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
-                });
-            }
-            CurrentParley = null;
-            EnterCombat(encounter);
-            return true;
-        }
-    }
-
-    private bool ResolveAshmouthNegotiation()
-    {
-        if (CurrentParley == null) return false;
-
-        var factionId = CurrentParley.FactionId;
-        var encounter = _encounterTables?.GetEncounterById(CurrentParley.EncounterId);
-
-        var ashmouth = Party.Members
-            .Where(m => m.ClassId == "ashmouth" && m.IsAlive)
-            .OrderByDescending(m => m.Level)
-            .FirstOrDefault();
-
-        if (ashmouth.Id == Guid.Empty)
-        {
-            CurrentParley = null;
-            return false;
-        }
-
-        // Enemy leader level approximated by encounter danger
-        var leaderLevel = 2;
-        var repModifier = Reputation[factionId] / 10;
-        var successThreshold = leaderLevel - repModifier;
-        var roll = _encounterRng.Roll(1, 6);
-        var total = ashmouth.Level + roll;
-
-        if (total >= successThreshold + 3)
-        {
-            // Complete success
-            EmitActionLog("combat", "negotiation_complete_success", new Dictionary<string, string>
-            {
-                { "encounterId", _currentEncounterId ?? "unknown" },
-                { "factionId", factionId },
-                { "ashmouthLevel", ashmouth.Level.ToString() },
-                { "roll", roll.ToString() }
-            });
-            CurrentParley = null;
-            Mode = GameMode.Exploration;
-            return true;
-        }
-        else if (total >= successThreshold)
-        {
-            // Partial success
-            EmitActionLog("combat", "negotiation_partial_success", new Dictionary<string, string>
-            {
-                { "encounterId", _currentEncounterId ?? "unknown" },
-                { "factionId", factionId },
-                { "ashmouthLevel", ashmouth.Level.ToString() },
-                { "roll", roll.ToString() }
-            });
-            CurrentParley = null;
-            Mode = GameMode.Exploration;
-            return true;
-        }
-        else
-        {
-            // Failure - combat with surprise round
-            EmitActionLog("combat", "negotiation_failure", new Dictionary<string, string>
-            {
-                { "encounterId", _currentEncounterId ?? "unknown" },
-                { "factionId", factionId },
-                { "ashmouthLevel", ashmouth.Level.ToString() },
-                { "roll", roll.ToString() }
-            });
-
-            if (encounter == null)
-            {
-                encounter = new EncounterDef("random", "Random Encounter", new[]
-                {
-                    new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
-                    new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
-                });
-            }
-            CurrentParley = null;
-            EnterCombatWithSurprise(encounter);
-            return true;
-        }
-    }
-
-    private void EnterCombatWithSurprise(EncounterDef encounter)
-    {
-        EnterCombat(encounter);
-
-        if (Combat != null && !Combat.IsFinished)
-        {
-            var enemies = Combat.Combatants.Where(c => !c.IsPlayer && c.IsAlive).ToArray();
-            var players = Combat.Combatants.Where(c => c.IsPlayer && c.IsAlive).ToArray();
-
-            var newCombatants = Combat.Combatants.ToArray();
-            var newLog = new List<CombatLogEntry>(Combat.Log);
-
-            foreach (var enemy in enemies)
-            {
-                if (players.Length == 0) break;
-                var target = players[_encounterRng.Roll(0, players.Length - 1)];
-                var targetIdx = Array.FindIndex(newCombatants, c => c.Id == target.Id);
-                if (targetIdx < 0) continue;
-
-                var damage = _encounterRng.Roll(1, 4) + 1;
-                var newHp = Math.Max(0, target.Hp - damage);
-                newCombatants[targetIdx] = newCombatants[targetIdx] with { Hp = newHp };
-                newLog.Add(new(enemy.Id, $"{enemy.Name} surprises {target.Name} for {damage} damage!", Combat.Round));
-            }
-
-            Combat = Combat with { Combatants = newCombatants, Log = newLog };
-        }
+        return _combatService.ResolveParley(this, choice);
     }
 
     public bool SubmitCombatAction(CombatAction action)
     {
-        if (Combat == null || Mode != GameMode.Combat) return false;
-
-        // Validate ability row requirements
-        if (action.Type == ActionType.UseAbility && action.AbilityId is not null)
-        {
-            var actor = Combat.Combatants.FirstOrDefault(c => c.Id == action.ActorId);
-            if (actor.Id != Guid.Empty)
-            {
-                var member = Party.Members.FirstOrDefault(m => m.Id == action.ActorId);
-                if (member.Id != Guid.Empty && _classRegistry?.Get(member.ClassId) is { } classDef)
-                {
-                    var ability = classDef.Abilities.FirstOrDefault(a => a.Id == action.AbilityId);
-                    if (ability is not null && !ability.IsAvailableInRow(actor.Row))
-                        return false;
-                }
-            }
-        }
-
-        var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-        Action<string, string, Dictionary<string, string>> emitter = (cat, type, payload) =>
-        {
-            if (type == "synergy_triggered" && _currentEncounterId != null)
-            {
-                payload["encounterId"] = _currentEncounterId;
-            }
-            if (type == "synergy_triggered" && payload.TryGetValue("synergyId", out var sid) && !string.IsNullOrEmpty(sid))
-            {
-                Journal.Discover(sid);
-            }
-            EmitActionLog(cat, type, payload);
-        };
-
-        Combat = CombatEngine.Tick(Combat, action, rng, _classRegistry, emitter);
-
-        // Auto-resolve AI turns
-        while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
-        {
-            Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry, emitter);
-        }
-
-        if (Combat.IsFinished)
-        {
-            var allEnemiesDead = Combat.AllEnemiesDead;
-
-            // Apply combat results to party
-            var levelUps = new List<string>();
-            foreach (var combatant in Combat.Combatants.Where(c => c.IsPlayer))
-            {
-                var member = Party.Members.FirstOrDefault(m => m.Id == combatant.Id);
-                if (member.Id != Guid.Empty)
-                {
-                    var index = Array.IndexOf(Party.Members, member);
-
-                    if (combatant.Hp <= 0)
-                    {
-                        bool stabilized = combatant.StatusEffects.Any(s => s.Type == "stabilized");
-                        if (stabilized)
-                        {
-                            var saved = member with { CurrentHp = 1, Xp = member.Xp + Combat.XpReward * CurrentAct, TempModifiers = combatant.TempModifiers };
-                            Party.SetMember(index, saved);
-                            EmitActionLog("combat", "character_stabilized", new Dictionary<string, string>
-                            {
-                                { "characterId", member.Id.ToString() },
-                                { "characterName", member.Name }
-                            });
-                        }
-                        else
-                        {
-                            Party.DeadCharacters.Add(member with { CurrentHp = 0, TempModifiers = Array.Empty<TempStatModifier>() });
-                            Party.SetMember(index, default);
-                            EmitActionLog("combat", "character_died", new Dictionary<string, string>
-                            {
-                                { "characterId", member.Id.ToString() },
-                                { "characterName", member.Name }
-                            });
-                        }
-                        continue;
-                    }
-
-                    var scaledXpReward = Combat.XpReward * CurrentAct;
-                    var newXp = member.Xp + scaledXpReward;
-                    var updated = member with { CurrentHp = combatant.Hp, Xp = newXp, TempModifiers = combatant.TempModifiers };
-
-                    // Check for level ups
-                    if (_classRegistry?.Get(member.ClassId) is { } classDef)
-                    {
-                        var beforeLevel = updated.Level;
-                        updated = LevelingSystem.CheckAndApplyLevelUps(updated, classDef);
-                        if (updated.Level > beforeLevel)
-                        {
-                            levelUps.Add(updated.Name);
-                        }
-                    }
-
-                    Party.SetMember(index, updated);
-                }
-            }
-
-            LastCombatResult = new CombatResult(
-                allEnemiesDead,
-                Combat.XpReward * CurrentAct,
-                levelUps.ToArray(),
-                Combat.Round);
-
-            Mode = GameMode.Exploration;
-            Combat = null;
-
-            ClearTaggedEncounterTile(allEnemiesDead);
-
-            if (allEnemiesDead && _currentEncounterId != null)
-            {
-                EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", _currentEncounterId } });
-            }
-        }
-
-        LastUpdate = DateTime.UtcNow;
-        return true;
+        return _combatService.SubmitCombatAction(this, action);
     }
 
     public void FleeCombat()
     {
-        if (Mode != GameMode.Combat) return;
-        Mode = GameMode.Exploration;
-        Combat = null;
-        ClearTaggedEncounterTile(resolved: false);
-        LastUpdate = DateTime.UtcNow;
+        _combatService.FleeCombat(this);
     }
 
-    public void RestAtInn()
-    {
-        if (Mode != GameMode.Menu) return;
-        foreach (var member in Party.Members)
-        {
-            if (member.Id == Guid.Empty) continue;
-            var maxHp = member.GetEffectiveStats().MaxHp;
-            var index = Array.IndexOf(Party.Members, member);
-            Party.SetMember(index, member with { CurrentHp = maxHp, TempModifiers = Array.Empty<TempStatModifier>() });
-        }
-        LastUpdate = DateTime.UtcNow;
-    }
+    public void RestAtInn() => _townService.RestAtInn(this);
 
     public DowntimeResult? PerformDowntimeAction(Guid characterId, DowntimeAction action)
     {
-        if (Mode != GameMode.Menu) return null;
-        if (_downtimeCompleted.Contains(characterId)) return null;
-
-        var character = Party.Members.FirstOrDefault(m => m.Id == characterId);
-        if (character.Id == Guid.Empty) return null;
-
-        var result = DowntimeSystem.PerformAction(character, action, Party, Reputation, Evidence, _encounterRng);
-        if (result.Success)
-        {
-            _downtimeCompleted.Add(characterId);
-            EmitActionLog("downtime", action.ToString().ToLowerInvariant(), new Dictionary<string, string>
-            {
-                { "characterId", characterId.ToString() },
-                { "characterName", character.Name },
-                { "action", action.ToString() },
-                { "message", result.Message }
-            });
-        }
-        return result;
+        return _townService.PerformDowntimeAction(this, characterId, action);
     }
 
     public void RestoreDowntimeState(IEnumerable<Guid> ids)
@@ -710,421 +264,32 @@ public class GameState
             _downtimeCompleted.Add(id);
     }
 
-    public void ReturnToTown()
+    public void ReturnToTown() => _townService.ReturnToTown(this);
+
+    public void GenerateOverworld(CampaignConfig config) => _overworldService.GenerateOverworld(this, config);
+
+    public FactionState GetFactionState(string factionId) => _campaignService.GetFactionState(this, factionId);
+
+    public bool CheckWildCardTrigger() => _campaignService.CheckWildCardTrigger(this);
+
+    public bool AcceptWildCardAlliance() => _campaignService.AcceptWildCardAlliance(this);
+
+    public bool RefuseWildCardAlliance() => _campaignService.RefuseWildCardAlliance(this);
+
+    public bool IgnoreWildCardAlliance() => _campaignService.IgnoreWildCardAlliance(this);
+
+    public bool IsWildCardAllianceActive => WildCardAllianceStatus == WildCardAllianceStatus.Accepted;
+
+    public string? WildCardFactionId => CampaignConfig?.WildcardTrigger?.FactionId;
+
+    public bool Travel(string targetId) => _overworldService.Travel(this, targetId);
+
+    public void IncrementTurns(int amount, int? dangerOverride = null)
     {
-        if (CurrentDungeon != null)
-        {
-            EmitActionLog("dungeon", "dungeon_completed", new Dictionary<string, string> { { "dungeonType", CurrentDungeonType ?? "" } });
-        }
-        Mode = GameMode.Menu;
-        CurrentDungeon = null;
-        LastUpdate = DateTime.UtcNow;
-        IncrementTurns(1);
-        _downtimeCompleted.Clear();
+        _overworldService.IncrementTurns(this, amount, dangerOverride);
     }
 
-    public void GenerateOverworld(CampaignConfig config)
-    {
-        CampaignConfig = config;
-        CurrentScheme = CampaignContentLoader.GetSchemeById(config.Scheme.ToString());
-        CurrentComplication = CampaignContentLoader.GetComplicationById(config.Complication.ToString());
-        Overworld.GenerateFromConfig(config, _encounterRng, CurrentComplication);
-        SyncWorldStateFromOverworld();
-    }
-
-    public FactionState GetFactionState(string factionId)
-    {
-        if (CampaignConfig?.FactionTimelines.TryGetValue(factionId, out var timeline) == true)
-        {
-            if (Overworld.Turns >= timeline.Executing)
-                return FactionState.Executing;
-            if (Overworld.Turns >= timeline.Preparing)
-                return FactionState.Preparing;
-        }
-        return FactionState.Investigating;
-    }
-
-    private void SyncWorldStateFromOverworld()
-    {
-        WorldState.Settlements = Overworld.Nodes.Values
-            .Where(n => n.Type == NodeType.Town)
-            .ToDictionary(n => n.Id, _ => "pending");
-
-        WorldState.AccessibleDungeons = Overworld.Nodes.Values
-            .Where(n => n.Type == NodeType.Dungeon)
-            .Select(n => n.Id)
-            .ToList();
-
-        WorldState.FactionTerritory.Clear();
-        foreach (var node in Overworld.Nodes.Values)
-        {
-            foreach (var faction in node.FactionPresence)
-            {
-                if (!WorldState.FactionTerritory.ContainsKey(faction))
-                    WorldState.FactionTerritory[faction] = new List<string>();
-                if (!WorldState.FactionTerritory[faction].Contains(node.Id))
-                    WorldState.FactionTerritory[faction].Add(node.Id);
-            }
-        }
-    }
-
-    public bool Travel(string targetId)
-    {
-        if (CampaignEnded) return false;
-        if (HasPendingBranchChoices) return false;
-        var fromNodeId = Overworld.CurrentNodeId;
-        var route = Overworld.GetRoute(fromNodeId, targetId);
-        if (route != null && !RouteStatusSystem.CanTravel(route))
-        {
-            EmitActionLog("overworld", "travel_blocked", new Dictionary<string, string>
-            {
-                { "from", fromNodeId },
-                { "to", targetId },
-                { "reason", route.Status.ToString() }
-            });
-            return false;
-        }
-        var changed = Overworld.Travel(targetId);
-        if (!changed) return false;
-
-        EmitActionLog("overworld", "travel_started", new Dictionary<string, string>
-        {
-            { "from", fromNodeId },
-            { "to", targetId },
-            { "distance", route?.Distance.ToString() ?? "0" },
-            { "routeStatus", route?.Status.ToString() ?? "Open" }
-        });
-
-        if (route != null)
-        {
-            var effectiveDanger = RouteStatusSystem.GetEffectiveDangerRating(route);
-            IncrementTurns(route.Distance, effectiveDanger);
-        }
-
-        ClearTravelEncounters();
-
-        if (route != null)
-        {
-            var effectiveDanger = RouteStatusSystem.GetEffectiveDangerRating(route);
-            RollTravelEncounters(effectiveDanger, route.Terrain);
-        }
-
-        if (RolledTravelEncounterCount == 0)
-        {
-            if (Overworld.Nodes.TryGetValue(targetId, out var node) && node.Type == NodeType.Town)
-            {
-                EmitActionLog("overworld", "town_reached", new Dictionary<string, string>
-                {
-                    { "townId", targetId }
-                });
-                _downtimeCompleted.Clear();
-            }
-        }
-
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
-
-    private void IncrementTurns(int amount, int? dangerOverride = null)
-    {
-        if (CampaignEnded || amount <= 0) return;
-        var oldTurn = Overworld.Turns;
-        Overworld.Turns = Math.Min(35, Overworld.Turns + amount);
-        var newTurn = Overworld.Turns;
-
-        if (oldTurn < 12 && newTurn >= 12)
-        {
-            EmitActionLog("campaign", "faction_progression", new Dictionary<string, string> { { "milestone", "12" } });
-        }
-        if (oldTurn < 22 && newTurn >= 22)
-        {
-            EmitActionLog("campaign", "faction_progression", new Dictionary<string, string> { { "milestone", "22" } });
-        }
-
-        // Apply route status transitions at turn milestones
-        RouteStatusSystem.ApplyTurnMilestoneTransitions(Overworld, CampaignConfig, _encounterRng);
-
-        if (Overworld.Turns >= 35)
-        {
-            CampaignEnded = true;
-            CurrentDungeon = null;
-            Mode = GameMode.Menu;
-        }
-    }
-
-    private void ClearTravelEncounters()
-    {
-        CurrentTravelEncounter = null;
-        RolledTravelEncounterCount = 0;
-        ResolvedTravelEncounterCount = 0;
-    }
-
-    private void RollTravelEncounters(int dangerRating, string terrain)
-    {
-        var count = TravelEncounterTable.RollEncounterCount(_encounterRng, dangerRating);
-        RolledTravelEncounterCount = count;
-        if (count == 0) return;
-
-        var encounter = TravelEncounterTable.RollEncounter(_encounterRng, dangerRating, terrain);
-        if (encounter == null) return;
-
-        ActivateTravelEncounter(encounter);
-    }
-
-    private static bool IsPatrolEncounter(string id) => id == "faction_patrol" || id.EndsWith("_patrol");
-
-    private void ActivateTravelEncounter(TravelEncounterDef encounter)
-    {
-        bool hasMarcher = Party.Members.Any(m => m.ClassId == "marcher");
-        bool hasAshmouth = Party.Members.Any(m => m.ClassId == "ashmouth");
-        bool hasHollow = Party.Members.Any(m => m.ClassId == "hollow");
-        bool hasCauterist = Party.Members.Any(m => m.ClassId == "cauterist");
-
-        bool surpriseRound = encounter.ResolutionType == TravelResolutionType.Combat
-            && encounter.Id == "ambush"
-            && !hasMarcher;
-
-        int priceTier = encounter.Id == "merchant" && hasAshmouth ? 1 : 0;
-
-        int repValue = 0;
-        string? factionId = encounter.FactionId;
-        if (factionId != null)
-        {
-            repValue = Reputation[factionId];
-        }
-
-        bool isHostilePatrol = IsPatrolEncounter(encounter.Id) && factionId != null && repValue < 0;
-
-        string[]? options = null;
-        string resolutionType = encounter.ResolutionType switch
-        {
-            TravelResolutionType.Combat => "combat",
-            TravelResolutionType.StatTest => "stat_test",
-            TravelResolutionType.Dialogue => "dialogue",
-            _ => "unknown"
-        };
-
-        // Class-specific encounter alternatives
-        string? classAlternative = encounter.ClassAlternative;
-
-        // Hollow Liar can talk through smuggler caches
-        if (classAlternative == "hollow_liar" && hasHollow && encounter.Id == "smuggler_cache")
-        {
-            resolutionType = "dialogue";
-        }
-
-        // Cauterist Scorcher can burn through environmental hazards
-        if (classAlternative == "cauterist_scorcher" && hasCauterist &&
-            (encounter.Id == "poison_thicket" || encounter.Id == "fungal_spores" || encounter.Id == "will_o_wisp"))
-        {
-            resolutionType = "dialogue";
-            options = ["Burn through", "Navigate normally"];
-        }
-
-        // Marcher Pathfinder can bypass terrain obstacles
-        if (classAlternative == "marcher_pathfinder" && hasMarcher &&
-            (encounter.Id == "rockslide" || encounter.Id == "narrow_pass" || encounter.Id == "cave_in" || encounter.Id == "sinking_mire"))
-        {
-            resolutionType = "dialogue";
-            options = ["Find alternate route", "Push through"];
-        }
-
-        // Ashmouth Broker gets better deals with bog merchants
-        if (classAlternative == "ashmouth_broker" && hasAshmouth && encounter.Id == "bog_merchant")
-        {
-            priceTier = 1;
-        }
-
-        if (isHostilePatrol)
-        {
-            resolutionType = "combat";
-        }
-        else if (resolutionType == "dialogue" || encounter.ResolutionType == TravelResolutionType.Dialogue)
-        {
-            resolutionType = "dialogue";
-            if (options == null)
-            {
-                if (IsPatrolEncounter(encounter.Id))
-                {
-                    options = repValue >= 25
-                        ? ["Request intel", "Trade supplies", "Pass safely"]
-                        : ["Show papers", "Bribe", "Attack"];
-                }
-                else
-                {
-                    options = encounter.Id == "merchant"
-                        ? ["Trade", "Ignore", "Rob"]
-                        : ["Trade", "Ignore", "Help"];
-                }
-            }
-        }
-        else if (resolutionType == "unknown")
-        {
-            resolutionType = encounter.ResolutionType switch
-            {
-                TravelResolutionType.Combat => "combat",
-                TravelResolutionType.StatTest => "stat_test",
-                _ => "unknown"
-            };
-        }
-
-        CurrentTravelEncounter = new TravelEncounterState(
-            encounter.Id,
-            encounter.Name,
-            resolutionType,
-            encounter.StatName,
-            factionId,
-            repValue,
-            surpriseRound,
-            priceTier,
-            options);
-
-        if (isHostilePatrol)
-        {
-            var patrolEnemies = new[] { new EnemySpawn("faction_soldier", 2) };
-            var encounterDef = new EncounterDef(encounter.Id, encounter.Name, patrolEnemies, 15);
-            Combat = CombatEngine.Enter(Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
-            CurrentTravelEncounter = null;
-
-            if (Combat.IsFinished)
-            {
-                Mode = GameMode.Menu;
-                Combat = null;
-                ResolveTravelEncounter("auto");
-            }
-            else
-            {
-                Mode = GameMode.Combat;
-                var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-                Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
-                while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
-                {
-                    Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
-                }
-            }
-        }
-        else if (encounter.ResolutionType == TravelResolutionType.Combat && encounter.Enemies != null)
-        {
-            var encounterDef = new EncounterDef(encounter.Id, encounter.Name, encounter.Enemies, 15);
-            Combat = CombatEngine.Enter(Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
-            CurrentTravelEncounter = null;
-
-            if (Combat.IsFinished)
-            {
-                Mode = GameMode.Menu;
-                Combat = null;
-                ResolveTravelEncounter("auto");
-            }
-            else
-            {
-                Mode = GameMode.Combat;
-                var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-                Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
-                while (!Combat.IsFinished && !(Combat.Phase == CombatPhase.Turn && Combat.CurrentActor?.IsPlayer == true))
-                {
-                    Combat = CombatEngine.Tick(Combat, null, rng, _classRegistry);
-                }
-            }
-        }
-    }
-
-    public bool ResolveTravelEncounter(string choice)
-    {
-        if (CurrentTravelEncounter == null) return false;
-
-        var encounter = CurrentTravelEncounter;
-        if (encounter.ResolutionType == "stat_test" && encounter.StatName != null)
-        {
-            var highestStat = Party.Members
-                .Where(m => m.IsAlive)
-                .Max(m => encounter.StatName switch
-                {
-                    "strength" => m.BaseStats.Strength,
-                    "dexterity" => m.BaseStats.Dexterity,
-                    "constitution" => m.BaseStats.Constitution,
-                    "intelligence" => m.BaseStats.Intelligence,
-                    "willpower" => m.BaseStats.Willpower,
-                    _ => 0
-                });
-
-            var roll = _encounterRng.Roll(1, 20);
-            var success = roll + highestStat >= 15;
-
-            EmitActionLog("travel", "stat_test", new Dictionary<string, string>
-            {
-                { "encounterId", encounter.Id },
-                { "stat", encounter.StatName },
-                { "highest", highestStat.ToString() },
-                { "roll", roll.ToString() },
-                { "success", success.ToString() }
-            });
-        }
-        else if (encounter.ResolutionType == "dialogue")
-        {
-            EmitActionLog("travel", "dialogue", new Dictionary<string, string>
-            {
-                { "encounterId", encounter.Id },
-                { "choice", choice },
-                { "factionId", encounter.FactionId ?? "none" }
-            });
-
-            // Apply reputation effects from travel dialogue choices
-            if (encounter.FactionId != null && IsPatrolEncounter(encounter.Id))
-            {
-                switch (choice)
-                {
-                    case "Attack":
-                        Reputation.ApplyDelta(encounter.FactionId, -5, "travel_encounter:attack_patrol");
-                        break;
-                    case "Request intel":
-                    case "Pass safely":
-                        Reputation.ApplyDelta(encounter.FactionId, 2, "travel_encounter:cooperate");
-                        break;
-                }
-            }
-            else if (encounter.Id == "refugees" && choice == "Help")
-            {
-                Reputation.ApplyDelta("bureau", 2, "travel_encounter:help_refugees");
-            }
-        }
-
-        EmitActionLog("overworld", "travel_encounter_resolved", new Dictionary<string, string>
-        {
-            { "encounterId", encounter.Id },
-            { "resolutionType", encounter.ResolutionType },
-            { "choice", choice }
-        });
-
-        ResolvedTravelEncounterCount++;
-        CurrentTravelEncounter = null;
-
-        if (ResolvedTravelEncounterCount < RolledTravelEncounterCount)
-        {
-            var route = Overworld.Routes.FirstOrDefault(r =>
-                r.From == Overworld.CurrentNodeId || r.To == Overworld.CurrentNodeId);
-            var next = TravelEncounterTable.RollEncounter(_encounterRng, route?.DangerRating ?? 0, route?.Terrain ?? "");
-            if (next != null)
-            {
-                ActivateTravelEncounter(next);
-            }
-        }
-
-        if (ResolvedTravelEncounterCount >= RolledTravelEncounterCount)
-        {
-            var node = Overworld.Nodes.GetValueOrDefault(Overworld.CurrentNodeId);
-            if (node?.Type == NodeType.Town)
-            {
-                EmitActionLog("overworld", "town_reached", new Dictionary<string, string>
-                {
-                    { "townId", Overworld.CurrentNodeId }
-                });
-                _downtimeCompleted.Clear();
-            }
-        }
-
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
+    public bool ResolveTravelEncounter(string choice) => _overworldService.ResolveTravelEncounter(this, choice);
 
     public void Reset()
     {
@@ -1155,11 +320,13 @@ public class GameState
         MastermindAdvantage = false;
         FinalDungeonUnlocked = false;
         SettingsHash = null;
-        ClearTravelEncounters();
+        CurrentTravelEncounter = null;
+        RolledTravelEncounterCount = 0;
+        ResolvedTravelEncounterCount = 0;
         LastUpdate = DateTime.UtcNow;
     }
 
-    private void ClearTaggedEncounterTile(bool resolved)
+    internal void ClearTaggedEncounterTile(bool resolved)
     {
         if (_pendingTaggedEncounterTile.HasValue && CurrentDungeon != null && resolved)
         {
@@ -1173,7 +340,7 @@ public class GameState
         _pendingTaggedEncounterTile = null;
     }
 
-    private void EmitActionLog(string category, string type, Dictionary<string, string> payload)
+    internal void EmitActionLog(string category, string type, Dictionary<string, string> payload)
     {
         _actionLogTurn++;
         ActionLog.Add(new ActionLogEntry(_actionLogTurn, category, type, new Dictionary<string, string>(payload)));
@@ -1190,106 +357,23 @@ public class GameState
         _actionLogTurn = entries.Count > 0 ? entries.Max(e => e.Turn) : 0;
     }
 
-    public void DiscoverSecret(string secretType, string secretId)
-    {
-        EmitActionLog("dungeon", "secret_discovered", new Dictionary<string, string>
-        {
-            { "secretType", secretType },
-            { "secretId", secretId }
-        });
-        LastUpdate = DateTime.UtcNow;
-    }
+    public void DiscoverSecret(string secretType, string secretId) => _campaignService.DiscoverSecret(this, secretType, secretId);
 
-    public void ChooseSettlementFate(string settlementId, string fate)
-    {
-        WorldState.Settlements[settlementId] = fate;
-        EmitActionLog("dungeon", "settlement_fate_chosen", new Dictionary<string, string>
-        {
-            { "settlementId", settlementId },
-            { "fate", fate }
-        });
-        LastUpdate = DateTime.UtcNow;
-    }
+    public void ChooseSettlementFate(string settlementId, string fate) => _campaignService.ChooseSettlementFate(this, settlementId, fate);
 
-    public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path);
-    public void ApplyReputationDelta(string factionId, int delta, string source)
-    {
-        var changes = Reputation.ApplyDelta(factionId, delta, source);
-        foreach (var change in changes)
-        {
-            EmitActionLog("faction", "rep_changed", new Dictionary<string, string>
-            {
-                { "factionId", change.FactionId },
-                { "delta", change.Delta.ToString() },
-                { "newValue", change.NewValue.ToString() },
-                { "source", change.Source }
-            });
-        }
-        LastUpdate = DateTime.UtcNow;
-    }
+    public string? ContentHash { get; set; }
 
-    public void AddEvidence(string factionId, string source, int amount = 1)
-    {
-        var result = Evidence.AddEvidence(factionId, source, amount);
-        EmitActionLog("evidence", "evidence_added", new Dictionary<string, string>
-        {
-            { "factionId", result.FactionId },
-            { "amount", result.Amount.ToString() },
-            { "newValue", result.NewValue.ToString() },
-            { "source", result.Source },
-            { "threshold", result.ThresholdReached.ToString() }
-        });
-        LastUpdate = DateTime.UtcNow;
-    }
+    public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path, ContentHash);
+
+    public void ApplyReputationDelta(string factionId, int delta, string source) => _campaignService.ApplyReputationDelta(this, factionId, delta, source);
+
+    public void AddEvidence(string factionId, string source, int amount = 1) => _campaignService.AddEvidence(this, factionId, source, amount);
 
     public int GetEvidenceThreshold(string factionId) => Evidence.GetThreshold(factionId);
 
-    public bool AccuseFaction(string factionId)
-    {
-        if (CampaignConfig == null) return false;
-        if (Evidence.GetThreshold(factionId) < 7) return false;
-        if (AccusedFaction != null) return false;
+    public bool AccuseFaction(string factionId) => _campaignService.AccuseFaction(this, factionId);
 
-        AccusedFaction = factionId;
-        var isCorrect = factionId == CampaignConfig.Mastermind;
-
-        if (isCorrect)
-        {
-            EmitActionLog("mastermind", "accusation_correct", new Dictionary<string, string>
-            {
-                { "factionId", factionId }
-            });
-        }
-        else
-        {
-            MastermindAdvantage = true;
-            ApplyReputationDelta(factionId, -20, "wrong_accusation");
-            EmitActionLog("mastermind", "accusation_wrong", new Dictionary<string, string>
-            {
-                { "factionId", factionId },
-                { "penalty", "-20" }
-            });
-        }
-
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
-
-    public bool UnlockFinalDungeon()
-    {
-        if (CampaignConfig == null) return false;
-        if (AccusedFaction != CampaignConfig.Mastermind) return false;
-        if (!Evidence.Counters.Values.Any(v => v >= 10)) return false;
-        if (FinalDungeonUnlocked) return false;
-
-        FinalDungeonUnlocked = true;
-        EmitActionLog("mastermind", "final_dungeon_unlocked", new Dictionary<string, string>
-        {
-            { "mastermind", CampaignConfig.Mastermind }
-        });
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
+    public bool UnlockFinalDungeon() => _campaignService.UnlockFinalDungeon(this);
 
     public void SetAccusedFaction(string? factionId)
     {
@@ -1306,363 +390,29 @@ public class GameState
         FinalDungeonUnlocked = value;
     }
 
-    public bool LoadGame(string? path = null) => Save.SaveSystem.Load(this, path);
+    public bool LoadGame(string? path = null) => Save.SaveSystem.Load(this, path, ContentHash);
 
-    public bool ChooseBranch(Guid characterId, string branch)
-    {
-        var member = Party.Members.FirstOrDefault(m => m.Id == characterId);
-        if (member.Id == Guid.Empty || member.Level < 3) return false;
-        if (_classRegistry?.Get(member.ClassId) is not { } classDef) return false;
+    public bool ChooseBranch(Guid characterId, string branch) => _campaignService.ChooseBranch(this, characterId, branch);
 
-        if (member.BranchChoice == null && TryResolveLevel3Branch(member, branch, classDef, out var resolved3))
-        {
-            ApplyBranchToMember(member, resolved3, "3", classDef);
-            return true;
-        }
+    public bool RecruitFromTavern(string recruitId) => _townService.RecruitFromTavern(this, recruitId);
 
-        if (member.Level >= 6 && member.BranchLevel6 == null && TryResolveLevel6Branch(member, branch, classDef, out var resolved6))
-        {
-            ApplyBranchToMember(member, resolved6, "6", classDef);
-            return true;
-        }
+    public ResurrectionResult? ResurrectCharacter(Guid characterId) => _townService.ResurrectCharacter(this, characterId);
 
-        return false;
-    }
+    public bool AcceptMission(string missionId) => _missionService.AcceptMission(this, missionId);
 
-    private bool TryResolveLevel3Branch(CharacterState member, string branch, ClassDef classDef, out string resolvedBranch)
-    {
-        resolvedBranch = branch;
-        var available = classDef.AvailableBranches ?? classDef.Branches?.Where(b => b.RequiresBranch == null).Select(b => b.Id).ToArray() ?? Array.Empty<string>();
-        return available.Contains(branch);
-    }
+    public bool CompleteMission(string missionId) => _missionService.CompleteMission(this, missionId);
 
-    private bool TryResolveLevel6Branch(CharacterState member, string branch, ClassDef classDef, out string resolvedBranch)
-    {
-        resolvedBranch = branch;
-        var available = classDef.Branches?.Where(b => b.RequiresBranch == member.BranchChoice).Select(b => b.Id).ToArray() ?? Array.Empty<string>();
-        if (!available.Contains(branch)) return false;
+    public bool FailMission(string missionId) => _missionService.FailMission(this, missionId);
 
-        var branchDef = classDef.Branches?.FirstOrDefault(b => b.Id == branch);
-        if (branchDef?.FactionGate is { } gate && Reputation[gate.FactionId] < gate.Threshold)
-        {
-            var fallback = branchDef.FallbackBranch;
-            if (string.IsNullOrEmpty(fallback)) return false;
-            resolvedBranch = fallback;
+    public bool AbandonMission(string missionId) => _missionService.AbandonMission(this, missionId);
 
-            EmitActionLog("branch", "branch_fallback", new Dictionary<string, string>
-            {
-                { "characterId", member.Id.ToString() },
-                { "originalBranch", branch },
-                { "fallbackBranch", resolvedBranch },
-                { "factionId", gate.FactionId },
-                { "threshold", gate.Threshold.ToString() }
-            });
-        }
-        return true;
-    }
+    public bool ApplyDialogueReputation(string factionId, int delta) => _campaignService.ApplyDialogueReputation(this, factionId, delta);
 
-    private void ApplyBranchToMember(CharacterState member, string resolvedBranch, string levelLabel, ClassDef classDef)
-    {
-        var branchAbilities = classDef.Abilities
-            .Where(a => a.Branch == resolvedBranch)
-            .Select(a => a.Id)
-            .ToArray();
+    public void SetReputation(string factionId, int value) => _campaignService.SetReputation(this, factionId, value);
 
-        var newAbilities = member.KnownAbilities
-            .Concat(branchAbilities)
-            .Distinct()
-            .ToArray();
+    public bool PurchaseVendorItem(string itemId) => _townService.PurchaseVendorItem(this, itemId);
 
-        var index = Array.IndexOf(Party.Members, member);
-        Party.SetMember(index, levelLabel == "3"
-            ? member with { BranchChoice = resolvedBranch, KnownAbilities = newAbilities }
-            : member with { BranchLevel6 = resolvedBranch, KnownAbilities = newAbilities });
-
-        EmitActionLog("branch", "branch_chosen", new Dictionary<string, string>
-        {
-            { "characterId", member.Id.ToString() },
-            { "branch", resolvedBranch },
-            { "level", levelLabel }
-        });
-
-        LastUpdate = DateTime.UtcNow;
-    }
-
-    public bool RecruitFromTavern(string recruitId)
-    {
-        var recruit = Town.TavernRoster.FirstOrDefault(r => r.Id == recruitId);
-        if (recruit == null) return false;
-
-        var emptySlot = Array.IndexOf(Party.Members, default);
-        if (emptySlot < 0) return false;
-
-        var maxHp = EffectiveStats.FromBase(recruit.BaseStats, recruit.Level).MaxHp;
-        var character = new CharacterState(
-            Guid.NewGuid(), recruit.Name, recruit.ClassId,
-            recruit.Level, 0, recruit.BaseStats, maxHp,
-            Equipment.Empty, Array.Empty<string>(), 0);
-
-        Party.SetMember(emptySlot, character);
-        Town.TavernRoster.Remove(recruit);
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
-
-    public ResurrectionResult? ResurrectCharacter(Guid characterId)
-    {
-        var deadIdx = Party.DeadCharacters.FindIndex(c => c.Id == characterId);
-        if (deadIdx < 0) return null;
-
-        var dead = Party.DeadCharacters[deadIdx];
-        var attempts = dead.ResurrectionAttempts;
-        if (attempts >= 2)
-            return new ResurrectionResult(false, "Character is permanently dead.");
-
-        var (goldCost, titheCost, statLoss, branchLock) = attempts switch
-        {
-            0 => (500, 1, 1, false),
-            1 => (1500, 2, 2, true),
-            _ => (0, 0, 0, false)
-        };
-
-        if (PartyGold < goldCost)
-            return new ResurrectionResult(false, "Not enough gold.");
-        if (TitheTokens < titheCost)
-            return new ResurrectionResult(false, "Not enough tithe tokens.");
-
-        PartyGold -= goldCost;
-        TitheTokens -= titheCost;
-
-        var newStats = ApplyRandomStatLoss(dead.BaseStats, statLoss);
-        var maxHp = EffectiveStats.FromBase(newStats, dead.Level).MaxHp;
-        var resurrected = dead with
-        {
-            BaseStats = newStats,
-            CurrentHp = maxHp,
-            ResurrectionAttempts = attempts + 1,
-            BranchAdvancementLocked = dead.BranchAdvancementLocked || branchLock,
-            TempModifiers = Array.Empty<TempStatModifier>()
-        };
-
-        var emptySlot = Array.IndexOf(Party.Members, default);
-        if (emptySlot < 0)
-            return new ResurrectionResult(false, "Party is full.");
-
-        Party.DeadCharacters.RemoveAt(deadIdx);
-        Party.SetMember(emptySlot, resurrected);
-
-        EmitActionLog("roster", "character_resurrected", new Dictionary<string, string>
-        {
-            { "characterId", characterId.ToString() },
-            { "characterName", resurrected.Name },
-            { "attempt", (attempts + 1).ToString() },
-            { "goldCost", goldCost.ToString() },
-            { "titheCost", titheCost.ToString() },
-            { "statLoss", statLoss.ToString() },
-            { "branchLocked", branchLock.ToString().ToLowerInvariant() }
-        });
-
-        LastUpdate = DateTime.UtcNow;
-        return new ResurrectionResult(true, null, goldCost, titheCost, statLoss, branchLock, resurrected);
-    }
-
-    private static BaseStats ApplyRandomStatLoss(BaseStats stats, int count)
-    {
-        var r = Random.Shared;
-        var s = stats;
-        for (int i = 0; i < count; i++)
-        {
-            switch (r.Next(5))
-            {
-                case 0: s = s with { Strength = Math.Max(1, s.Strength - 1) }; break;
-                case 1: s = s with { Dexterity = Math.Max(1, s.Dexterity - 1) }; break;
-                case 2: s = s with { Constitution = Math.Max(1, s.Constitution - 1) }; break;
-                case 3: s = s with { Intelligence = Math.Max(1, s.Intelligence - 1) }; break;
-                case 4: s = s with { Willpower = Math.Max(1, s.Willpower - 1) }; break;
-            }
-        }
-        return s;
-    }
-
-    public bool AcceptMission(string missionId)
-    {
-        var mission = Town.AvailableMissions.FirstOrDefault(m => m.Id == missionId);
-        if (mission == null) return false;
-
-        Town.AvailableMissions.Remove(mission);
-        Town.QuestLog.Add(new ActiveMission(mission.Id, mission.Title, mission.Description, mission.RepReward, mission.FactionId, "active", mission.Type));
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
-
-    public bool CompleteMission(string missionId)
-    {
-        var mission = Town.QuestLog.FirstOrDefault(m => m.Id == missionId && m.Status == "active");
-        if (mission == null) return false;
-
-        var index = Town.QuestLog.FindIndex(m => m.Id == missionId);
-        Town.QuestLog[index] = mission with { Status = "completed" };
-
-        var (primaryDelta, opposedDelta) = mission.Type switch
-        {
-            MissionType.Main => (8, -4),
-            _ => (5, -2),
-        };
-
-        var vendorThreshold = Town.FactionVendors.FirstOrDefault(v => v.FactionId == mission.FactionId)?.Threshold ?? 25;
-        var oldPrimaryRep = Reputation[mission.FactionId];
-        var wasUnlocked = oldPrimaryRep >= vendorThreshold;
-
-        var source = $"mission_complete_{mission.Type.ToString().ToLower()}";
-        ApplyMissionReputation(mission.FactionId, primaryDelta, opposedDelta, source);
-
-        // Grant quest completion XP
-        var questXp = mission.Type == MissionType.Main ? 100 : 50;
-        for (int i = 0; i < Party.Members.Length; i++)
-        {
-            var member = Party.Members[i];
-            if (member.Id == Guid.Empty) continue;
-            var updated = member with { Xp = member.Xp + questXp };
-            if (_classRegistry?.Get(member.ClassId) is { } classDef)
-            {
-                updated = LevelingSystem.CheckAndApplyLevelUps(updated, classDef);
-            }
-            Party.SetMember(i, updated);
-        }
-
-        EmitActionLog("faction", "mission_completed", new Dictionary<string, string>
-        {
-            { "missionId", mission.Id },
-            { "factionId", mission.FactionId },
-            { "type", mission.Type.ToString().ToLower() },
-            { "xpReward", questXp.ToString() }
-        });
-
-        var newPrimaryRep = Reputation[mission.FactionId];
-        if (!wasUnlocked && newPrimaryRep >= vendorThreshold)
-        {
-            EmitActionLog("faction", "vendor_unlocked", new Dictionary<string, string>
-            {
-                { "factionId", mission.FactionId },
-                { "threshold", vendorThreshold.ToString() }
-            });
-        }
-
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
-
-    public bool FailMission(string missionId)
-    {
-        var mission = Town.QuestLog.FirstOrDefault(m => m.Id == missionId && m.Status == "active");
-        if (mission == null) return false;
-
-        var index = Town.QuestLog.FindIndex(m => m.Id == missionId);
-        Town.QuestLog[index] = mission with { Status = "failed" };
-
-        ApplyMissionReputation(mission.FactionId, -3, 1, "mission_failed");
-
-        EmitActionLog("faction", "mission_failed", new Dictionary<string, string>
-        {
-            { "missionId", mission.Id },
-            { "factionId", mission.FactionId }
-        });
-
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
-
-    public bool AbandonMission(string missionId)
-    {
-        var mission = Town.QuestLog.FirstOrDefault(m => m.Id == missionId && m.Status == "active");
-        if (mission == null) return false;
-
-        var index = Town.QuestLog.FindIndex(m => m.Id == missionId);
-        Town.QuestLog[index] = mission with { Status = "abandoned" };
-
-        ApplyMissionReputation(mission.FactionId, -3, 1, "mission_abandoned");
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
-
-    public bool ApplyDialogueReputation(string factionId, int delta)
-    {
-        ApplyReputationDelta(factionId, delta, "dialogue_choice");
-        return true;
-    }
-
-    private void ApplyMissionReputation(string factionId, int primaryDelta, int opposedDelta, string source)
-    {
-        var primaryChanges = Reputation.ApplyDelta(factionId, primaryDelta, source, propagate: false);
-        foreach (var change in primaryChanges)
-        {
-            EmitActionLog("faction", "rep_changed", new Dictionary<string, string>
-            {
-                { "factionId", change.FactionId },
-                { "delta", change.Delta.ToString() },
-                { "newValue", change.NewValue.ToString() },
-                { "source", change.Source }
-            });
-        }
-
-        if (opposedDelta != 0)
-        {
-            var opposedFactionId = Reputation.GetOpposedFaction(factionId);
-            if (opposedFactionId != null)
-            {
-                var opposedChanges = Reputation.ApplyDelta(opposedFactionId, opposedDelta, source, propagate: false);
-                foreach (var change in opposedChanges)
-                {
-                    EmitActionLog("faction", "rep_changed", new Dictionary<string, string>
-                    {
-                        { "factionId", change.FactionId },
-                        { "delta", change.Delta.ToString() },
-                        { "newValue", change.NewValue.ToString() },
-                        { "source", change.Source }
-                    });
-                }
-            }
-        }
-    }
-
-    public void SetReputation(string factionId, int value)
-    {
-        Reputation[factionId] = value;
-        LastUpdate = DateTime.UtcNow;
-    }
-
-    public bool PurchaseVendorItem(string itemId)
-    {
-        var genericItem = Town.VendorStock.FirstOrDefault(v => v.ItemId == itemId);
-        if (genericItem != null)
-            return CompletePurchase(itemId, genericItem.Price, Town.VendorStock, null);
-
-        foreach (var vendor in Town.FactionVendors)
-        {
-            var item = vendor.Stock.FirstOrDefault(v => v.ItemId == itemId);
-            if (item != null)
-            {
-                if (Reputation[vendor.FactionId] < vendor.Threshold) return false;
-                return CompletePurchase(itemId, item.Price, vendor.Stock, vendor.FactionId);
-            }
-        }
-
-        return false;
-    }
-
-    private bool CompletePurchase(string itemId, int price, List<VendorItem> stock, string? factionId)
-    {
-        if (PartyGold < price) return false;
-        PartyGold -= price;
-        PartyInventory.Add(itemId);
-        var item = stock.First(v => v.ItemId == itemId);
-        stock.Remove(item);
-        var payload = new Dictionary<string, string> { { "itemId", itemId }, { "price", price.ToString() } };
-        if (factionId != null) payload["factionId"] = factionId;
-        EmitActionLog("town", "vendor_purchase", payload);
-        LastUpdate = DateTime.UtcNow;
-        return true;
-    }
+    public bool VerifyRumor(string rumorId, RumorVerificationSource source) => _townService.VerifyRumor(this, rumorId, source);
 }
 
 public enum GameMode

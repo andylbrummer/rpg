@@ -3,6 +3,7 @@ using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Overworld;
+using RPC.Engine.Save.Migrations;
 using RPC.Engine.Town;
 
 namespace RPC.Engine.Save;
@@ -10,6 +11,7 @@ namespace RPC.Engine.Save;
 public class SaveData
 {
     public int SchemaVersion { get; set; }
+    public string? ContentHash { get; set; }
     public SavePartyMember?[] Party { get; set; } = new SavePartyMember?[6];
     public SavePlayer Player { get; set; } = new();
     public string? DungeonType { get; set; }
@@ -33,12 +35,15 @@ public class SaveData
     public SaveComponentStack[] ExpeditionCache { get; set; } = Array.Empty<SaveComponentStack>();
     public SavePartyMember[] DeadCharacters { get; set; } = Array.Empty<SavePartyMember>();
     public SaveJournalState? Journal { get; set; }
+    public SaveHeatState? Heat { get; set; }
     public SaveCampaignConfig? CampaignConfig { get; set; }
     public SaveOverworldNode[] OverworldNodes { get; set; } = Array.Empty<SaveOverworldNode>();
     public SaveOverworldRoute[] OverworldRoutes { get; set; } = Array.Empty<SaveOverworldRoute>();
     public int CurrentAct { get; set; } = 1;
     public SaveWorldState? WorldState { get; set; }
     public string[] DowntimeCompleted { get; set; } = Array.Empty<string>();
+    public string? WildCardAllianceStatus { get; set; }
+    public int WildCardAllianceTurn { get; set; }
 }
 
 public class SaveFactionTimeline
@@ -72,6 +77,11 @@ public class SaveJournalState
     public string[] DiscoveredSynergies { get; set; } = Array.Empty<string>();
 }
 
+public class SaveHeatState
+{
+    public int Value { get; set; }
+}
+
 public class SaveWorldState
 {
     public Dictionary<string, string> Settlements { get; set; } = new();
@@ -89,6 +99,7 @@ public class SaveTownState
     public SaveTavernRecruit[] TavernRoster { get; set; } = Array.Empty<SaveTavernRecruit>();
     public string[] ViewedMissions { get; set; } = Array.Empty<string>();
     public SaveActiveMission[] QuestLog { get; set; } = Array.Empty<SaveActiveMission>();
+    public SaveTownRumor[] Rumors { get; set; } = Array.Empty<SaveTownRumor>();
 }
 
 public class SaveMissionOffer
@@ -152,6 +163,17 @@ public class SaveActiveMission
     public int RepReward { get; set; }
     public string FactionId { get; set; } = "";
     public string Status { get; set; } = "";
+}
+
+public class SaveTownRumor
+{
+    public string Id { get; set; } = "";
+    public string Text { get; set; } = "";
+    public string TruthStatus { get; set; } = "";
+    public bool Verified { get; set; }
+    public bool? VerificationResult { get; set; }
+    public string? RelatedContentId { get; set; }
+    public string? RelatedFactionId { get; set; }
 }
 
 public class SaveOverworldNode
@@ -219,46 +241,48 @@ public static class SaveSystem
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "TheReach", "save.json");
 
-    public static void Save(GameState state, string? path = null)
+    public static void Save(GameState state, string? path = null, string? contentHash = null)
     {
-        path ??= SavePath;
+        var fileIo = new SaveFileIO(path);
         var data = BuildSaveData(state);
-
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
-
-        var json = JsonSerializer.Serialize(data, Options);
-        var tmpPath = path + ".tmp";
-
-        File.WriteAllText(tmpPath, json);
-
-        using (var fs = new FileStream(tmpPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-        {
-            fs.Flush(flushToDisk: true);
-        }
-
-        File.Move(tmpPath, path, overwrite: true);
+        data.ContentHash = contentHash;
+        var json = fileIo.Serialize(data);
+        fileIo.WriteAtomic(json);
     }
 
-    public static bool Load(GameState state, string? path = null)
+    public static bool Load(GameState state, string? path = null, string? expectedContentHash = null)
     {
-        path ??= SavePath;
-        if (!File.Exists(path))
+        var fileIo = new SaveFileIO(path);
+        if (!fileIo.Exists())
             return false;
 
         try
         {
-            var json = File.ReadAllText(path);
-            var data = JsonSerializer.Deserialize<SaveData>(json, Options);
+            var json = fileIo.ReadAllText();
+            if (json == null) return false;
+
+            var doc = JsonDocument.Parse(json);
+            var schemaVersion = doc.RootElement.TryGetProperty("schemaVersion", out var svProp)
+                ? svProp.GetInt32()
+                : 0;
+
+            var pipeline = SaveMigrationPipeline.CreateDefault(8);
+            if (!pipeline.CanMigrate(schemaVersion))
+            {
+                var quarantinePath = fileIo.Quarantine($"unsupported schema version {schemaVersion}");
+                Console.Error.WriteLine(
+                    $"Save file '{fileIo.SavePath}' has unsupported schema version {schemaVersion}. Quarantined to '{quarantinePath}'.");
+                return false;
+            }
+
+            var migrated = pipeline.Migrate(doc, schemaVersion);
+            var data = JsonSerializer.Deserialize<SaveData>(migrated, Options);
             if (data == null) return false;
 
-            if (data.SchemaVersion != 3 && data.SchemaVersion != 4 && data.SchemaVersion != 5 && data.SchemaVersion != 6 && data.SchemaVersion != 7 && data.SchemaVersion != 8)
+            if (!string.IsNullOrEmpty(expectedContentHash) && data.ContentHash != expectedContentHash)
             {
-                Console.Error.WriteLine(
-                    $"Save file '{path}' has unsupported schema version {data.SchemaVersion}. Deleting; player starts new game.");
-                File.Delete(path);
-                return false;
+                Console.WriteLine(
+                    $"[Save] Content hash mismatch: save was created with '{data.ContentHash ?? "(none)"}', current is '{expectedContentHash}'. Loading anyway.");
             }
 
             RestoreParty(state, data);
@@ -272,10 +296,12 @@ public static class SaveSystem
             RestoreOverworld(state, data);
             RestoreSettings(state, data);
             RestoreJournal(state, data);
+            RestoreHeat(state, data);
             RestoreCampaignConfig(state, data);
             RestoreEvidence(state, data);
             RestoreWorldState(state, data);
             RestoreDowntime(state, data);
+            RestoreWildCardAlliance(state, data);
 
             return true;
         }
@@ -288,7 +314,7 @@ public static class SaveSystem
 
     public static bool HasSave(string? path = null)
     {
-        return File.Exists(path ?? SavePath);
+        return new SaveFileIO(path).Exists();
     }
 
     private static SaveData BuildSaveData(GameState state)
@@ -401,7 +427,18 @@ public static class SaveSystem
                         Description = q.Description,
                         RepReward = q.RepReward,
                         FactionId = q.FactionId,
-                        Status = q.Status
+                        Status = q.Status.ToString()
+                    }).ToArray(),
+                Rumors = state.Town.Rumors
+                    .Select(r => new SaveTownRumor
+                    {
+                        Id = r.Id,
+                        Text = r.Text,
+                        TruthStatus = r.TruthStatus.ToString(),
+                        Verified = r.Verified,
+                        VerificationResult = r.VerificationResult,
+                        RelatedContentId = r.RelatedContentId,
+                        RelatedFactionId = r.RelatedFactionId
                     }).ToArray()
             },
             ActionLog = state.ActionLog.Select(e => new SaveActionLogEntry
@@ -452,6 +489,10 @@ public static class SaveSystem
             {
                 DiscoveredSynergies = state.Journal.DiscoveryOrder.ToArray()
             },
+            Heat = new SaveHeatState
+            {
+                Value = state.Heat.Value
+            },
             CampaignConfig = state.CampaignConfig == null ? null : new SaveCampaignConfig
             {
                 Patron = state.CampaignConfig.Patron,
@@ -497,7 +538,9 @@ public static class SaveSystem
                     kv => kv.Key,
                     kv => kv.Value.ToArray())
             },
-            DowntimeCompleted = state.DowntimeCompleted.Select(g => g.ToString()).ToArray()
+            DowntimeCompleted = state.DowntimeCompleted.Select(g => g.ToString()).ToArray(),
+            WildCardAllianceStatus = state.WildCardAllianceStatus.ToString(),
+            WildCardAllianceTurn = state.WildCardAllianceTurn
         };
     }
 
@@ -576,7 +619,18 @@ public static class SaveSystem
                 .ToList();
             state.Town.ViewedMissions = data.Town.ViewedMissions.ToList();
             state.Town.QuestLog = data.Town.QuestLog
-                .Select(q => new ActiveMission(q.Id, q.Title, q.Description, q.RepReward, q.FactionId, q.Status))
+                .Select(q => new ActiveMission(q.Id, q.Title, q.Description, q.RepReward, q.FactionId,
+                    Enum.TryParse<MissionStatus>(q.Status, true, out var status) ? status : MissionStatus.Active))
+                .ToList();
+            state.Town.Rumors = data.Town.Rumors
+                .Select(r => new TownRumor(
+                    r.Id,
+                    r.Text,
+                    Enum.TryParse<RumorTruthStatus>(r.TruthStatus, true, out var ts) ? ts : RumorTruthStatus.True,
+                    r.Verified,
+                    r.VerificationResult,
+                    r.RelatedContentId,
+                    r.RelatedFactionId))
                 .ToList();
         }
     }
@@ -618,6 +672,14 @@ public static class SaveSystem
             {
                 state.Journal.Discover(id);
             }
+        }
+    }
+
+    private static void RestoreHeat(GameState state, SaveData data)
+    {
+        if (data.Heat != null)
+        {
+            state.Heat.Value = data.Heat.Value;
         }
     }
 
@@ -745,5 +807,20 @@ public static class SaveSystem
             .Select(g => g!.Value)
             .ToList();
         state.RestoreDowntimeState(ids);
+    }
+
+    private static void RestoreWildCardAlliance(GameState state, SaveData data)
+    {
+        if (!string.IsNullOrEmpty(data.WildCardAllianceStatus) &&
+            Enum.TryParse<WildCardAllianceStatus>(data.WildCardAllianceStatus, out var status))
+        {
+            state.WildCardAllianceStatus = status;
+            state.WildCardAllianceTurn = data.WildCardAllianceTurn;
+        }
+        else
+        {
+            state.WildCardAllianceStatus = WildCardAllianceStatus.None;
+            state.WildCardAllianceTurn = 0;
+        }
     }
 }

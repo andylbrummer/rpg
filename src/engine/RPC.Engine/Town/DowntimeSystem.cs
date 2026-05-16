@@ -27,7 +27,8 @@ public record DowntimeResult(
     int? ItemCount = null,
     string? FactionId = null,
     int? RepDelta = null,
-    string? EvidenceFaction = null);
+    string? EvidenceFaction = null,
+    int? HeatDelta = null);
 
 public static class DowntimeSystem
 {
@@ -154,7 +155,7 @@ public static class DowntimeSystem
 
         if (mostNegative.FactionId == null)
         {
-            return new DowntimeResult(true, "LayLow", "No negative reputation to mitigate.", RepDelta: 0);
+            return new DowntimeResult(true, "LayLow", "No negative reputation to mitigate.", RepDelta: 0, HeatDelta: -30);
         }
 
         var oldRep = reputation[mostNegative.FactionId];
@@ -162,7 +163,7 @@ public static class DowntimeSystem
         var actualDelta = targetRep - oldRep;
         reputation.ApplyDelta(mostNegative.FactionId, actualDelta, "downtime_laylow");
 
-        return new DowntimeResult(true, "LayLow", $"Laid low. {mostNegative.FactionId} reputation improved by {actualDelta}.", FactionId: mostNegative.FactionId, RepDelta: actualDelta);
+        return new DowntimeResult(true, "LayLow", $"Laid low. {mostNegative.FactionId} reputation improved by {actualDelta}.", FactionId: mostNegative.FactionId, RepDelta: actualDelta, HeatDelta: -30);
     }
 
     private static DowntimeResult PerformTendBlooms(CharacterState character, PartyState party, GameRandom rng)

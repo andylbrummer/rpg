@@ -4,6 +4,7 @@ using RPC.Engine.Party;
 
 namespace RPC.Tests;
 
+[Collection("SynergyTests")]
 public class SynergyEngineTests
 {
     private static CharacterState MakeChar(string name, int hp, int speed, int row = 0, string classId = "test")
@@ -13,18 +14,20 @@ public class SynergyEngineTests
             hp, Equipment.Empty,
             Array.Empty<string>(), row);
 
+    private readonly SynergyRegistry _synergies = new();
+
     public SynergyEngineTests()
     {
-        SynergyRegistry.Clear();
+        _synergies.Clear();
     }
 
     [Fact]
     public void PairLookup_OrderIndependent()
     {
-        SynergyRegistry.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
+        _synergies.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
 
-        var effect1 = SynergyRegistry.Lookup("ability_a", "ability_b");
-        var effect2 = SynergyRegistry.Lookup("ability_b", "ability_a");
+        var effect1 = _synergies.Lookup("ability_a", "ability_b");
+        var effect2 = _synergies.Lookup("ability_b", "ability_a");
 
         Assert.NotNull(effect1);
         Assert.NotNull(effect2);
@@ -34,9 +37,9 @@ public class SynergyEngineTests
     [Fact]
     public void PairLookup_SameAbility_NoTrigger()
     {
-        SynergyRegistry.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
+        _synergies.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
 
-        var effect = SynergyRegistry.Lookup("ability_a", "ability_a");
+        var effect = _synergies.Lookup("ability_a", "ability_a");
 
         Assert.Null(effect);
     }
@@ -44,9 +47,9 @@ public class SynergyEngineTests
     [Fact]
     public void PairLookup_UnregisteredPair_ReturnsNull()
     {
-        SynergyRegistry.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
+        _synergies.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
 
-        var effect = SynergyRegistry.Lookup("ability_a", "ability_c");
+        var effect = _synergies.Lookup("ability_a", "ability_c");
 
         Assert.Null(effect);
     }
@@ -83,7 +86,7 @@ public class SynergyEngineTests
     [Fact]
     public void AbilityResolution_AThenB_TriggersOnB()
     {
-        SynergyRegistry.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
+        _synergies.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
 
         var registry = new ClassRegistry();
         var json = """
@@ -121,14 +124,14 @@ public class SynergyEngineTests
                 var enemy = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
                 state = CombatEngine.Tick(state,
                     new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, abilitySequence[playerTurns], null),
-                    rng, registry);
+                    rng, registry, synergies: _synergies);
                 while (!state.IsFinished && state.Phase != CombatPhase.Turn)
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: _synergies);
                 playerTurns++;
             }
             else
             {
-                state = CombatEngine.Tick(state, null, rng, registry);
+                state = CombatEngine.Tick(state, null, rng, registry, synergies: _synergies);
             }
         }
 
@@ -140,7 +143,7 @@ public class SynergyEngineTests
     [Fact]
     public void AbilityResolution_BThenA_TriggersOnA()
     {
-        SynergyRegistry.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
+        _synergies.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
 
         var registry = new ClassRegistry();
         var json = """
@@ -177,14 +180,14 @@ public class SynergyEngineTests
                 var enemy = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
                 state = CombatEngine.Tick(state,
                     new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, abilitySequence[playerTurns], null),
-                    rng, registry);
+                    rng, registry, synergies: _synergies);
                 while (!state.IsFinished && state.Phase != CombatPhase.Turn)
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: _synergies);
                 playerTurns++;
             }
             else
             {
-                state = CombatEngine.Tick(state, null, rng, registry);
+                state = CombatEngine.Tick(state, null, rng, registry, synergies: _synergies);
             }
         }
 
@@ -195,7 +198,7 @@ public class SynergyEngineTests
     [Fact]
     public void AbilityResolution_SameAbilityTwice_NoTrigger()
     {
-        SynergyRegistry.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
+        _synergies.Register("ability_a", "ability_b", new SynergyEffect("bonus_damage", 5));
 
         var registry = new ClassRegistry();
         var json = """
@@ -230,14 +233,14 @@ public class SynergyEngineTests
                 var enemy = state.Combatants.First(c => !c.IsPlayer && c.IsAlive);
                 state = CombatEngine.Tick(state,
                     new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, "ability_a", null),
-                    rng, registry);
+                    rng, registry, synergies: _synergies);
                 while (!state.IsFinished && state.Phase != CombatPhase.Turn)
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: _synergies);
                 playerTurns++;
             }
             else
             {
-                state = CombatEngine.Tick(state, null, rng, registry);
+                state = CombatEngine.Tick(state, null, rng, registry, synergies: _synergies);
             }
         }
 
@@ -302,14 +305,14 @@ public class SynergyEngineTests
                 var ability = abilitySequence[playerTurns];
                 state = CombatEngine.Tick(state,
                     new CombatAction(state.CurrentActor!.Value.Id, ActionType.UseAbility, enemy.Id, ability, null),
-                    rng, registry);
+                    rng, registry, synergies: _synergies);
                 while (!state.IsFinished && state.Phase != CombatPhase.Turn)
-                    state = CombatEngine.Tick(state, null, rng, registry);
+                    state = CombatEngine.Tick(state, null, rng, registry, synergies: _synergies);
                 playerTurns++;
             }
             else
             {
-                state = CombatEngine.Tick(state, null, rng, registry);
+                state = CombatEngine.Tick(state, null, rng, registry, synergies: _synergies);
             }
         }
 

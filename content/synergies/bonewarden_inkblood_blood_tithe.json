@@ -1,0 +1,17 @@
+{
+  "id": "bonewarden_inkblood_blood_tithe",
+  "abilities": [
+    "tithe_touch",
+    "blood_rune"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 5,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "The Bonewarden's tithe and the Inkblood's rune create a binding of shared blood.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

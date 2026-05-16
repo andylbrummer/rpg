@@ -1,0 +1,22 @@
+{
+  "id": "bloom_site",
+  "name": "Bloom Site",
+  "segmentPool": [
+    "bloom_entrance",
+    "spore_corridor",
+    "bloom_chamber",
+    "decay_lab",
+    "spore_nest"
+  ],
+  "segmentPriority": [
+    "bloom_entrance",
+    "spore_corridor",
+    "bloom_chamber",
+    "decay_lab",
+    "spore_nest"
+  ],
+  "targetRooms": 10,
+  "bossEncounterId": "bs-d5-full-mix",
+  "encounterTableId": "bloom_site",
+  "wanderingTableId": "bloom_site"
+}

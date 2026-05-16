@@ -1,0 +1,17 @@
+{
+  "id": "ashmouth_bonewarden_necromantic_legion",
+  "abilities": [
+    "rally",
+    "raise_minion"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 5,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "An Ashmouth's rally infuses bone constructs with battlefield fervor.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

@@ -42,13 +42,13 @@ public static class CombatEngine
             encounter.XpReward);
     }
 
-    public static CombatState Tick(CombatState state, CombatAction? action, GameRandom rng, ClassRegistry? classes = null, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null)
+    public static CombatState Tick(CombatState state, CombatAction? action, GameRandom rng, ClassRegistry? classes = null, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null, SynergyRegistry? synergies = null)
     {
         return state.Phase switch
         {
             CombatPhase.RoundStart => StartRound(state, rng),
             CombatPhase.Turn => HandleTurn(state, action, rng),
-            CombatPhase.Resolve => Resolve(state, rng, classes, actionLogEmitter),
+            CombatPhase.Resolve => Resolve(state, rng, classes, actionLogEmitter, synergies),
             CombatPhase.CheckEnd => CheckEnd(state, actionLogEmitter),
             _ => state
         };
@@ -219,7 +219,7 @@ public static class CombatEngine
         return null;
     }
 
-    private static CombatState Resolve(CombatState state, GameRandom rng, ClassRegistry? classes, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null)
+    private static CombatState Resolve(CombatState state, GameRandom rng, ClassRegistry? classes, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null, SynergyRegistry? synergies = null)
     {
         if (state.PendingAction is null)
             return state with { Phase = CombatPhase.CheckEnd };
@@ -307,7 +307,7 @@ public static class CombatEngine
         {
             foreach (var used in state.AbilitiesUsedThisRound)
             {
-                var synEntry = SynergyRegistry.LookupWithId(abilityId, used);
+                var synEntry = synergies?.LookupWithId(abilityId, used);
                 if (synEntry is not null)
                 {
                     ApplySynergyEffect(synEntry.Value.Effect, a, new SynergyContext(newCombatants, newLog, state.Round, idx));
@@ -680,6 +680,17 @@ public static class CombatEngine
     private static void RemoveModifierFromCombatant(ref Combatant combatant, TempStatModifier mod)
     {
         ApplyModifierToCombatant(ref combatant, mod with { Delta = -mod.Delta });
+    }
+
+    public static CombatState AutoResolveToPlayerTurn(
+        CombatState state, GameRandom rng, ClassRegistry? classes = null,
+        Action<string, string, Dictionary<string, string>>? actionLogEmitter = null, SynergyRegistry? synergies = null)
+    {
+        while (!state.IsFinished && !(state.Phase == CombatPhase.Turn && state.CurrentActor?.IsPlayer == true))
+        {
+            state = Tick(state, null, rng, classes, actionLogEmitter, synergies);
+        }
+        return state;
     }
 
     private static Combatant ToCombatant(CharacterState character)

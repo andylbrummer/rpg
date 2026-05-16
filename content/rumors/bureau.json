@@ -1,0 +1,6 @@
+[
+  { "id": "bureau_patrol_missing", "text": "A Bureau patrol went missing near the old sewers. They were carrying Engine schematics.", "truthStatus": "true", "relatedContentId": "sewers", "relatedFactionId": "bureau" },
+  { "id": "bureau_quarantine_lifted", "text": "The Bureau has lifted quarantine on the eastern district. It's safe to pass through.", "truthStatus": "outdated", "relatedFactionId": "bureau" },
+  { "id": "bureau_agent_traitor", "text": "A high-ranking Bureau agent has been selling quarantine codes to smugglers.", "truthStatus": "planted", "relatedFactionId": "bureau" },
+  { "id": "bureau_engine_repair", "text": "The Bureau is recruiting outsiders for an emergency Engine repair team. Good pay, high risk.", "truthStatus": "true", "relatedFactionId": "bureau" }
+]

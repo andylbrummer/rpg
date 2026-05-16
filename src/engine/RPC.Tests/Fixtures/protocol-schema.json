@@ -1,0 +1,65 @@
+{
+  "protocolVersion": 2,
+  "envelopeTypes": {
+    "clientToServer": ["ready", "action", "heartbeat.pong"],
+    "serverToClient": ["hello", "state", "error", "heartbeat.ping", "content.reload"]
+  },
+  "actions": {
+    "move_forward": { "required": [], "optional": [] },
+    "move_back": { "required": [], "optional": [] },
+    "strafe_left": { "required": [], "optional": [] },
+    "strafe_right": { "required": [], "optional": [] },
+    "turn_left": { "required": [], "optional": [] },
+    "turn_right": { "required": [], "optional": [] },
+    "cancel": { "required": [], "optional": [] },
+    "combat_action": { "required": ["action"], "optional": [] },
+    "flee_combat": { "required": [], "optional": [] },
+    "enter_combat": { "required": [], "optional": [] },
+    "enter_dungeon": { "required": [], "optional": ["dungeonType"] },
+    "rest": { "required": [], "optional": [] },
+    "return_to_town": { "required": [], "optional": [] },
+    "save_game": { "required": [], "optional": [] },
+    "reset_game": { "required": [], "optional": [] },
+    "swap_row": { "required": ["slot"], "optional": [] },
+    "tavern_recruit": { "required": ["targetId"], "optional": [] },
+    "mission_accept": { "required": ["targetId"], "optional": [] },
+    "vendor_purchase": { "required": ["targetId"], "optional": [] },
+    "wildcard_alliance": { "required": ["targetId"], "optional": [] },
+    "travel": { "required": ["targetId"], "optional": [] },
+    "resolve_travel_encounter": { "required": ["targetId"], "optional": [] },
+    "set_reputation": { "required": ["targetId", "value"], "optional": [] },
+    "complete_mission": { "required": ["targetId"], "optional": [] },
+    "fail_mission": { "required": ["targetId"], "optional": [] },
+    "abandon_mission": { "required": ["targetId"], "optional": [] },
+    "dialogue_choice": { "required": ["targetId", "value"], "optional": [] },
+    "encounter_choice": { "required": ["targetId"], "optional": [] },
+    "branch_choose": { "required": ["targetId", "branch"], "optional": [] },
+    "accuse_faction": { "required": ["targetId"], "optional": [] },
+    "transfer_to_cache": { "required": ["slot", "targetId", "value"], "optional": [] },
+    "transfer_from_cache": { "required": ["slot", "targetId", "value"], "optional": [] },
+    "downtime_action": { "required": ["targetId", "downtimeAction"], "optional": [] },
+    "resurrect_character": { "required": ["targetId"], "optional": [] },
+    "rumor_verify": { "required": ["targetId", "source"], "optional": [] }
+  },
+  "stateShape": {
+    "requiredTopLevel": [
+      "type", "mode", "player", "tiles", "explored", "hasDungeon",
+      "party", "town", "overworld", "reputation", "evidence",
+      "partyGold", "partyInventory", "expeditionCache",
+      "downtimeCompleted", "deadCharacters", "titheTokens",
+      "campaignEnded", "factionStates", "worldState", "actionLog"
+    ],
+    "optionalTopLevel": [
+      "dungeonType", "combat", "combatResult", "travelEncounter",
+      "pendingParley", "wildCardAlliance"
+    ],
+    "partyMemberFields": [
+      "slot", "id", "name", "classId", "className", "color",
+      "level", "xp", "hp", "maxHp", "row", "alive",
+      "branchChoice", "branchLevel6", "awaitingBranchChoice",
+      "availableBranches", "branchWarnings",
+      "stats", "equipment", "knownAbilities", "availableAbilities",
+      "abilities", "tempModifiers", "componentInventory"
+    ]
+  }
+}

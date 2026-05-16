@@ -7,13 +7,15 @@ test.describe('G5: Game Loop', () => {
     // Ensure town mode (server state may be shared across tests)
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });
     await expect(page.locator('.town-header h1')).toBeVisible();
-    await expect(page.locator('text=Broken Engine')).toBeVisible();
-    await expect(page.locator('text=Sewer Warrens')).toBeVisible();
-    await expect(page.locator('text=Crypt of Whispers')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Broken Engine/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Sewer Warrens/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Crypt of Whispers/ })).toBeVisible();
   });
 
   test('can enter a dungeon from town', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    await sendWsAction(page, serverUrl, { type: 'reset_game' });
+    await page.waitForTimeout(500);
     await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
     await expect(page.locator('text=Return to Town')).toBeVisible();
   });
@@ -42,7 +44,8 @@ test.describe('G5: Game Loop', () => {
     } else {
       expect(hpBefore).not.toBe('100%');
       await sendWsAction(page, serverUrl, { type: 'rest' });
-      await page.waitForTimeout(300);
+      // Wait for state broadcast and re-render
+      await page.waitForTimeout(800);
       const hpAfter = await page.locator('.hp-fill').first().evaluate((el: any) => el.style.width);
       expect(hpAfter).toBe('100%');
     }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RPC.Engine.Content;
 
 namespace RPC.Engine.Combat;
 
@@ -12,8 +13,7 @@ public class EncounterTableRegistry
 
     public void LoadFromJson(string id, string json)
     {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var def = JsonSerializer.Deserialize<EncounterTableDef>(json, options);
+        var def = JsonSerializer.Deserialize<EncounterTableDef>(json, ContentJsonOptions.CaseInsensitive);
         if (def is not null)
             _tables[id] = def;
     }

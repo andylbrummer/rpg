@@ -84,6 +84,8 @@ public class CampaignConfig
 
         var complication = ComplicationPool[rng.Next(ComplicationPool.Length)];
 
+        var wildcardTurn = rng.Roll(18, 24); // 18-24 inclusive
+
         return new CampaignConfig
         {
             Patron = patron,
@@ -91,7 +93,8 @@ public class CampaignConfig
             Mastermind = mastermind,
             Scheme = scheme,
             WildCard = wildCard,
-            Complication = complication
+            Complication = complication,
+            WildcardTrigger = new WildcardTrigger(wildCard, wildcardTurn)
         };
     }
 

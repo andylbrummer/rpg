@@ -1,0 +1,17 @@
+{
+  "id": "cauterist_hollow_surgical_precision",
+  "abilities": [
+    "scalpel_dance",
+    "backstab"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "The Cauterist's precise cuts expose weak points for the Hollow's blade.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

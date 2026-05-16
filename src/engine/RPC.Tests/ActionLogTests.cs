@@ -125,7 +125,7 @@ public class ActionLogTests : IDisposable
     {
         var gs = new GameState(seed: 1);
         gs.ActionLog.Clear();
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", MissionStatus.Active, MissionType.Side));
 
         gs.CompleteMission("m1");
 
@@ -147,7 +147,7 @@ public class ActionLogTests : IDisposable
         var gs = new GameState(seed: 1);
         gs.Reputation["bureau"] = 23;
         gs.ActionLog.Clear();
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", MissionStatus.Active, MissionType.Side));
 
         gs.CompleteMission("m1");
 
@@ -164,7 +164,7 @@ public class ActionLogTests : IDisposable
         var gs = new GameState(seed: 1);
         gs.Reputation["bureau"] = 30;
         gs.ActionLog.Clear();
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", MissionStatus.Active, MissionType.Side));
 
         gs.CompleteMission("m1");
 
@@ -176,7 +176,7 @@ public class ActionLogTests : IDisposable
     {
         var gs = new GameState(seed: 1);
         gs.ActionLog.Clear();
-        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", "active", MissionType.Side));
+        gs.Town.QuestLog.Add(new ActiveMission("m1", "Test", "Desc", 5, "bureau", MissionStatus.Active, MissionType.Side));
 
         gs.FailMission("m1");
 
