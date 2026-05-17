@@ -53,5 +53,71 @@
     "statBonus": null,
     "value": 6,
     "stackSize": 15
+  },
+  {
+    "id": "bloom_dust",
+    "name": "Bloom Dust",
+    "description": "Fine spore powder from bloom creatures. Causes mild hallucinations if inhaled.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNiIgZmlsbD0iIzdjZiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 4,
+    "stackSize": 20
+  },
+  {
+    "id": "mite_chitin",
+    "name": "Mite Chitin",
+    "description": "A shard of hardened bloom-mite shell. Brittle but light.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTEyIDEyTDIwIDIwTTEyIDIwTDIwIDEyIiBzdHJva2U9IiM3Y2YiIHN0cm9rZS13aWR0aD0iNCIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 3,
+    "stackSize": 15
+  },
+  {
+    "id": "spore_sacs",
+    "name": "Spore Sacs",
+    "description": "Pulsating fungal sacs harvested from bloom creatures. Highly volatile.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNiIgZmlsbD0iIzMyODQzMiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 5,
+    "stackSize": 12
+  },
+  {
+    "id": "ash_residue",
+    "name": "Ash Residue",
+    "description": "Grey ash left behind by bloom-touched creatures. Smolders faintly.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNiIgZmlsbD0iIzg4OCIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 3,
+    "stackSize": 15
+  },
+  {
+    "id": "scrap_metal",
+    "name": "Scrap Metal",
+    "description": "Twisted pieces of salvaged iron. Useful for repairs or crude crafts.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTEyIDhMMjAgMjRMMTIgMjRaIiBmaWxsPSIjNTU1Ii8+PC9zdmc+",
+    "statBonus": null,
+    "value": 2,
+    "stackSize": 20
+  },
+  {
+    "id": "rat_tail",
+    "name": "Rat Tail",
+    "description": "A leathery tail from a sewer rat. Some alchemists pay for these.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTE2IDJMMTYgMzAiIHN0cm9rZT0iIzY1NDMyMSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PC9zdmc+",
+    "statBonus": null,
+    "value": 1,
+    "stackSize": 20
   }
 ]

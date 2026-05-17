@@ -1,5 +1,6 @@
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
+using RPC.Engine.Save;
 
 namespace RPC.Engine.Combat;
 
@@ -302,6 +303,7 @@ public class CombatService
             if (type == "synergy_triggered" && payload.TryGetValue("synergyId", out var sid) && !string.IsNullOrEmpty(sid))
             {
                 state.Journal.Discover(sid);
+                state.Analytics.RecordSynergyDiscovered(sid);
             }
             state.EmitActionLog(cat, type, payload);
         };
@@ -314,6 +316,7 @@ public class CombatService
         if (state.Combat.IsFinished)
         {
             var allEnemiesDead = state.Combat.AllEnemiesDead;
+            var allPlayersDead = state.Combat.AllPlayersDead;
 
             // Apply combat results to party
             var levelUps = new List<string>();
@@ -383,6 +386,29 @@ public class CombatService
             if (allEnemiesDead && state.CurrentEncounterId != null)
             {
                 state.EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", state.CurrentEncounterId } });
+            }
+
+            // Ironman: attempt rescue expedition on total party kill
+            if (allPlayersDead && state.IsIronman)
+            {
+                var rescueStarted = state.StartRescueExpedition();
+                if (!rescueStarted)
+                {
+                    // No bench characters available — delete save
+                    try
+                    {
+                        var savePath = state.SavePath;
+                        if (File.Exists(savePath))
+                        {
+                            File.Delete(savePath);
+                            state.EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string>());
+                        }
+                    }
+                    catch
+                    {
+                        // best effort
+                    }
+                }
             }
         }
 

@@ -84,6 +84,11 @@ public class GameCommandHandler
                 _gameState.SaveGame();
                 stateChanged = true;
                 break;
+
+            case SetIronmanCommand ironmanCmd:
+                _gameState.IsIronman = ironmanCmd.Enabled;
+                stateChanged = true;
+                break;
             case ResetGameCommand:
                 _gameState.Reset();
                 stateChanged = true;
@@ -121,6 +126,9 @@ public class GameCommandHandler
                     "ignore" => _gameState.IgnoreWildCardAlliance(),
                     _ => false
                 };
+                break;
+            case ChooseBetrayalCommand:
+                stateChanged = _gameState.ChooseBetrayal();
                 break;
             case TravelCommand travelCmd:
                 stateChanged = _gameState.Travel(travelCmd.TargetId);
@@ -189,6 +197,12 @@ public class GameCommandHandler
                 break;
             default:
                 throw new ArgumentException($"Unhandled command type: {cmd.GetType().Name}");
+        }
+
+        // Ironman: auto-save after every state-changing action
+        if (stateChanged && _gameState.IsIronman && cmd is not SaveGameCommand)
+        {
+            _gameState.SaveGame(_gameState.SavePath);
         }
 
         return new CommandResult(stateChanged, clearCombatResult);

@@ -1,0 +1,87 @@
+{
+  "id": "ManufacturedCrisis",
+  "name": "Manufactured Crisis",
+  "description": "The Mastermind has fabricated a crisis to consolidate power, manipulating factions into conflict while positioning themselves as the only solution. Every battle fought serves their agenda.",
+  "finaleDungeonFeel": "A contested city-state smolders. Scorched barricades divide streets that once knew peace. Faction banners hang from opposite ends of the main square, both claiming righteousness, both dancing to the same hidden tune. In the governor's manor, the true architect of the chaos waits behind a desk covered in forged orders and casualty reports.",
+  "evidenceChain": [
+    "contradictory_orders",
+    "missing_patrol_log",
+    "engine_site_anomaly",
+    "recovered_memo",
+    "operational_diversion",
+    "witness_statement",
+    "supply_requisition_fraud",
+    "forged_evidence",
+    "communication_intercept",
+    "final_confrontation_proof"
+  ],
+  "events": [
+    {
+      "id": "false_flag_attack",
+      "name": "False Flag Attack",
+      "description": "A settlement has been attacked by soldiers wearing enemy colors. The uniforms don't fit.",
+      "turnThreshold": 2,
+      "factionInvolved": "mastermind",
+      "effect": "reputation_change",
+      "reputationDelta": -4,
+      "targetFaction": "all"
+    },
+    {
+      "id": "contradictory_orders",
+      "name": "Contradictory Orders Discovered",
+      "description": "Two patrols from the same faction received opposing commands. Someone is giving false orders.",
+      "turnThreshold": 4,
+      "factionInvolved": "patron",
+      "effect": "reputation_change",
+      "reputationDelta": 3,
+      "targetFaction": "patron"
+    },
+    {
+      "id": "supply_fraud_uncovered",
+      "name": "Supply Fraud Uncovered",
+      "description": "Supplies meant for refugees have been diverted to a private warehouse.",
+      "turnThreshold": 6,
+      "factionInvolved": "patron",
+      "effect": "spawn_encounter",
+      "encounterType": "travel_convoy"
+    },
+    {
+      "id": "witness_conflict",
+      "name": "Witness Statements Conflict",
+      "description": "Survivors describe the attacker's insignia differently. Some remember details that don't match any known faction.",
+      "turnThreshold": 8,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -3,
+      "targetFaction": "threat"
+    },
+    {
+      "id": "engine_site_sabotage",
+      "name": "Engine Site Sabotage",
+      "description": "A critical Engine facility has been sabotaged. The method matches no faction's known tactics.",
+      "turnThreshold": 10,
+      "factionInvolved": "patron",
+      "effect": "unlock_dungeon",
+      "dungeonType": "broken_engine"
+    },
+    {
+      "id": "crisis_escalates",
+      "name": "Crisis Escalates",
+      "description": "Open fighting has erupted in three settlements. Both sides claim the other struck first.",
+      "turnThreshold": 12,
+      "factionInvolved": "mastermind",
+      "effect": "world_state_change",
+      "worldStateKey": "conflict_intensity",
+      "worldStateValue": "critical"
+    },
+    {
+      "id": "architect_revealed",
+      "name": "The Architect Revealed",
+      "description": "The forged orders lead back to their source. The crisis was built from lies, and the builder waits in the ruins.",
+      "turnThreshold": 14,
+      "factionInvolved": "mastermind",
+      "effect": "final_dungeon_unlocked",
+      "dungeonType": "contested_ruin"
+    }
+  ]
+}

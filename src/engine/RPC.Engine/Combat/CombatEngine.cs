@@ -57,6 +57,28 @@ public static class CombatEngine
     private static CombatState StartRound(CombatState state, GameRandom rng)
     {
         var order = RollInitiative(state.Combatants, rng);
+        var unaccounted = state.Combatants
+            .Where(c => c.IsAlive && IsUnaccounted(c))
+            .Select(c => c.Id)
+            .ToArray();
+
+        if (unaccounted.Length > 0)
+        {
+            // Shield Wall: Bonewarden ability blocks Unaccounted interrupts
+            var hasShieldWall = state.Combatants.Any(c => c.IsPlayer && c.IsAlive && c.StatusEffects.Any(s => s.Type == "shield_wall"));
+            if (!hasShieldWall)
+            {
+                // Interrupt: insert Unaccounted turns at random positions
+                var expanded = new List<Guid>(order);
+                foreach (var uid in unaccounted)
+                {
+                    var pos = rng.Roll(1, expanded.Count); // avoid position 0
+                    expanded.Insert(pos, uid);
+                }
+                order = expanded.ToArray();
+            }
+        }
+
         return state with
         {
             InitiativeOrder = order,
@@ -81,8 +103,20 @@ public static class CombatEngine
         // AI turn -> generate action automatically
         if (!actor.Value.IsPlayer)
         {
-            var aiAction = GenerateAIAction(state, actor.Value, rng);
-            return state with { PendingAction = aiAction, Phase = CombatPhase.Resolve };
+            var newCombatants = state.Combatants.ToArray();
+            var actorIdx = Array.FindIndex(newCombatants, c => c.Id == actor.Value.Id);
+            var currentActor = newCombatants[actorIdx];
+
+            // Phase: Unaccounted can teleport between rows before acting
+            if (IsUnaccounted(currentActor) && rng.Next(2) == 0)
+            {
+                var newRow = currentActor.Row == 0 ? 1 : 0;
+                newCombatants[actorIdx] = currentActor with { Row = newRow };
+                currentActor = newCombatants[actorIdx];
+            }
+
+            var aiAction = GenerateAIAction(state, currentActor, rng);
+            return state with { Combatants = newCombatants, PendingAction = aiAction, Phase = CombatPhase.Resolve };
         }
 
         // Player turn -> wait for action
@@ -127,6 +161,22 @@ public static class CombatEngine
 
     private static Combatant SelectTarget(CombatState state, Combatant actor, Combatant[] targets, string behavior, GameRandom rng)
     {
+        // Reach-through: Unaccounted can target back row directly
+        if (IsUnaccounted(actor))
+        {
+            var backRowTargets = targets.Where(t => t.Row == 1).ToArray();
+            if (backRowTargets.Length > 0)
+            {
+                // Animator summons absorb back-row targeting
+                var summon = state.Combatants.FirstOrDefault(c => c.IsSummoned && c.IsAlive);
+                if (summon.IsAlive)
+                {
+                    return summon;
+                }
+                return backRowTargets[rng.Next(backRowTargets.Length)];
+            }
+        }
+
         return behavior switch
         {
             "aggressive" or "zealot_aggressive" => targets.OrderBy(t => t.Hp).ThenBy(t => t.Id).First(),
@@ -240,7 +290,16 @@ public static class CombatEngine
                         var target = newCombatants[targetIdx];
                         var damage = Math.Max(1, rng.Roll(1, 6) + 2); // placeholder damage
                         var newHp = Math.Max(0, target.Hp - damage);
-                        newCombatants[targetIdx] = target with { Hp = newHp };
+                        var newEffects = new List<StatusEffect>(target.StatusEffects);
+
+                        // Dread: Unaccounted attacks inflict dread
+                        if (IsUnaccounted(actor))
+                        {
+                            newEffects.Add(new StatusEffect("dread", -1, null, actor.Id));
+                            newLog.Add(new(action.ActorId, $"{target.Name} is stricken with dread", state.Round));
+                        }
+
+                        newCombatants[targetIdx] = target with { Hp = newHp, StatusEffects = newEffects };
                         newLog.Add(new(action.ActorId,
                             $"{actor.Name} hits {target.Name} for {damage} damage", state.Round));
                         if (target.IsSummoned && newHp == 0)
@@ -261,7 +320,15 @@ public static class CombatEngine
                         if (damage > 0)
                         {
                             var newHp = Math.Max(0, target.Hp - damage);
-                            newCombatants[targetIdx] = target with { Hp = newHp };
+                            var newEffects = new List<StatusEffect>(target.StatusEffects);
+
+                            // Cauterist fire: burned corpses cannot reassemble
+                            if (IsUnaccounted(target) && newHp == 0 && IsFireAbility(actor, action.AbilityId, classes))
+                            {
+                                newEffects.Add(new StatusEffect("burned", 999, null));
+                            }
+
+                            newCombatants[targetIdx] = target with { Hp = newHp, StatusEffects = newEffects };
                             newLog.Add(new(action.ActorId,
                                 $"{actor.Name} uses {action.AbilityId} on {target.Name} for {damage} damage", state.Round));
                             if (target.IsSummoned && newHp == 0)
@@ -275,6 +342,20 @@ public static class CombatEngine
 
                         ApplyMemoryCost(actorIdx, action.AbilityId, classes);
                         ApplySynergies(action.AbilityId, actor, targetIdx);
+
+                        // War Cry: Ashmouth ability dispels dread from all allies
+                        if (action.AbilityId == "war_cry")
+                        {
+                            for (int i = 0; i < newCombatants.Length; i++)
+                            {
+                                var c = newCombatants[i];
+                                if (c.IsPlayer && c.StatusEffects.Any(s => s.Type == "dread"))
+                                {
+                                    newCombatants[i] = c with { StatusEffects = c.StatusEffects.Where(s => s.Type != "dread").ToList() };
+                                }
+                            }
+                            newLog.Add(new(action.ActorId, $"{actor.Name}'s war cry dispels the dread", state.Round));
+                        }
                     }
                 }
                 break;
@@ -441,26 +522,6 @@ public static class CombatEngine
 
     private static CombatState CheckEnd(CombatState state, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null)
     {
-        if (state.AllEnemiesDead)
-        {
-            return state with
-            {
-                Phase = CombatPhase.Ended,
-                Log = new List<CombatLogEntry>(state.Log)
-                { new(Guid.Empty, "Victory!", state.Round) }
-            };
-        }
-
-        if (state.AllPlayersDead)
-        {
-            return state with
-            {
-                Phase = CombatPhase.Ended,
-                Log = new List<CombatLogEntry>(state.Log)
-                { new(Guid.Empty, "Defeat...", state.Round) }
-            };
-        }
-
         var nextIndex = state.CurrentTurnIndex + 1;
         if (nextIndex >= state.InitiativeOrder.Length)
         {
@@ -468,6 +529,63 @@ public static class CombatEngine
             var newCombatants = state.Combatants.ToArray();
             var newLog = new List<CombatLogEntry>(state.Log);
             var expiredIds = new HashSet<Guid>();
+            var deadUnaccounted = new List<DeadUnaccounted>(state.DeadUnaccounted);
+
+            // Track newly dead Unaccounted
+            foreach (var c in newCombatants)
+            {
+                if (!c.IsAlive && IsUnaccounted(c) && !deadUnaccounted.Any(d => d.Id == c.Id))
+                {
+                    var isBurned = c.StatusEffects.Any(s => s.Type == "burned");
+                    deadUnaccounted.Add(new DeadUnaccounted(c.Id, state.Round, isBurned));
+                }
+            }
+
+            // Reassemble: merge 2+ dead Unaccounted after 2 rounds (burned corpses excluded)
+            var readyToReassemble = deadUnaccounted.Where(d => !d.Burned && state.Round - d.RoundDied >= 2).ToArray();
+            if (readyToReassemble.Length >= 2)
+            {
+                var toMerge = readyToReassemble.Take(2).ToArray();
+                deadUnaccounted = deadUnaccounted.Where(d => !toMerge.Any(t => t.Id == d.Id)).ToList();
+
+                var newId = Guid.NewGuid();
+                var reassembled = new Combatant(
+                    newId,
+                    "Reassembled",
+                    false,
+                    18,
+                    18,
+                    6,
+                    0,
+                    new List<StatusEffect>(),
+                    6,
+                    null,
+                    false,
+                    0,
+                    null,
+                    "unaccounted",
+                    new[] { "unaccounted_strike" });
+
+                newCombatants = newCombatants.Append(reassembled).ToArray();
+                newLog.Add(new(Guid.Empty, "Fallen Unaccounted reassemble into something worse", newRound));
+            }
+
+            // Clean up dread from dead Unaccounted
+            for (int i = 0; i < newCombatants.Length; i++)
+            {
+                var c = newCombatants[i];
+                var deadUnaccountedIds = deadUnaccounted.Select(d => d.Id).ToHashSet();
+                if (c.StatusEffects.Any(s => s.Type == "dread" && deadUnaccountedIds.Contains(s.SourceId)))
+                {
+                    var cleaned = c.StatusEffects
+                        .Where(s => !(s.Type == "dread" && deadUnaccountedIds.Contains(s.SourceId)))
+                        .ToList();
+                    newCombatants[i] = c with { StatusEffects = cleaned };
+                }
+            }
+
+            // War Cry: Ashmouth ability dispels dread from all allies
+            // (handled in Resolve; this ensures any lingering dread from dead sources is also cleared)
 
             for (int i = 0; i < newCombatants.Length; i++)
             {
@@ -514,6 +632,45 @@ public static class CombatEngine
                 }
             }
 
+            // Check for victory/defeat AFTER reassembly
+            var allEnemiesDead = newCombatants.All(c => c.IsPlayer || !c.IsAlive)
+                && !deadUnaccounted.Any(d => !d.Burned && state.Round - d.RoundDied < 2);
+            var allPlayersDead = newCombatants.All(c => !c.IsPlayer || c.IsSummoned || !c.IsAlive);
+
+            if (allEnemiesDead)
+            {
+                newLog.Add(new(Guid.Empty, "Victory!", newRound));
+                return state with
+                {
+                    Round = newRound,
+                    CurrentTurnIndex = 0,
+                    Phase = CombatPhase.Ended,
+                    Combatants = newCombatants,
+                    Log = newLog,
+                    SummonSlotAssignments = state.SummonSlotAssignments
+                        .Where(kv => !expiredIds.Contains(kv.Value))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value),
+                    DeadUnaccounted = deadUnaccounted
+                };
+            }
+
+            if (allPlayersDead)
+            {
+                newLog.Add(new(Guid.Empty, "Defeat...", newRound));
+                return state with
+                {
+                    Round = newRound,
+                    CurrentTurnIndex = 0,
+                    Phase = CombatPhase.Ended,
+                    Combatants = newCombatants,
+                    Log = newLog,
+                    SummonSlotAssignments = state.SummonSlotAssignments
+                        .Where(kv => !expiredIds.Contains(kv.Value))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value),
+                    DeadUnaccounted = deadUnaccounted
+                };
+            }
+
             var newAssignments = state.SummonSlotAssignments
                 .Where(kv => !expiredIds.Contains(kv.Value))
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -526,7 +683,29 @@ public static class CombatEngine
                 AbilitiesUsedThisRound = new HashSet<string>(),
                 Combatants = newCombatants,
                 Log = newLog,
-                SummonSlotAssignments = newAssignments
+                SummonSlotAssignments = newAssignments,
+                DeadUnaccounted = deadUnaccounted
+            };
+        }
+
+        // Check for victory/defeat mid-round
+        if (state.AllEnemiesDead)
+        {
+            return state with
+            {
+                Phase = CombatPhase.Ended,
+                Log = new List<CombatLogEntry>(state.Log)
+                { new(Guid.Empty, "Victory!", state.Round) }
+            };
+        }
+
+        if (state.AllPlayersDead)
+        {
+            return state with
+            {
+                Phase = CombatPhase.Ended,
+                Log = new List<CombatLogEntry>(state.Log)
+                { new(Guid.Empty, "Defeat...", state.Round) }
             };
         }
 
@@ -546,6 +725,17 @@ public static class CombatEngine
             .ThenBy(x => x.Id) // tie-breaker for determinism
             .Select(x => x.Id)
             .ToArray();
+    }
+
+    private static bool IsUnaccounted(Combatant c) => c.AiBehavior == "unaccounted";
+
+    private static bool IsFireAbility(Combatant actor, string abilityId, ClassRegistry? classes)
+    {
+        if (string.IsNullOrEmpty(actor.ClassId) || classes is null)
+            return false;
+        var classDef = classes.Get(actor.ClassId);
+        var ability = classDef?.Abilities.FirstOrDefault(a => a.Id == abilityId);
+        return ability?.Tags.Any(t => t.Contains("fire")) == true;
     }
 
     private static Combatant[] SpawnEnemies(EncounterDef encounter, GameRandom rng, EnemyRegistry? registry)
@@ -581,6 +771,9 @@ public static class CombatEngine
                     statusEffects.Add(new StatusEffect("bloom_resistance", 999, null));
                 }
 
+                // Phase: Unaccounted can appear at any range band
+                var row = spawn.RowOverride ?? (def?.Ai == "unaccounted" ? rng.Next(2) : (rng.Next(2) == 0 ? 0 : 1));
+
                 enemies.Add(new Combatant(
                     id,
                     $"{name}_{i + 1}",
@@ -588,7 +781,7 @@ public static class CombatEngine
                     hp + rng.Roll(0, 3),
                     hp + 3,
                     speed + rng.Roll(-1, 1),
-                    spawn.RowOverride ?? (rng.Next(2) == 0 ? 0 : 1),
+                    row,
                     statusEffects,
                     def?.Stats.Strength ?? 0,
                     null,

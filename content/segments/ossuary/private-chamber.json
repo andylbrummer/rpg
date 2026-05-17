@@ -1,0 +1,19 @@
+{
+  "id": "private_chamber",
+  "name": "Private Chamber",
+  "description": "A small room where the living once mourned. Funeral offerings sit undisturbed.",
+  "tags": ["dead_end", "ossuary"],
+  "width": 3,
+  "height": 3,
+  "tiles": [
+    { "x": 1, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 2, "y": 1, "type": "Floor" },
+    { "x": 3, "y": 1, "type": "Floor" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 2, "y": 2, "type": "Floor" },
+    { "x": 3, "y": 2, "type": "Floor" },
+    { "x": 1, "y": 3, "type": "Floor" },
+    { "x": 2, "y": 3, "type": "Floor" },
+    { "x": 3, "y": 3, "type": "Floor" }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { GameState, PlayerAction, ProtocolEnvelope, ErrorPayload } from '$shared/types/game';
+import type { GameState, PlayerAction, ProtocolEnvelope, ErrorPayload, AnalyticsData } from '$shared/types/game';
 
 export class GameClient {
   private ws: WebSocket | null = null;
@@ -12,6 +12,7 @@ export class GameClient {
   private onConnectCallback: (() => void) | null = null;
   private onDisconnectCallback: (() => void) | null = null;
   private onErrorCallback: ((error: ErrorPayload) => void) | null = null;
+  private onAnalyticsCallback: ((data: AnalyticsData) => void) | null = null;
 
 
   constructor(serverPort?: number) {
@@ -95,6 +96,11 @@ export class GameClient {
           break;
         }
 
+        case 'analytics.data': {
+          this.onAnalyticsCallback?.(envelope.payload as unknown as AnalyticsData);
+          break;
+        }
+
         default:
           console.warn('Unknown envelope type:', envelope.type);
       }
@@ -162,5 +168,13 @@ export class GameClient {
 
   onError(callback: (error: ErrorPayload) => void): void {
     this.onErrorCallback = callback;
+  }
+
+  onAnalytics(callback: (data: AnalyticsData) => void): void {
+    this.onAnalyticsCallback = callback;
+  }
+
+  requestAnalytics(): void {
+    this.sendEnvelope('analytics.request', {});
   }
 }

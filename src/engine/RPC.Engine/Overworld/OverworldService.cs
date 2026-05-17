@@ -26,6 +26,12 @@ public class OverworldService
         state.CurrentComplication = CampaignContentLoader.GetComplicationById(config.Complication.ToString());
         state.Overworld.GenerateFromConfig(config, _encounterRng, state.CurrentComplication);
         SyncWorldStateFromOverworld(state);
+
+        var partyClasses = state.Party.Members
+            .Where(m => m.Id != Guid.Empty)
+            .Select(m => m.ClassId)
+            .ToArray();
+        state.Analytics.RecordCampaignStart(config.Scheme.ToString().ToLowerInvariant(), config.Scheme.ToString(), partyClasses);
     }
 
     private void SyncWorldStateFromOverworld(GameState state)

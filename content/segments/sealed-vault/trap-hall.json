@@ -1,0 +1,22 @@
+{
+  "id": "trap_hall",
+  "name": "Trap Hall",
+  "description": "A narrow hall with suspicious pressure plates and dark holes in the walls.",
+  "tags": ["dead_end", "sealed_vault"],
+  "width": 3,
+  "height": 4,
+  "tiles": [
+    { "x": 1, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 2, "y": 1, "type": "Floor" },
+    { "x": 3, "y": 1, "type": "Floor" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 2, "y": 2, "type": "Floor" },
+    { "x": 3, "y": 2, "type": "Floor" },
+    { "x": 1, "y": 3, "type": "Floor" },
+    { "x": 2, "y": 3, "type": "Floor" },
+    { "x": 3, "y": 3, "type": "Floor" },
+    { "x": 1, "y": 4, "type": "Floor" },
+    { "x": 2, "y": 4, "type": "Floor" },
+    { "x": 3, "y": 4, "type": "Floor" }
+  ]
+}

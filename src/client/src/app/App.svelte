@@ -13,17 +13,21 @@
   import TitleScreen from '../ui/TitleScreen.svelte';
   import { DungeonRenderer } from '$renderer/DungeonRenderer';
   import { AmbientAudioManager } from '$renderer/AmbientAudio';
+  import { UnaccountedAudioManager } from '$renderer/UnaccountedAudioManager';
   import type { GameState } from '$shared/types/game';
   import { loadBindings, keyToAction } from '$config/keybindings';
 
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | null = null;
   const audioManager = new AmbientAudioManager();
+  const unaccountedAudio = new UnaccountedAudioManager();
   let gameState = $state<GameState | null>(null);
   let serverError = $state<{ code: string; message: string; recoverable: boolean } | null>(null);
   let combatCancelSignal = $state(0);
   let repToasts = $state<Array<{ id: number; factionId: string; delta: number; source: string }>>([]);
+  let factionNotifications = $state<Array<{ id: number; text: string }>>([]);
   let lastActionLogTurn = $state(0);
+  let subtitleEntries = $state<Array<{ text: string; duration: number; timestamp: number }>>([]);
   let nextToastId = 0;
   let synergyFlashTargetId = $state<string | null>(null);
   let showFieldNotes = $state(false);
@@ -31,6 +35,8 @@
   let selectedMemberSlot = $state<number | null>(null);
   let showSettings = $state(false);
   let showTitleScreen = $state(true);
+  let showStats = $state(false);
+  let analyticsData = $state<import('$shared/types/game').AnalyticsData | null>(null);
   let keyBindings = $state(loadBindings());
 
   const DISCOVERY_KEY = 'rpc_discovered_synergies';
@@ -112,6 +118,12 @@
     pendingAction = null;
   }
 
+  function requestStats() {
+    const client = (window as any).gameClient as GameClient;
+    client?.requestAnalytics();
+    showStats = true;
+  }
+
   function drainBuffer() {
     if (pendingAction || inputBuffer.length === 0) return;
     const action = inputBuffer.shift()!;
@@ -190,6 +202,8 @@
       lastMode = s?.mode ?? null;
       gameState = s;
       audioManager.update(s?.dungeonType);
+      unaccountedAudio.update(s);
+      subtitleEntries = unaccountedAudio.subtitles.getActive();
       clearPending();
       drainBuffer();
 
@@ -226,6 +240,28 @@
             synergyFlashTargetId = tid;
           }
         }
+
+        const factionEvents = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.category === 'faction' && ['resolution', 'executing_collision', 'timeline_modified', 'event_fired'].includes(e.type));
+        for (const entry of factionEvents) {
+          let text = '';
+          if (entry.type === 'resolution') {
+            text = entry.payload?.description ?? 'Faction conflict resolved.';
+          } else if (entry.type === 'executing_collision') {
+            text = `Multiple factions are executing their schemes: ${entry.payload?.factions ?? ''}`;
+          } else if (entry.type === 'timeline_modified') {
+            text = `${entry.payload?.factionId ?? 'A faction'}'s timeline shifts.`;
+          } else if (entry.type === 'event_fired') {
+            text = entry.payload?.eventName ?? 'A campaign event unfolds.';
+          }
+          if (text) {
+            const noteId = nextToastId++;
+            factionNotifications = [...factionNotifications, { id: noteId, text }];
+            setTimeout(() => {
+              factionNotifications = factionNotifications.filter((n) => n.id !== noteId);
+            }, 6000);
+          }
+        }
+
         lastActionLogTurn = maxTurn;
       } else if (actionLog.length === 0 && lastActionLogTurn > 0) {
         // Reset detected — clear turn tracker so future toasts fire
@@ -272,6 +308,10 @@
     });
 
     gameStore.connect();
+
+    client.onAnalytics((data) => {
+      analyticsData = data;
+    });
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showSettings) {
@@ -450,6 +490,18 @@
         <span class="rep-toast-source">({toast.source})</span>
       </div>
     {/each}
+    {#each factionNotifications as note (note.id)}
+      <div class="faction-notification" role="status">
+        {note.text}
+      </div>
+    {/each}
+    {#if subtitleEntries.length > 0}
+      <div class="subtitle-overlay">
+        {#each subtitleEntries as sub (sub.timestamp)}
+          <div class="subtitle-line">{sub.text}</div>
+        {/each}
+      </div>
+    {/if}
     {#if gameState?.mode !== 'Combat' && !showTitleScreen}
       <header class="top-bar">
         <div class="game-title">The Reach</div>
@@ -463,7 +515,13 @@
               Turn {gameState.overworld.turns}/15
             </span>
           {/if}
+          {#if gameState?.isFragileState}
+            <span class="fragile-warning" title="Your roster is thin. A total party kill may end your campaign.">
+              ⚠ Fragile
+            </span>
+          {/if}
           <button class="field-notes-toggle" onclick={() => showFieldNotes = true}>Field Notes</button>
+          <button class="stats-toggle" onclick={requestStats}>Stats</button>
           <button class="settings-toggle" onclick={() => showSettings = true}>Settings</button>
         </div>
       </header>
@@ -537,7 +595,15 @@
           <div class="campaign-end-card">
             <h2 class="campaign-end-title">Campaign Complete</h2>
             <p class="campaign-end-turns">Final Turn: {gameState.overworld?.turns ?? 15}/15</p>
-            <p class="campaign-end-desc">Your journey has come to an end.</p>
+            {#if gameState.epilogue}
+              <div class="campaign-epilogue">
+                {#each gameState.epilogue.split('\n\n') as paragraph}
+                  <p class="epilogue-paragraph">{paragraph}</p>
+                {/each}
+              </div>
+            {:else}
+              <p class="campaign-end-desc">Your journey has come to an end.</p>
+            {/if}
             <button class="campaign-end-btn" onclick={() => handleReset()}>New Game</button>
           </div>
         </div>
@@ -554,7 +620,64 @@
         <SettingsPanel
           open={showSettings}
           onClose={() => showSettings = false}
+          onAudioToggle={(enabled) => audioManager.setEnabled(enabled)}
         />
+      {/if}
+      {#if showStats}
+        <div class="stats-overlay" role="dialog" aria-label="Your stats">
+          <div class="stats-card">
+            <h2 class="stats-title">Your Stats</h2>
+            {#if analyticsData}
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <span class="stat-value">{analyticsData.campaignsStarted}</span>
+                  <span class="stat-label">Campaigns Started</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{analyticsData.campaignsCompleted}</span>
+                  <span class="stat-label">Completed</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{analyticsData.mastermindsExposed}</span>
+                  <span class="stat-label">Masterminds Exposed</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{analyticsData.schemesStopped}</span>
+                  <span class="stat-label">Schemes Stopped</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{analyticsData.betrayals}</span>
+                  <span class="stat-label">Betrayals</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{analyticsData.totalTurns}</span>
+                  <span class="stat-label">Total Turns</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{analyticsData.totalDeaths}</span>
+                  <span class="stat-label">Deaths</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{analyticsData.synergiesDiscovered.length}</span>
+                  <span class="stat-label">Synergies Found</span>
+                </div>
+              </div>
+              {#if analyticsData.classesPlayed.length > 0}
+                <div class="stats-section">
+                  <h3>Classes Played</h3>
+                  <div class="stats-tags">
+                    {#each analyticsData.classesPlayed as cls}
+                      <span class="stat-tag">{cls}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+            {:else}
+              <p class="stats-loading">Loading...</p>
+            {/if}
+            <button class="stats-close-btn" onclick={() => showStats = false}>Close</button>
+          </div>
+        </div>
       {/if}
       {#if replaySynergyId}
         <div class="replay-modal-overlay" role="dialog" aria-label="Synergy replay">
@@ -669,6 +792,23 @@
   .turn-counter {
     background: rgba(0, 0, 0, 0.4);
     border: 0.0625em solid #444;
+  }
+
+  .fragile-warning {
+    padding: 0.2rem 0.5rem;
+    background: rgba(204, 68, 68, 0.2);
+    border: 1px solid #c44;
+    border-radius: 0.25rem;
+    color: #e88;
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    font-weight: bold;
+    cursor: help;
+    animation: pulse-warning 2s infinite;
+  }
+
+  @keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
   }
 
   .mode-badge {
@@ -866,6 +1006,26 @@
     font-size: 0.875rem;
   }
 
+  .campaign-epilogue {
+    max-height: 300px;
+    overflow-y: auto;
+    text-align: left;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0.25rem;
+  }
+
+  .epilogue-paragraph {
+    margin: 0 0 0.75rem 0;
+    color: #ccc;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .epilogue-paragraph:last-child {
+    margin-bottom: 0;
+  }
+
   .campaign-end-btn {
     margin-top: 0.5rem;
     padding: 0.5rem 1.5rem;
@@ -915,6 +1075,116 @@
 
   .settings-toggle:hover {
     background: rgba(120, 160, 200, 0.3);
+  }
+
+  .stats-toggle {
+    padding: 0.2rem 0.5rem;
+    background: rgba(160, 120, 200, 0.15);
+    border: 1px solid #a078c8;
+    border-radius: 0.25rem;
+    color: #a078c8;
+    cursor: pointer;
+    font-size: clamp(0.6rem, 1.2vw, 0.75rem);
+    font-weight: bold;
+    margin-left: 0.5rem;
+  }
+
+  .stats-toggle:hover {
+    background: rgba(160, 120, 200, 0.3);
+  }
+
+  .stats-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100;
+  }
+
+  .stats-card {
+    background: #1a1a2e;
+    border: 1px solid #444;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+  }
+
+  .stats-title {
+    margin: 0 0 1rem 0;
+    color: #ddd;
+    font-size: 1.25rem;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.25rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #88cc88;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 0.25rem;
+  }
+
+  .stats-section {
+    margin-top: 1rem;
+    text-align: left;
+  }
+
+  .stats-section h3 {
+    margin: 0 0 0.5rem 0;
+    color: #aaa;
+    font-size: 0.875rem;
+  }
+
+  .stats-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .stat-tag {
+    padding: 0.2rem 0.4rem;
+    background: rgba(120, 160, 200, 0.2);
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: #78a0c8;
+  }
+
+  .stats-loading {
+    color: #888;
+    font-size: 0.875rem;
+  }
+
+  .stats-close-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1.5rem;
+    background: rgba(68, 170, 68, 0.2);
+    border: 1px solid #44aa44;
+    border-radius: 0.25rem;
+    color: #88cc88;
+    cursor: pointer;
   }
 
   .replay-modal-overlay {
@@ -992,5 +1262,44 @@
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-0.5em); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  .subtitle-overlay {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  .subtitle-line {
+    background: rgba(0, 0, 0, 0.7);
+    color: #aaa;
+    font-size: 0.875rem;
+    font-style: italic;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    animation: fadeIn 200ms ease-out;
+  }
+
+  .faction-notification {
+    position: fixed;
+    top: 5rem;
+    right: 1rem;
+    background: rgba(30, 15, 40, 0.9);
+    border: 1px solid #aa44aa;
+    border-radius: 0.25rem;
+    color: #d4a84b;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    z-index: 50;
+    animation: fadeIn 300ms ease-out;
+    max-width: 280px;
+    pointer-events: none;
   }
 </style>

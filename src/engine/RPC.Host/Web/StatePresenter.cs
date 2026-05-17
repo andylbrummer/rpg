@@ -1,4 +1,5 @@
 using RPC.Engine;
+using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Content;
 using RPC.Host.Web.Presenters;
@@ -58,6 +59,8 @@ public class StatePresenter
             deadCharacters = _partyPresenter.PresentDeadCharacters(state),
             titheTokens = state.TitheTokens,
             campaignEnded = state.CampaignEnded,
+            isFragileState = state.IsFragileState,
+            epilogue = state.CampaignEnded ? EpilogueGenerator.Generate(state) : null,
             factionStates = CampaignPresenter.PresentFactionStates(state),
             worldState = CampaignPresenter.PresentWorldState(state),
             actionLog = state.ActionLog.Select(e => new

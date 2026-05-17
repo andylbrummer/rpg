@@ -5,6 +5,7 @@ namespace RPC.Engine.Party;
 public class PartyState
 {
     public CharacterState[] Members { get; } = new CharacterState[6];
+    public List<CharacterState> Bench { get; } = new();
     public List<CharacterState> DeadCharacters { get; } = new();
     public ComponentStack[] ExpeditionCache { get; set; } = Array.Empty<ComponentStack>();
     public const int MaxExpeditionCacheSlots = 12;

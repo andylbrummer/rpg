@@ -9,7 +9,7 @@ namespace RPC.Engine.Combat;
 /// </summary>
 public class SynergyRegistry
 {
-    private readonly Dictionary<string, (string? Id, SynergyEffect Effect)> _effects = new();
+    private readonly Dictionary<string, (string? Id, SynergyEffect Effect, bool Hidden)> _effects = new();
 
     public static string MakeKey(string a, string b)
     {
@@ -21,9 +21,9 @@ public class SynergyRegistry
             : $"{b}|{a}";
     }
 
-    public void Register(string a, string b, SynergyEffect effect, string? id = null)
+    public void Register(string a, string b, SynergyEffect effect, string? id = null, bool hidden = false)
     {
-        _effects[MakeKey(a, b)] = (id, effect);
+        _effects[MakeKey(a, b)] = (id, effect, hidden);
     }
 
     public SynergyEffect? Lookup(string a, string b)
@@ -41,12 +41,28 @@ public class SynergyRegistry
         if (string.IsNullOrEmpty(key))
             return null;
 
-        return _effects.TryGetValue(key, out var entry) ? entry : null;
+        return _effects.TryGetValue(key, out var entry) ? (entry.Id, entry.Effect) : null;
+    }
+
+    public bool IsHidden(string a, string b)
+    {
+        var key = MakeKey(a, b);
+        if (string.IsNullOrEmpty(key))
+            return false;
+        return _effects.TryGetValue(key, out var entry) && entry.Hidden;
+    }
+
+    public bool IsHiddenById(string synergyId)
+    {
+        return _effects.Values.Any(e => e.Id == synergyId && e.Hidden);
     }
 
     public void Clear() => _effects.Clear();
 
-    public IReadOnlyDictionary<string, (string? Id, SynergyEffect Effect)> GetAll() => _effects;
+    public IReadOnlyDictionary<string, (string? Id, SynergyEffect Effect)> GetAll()
+        => _effects.ToDictionary(
+            kvp => kvp.Key,
+            kvp => (kvp.Value.Id, kvp.Value.Effect));
 
     public void LoadFromJson(string json)
     {
@@ -59,7 +75,7 @@ public class SynergyRegistry
             def.Effect.Type,
             def.Effect.Value);
 
-        Register(def.Abilities[0], def.Abilities[1], effect, def.Id);
+        Register(def.Abilities[0], def.Abilities[1], effect, def.Id, def.Hidden);
     }
 
     public void LoadFromDirectory(string directoryPath)
@@ -87,7 +103,8 @@ public record SynergyDef(
     bool Anti,
     SynergyDefEffect Effect,
     string Hint,
-    SynergyFieldNotes FieldNotes);
+    SynergyFieldNotes FieldNotes,
+    bool Hidden = false);
 
 public record SynergyDefEffect(
     string Type,

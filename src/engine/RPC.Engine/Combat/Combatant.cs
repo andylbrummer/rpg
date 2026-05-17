@@ -25,7 +25,7 @@ public readonly record struct Combatant(
     public bool IsFrontRow => Row == 0;
 }
 
-public readonly record struct StatusEffect(string Type, int Duration, int? Potency);
+public readonly record struct StatusEffect(string Type, int Duration, int? Potency, Guid SourceId = default);
 
 public enum ActionType
 {
@@ -55,6 +55,8 @@ public enum CombatPhase
     Ended
 }
 
+public record DeadUnaccounted(Guid Id, int RoundDied, bool Burned = false);
+
 public record CombatState(
     Combatant[] Combatants,
     int Round,
@@ -67,13 +69,15 @@ public record CombatState(
 {
     public HashSet<string> AbilitiesUsedThisRound { get; init; } = new();
     public Dictionary<int, Guid> SummonSlotAssignments { get; init; } = new();
+    public List<DeadUnaccounted> DeadUnaccounted { get; init; } = new();
 
     public Combatant? CurrentActor =>
         Phase == CombatPhase.Turn && CurrentTurnIndex < InitiativeOrder.Length
             ? Combatants.FirstOrDefault(c => c.Id == InitiativeOrder[CurrentTurnIndex] && c.IsAlive)
             : null;
 
-    public bool AllEnemiesDead => Combatants.All(c => c.IsPlayer || !c.IsAlive);
+    public bool AllEnemiesDead => Combatants.All(c => c.IsPlayer || !c.IsAlive)
+        && !DeadUnaccounted.Any(d => Round - d.RoundDied < 2);
     public bool AllPlayersDead => Combatants.All(c => !c.IsPlayer || c.IsSummoned || !c.IsAlive);
     public bool IsFinished => Phase == CombatPhase.Ended;
 }

@@ -86,6 +86,12 @@ public class CampaignConfig
 
         var wildcardTurn = rng.Roll(18, 24); // 18-24 inclusive
 
+        var timelines = new Dictionary<string, FactionTimeline>();
+        foreach (var faction in FactionPool)
+        {
+            timelines[faction] = new FactionTimeline(12, 22);
+        }
+
         return new CampaignConfig
         {
             Patron = patron,
@@ -94,6 +100,7 @@ public class CampaignConfig
             Scheme = scheme,
             WildCard = wildCard,
             Complication = complication,
+            FactionTimelines = timelines,
             WildcardTrigger = new WildcardTrigger(wildCard, wildcardTurn)
         };
     }

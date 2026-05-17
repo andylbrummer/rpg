@@ -31,6 +31,7 @@ public class CombatPresenter
                     id = x.Id,
                     name = x.Name,
                     isPlayer = x.IsPlayer,
+                    isUnaccounted = x.AiBehavior == "unaccounted",
                     classId = member?.ClassId,
                     hp = x.Hp,
                     maxHp = x.MaxHp,

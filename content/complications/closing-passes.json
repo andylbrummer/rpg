@@ -1,0 +1,47 @@
+{
+  "id": "ClosingPasses",
+  "name": "Closing Passes",
+  "description": "Mountain passes and critical routes are closing permanently due to structural collapse or seasonal change, shrinking the overworld and isolating settlements.",
+  "worldStateModifiers": {
+    "routeStatusChance": {
+      "closing": 0.3,
+      "blocked": 0.2
+    },
+    "townEffects": {
+      "isolation": true,
+      "vendorPriceMultiplier": 1.3
+    },
+    "travelEffects": {
+      "routeLengthMultiplier": 1.5
+    },
+    "reputationEffects": {
+      "cartography": 3
+    }
+  },
+  "events": [
+    {
+      "id": "first_pass_closes",
+      "name": "First Pass Closes",
+      "description": "A major mountain pass has collapsed. An alternate route exists, but it is longer and more dangerous.",
+      "turnThreshold": 5,
+      "effect": "block_routes",
+      "routeCount": 1
+    },
+    {
+      "id": "second_pass_closes",
+      "name": "Second Pass Closes",
+      "description": "Another critical route is gone. Settlements on the far side are becoming isolated.",
+      "turnThreshold": 15,
+      "effect": "block_routes",
+      "routeCount": 2
+    },
+    {
+      "id": "final_pass_closes",
+      "name": "Final Pass Closes",
+      "description": "The last reliable pass is impassable. The overworld has shrunk to a fraction of its former size.",
+      "turnThreshold": 25,
+      "effect": "block_routes",
+      "routeCount": 2
+    }
+  ]
+}

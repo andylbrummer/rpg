@@ -82,6 +82,7 @@ public static class SaveSystem
             SaveRestorer.RestoreDowntime(state, data);
             SaveRestorer.RestoreWildCardAlliance(state, data);
             SaveRestorer.RestoreStepsSinceEncounter(state, data);
+            SaveRestorer.RestoreIronman(state, data);
 
             if (dungeonGenerator != null
                 && state.Mode == GameMode.Exploration
@@ -330,7 +331,12 @@ public static class SaveSystem
             WildCardAllianceStatus = state.WildCardAllianceStatus.ToString(),
             WildCardAllianceTurn = state.WildCardAllianceTurn,
             StepsSinceEncounter = state.StepsSinceEncounter,
-            DungeonSeed = state.CurrentDungeon?.Seed ?? 0
+            DungeonSeed = state.CurrentDungeon?.Seed ?? 0,
+            IsIronman = state.IsIronman,
+            FactionTimelineModifiers = new Dictionary<string, int>(state.Campaign.FactionTimelineModifiers),
+            FiredEvents = state.Campaign.FiredEvents.ToArray(),
+            UnlockedDungeons = state.Campaign.UnlockedDungeons.ToArray(),
+            BetrayalPath = state.Campaign.BetrayalPath
         };
     }
 }

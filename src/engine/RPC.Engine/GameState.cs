@@ -6,6 +6,7 @@ using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Overworld;
 using RPC.Engine.Party;
+using RPC.Engine.Save;
 using RPC.Engine.Town;
 using RPC.Engine.Travel;
 
@@ -57,11 +58,14 @@ public class GameState
     public List<string> PartyInventory { get; set; } = new();
     public int CurrentAct => Overworld.Turns <= 15 ? 1 : Overworld.Turns <= 25 ? 2 : 3;
     public TravelEncounterState? CurrentTravelEncounter { get; internal set; }
+    public RescueExpeditionState? RescueExpedition { get; set; }
     public int RolledTravelEncounterCount { get; internal set; }
     public int ResolvedTravelEncounterCount { get; internal set; }
     public ParleyOffer? CurrentParley { get; internal set; }
     public IReadOnlySet<Guid> DowntimeCompleted => _downtimeCompleted;
     public string? SettingsHash { get; set; }
+    public bool IsIronman { get; set; } = false;
+    public string SavePath { get; set; } = SaveSystem.SavePath;
 
     public void ClearCombatResult()
     {
@@ -81,8 +85,12 @@ public class GameState
     private readonly OverworldService _overworldService;
     private readonly CampaignService _campaignService;
     private readonly MissionService _missionService;
+    private readonly EventScheduler _eventScheduler;
+    private readonly FactionInteractionService _factionInteractionService;
+    private readonly IReadOnlyDictionary<string, DungeonTemplate> _dungeonTemplates;
+    public Analytics.AnalyticsTracker Analytics { get; } = new();
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null)
     {
         LastUpdate = DateTime.UtcNow;
         _seed = seed ?? DateTime.UtcNow.GetHashCode();
@@ -100,6 +108,10 @@ public class GameState
         _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies);
         _campaignService = new CampaignService(_classRegistry);
         _missionService = new MissionService(_classRegistry);
+        _eventScheduler = new EventScheduler(_campaignService);
+        _factionInteractionService = new FactionInteractionService(_campaignService);
+        _dungeonTemplates = dungeonTemplates ?? new Dictionary<string, DungeonTemplate>();
+        Analytics = new Analytics.AnalyticsTracker();
     }
 
     private void InitializeDefaultParty()
@@ -233,6 +245,11 @@ public class GameState
     public void IncrementTurns(int amount, int? dangerOverride = null)
     {
         _overworldService.IncrementTurns(this, amount, dangerOverride);
+        if (Mode != GameMode.Menu)
+        {
+            _eventScheduler.Tick(this);
+            _factionInteractionService.CheckAndResolveInteractions(this);
+        }
     }
 
     public bool ResolveTravelEncounter(string choice) => _overworldService.ResolveTravelEncounter(this, choice);
@@ -300,7 +317,11 @@ public class GameState
 
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path, ContentHash);
 
-    public void ApplyReputationDelta(string factionId, int delta, string source) => _campaignService.ApplyReputationDelta(this, factionId, delta, source);
+    public void ApplyReputationDelta(string factionId, int delta, string source)
+    {
+        _campaignService.ApplyReputationDelta(this, factionId, delta, source);
+        _campaignService.CheckOptionalDungeons(this, _dungeonTemplates);
+    }
 
     public void AddEvidence(string factionId, string source, int amount = 1) => _campaignService.AddEvidence(this, factionId, source, amount);
 
@@ -343,9 +364,90 @@ public class GameState
 
     public bool ApplyDialogueReputation(string factionId, int delta) => _campaignService.ApplyDialogueReputation(this, factionId, delta);
 
-    public void SetReputation(string factionId, int value) => _campaignService.SetReputation(this, factionId, value);
+    public void SetReputation(string factionId, int value)
+    {
+        _campaignService.SetReputation(this, factionId, value);
+        _campaignService.CheckOptionalDungeons(this, _dungeonTemplates);
+    }
 
     public bool PurchaseVendorItem(string itemId) => _townService.PurchaseVendorItem(this, itemId);
 
     public bool VerifyRumor(string rumorId, RumorVerificationSource source) => _townService.VerifyRumor(this, rumorId, source);
+
+    public bool ChooseBetrayal() => _campaignService.ChooseBetrayal(this);
+
+    public bool IsFragileState => IsIronman && Party.Bench.Count < 3 && Overworld.Turns > 25;
+
+    public bool StartRescueExpedition()
+    {
+        if (!IsIronman || RescueExpedition?.IsActive == true)
+            return false;
+
+        var bench = Party.Bench.Where(c => c.IsAlive).Take(3).ToArray();
+        if (bench.Length < 3)
+            return false;
+
+        RescueExpedition = new RescueExpeditionState
+        {
+            IsActive = true,
+            RescuePartyIds = bench.Select(c => c.Id).ToArray(),
+            DungeonType = CurrentDungeonType ?? "",
+            TpkLocation = Player.Position
+        };
+
+        // Form rescue party from bench
+        for (int i = 0; i < Party.Members.Length; i++)
+            Party.SetMember(i, default);
+        for (int i = 0; i < bench.Length && i < Party.Members.Length; i++)
+            Party.SetMember(i, bench[i]);
+
+        // Remove rescued characters from bench
+        foreach (var r in bench)
+            Party.Bench.Remove(r);
+
+        EmitActionLog("meta", "rescue_started", new Dictionary<string, string>
+        {
+            { "dungeonType", RescueExpedition.DungeonType },
+            { "rescuers", string.Join(",", bench.Select(c => c.Name)) }
+        });
+        return true;
+    }
+
+    public void ResolveRescueExpedition(bool success)
+    {
+        if (RescueExpedition == null || !RescueExpedition.IsActive)
+            return;
+
+        RescueExpedition.Success = success;
+        RescueExpedition.Resolved = true;
+        RescueExpedition.IsActive = false;
+
+        if (success)
+        {
+            // Recover equipment from dead characters
+            foreach (var dead in Party.DeadCharacters.ToList())
+            {
+                // Equipment recovery logic would go here
+                EmitActionLog("meta", "equipment_recovered", new Dictionary<string, string>
+                {
+                    { "characterId", dead.Id.ToString() },
+                    { "characterName", dead.Name }
+                });
+            }
+            EmitActionLog("meta", "rescue_succeeded", new Dictionary<string, string> { { "dungeonType", RescueExpedition.DungeonType } });
+        }
+        else
+        {
+            // Delete ironman save on rescue failure
+            try
+            {
+                if (File.Exists(SavePath))
+                {
+                    File.Delete(SavePath);
+                    EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string> { { "rescueFailed", "true" } });
+                }
+            }
+            catch { }
+        }
+    }
 }

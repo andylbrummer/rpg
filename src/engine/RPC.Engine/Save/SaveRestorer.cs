@@ -173,6 +173,20 @@ public static class SaveRestorer
                 data.CampaignConfig.WildcardTrigger.FactionId,
                 data.CampaignConfig.WildcardTrigger.TurnThreshold)
         };
+
+        state.Campaign.FactionTimelineModifiers = data.FactionTimelineModifiers != null
+            ? new Dictionary<string, int>(data.FactionTimelineModifiers)
+            : new Dictionary<string, int>();
+
+        state.Campaign.FiredEvents = data.FiredEvents != null
+            ? new HashSet<string>(data.FiredEvents)
+            : new HashSet<string>();
+
+        state.Campaign.UnlockedDungeons = data.UnlockedDungeons != null
+            ? new HashSet<string>(data.UnlockedDungeons)
+            : new HashSet<string>();
+
+        state.Campaign.BetrayalPath = data.BetrayalPath;
     }
 
     public static void RestoreOverworld(GameState state, SaveData data)
@@ -291,5 +305,10 @@ public static class SaveRestorer
     public static void RestoreStepsSinceEncounter(GameState state, SaveData data)
     {
         state.StepsSinceEncounter = Math.Max(0, data.StepsSinceEncounter);
+    }
+
+    public static void RestoreIronman(GameState state, SaveData data)
+    {
+        state.IsIronman = data.IsIronman;
     }
 }

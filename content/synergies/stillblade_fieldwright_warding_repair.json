@@ -1,0 +1,18 @@
+{
+  "id": "stillblade_fieldwright_warding_repair",
+  "abilities": [
+    "warding_stance",
+    "repair_pulse"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "status_effect",
+    "value": 0,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A warding stance reinforced by emergency repairs creates an impenetrable bulwark.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true
+}

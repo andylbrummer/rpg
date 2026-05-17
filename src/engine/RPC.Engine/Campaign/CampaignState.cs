@@ -17,6 +17,16 @@ public class CampaignState
     public WildCardAllianceStatus WildCardAllianceStatus { get; set; } = WildCardAllianceStatus.None;
     public int WildCardAllianceTurn { get; set; } = 0;
 
+    // Player-modified faction timeline modifiers: factionId -> delta turns
+    public Dictionary<string, int> FactionTimelineModifiers { get; set; } = new();
+
+    // Tracks which campaign events have already fired
+    public HashSet<string> FiredEvents { get; set; } = new();
+
+    // Secret content: unlocked optional dungeons and betrayal path
+    public HashSet<string> UnlockedDungeons { get; set; } = new();
+    public bool BetrayalPath { get; set; } = false;
+
     public void Reset()
     {
         WorldState.Reset();
@@ -29,7 +39,10 @@ public class CampaignState
         FinalDungeonUnlocked = false;
         WildCardAllianceStatus = WildCardAllianceStatus.None;
         WildCardAllianceTurn = 0;
+        FactionTimelineModifiers.Clear();
         Reputation.Clear();
         Evidence.Clear();
+        UnlockedDungeons.Clear();
+        BetrayalPath = false;
     }
 }

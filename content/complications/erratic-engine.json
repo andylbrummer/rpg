@@ -1,0 +1,50 @@
+{
+  "id": "ErraticEngine",
+  "name": "Erratic Engine",
+  "description": "One of the ancient Engines has become dangerously unstable, causing dungeon geometry to shift and rearrange unpredictably. No corridor can be trusted.",
+  "worldStateModifiers": {
+    "routeStatusChance": {
+      "engineAffected": 0.3,
+      "blocked": 0.1
+    },
+    "townEffects": {
+      "engineResearchNeeded": true,
+      "vendorComponentPriceMultiplier": 1.2
+    },
+    "travelEffects": {
+      "encounterChanceBonus": 0.1,
+      "engineHazardWeight": 2
+    },
+    "reputationEffects": {
+      "convocation": -2,
+      "cartography": -1
+    }
+  },
+  "events": [
+    {
+      "id": "first_shift",
+      "name": "First Shift Detected",
+      "description": "An Engine has hiccupped. A known route now leads somewhere else entirely.",
+      "turnThreshold": 3,
+      "effect": "block_routes",
+      "routeCount": 1
+    },
+    {
+      "id": "routes_warped",
+      "name": "Routes Warped",
+      "description": "Multiple travel routes have rearranged. Maps are becoming unreliable.",
+      "turnThreshold": 7,
+      "effect": "contest_routes",
+      "routeCount": 2
+    },
+    {
+      "id": "engine_critical",
+      "name": "Engine Critical",
+      "description": "The Engine's output is spiking. Dungeons may begin rearranging themselves in real time.",
+      "turnThreshold": 12,
+      "effect": "world_state_change",
+      "worldStateKey": "engine_status",
+      "worldStateValue": "critical"
+    }
+  ]
+}

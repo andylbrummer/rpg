@@ -1,0 +1,18 @@
+{
+  "id": "cauterist_marcher_purifying_volley",
+  "abilities": [
+    "purifying_flame",
+    "volley"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 7,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Arrows wreathed in purifying flame rain down upon the enemy.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true
+}

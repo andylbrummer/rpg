@@ -61,7 +61,7 @@ public class GameServer
         var factionContent = LoadFactionContent(_catalog);
         var factionRepo = new FactionContentRepository(factionContent);
         var rumorRepo = new RumorRepository(_catalog);
-        _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry, synergies: _synergies, factionContent: factionRepo, rumors: rumorRepo);
+        _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry, synergies: _synergies, factionContent: factionRepo, rumors: rumorRepo, dungeonTemplates: _dungeonTemplates);
         _gameState.ContentHash = contentHash;
         _jsonOptions = new JsonSerializerOptions
         {
@@ -496,6 +496,33 @@ public class GameServer
             return;
         }
 
+        if (envelope.Type == "analytics.request")
+        {
+            var data = _gameState.Analytics.GetData();
+            var response = new
+            {
+                campaignsStarted = data.CampaignsStarted,
+                campaignsCompleted = data.CampaignsCompleted,
+                mastermindsExposed = data.MastermindsExposed,
+                schemesStopped = data.SchemesStopped,
+                betrayals = data.Betrayals,
+                totalTurns = data.TotalTurns,
+                totalDeaths = data.TotalDeaths,
+                synergiesDiscovered = data.SynergiesDiscovered.ToArray(),
+                classesPlayed = data.ClassesPlayed.ToArray(),
+                branchesChosen = data.BranchesChosen.ToArray(),
+                optionalDungeonsUnlocked = data.OptionalDungeonsUnlocked.ToArray()
+            };
+            var responseEnvelope = new ProtocolEnvelope { V = 2, Type = "analytics.data", Payload = response, Seq = 0 };
+            var json = JsonSerializer.Serialize(responseEnvelope, _jsonOptions);
+            await client.Socket.SendAsync(
+                new ArraySegment<byte>(System.Text.Encoding.UTF8.GetBytes(json)),
+                WebSocketMessageType.Text,
+                true,
+                _cts.Token);
+            return;
+        }
+
         if (!client.IsReady)
         {
             await SendError(client, "not_ready", "Client must send ready before other messages", recoverable: true, ackSeq: envelope.Seq);
@@ -581,7 +608,7 @@ public class GameServer
     private static List<RoomSegment> LoadSegments(IContentCatalog catalog)
     {
         var segments = new List<RoomSegment>();
-        foreach (var dir in new[] { "segments", "segments/broken-engine", "segments/bloom-site" })
+        foreach (var dir in new[] { "segments", "segments/broken-engine", "segments/bloom-site", "segments/boneyard", "segments/sealed-vault", "segments/settlement-gone-wrong", "segments/ossuary" })
         {
             foreach (var file in catalog.EnumerateFiles(dir, "*.json"))
             {

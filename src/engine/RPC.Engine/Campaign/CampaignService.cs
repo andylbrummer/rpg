@@ -1,5 +1,7 @@
 using RPC.Engine.Campaign;
 using RPC.Engine.Character;
+using RPC.Engine.Dungeons;
+using RPC.Engine.Overworld;
 using RPC.Engine.Town;
 
 namespace RPC.Engine.Campaign;
@@ -17,12 +19,35 @@ public class CampaignService
     {
         if (state.CampaignConfig?.FactionTimelines.TryGetValue(factionId, out var timeline) == true)
         {
-            if (state.Overworld.Turns >= timeline.Executing)
+            var modifier = state.Campaign.FactionTimelineModifiers.GetValueOrDefault(factionId, 0);
+            var preparingTurn = Math.Max(1, timeline.Preparing + modifier);
+            var executingTurn = Math.Max(preparingTurn + 1, timeline.Executing + modifier);
+
+            if (state.Overworld.Turns >= executingTurn)
                 return FactionState.Executing;
-            if (state.Overworld.Turns >= timeline.Preparing)
+            if (state.Overworld.Turns >= preparingTurn)
                 return FactionState.Preparing;
         }
         return FactionState.Investigating;
+    }
+
+    public void ModifyFactionTimeline(GameState state, string factionId, int delta)
+    {
+        if (state.CampaignConfig?.FactionTimelines.TryGetValue(factionId, out var timeline) != true)
+            return;
+
+        var current = state.Campaign.FactionTimelineModifiers.GetValueOrDefault(factionId, 0);
+        var clamped = Math.Max(-3, Math.Min(3, current + delta));
+        if (clamped == current) return;
+
+        state.Campaign.FactionTimelineModifiers[factionId] = clamped;
+        state.EmitActionLog("faction", "timeline_modified", new Dictionary<string, string>
+        {
+            { "factionId", factionId },
+            { "delta", delta.ToString() },
+            { "totalModifier", clamped.ToString() }
+        });
+        state.LastUpdate = DateTime.UtcNow;
     }
 
     public bool CheckWildCardTrigger(GameState state)
@@ -265,6 +290,8 @@ public class CampaignService
 
     private static void ApplyBranchToMember(GameState state, CharacterState member, string resolvedBranch, string levelLabel, ClassDef classDef)
     {
+        state.Analytics.RecordBranchChosen(member.ClassId, resolvedBranch, levelLabel == "3" ? 3 : 6);
+
         var branchAbilities = classDef.Abilities
             .Where(a => a.Branch == resolvedBranch)
             .Select(a => a.Id)
@@ -288,5 +315,52 @@ public class CampaignService
         });
 
         state.LastUpdate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Checks faction reputation conditions and unlocks optional dungeons.
+    /// Call after reputation changes or on turn increments.
+    /// </summary>
+    public bool ChooseBetrayal(GameState state)
+    {
+        if (state.Campaign.BetrayalPath)
+            return false;
+
+        state.Campaign.BetrayalPath = true;
+        state.Analytics.RecordCampaignEnd(mastermindExposed: false, schemeStopped: false, betrayal: true, turns: state.Overworld.Turns, deaths: 0);
+        state.EmitActionLog("campaign", "betrayal_chosen", new Dictionary<string, string>
+        {
+            { "mastermind", state.CampaignConfig?.Mastermind ?? "unknown" }
+        });
+        return true;
+    }
+
+    public void CheckOptionalDungeons(GameState state, IReadOnlyDictionary<string, DungeonTemplate> dungeonTemplates)
+    {
+        foreach (var (id, template) in dungeonTemplates)
+        {
+            if (template.UnlockConditions is null || template.UnlockConditions.Length == 0)
+                continue;
+            if (state.Campaign.UnlockedDungeons.Contains(id))
+                continue;
+
+            bool allMet = template.UnlockConditions.All(uc =>
+                state.Campaign.Reputation[uc.FactionId] >= uc.MinReputation);
+
+            if (allMet)
+            {
+                state.Campaign.UnlockedDungeons.Add(id);
+                state.Overworld.Nodes[id] = new OverworldNode(id, template.Name, NodeType.Dungeon)
+                {
+                    DungeonTemplateId = id
+                };
+                state.Analytics.RecordOptionalDungeonUnlocked(id);
+                state.EmitActionLog("world", "dungeon_unlocked", new Dictionary<string, string>
+                {
+                    { "dungeonId", id },
+                    { "dungeonName", template.Name }
+                });
+            }
+        }
     }
 }

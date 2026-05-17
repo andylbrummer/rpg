@@ -1,0 +1,26 @@
+{
+  "id": "family_vault",
+  "name": "Family Vault",
+  "description": "A private chamber where a bloodline is interred. The air is thick with incense and old grief.",
+  "tags": ["chamber", "ossuary"],
+  "width": 4,
+  "height": 4,
+  "tiles": [
+    { "x": 1, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 2, "y": 1, "type": "Floor" },
+    { "x": 3, "y": 1, "type": "Floor" },
+    { "x": 4, "y": 1, "type": "Floor" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 2, "y": 2, "type": "Floor" },
+    { "x": 3, "y": 2, "type": "Floor" },
+    { "x": 4, "y": 2, "type": "Floor" },
+    { "x": 1, "y": 3, "type": "Floor" },
+    { "x": 2, "y": 3, "type": "Floor" },
+    { "x": 3, "y": 3, "type": "Floor" },
+    { "x": 4, "y": 3, "type": "Floor" },
+    { "x": 1, "y": 4, "type": "Floor" },
+    { "x": 2, "y": 4, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
+    { "x": 3, "y": 4, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
+    { "x": 4, "y": 4, "type": "Floor" }
+  ]
+}

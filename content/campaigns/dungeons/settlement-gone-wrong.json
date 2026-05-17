@@ -1,0 +1,22 @@
+{
+  "id": "settlement_gone_wrong",
+  "name": "Settlement Gone Wrong",
+  "segmentPool": [
+    "ruined_gate",
+    "collapsed_street",
+    "makeshift_barricade",
+    "bloom_pocket",
+    "town_square"
+  ],
+  "segmentPriority": [
+    "ruined_gate",
+    "collapsed_street",
+    "makeshift_barricade",
+    "bloom_pocket",
+    "town_square"
+  ],
+  "targetRooms": 10,
+  "bossEncounterId": "sgw-d5-bloom-knight",
+  "encounterTableId": "settlement_gone_wrong",
+  "wanderingTableId": "settlement_gone_wrong"
+}

@@ -1,0 +1,84 @@
+{
+  "id": "TheResurrection",
+  "name": "The Resurrection",
+  "description": "A faction is attempting to resurrect a dead entity using forbidden rituals and stolen Engine technology. If they succeed, the boundary between life and death will collapse.",
+  "finaleDungeonFeel": "Imperial wards flicker and die in a sealed vault of bronze and gold. The air tastes of ozone and grave-dust. At the center, a sarcophagus has been forced open from within, and something that should not breathe is drawing its first breath in centuries. The remaining wards scream in a language no living throat should know.",
+  "evidenceChain": [
+    "stolen_ward_keys",
+    "missing_corpse_log",
+    "ritual_supply_manifest",
+    "engine_power_surge",
+    "forbidden_resurrection_text",
+    "awakening_signs",
+    "entity_signature"
+  ],
+  "events": [
+    {
+      "id": "grave_robberies",
+      "name": "Grave Robberies Reported",
+      "description": "Corpses are disappearing from cemeteries and battlefields across the Reach.",
+      "turnThreshold": 2,
+      "factionInvolved": "threat",
+      "effect": "reveal_node",
+      "targetNodeType": "dungeon_entrance",
+      "reputationDelta": 0
+    },
+    {
+      "id": "ritual_supplies_traced",
+      "name": "Ritual Supplies Traced",
+      "description": "Black market merchants report bulk purchases of ward-breaking reagents.",
+      "turnThreshold": 4,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -3,
+      "targetFaction": "all"
+    },
+    {
+      "id": "engine_power_surge",
+      "name": "Engine Power Surge",
+      "description": "An ancient Engine has surged beyond safe output. The resonance matches no known pattern.",
+      "turnThreshold": 6,
+      "factionInvolved": "threat",
+      "effect": "spawn_encounter",
+      "encounterType": "travel_patrol"
+    },
+    {
+      "id": "forbidden_text_recovered",
+      "name": "Forbidden Text Recovered",
+      "description": "A copy of the Resurrection Rites has been found in a Bureau archive. It was supposed to be burned.",
+      "turnThreshold": 8,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": -5,
+      "targetFaction": "bureau"
+    },
+    {
+      "id": "wards_weakening",
+      "name": "Wards Weakening",
+      "description": "Imperial wards across the Reach are failing. Something is drawing their power.",
+      "turnThreshold": 10,
+      "factionInvolved": "patron",
+      "effect": "unlock_dungeon",
+      "dungeonType": "sealed_vault"
+    },
+    {
+      "id": "awakening_accelerates",
+      "name": "Awakening Accelerates",
+      "description": "The entity stirs. Those who sleep near the vault report dreams of a voice offering life beyond death.",
+      "turnThreshold": 12,
+      "factionInvolved": "threat",
+      "effect": "world_state_change",
+      "worldStateKey": "resurrection_progress",
+      "worldStateValue": "accelerating"
+    },
+    {
+      "id": "entity_rises",
+      "name": "The Entity Rises",
+      "description": "The seal is broken. The dead thing breathes. A final expedition must bury it again.",
+      "turnThreshold": 14,
+      "factionInvolved": "threat",
+      "effect": "final_dungeon_unlocked",
+      "dungeonType": "sealed_vault"
+    }
+  ]
+}

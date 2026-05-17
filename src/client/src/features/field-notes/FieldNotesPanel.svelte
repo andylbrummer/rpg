@@ -9,21 +9,24 @@
   let { discoveredOrder, revealedIds, onClose, onReplay }: Props = $props();
 
   const ALL_SYNERGIES = [
-    { id: 'bonewarden_cauterist_bone_link', abilities: ['bone_link', 'pyre'], hint: 'Bone-link channels pyre damage to all linked allies.', effect: '+4 bonus damage' },
-    { id: 'stillblade_hollow_backstep', abilities: ['backstep', 'cheap_shot'], hint: 'A Stillblade feint creates the perfect opening for a Hollow cheap shot.', effect: '+6 bonus damage' },
-    { id: 'cauterist_hollow_purify', abilities: ['purify', 'cheap_shot'], hint: 'Purification exposes wounds, letting the Hollow\'s cheap shot apply a lasting debuff.', effect: 'applies status (-3 potency)' },
-    { id: 'fieldwright_inkblood_overcharge', abilities: ['overcharge', 'knowledge_bolt'], hint: 'Overcharged tools empower the Inkblood\'s knowledge bolt to strike farther.', effect: '+5 bonus damage' },
+    { id: 'bonewarden_cauterist_bone_link', abilities: ['bone_link', 'pyre'], hint: 'Bone-link channels pyre damage to all linked allies.', effect: '+4 bonus damage', hidden: false },
+    { id: 'stillblade_hollow_backstep', abilities: ['backstep', 'cheap_shot'], hint: 'A Stillblade feint creates the perfect opening for a Hollow cheap shot.', effect: '+6 bonus damage', hidden: false },
+    { id: 'cauterist_hollow_purify', abilities: ['purify', 'cheap_shot'], hint: 'Purification exposes wounds, letting the Hollow\'s cheap shot apply a lasting debuff.', effect: 'applies status (-3 potency)', hidden: false },
+    { id: 'fieldwright_inkblood_overcharge', abilities: ['overcharge', 'knowledge_bolt'], hint: 'Overcharged tools empower the Inkblood\'s knowledge bolt to strike farther.', effect: '+5 bonus damage', hidden: false },
+    { id: 'ashmouth_inkblood_forbidden_rally', abilities: ['rally', 'forbidden_glyph'], hint: 'A rallying cry inscribed with forbidden ink empowers the entire party.', effect: '+8 bonus damage', hidden: true },
+    { id: 'cauterist_marcher_purifying_volley', abilities: ['purifying_flame', 'volley'], hint: 'Arrows wreathed in purifying flame rain down upon the enemy.', effect: '+7 bonus damage', hidden: true },
+    { id: 'stillblade_fieldwright_warding_repair', abilities: ['warding_stance', 'repair_pulse'], hint: 'A warding stance reinforced by emergency repairs creates an impenetrable bulwark.', effect: 'applies status', hidden: true },
   ];
 
   function sortedSynergies() {
     const discovered = ALL_SYNERGIES.filter(s => discoveredOrder.includes(s.id));
-    const undiscovered = ALL_SYNERGIES.filter(s => !discoveredOrder.includes(s.id));
+    const undiscovered = ALL_SYNERGIES.filter(s => !discoveredOrder.includes(s.id) && !s.hidden);
     discovered.sort((a, b) => discoveredOrder.indexOf(a.id) - discoveredOrder.indexOf(b.id));
     return [...discovered, ...undiscovered];
   }
 
   const discoveredCount = $derived(discoveredOrder.length);
-  const totalCount = ALL_SYNERGIES.length;
+  const totalCount = $derived(ALL_SYNERGIES.filter(s => !s.hidden).length);
 
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === 'j' || e.key === 'J' || e.key === 'Escape') {

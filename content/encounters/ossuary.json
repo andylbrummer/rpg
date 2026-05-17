@@ -1,0 +1,42 @@
+{
+  "id": "ossuary",
+  "name": "Ossuary Encounters",
+  "entries": [
+    {
+      "weight": 35,
+      "enemies": [
+        { "enemyId": "rat", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 12
+    },
+    {
+      "weight": 30,
+      "enemies": [
+        { "enemyId": "bone_archer", "count": 1, "rowOverride": 1 }
+      ],
+      "xpReward": 15
+    },
+    {
+      "weight": 20,
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 18
+    },
+    {
+      "weight": 10,
+      "enemies": [
+        { "enemyId": "bone_archer", "count": 2, "rowOverride": 1 },
+        { "enemyId": "rat", "count": 1, "rowOverride": 0 }
+      ],
+      "xpReward": 28
+    },
+    {
+      "weight": 5,
+      "enemies": [
+        { "enemyId": "bone_archer", "count": 3, "rowOverride": 1 }
+      ],
+      "xpReward": 38
+    }
+  ]
+}

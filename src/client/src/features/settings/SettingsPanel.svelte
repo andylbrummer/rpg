@@ -12,13 +12,21 @@
   interface Props {
     open: boolean;
     onClose: () => void;
+    onAudioToggle?: (enabled: boolean) => void;
   }
 
-  let { open, onClose }: Props = $props();
+  let { open, onClose, onAudioToggle }: Props = $props();
 
   let bindings = $state<Keybinding[]>(loadBindings());
   let capturingAction = $state<string | null>(null);
   let conflictMap = $state<Map<string, string[]>>(new Map());
+  let audioEnabled = $state(localStorage.getItem('rpc_audio_enabled') !== 'false');
+
+  function toggleAudio() {
+    audioEnabled = !audioEnabled;
+    localStorage.setItem('rpc_audio_enabled', String(audioEnabled));
+    onAudioToggle?.(audioEnabled);
+  }
 
   function updateConflicts() {
     conflictMap = findConflicts(bindings);
@@ -84,6 +92,14 @@
       <div class="settings-header">
         <h2>Settings</h2>
         <button class="close-btn" onclick={onClose} aria-label="Close settings">×</button>
+      </div>
+
+      <div class="settings-section">
+        <h3>Audio</h3>
+        <label class="audio-toggle">
+          <input type="checkbox" checked={audioEnabled} onchange={toggleAudio} />
+          <span>Ambient audio {audioEnabled ? 'ON' : 'OFF'}</span>
+        </label>
       </div>
 
       <div class="settings-section">

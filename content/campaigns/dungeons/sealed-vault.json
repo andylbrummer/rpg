@@ -1,0 +1,22 @@
+{
+  "id": "sealed_vault",
+  "name": "Sealed Vault",
+  "segmentPool": [
+    "vault_entrance",
+    "ward_corridor",
+    "seal_chamber",
+    "trap_hall",
+    "vault_heart"
+  ],
+  "segmentPriority": [
+    "vault_entrance",
+    "ward_corridor",
+    "seal_chamber",
+    "trap_hall",
+    "vault_heart"
+  ],
+  "targetRooms": 10,
+  "bossEncounterId": "sv-d5-ward-keeper",
+  "encounterTableId": "sealed_vault",
+  "wanderingTableId": "sealed_vault"
+}

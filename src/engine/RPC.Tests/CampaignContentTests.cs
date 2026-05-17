@@ -12,29 +12,38 @@ public class CampaignContentTests
     }
 
     [Fact]
-    public void LoadSchemes_LoadsAllThree()
+    public void LoadSchemes_LoadsAllSix()
     {
         var schemes = CampaignContentLoader.LoadSchemes(GetContentDir("schemes"));
-        Assert.Equal(3, schemes.Count);
+        Assert.Equal(6, schemes.Count);
         Assert.Contains(schemes, s => s.Id == "BloomHarvest");
         Assert.Contains(schemes, s => s.Id == "EngineSeizure");
         Assert.Contains(schemes, s => s.Id == "CascadeFailure");
+        Assert.Contains(schemes, s => s.Id == "TheResurrection");
+        Assert.Contains(schemes, s => s.Id == "ManufacturedCrisis");
+        Assert.Contains(schemes, s => s.Id == "TheVault");
     }
 
     [Fact]
-    public void LoadComplications_LoadsAllThree()
+    public void LoadComplications_LoadsAllSix()
     {
         var complications = CampaignContentLoader.LoadComplications(GetContentDir("complications"));
-        Assert.Equal(3, complications.Count);
+        Assert.Equal(6, complications.Count);
         Assert.Contains(complications, c => c.Id == "BloomSiege");
         Assert.Contains(complications, c => c.Id == "OpenWar");
         Assert.Contains(complications, c => c.Id == "TitheCollapse");
+        Assert.Contains(complications, c => c.Id == "ErraticEngine");
+        Assert.Contains(complications, c => c.Id == "MissingTeam");
+        Assert.Contains(complications, c => c.Id == "ClosingPasses");
     }
 
     [Theory]
     [InlineData("BloomHarvest")]
     [InlineData("EngineSeizure")]
     [InlineData("CascadeFailure")]
+    [InlineData("TheResurrection")]
+    [InlineData("ManufacturedCrisis")]
+    [InlineData("TheVault")]
     public void Scheme_HasFiveToSevenEvents(string schemeId)
     {
         var scheme = CampaignContentLoader.GetSchemeById(schemeId, GetContentDir("schemes"));
@@ -46,6 +55,9 @@ public class CampaignContentTests
     [InlineData("BloomHarvest")]
     [InlineData("EngineSeizure")]
     [InlineData("CascadeFailure")]
+    [InlineData("TheResurrection")]
+    [InlineData("ManufacturedCrisis")]
+    [InlineData("TheVault")]
     public void Scheme_HasEvidenceChain(string schemeId)
     {
         var scheme = CampaignContentLoader.GetSchemeById(schemeId, GetContentDir("schemes"));
@@ -57,6 +69,9 @@ public class CampaignContentTests
     [InlineData("BloomHarvest")]
     [InlineData("EngineSeizure")]
     [InlineData("CascadeFailure")]
+    [InlineData("TheResurrection")]
+    [InlineData("ManufacturedCrisis")]
+    [InlineData("TheVault")]
     public void Scheme_HasFinaleDungeonFeel(string schemeId)
     {
         var scheme = CampaignContentLoader.GetSchemeById(schemeId, GetContentDir("schemes"));
@@ -69,6 +84,9 @@ public class CampaignContentTests
     [InlineData("BloomSiege")]
     [InlineData("OpenWar")]
     [InlineData("TitheCollapse")]
+    [InlineData("ErraticEngine")]
+    [InlineData("MissingTeam")]
+    [InlineData("ClosingPasses")]
     public void Complication_HasWorldStateModifiers(string complicationId)
     {
         var complication = CampaignContentLoader.GetComplicationById(complicationId, GetContentDir("complications"));
@@ -80,6 +98,9 @@ public class CampaignContentTests
     [InlineData("BloomSiege")]
     [InlineData("OpenWar")]
     [InlineData("TitheCollapse")]
+    [InlineData("ErraticEngine")]
+    [InlineData("MissingTeam")]
+    [InlineData("ClosingPasses")]
     public void Complication_HasEvents(string complicationId)
     {
         var complication = CampaignContentLoader.GetComplicationById(complicationId, GetContentDir("complications"));

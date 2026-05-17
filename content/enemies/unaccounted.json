@@ -1,0 +1,19 @@
+{
+  "id": "unaccounted",
+  "name": "Unaccounted",
+  "description": "The dead that nobody raised. Humanoid but wrong—too-long limbs, missing features, shifting textures. They break the rules of combat just by existing.",
+  "stats": {
+    "str": 8,
+    "dex": 10,
+    "con": 12,
+    "int": 2,
+    "wil": 6
+  },
+  "hpBase": 24,
+  "speed": 7,
+  "ai": "unaccounted",
+  "abilities": ["unaccounted_strike", "dread_gaze", "phase_shift"],
+  "lootTable": [
+    { "itemId": "bone_fragment", "chance": 0.4 }
+  ]
+}

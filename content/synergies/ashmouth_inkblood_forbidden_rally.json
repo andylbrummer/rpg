@@ -1,0 +1,18 @@
+{
+  "id": "ashmouth_inkblood_forbidden_rally",
+  "abilities": [
+    "rally",
+    "forbidden_glyph"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 8,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A rallying cry inscribed with forbidden ink empowers the entire party.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true
+}

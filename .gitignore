@@ -82,3 +82,4 @@ desktop.ini
 *.key
 secrets.json
 .dartai/*.local.md
+content/out/

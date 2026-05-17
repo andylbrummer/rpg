@@ -40,6 +40,7 @@ public record ApplyDialogueReputationCommand(string FactionId, int Delta) : ICom
 public record AccuseFactionCommand(string FactionId) : ICommand;
 public record ChooseBranchCommand(Guid CharacterId, string Branch) : ICommand;
 public record WildCardAllianceCommand(string Choice) : ICommand;
+public record ChooseBetrayalCommand : ICommand;
 
 // Missions
 public record AcceptMissionCommand(string MissionId) : ICommand;
@@ -55,3 +56,4 @@ public record TransferFromCacheCommand(int Slot, string ItemId, int Count) : ICo
 public record SaveGameCommand : ICommand;
 public record ResetGameCommand : ICommand;
 public record CancelCommand : ICommand;
+public record SetIronmanCommand(bool Enabled) : ICommand;

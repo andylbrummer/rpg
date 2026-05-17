@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const schemaPath = path.join(__dirname, 'schema.json');
-const outputPath = path.join(__dirname, '..', '..', 'src', 'client', 'src', 'types', 'protocol.gen.ts');
+const outputPath = path.join(__dirname, '..', '..', 'src', 'client', 'src', 'shared', 'types', 'protocol.gen.ts');
 
 const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf-8'));
 

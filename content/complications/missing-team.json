@@ -1,0 +1,51 @@
+{
+  "id": "MissingTeam",
+  "name": "Missing Team",
+  "description": "A Bureau investigation team has gone missing in the field, leaving behind a trail of evidence that points toward an early suspect for the Mastermind.",
+  "worldStateModifiers": {
+    "routeStatusChance": {
+      "investigationSite": 0.2,
+      "contested": 0.1
+    },
+    "townEffects": {
+      "bureauPresence": true,
+      "recruitBureauBonus": true
+    },
+    "travelEffects": {
+      "encounterChanceBonus": 0.05,
+      "investigationClueWeight": 2
+    },
+    "reputationEffects": {
+      "bureau": 2,
+      "inkblood": -1
+    }
+  },
+  "events": [
+    {
+      "id": "missing_team_reported",
+      "name": "Missing Team Reported",
+      "description": "A Bureau field team has failed to check in. Their last known position was deep in hostile territory.",
+      "turnThreshold": 2,
+      "effect": "reputation_change",
+      "reputationDelta": 3,
+      "targetFaction": "bureau"
+    },
+    {
+      "id": "evidence_trail",
+      "name": "Evidence Trail Found",
+      "description": "The team's field notes have surfaced. They were close to identifying the Mastermind before they vanished.",
+      "turnThreshold": 5,
+      "effect": "spawn_encounter",
+      "encounterType": "travel_investigation"
+    },
+    {
+      "id": "suspect_identified",
+      "name": "Suspect Identified",
+      "description": "The trail leads to a named individual with ties to the Mastermind's faction. The Bureau wants them found.",
+      "turnThreshold": 9,
+      "effect": "reputation_change",
+      "reputationDelta": 5,
+      "targetFaction": "patron"
+    }
+  ]
+}

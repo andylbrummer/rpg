@@ -35,6 +35,33 @@
     return 'none';
   }
 
+  const factionColors: Record<string, string> = {
+    bureau: '#4488aa',
+    convocation: '#aa44aa',
+    cartography: '#b8860b',
+    inkblood: '#8b2222',
+    stillness: '#2a2a3a',
+  };
+
+  function factionBadgePositions(count: number, radius: number): Array<{ dx: number; dy: number }> {
+    if (count <= 1) return [{ dx: 0, dy: -radius - 6 }];
+    if (count === 2) return [
+      { dx: -radius - 4, dy: -radius - 4 },
+      { dx: radius + 4, dy: -radius - 4 },
+    ];
+    if (count === 3) return [
+      { dx: -radius - 4, dy: -radius - 4 },
+      { dx: radius + 4, dy: -radius - 4 },
+      { dx: 0, dy: radius + 6 },
+    ];
+    return [
+      { dx: -radius - 4, dy: -radius - 4 },
+      { dx: radius + 4, dy: -radius - 4 },
+      { dx: -radius - 4, dy: radius + 4 },
+      { dx: radius + 4, dy: radius + 4 },
+    ];
+  }
+
   function getRouteBetween(a: string, b: string) {
     return overworld.routes.find(
       (r) => (r.from === a && r.to === b) || (r.to === a && r.from === b)
@@ -138,6 +165,20 @@
             <g transform="translate({pos.x - 10},{pos.y - 10})">
               <path d="M2 22l2-6h3l1.5-4h5L15 16h3l2 6H2zM12 2C8 2 5 5 5 9c0 2 1 4 2.5 5h9C18 13 19 11 19 9c0-4-3-7-7-7z" fill="#888" transform="scale(0.833)" />
             </g>
+          {/if}
+          {#if node.factionPresence && node.factionPresence.length > 0}
+            {@const badges = factionBadgePositions(node.factionPresence.length, 24)}
+            {#each node.factionPresence as factionId, i (factionId)}
+              {@const badge = badges[i] ?? { dx: 0, dy: 0 }}
+              <circle
+                cx={pos.x + badge.dx}
+                cy={pos.y + badge.dy}
+                r="5"
+                fill={factionColors[factionId] ?? '#888'}
+                stroke="#222"
+                stroke-width="1"
+              />
+            {/each}
           {/if}
           <text x={pos.x} y={pos.y + 40} text-anchor="middle" fill="#ccc" font-size="10">{node.name}</text>
         </g>

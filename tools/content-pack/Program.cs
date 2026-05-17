@@ -36,6 +36,59 @@ class Program
             .OrderBy(f => f)
             .ToList();
 
+        // Pre-pass: collect all content IDs for cross-reference validation
+        var segmentIds = new HashSet<string>();
+        var enemyIds = new HashSet<string>();
+        var encounterIds = new HashSet<string>();
+        var npcIds = new HashSet<string>();
+        var itemIds = new HashSet<string>();
+        var classIds = new HashSet<string>();
+        var abilityIds = new HashSet<string>();
+
+        foreach (var file in jsonFiles)
+        {
+            var relativePath = Path.GetRelativePath(contentDir, file).Replace('\\', '/');
+            var json = File.ReadAllText(file);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var elementList = new List<JsonElement>();
+            if (root.ValueKind == JsonValueKind.Array)
+                foreach (var e in root.EnumerateArray()) elementList.Add(e);
+            else
+                elementList.Add(root);
+
+            foreach (var el in elementList)
+            {
+                if (el.ValueKind != JsonValueKind.Object) continue;
+                if (!el.TryGetProperty("id", out var idProp)) continue;
+                var id = idProp.GetString() ?? "";
+                if (string.IsNullOrEmpty(id)) continue;
+
+                if (relativePath.Contains("/segments/") || relativePath.StartsWith("segments/"))
+                    segmentIds.Add(id);
+                else if (relativePath.Contains("/enemies/") || relativePath.StartsWith("enemies/"))
+                    enemyIds.Add(id);
+                else if (relativePath.Contains("/encounters/") || relativePath.StartsWith("encounters/"))
+                    encounterIds.Add(id);
+                else if (relativePath.Contains("/npcs/") || relativePath.StartsWith("npcs/"))
+                    npcIds.Add(id);
+                else if (relativePath.Contains("/items/") || relativePath.StartsWith("items/"))
+                    itemIds.Add(id);
+                else if (relativePath.Contains("/classes/") || relativePath.StartsWith("classes/"))
+                {
+                    classIds.Add(id);
+                    if (el.TryGetProperty("abilities", out var abilitiesProp))
+                    {
+                        foreach (var ability in abilitiesProp.EnumerateArray())
+                        {
+                            if (ability.TryGetProperty("id", out var abilityId))
+                                abilityIds.Add(abilityId.GetString() ?? "");
+                        }
+                    }
+                }
+            }
+        }
+
         foreach (var file in jsonFiles)
         {
             var relativePath = Path.GetRelativePath(contentDir, file).Replace('\\', '/');
@@ -68,7 +121,7 @@ class Program
             }
             else if (relativePath.Contains("/campaigns/dungeons/") || relativePath.StartsWith("campaigns/dungeons/"))
             {
-                result = ValidateDungeonTemplate(file, json);
+                result = ValidateDungeonTemplate(file, json, segmentIds, encounterIds);
             }
             else if (relativePath.Contains("/items/") || relativePath.StartsWith("items/"))
             {
@@ -127,6 +180,10 @@ class Program
         var rpkPath = Path.Combine(outputDir, "content.rpk");
         CompileRpk(contentDir, jsonFiles, rpkPath);
         Console.WriteLine($"Wrote pack: {rpkPath} ({new FileInfo(rpkPath).Length} bytes)");
+
+        var indexPath = Path.Combine(outputDir, "content-index.json");
+        CompileContentIndex(contentDir, jsonFiles, indexPath);
+        Console.WriteLine($"Wrote content index: {indexPath}");
 
         return 0;
     }
@@ -424,7 +481,7 @@ class Program
         return 0;
     }
 
-    static int ValidateDungeonTemplate(string filePath, string json)
+    static int ValidateDungeonTemplate(string filePath, string json, HashSet<string> segmentIds, HashSet<string> encounterIds)
     {
         var options = new JsonSerializerOptions
         {
@@ -467,6 +524,15 @@ class Program
             return 1;
         }
 
+        foreach (var segmentId in template.SegmentPool)
+        {
+            if (!segmentIds.Contains(segmentId))
+            {
+                Console.WriteLine($"FAIL: {filePath} - SegmentPool references unknown segment: {segmentId}");
+                return 1;
+            }
+        }
+
         if (template.TargetRooms <= 0)
         {
             Console.WriteLine($"FAIL: {filePath} - TargetRooms must be > 0");
@@ -477,6 +543,11 @@ class Program
         {
             Console.WriteLine($"FAIL: {filePath} - Missing bossEncounterId");
             return 1;
+        }
+
+        if (!encounterIds.Contains(template.BossEncounterId))
+        {
+            Console.WriteLine($"WARN: {filePath} - BossEncounterId '{template.BossEncounterId}' not found in encounters");
         }
 
         if (string.IsNullOrWhiteSpace(template.EncounterTableId))
@@ -788,6 +859,113 @@ class Program
         }
     }
 
+    static void CompileContentIndex(string contentDir, List<string> jsonFiles, string outputPath)
+    {
+        var segments = new List<IndexEntry>();
+        var dungeons = new List<IndexEntry>();
+        var enemies = new List<IndexEntry>();
+        var npcs = new List<IndexEntry>();
+        var items = new List<IndexEntry>();
+        var encounters = new List<IndexEntry>();
+        var quests = new List<IndexEntry>();
+        var classes = new List<IndexEntry>();
+
+        foreach (var file in jsonFiles)
+        {
+            var relPath = Path.GetRelativePath(contentDir, file);
+            var parts = relPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (parts.Length < 2) continue;
+            var category = parts[0];
+            if (category == "campaigns" && parts.Length > 1 && parts[1] == "dungeons")
+                category = "dungeons";
+            var json = File.ReadAllText(file);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var elementList = new List<JsonElement>();
+            if (root.ValueKind == JsonValueKind.Array)
+                foreach (var e in root.EnumerateArray()) elementList.Add(e);
+            else
+                elementList.Add(root);
+
+            foreach (var el in elementList)
+            {
+                if (el.ValueKind != JsonValueKind.Object) continue;
+                if (!el.TryGetProperty("id", out var idProp)) continue;
+                var id = idProp.GetString() ?? "";
+                if (string.IsNullOrEmpty(id)) continue;
+
+                var entry = new IndexEntry { Id = id };
+                if (el.TryGetProperty("name", out var nameProp)) entry.Name = nameProp.GetString();
+                if (el.TryGetProperty("tags", out var tagsProp))
+                    entry.Tags = tagsProp.EnumerateArray().Select(t => t.GetString()!).Where(s => s != null).ToArray();
+                if (el.TryGetProperty("dangerLevel", out var dProp)) entry.Danger = dProp.GetInt32();
+                if (el.TryGetProperty("danger", out var dgProp)) entry.Danger = dgProp.GetInt32();
+
+                switch (category)
+                {
+                    case "segments":
+                        entry.Template = parts.Length > 1 ? parts[1] : null;
+                        if (el.TryGetProperty("width", out var wProp) && el.TryGetProperty("height", out var hProp))
+                            entry.Size = new IndexSize { Width = wProp.GetInt32(), Height = hProp.GetInt32() };
+                        if (el.TryGetProperty("tiles", out var tilesProp))
+                        {
+                            var connections = new HashSet<string>();
+                            foreach (var tile in tilesProp.EnumerateArray())
+                            {
+                                if (tile.TryGetProperty("exitDirection", out var edProp))
+                                    connections.Add(edProp.GetString()?.ToLowerInvariant() ?? "");
+                            }
+                            entry.Connections = connections.Where(c => !string.IsNullOrEmpty(c)).ToArray();
+                        }
+                        segments.Add(entry);
+                        break;
+                    case "dungeons":
+                        if (el.TryGetProperty("minDepth", out var minD) && el.TryGetProperty("maxDepth", out var maxD))
+                            entry.Size = new IndexSize { Width = minD.GetInt32(), Height = maxD.GetInt32() };
+                        if (el.TryGetProperty("segments", out var segsProp))
+                            entry.Connections = segsProp.EnumerateArray().Select(s => s.GetString()!).Where(s => s != null).ToArray();
+                        dungeons.Add(entry);
+                        break;
+                    case "enemies":
+                        enemies.Add(entry);
+                        break;
+                    case "npcs":
+                        npcs.Add(entry);
+                        break;
+                    case "items":
+                        items.Add(entry);
+                        break;
+                    case "encounters":
+                        encounters.Add(entry);
+                        break;
+                    case "quests":
+                        quests.Add(entry);
+                        break;
+                    case "classes":
+                        classes.Add(entry);
+                        break;
+                }
+            }
+        }
+
+        var index = new ContentIndex
+        {
+            ContentHash = ComputeContentHash(jsonFiles),
+            Segments = segments.ToArray(),
+            Dungeons = dungeons.ToArray(),
+            Enemies = enemies.ToArray(),
+            Npcs = npcs.ToArray(),
+            Items = items.ToArray(),
+            Encounters = encounters.ToArray(),
+            Quests = quests.ToArray(),
+            Classes = classes.ToArray()
+        };
+
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
+        File.WriteAllText(outputPath, JsonSerializer.Serialize(index, options));
+    }
+
     static string ComputeContentHash(List<string> files)
     {
         using var sha = System.Security.Cryptography.SHA256.Create();
@@ -806,4 +984,34 @@ class Manifest
     public int Version { get; set; }
     public string ContentHash { get; set; } = "";
     public string[] Files { get; set; } = Array.Empty<string>();
+}
+
+class ContentIndex
+{
+    public string ContentHash { get; set; } = "";
+    public IndexEntry[] Segments { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Dungeons { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Enemies { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Npcs { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Items { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Encounters { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Quests { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Classes { get; set; } = Array.Empty<IndexEntry>();
+}
+
+class IndexEntry
+{
+    public string Id { get; set; } = "";
+    public string? Name { get; set; }
+    public string? Template { get; set; }
+    public string[] Tags { get; set; } = Array.Empty<string>();
+    public int? Danger { get; set; }
+    public IndexSize? Size { get; set; }
+    public string[] Connections { get; set; } = Array.Empty<string>();
+}
+
+class IndexSize
+{
+    public int Width { get; set; }
+    public int Height { get; set; }
 }

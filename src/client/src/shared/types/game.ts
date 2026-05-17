@@ -93,6 +93,7 @@ export interface Combatant {
   alive: boolean;
   isCurrent: boolean;
   abilities?: AbilityDef[];
+  isUnaccounted?: boolean;
 }
 
 export interface CombatLogEntry {
@@ -199,6 +200,7 @@ export interface OverworldNode {
   id: string;
   name: string;
   type: 'town' | 'dungeon_entrance';
+  factionPresence?: string[];
 }
 
 export interface OverworldRoute {
@@ -283,12 +285,28 @@ export interface GameState {
   deadCharacters?: DeadCharacter[];
   titheTokens?: number;
   campaignEnded?: boolean;
+  isFragileState?: boolean;
+  epilogue?: string | null;
   actionLog?: ActionLogEntry[];
   wildCardAlliance?: {
     status: string;
     factionId: string | null;
     turn: number;
   };
+}
+
+export interface AnalyticsData {
+  campaignsStarted: number;
+  campaignsCompleted: number;
+  mastermindsExposed: number;
+  schemesStopped: number;
+  betrayals: number;
+  totalTurns: number;
+  totalDeaths: number;
+  synergiesDiscovered: string[];
+  classesPlayed: string[];
+  branchesChosen: string[];
+  optionalDungeonsUnlocked: string[];
 }
 
 export type { PlayerAction, CombatAction, ProtocolEnvelope, HelloPayload, ErrorPayload, HeartbeatPingPayload, HeartbeatPongPayload } from './protocol.gen';

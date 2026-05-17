@@ -1,5 +1,9 @@
 namespace RPC.Engine.Dungeons;
 
+public record DungeonUnlockConditions(
+    string FactionId,
+    int MinReputation);
+
 public record DungeonTemplate(
     string Id,
     string Name,
@@ -8,4 +12,5 @@ public record DungeonTemplate(
     int TargetRooms,
     string BossEncounterId,
     string EncounterTableId,
-    string? WanderingTableId = null);
+    string? WanderingTableId = null,
+    DungeonUnlockConditions[]? UnlockConditions = null);

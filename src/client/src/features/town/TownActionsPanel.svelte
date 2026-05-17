@@ -13,6 +13,10 @@
     { id: 'sewers', name: 'Sewer Warrens', level: 3, desc: 'Crumbling ruins of a lost civilization.' },
     { id: 'crypt', name: 'Crypt of Whispers', level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
     { id: 'bloom_site', name: 'Bloom Site', level: 4, desc: 'A fungal infestation spreading through abandoned machinery.' },
+    { id: 'boneyard', name: 'The Boneyard', level: 2, desc: 'Bone-sorting halls and tithe archives overrun by rogue constructs.' },
+    { id: 'sealed_vault', name: 'Sealed Vault', level: 6, desc: 'Imperial wards and dead-language inscriptions guarding sealed horrors.' },
+    { id: 'settlement_gone_wrong', name: 'Settlement Gone Wrong', level: 3, desc: 'A ruined town overtaken by bloom pockets and hostile survivors.' },
+    { id: 'ossuary', name: 'The Ossuary', level: 4, desc: 'Family vaults and memorial halls where ancestors do not rest quietly.' },
   ];
 </script>
 

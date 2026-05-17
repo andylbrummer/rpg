@@ -1,0 +1,87 @@
+{
+  "id": "TheVault",
+  "name": "The Vault",
+  "description": "A faction seeks to open a sealed imperial vault containing a horror that should remain locked. The promise of power has blinded them to the cost.",
+  "finaleDungeonFeel": "Imperial bronze and gold give way to something older than the empire itself. The vault doors stand ajar, their wards cracked like eggshells. Beyond them, the architecture is wrong—angles that hurt to look at, spaces that seem deeper than their walls allow. At the center, the great seal is broken, and what sleeps within is stirring.",
+  "evidenceChain": [
+    "vault_map_fragment",
+    "ward_diagrams",
+    "excavation_reports",
+    "missing_archivists",
+    "seal_damage_photos",
+    "power_conduit_reroute",
+    "containment_breach_warning",
+    "imperial_warning_text",
+    "vault_contents_list",
+    "horror_description"
+  ],
+  "events": [
+    {
+      "id": "vault_rumors",
+      "name": "Vault Rumors Circulate",
+      "description": "Treasure hunters speak of an untouched imperial vault deep in the Reach.",
+      "turnThreshold": 2,
+      "factionInvolved": "threat",
+      "effect": "reveal_node",
+      "targetNodeType": "dungeon_entrance",
+      "reputationDelta": 0
+    },
+    {
+      "id": "map_fragments",
+      "name": "Map Fragments Recovered",
+      "description": "Cartographers have pieced together a route to the vault from scattered fragments.",
+      "turnThreshold": 4,
+      "factionInvolved": "threat",
+      "effect": "reputation_change",
+      "reputationDelta": 2,
+      "targetFaction": "cartography"
+    },
+    {
+      "id": "archivists_missing",
+      "name": "Archivists Go Missing",
+      "description": "Three imperial archivists have vanished. Their last notes mention a 'sealed door that whispers.'",
+      "turnThreshold": 6,
+      "factionInvolved": "threat",
+      "effect": "spawn_encounter",
+      "encounterType": "travel_patrol"
+    },
+    {
+      "id": "ward_damage",
+      "name": "Ward Damage Reported",
+      "description": "The Bureau reports that imperial wards near the vault site are degrading faster than natural decay allows.",
+      "turnThreshold": 8,
+      "factionInvolved": "patron",
+      "effect": "reputation_change",
+      "reputationDelta": -3,
+      "targetFaction": "bureau"
+    },
+    {
+      "id": "excavation_discovered",
+      "name": "Excavation Discovered",
+      "description": "A hidden dig site has been found. The workers were not digging out—they were digging down to something buried.",
+      "turnThreshold": 10,
+      "factionInvolved": "patron",
+      "effect": "unlock_dungeon",
+      "dungeonType": "crypt"
+    },
+    {
+      "id": "seal_weakens",
+      "name": "Seal Weakens",
+      "description": "The vault seal is cracking. Those nearby report headaches, nosebleeds, and dreams of falling upward.",
+      "turnThreshold": 12,
+      "factionInvolved": "threat",
+      "effect": "world_state_change",
+      "worldStateKey": "vault_seal",
+      "worldStateValue": "cracking"
+    },
+    {
+      "id": "vault_opens",
+      "name": "The Vault Opens",
+      "description": "The seal is broken. What was locked away is now awake. It must be sealed again, or everything ends.",
+      "turnThreshold": 14,
+      "factionInvolved": "threat",
+      "effect": "final_dungeon_unlocked",
+      "dungeonType": "sealed_vault"
+    }
+  ]
+}

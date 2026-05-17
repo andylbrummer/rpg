@@ -38,5 +38,15 @@
     "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTE2IDJMMTggOEwyNCAxMEwxNiAzMkw4IDEwTDE0IDhaIiBmaWxsPSIjMzMzIi8+PC9zdmc+",
     "statBonus": { "strength": 0, "dexterity": 1, "constitution": 0, "intelligence": 0, "willpower": 0 },
     "value": 35
+  },
+  {
+    "id": "rusty_dagger",
+    "name": "Rusty Dagger",
+    "description": "A short blade eaten by corrosion. Still sharp enough to cut.",
+    "type": "weapon",
+    "slot": "mainHand",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHBhdGggZD0iTTE2IDJMMTggOEwyNCAxMEwxNiAzMkw4IDEwTDE0IDhaIiBmaWxsPSIjYTU1Ii8+PC9zdmc+",
+    "statBonus": { "strength": 0, "dexterity": 0, "constitution": 0, "intelligence": 0, "willpower": 0 },
+    "value": 8
   }
 ]

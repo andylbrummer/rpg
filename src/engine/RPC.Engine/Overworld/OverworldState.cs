@@ -103,7 +103,7 @@ public class OverworldState
             DungeonTemplateId = "broken_engine"
         };
 
-        var dungeonPool = new[] { ("crypt", "Crypt of Whispers", "crypt"), ("sewers", "Sewer Warrens", "sewers") };
+        var dungeonPool = new[] { ("crypt", "Crypt of Whispers", "crypt"), ("sewers", "Sewer Warrens", "sewers"), ("boneyard", "The Boneyard", "boneyard"), ("sealed_vault", "Sealed Vault", "sealed_vault"), ("settlement_gone_wrong", "Settlement Gone Wrong", "settlement_gone_wrong"), ("ossuary", "The Ossuary", "ossuary") };
         int extraDungeons = rng.Roll(1, 2);
         foreach (var (id, name, template) in Shuffle(dungeonPool, rng).Take(extraDungeons))
         {

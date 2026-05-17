@@ -1,0 +1,26 @@
+{
+  "id": "archive_of_contradictions",
+  "name": "Archive of Contradictions",
+  "segmentPool": [
+    "ossuary_entrance",
+    "memorial_corridor",
+    "family_vault",
+    "private_chamber",
+    "ancestral_hall"
+  ],
+  "segmentPriority": [
+    "ossuary_entrance",
+    "memorial_corridor",
+    "family_vault",
+    "private_chamber",
+    "ancestral_hall"
+  ],
+  "targetRooms": 8,
+  "bossEncounterId": "os-d5-ancestor",
+  "encounterTableId": "ossuary",
+  "wanderingTableId": "ossuary",
+  "unlockConditions": [
+    { "factionId": "bureau", "minReputation": 50 },
+    { "factionId": "convocation", "minReputation": 50 }
+  ]
+}

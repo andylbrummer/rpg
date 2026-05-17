@@ -40,6 +40,11 @@ public class SaveData
     public int WildCardAllianceTurn { get; set; }
     public int StepsSinceEncounter { get; set; } = 0;
     public int DungeonSeed { get; set; } = 0;
+    public bool IsIronman { get; set; } = false;
+    public Dictionary<string, int> FactionTimelineModifiers { get; set; } = new();
+    public string[] FiredEvents { get; set; } = Array.Empty<string>();
+    public string[] UnlockedDungeons { get; set; } = Array.Empty<string>();
+    public bool BetrayalPath { get; set; } = false;
 }
 
 public class SaveFactionTimeline

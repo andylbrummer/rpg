@@ -3,6 +3,8 @@ import type { GameState, Tile } from '$shared/types/game';
 import { getTheme, type DungeonTheme } from './DungeonTheme';
 import { BloomCluster, BloomParticleSystem } from './BloomEffects';
 import { getCreatureMaterials, type CreatureMaterialSet } from './CreatureMaterials';
+import { createUnaccountedMaterial } from './UnaccountedMaterial';
+import { AmbientParticleSystem, getParticlePreset } from './AmbientParticles';
 
 export class DungeonRenderer {
   private scene: THREE.Scene;
@@ -25,8 +27,9 @@ export class DungeonRenderer {
   private currentDungeonType: string | undefined;
   private bloomClusters: BloomCluster[] = [];
   private bloomParticles: BloomParticleSystem[] = [];
+  private ambientParticleSystem: AmbientParticleSystem | null = null;
   private bloomEffectsAdded = false;
-  private creatureMeshes: Map<string, THREE.Mesh> = new Map();
+  private creatureMeshes: Map<string, THREE.Object3D> = new Map();
 
   static isSupported(): boolean {
     try {
@@ -212,6 +215,7 @@ export class DungeonRenderer {
       this.currentDungeonType = dungeonType;
       this.currentTheme = getTheme(dungeonType);
       this.applyTheme(this.currentTheme);
+      this.setupAmbientParticles(dungeonType);
     }
 
     if (state.hasDungeon) {
@@ -345,11 +349,19 @@ export class DungeonRenderer {
       const i = front ? fi++ : bi++;
       const d = front ? 3 : 5;
       const o = (i - 1) * 1.2;
-      const mesh = this.createCreatureMesh(mats);
+      const mesh = e.isUnaccounted
+        ? this.createUnaccountedMesh()
+        : this.createCreatureMesh(mats);
       mesh.position.set(px + fx * d + rx * o, 0.75, pz + fz * d + rz * o);
+      if (e.isUnaccounted) {
+        mesh.userData.baseY = 0.75;
+        mesh.userData.twitchSeed = Math.random() * 100;
+        mesh.userData.speed = 0.5 + Math.random() * 1.5; // wrong-speed
+      }
       this.creatureMeshes.set(e.id, mesh);
       this.scene.add(mesh);
     }
+    this.updateChromaticAberration();
   }
 
   private createCreatureMesh(mats: CreatureMaterialSet): THREE.Mesh {
@@ -363,6 +375,122 @@ export class DungeonRenderer {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     return mesh;
+  }
+
+  private unaccountedMaterial: THREE.ShaderMaterial = createUnaccountedMaterial();
+
+  private createUnaccountedMesh(): THREE.Group {
+    const group = new THREE.Group();
+
+    // Distorted main body — stretched vertically wrong with custom shader
+    const bodyGeo = new THREE.SphereGeometry(0.3, 8, 6);
+    bodyGeo.scale(0.6, 1.6, 0.6);
+    const body = new THREE.Mesh(bodyGeo, this.unaccountedMaterial.clone());
+    body.position.y = 0.4;
+    group.add(body);
+
+    // Wireframe shell — glitchy aura
+    const shellGeo = new THREE.IcosahedronGeometry(0.55, 0);
+    const shellMat = new THREE.MeshBasicMaterial({
+      color: 0xaa00ff,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.25,
+    });
+    const shell = new THREE.Mesh(shellGeo, shellMat);
+    shell.position.y = 0.4;
+    group.add(shell);
+
+    // Wrong limb — too long, wrong angle
+    const limbGeo = new THREE.CylinderGeometry(0.04, 0.02, 0.9, 4);
+    const limbMat = new THREE.MeshStandardMaterial({
+      color: 0x2a1a3a,
+      emissive: 0x330033,
+      emissiveIntensity: 0.4,
+    });
+    const limb1 = new THREE.Mesh(limbGeo, limbMat);
+    limb1.position.set(0.25, 0.5, 0.1);
+    limb1.rotation.z = -0.6;
+    limb1.rotation.x = 0.3;
+    group.add(limb1);
+
+    const limb2 = new THREE.Mesh(limbGeo, limbMat);
+    limb2.position.set(-0.2, 0.3, -0.15);
+    limb2.rotation.z = 0.8;
+    limb2.rotation.y = 0.5;
+    group.add(limb2);
+
+    // Floating fragment — detached geometry
+    const fragGeo = new THREE.OctahedronGeometry(0.08, 0);
+    const fragMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+    const frag = new THREE.Mesh(fragGeo, fragMat);
+    frag.position.set(0.1, 0.9, 0.2);
+    group.add(frag);
+
+    return group;
+  }
+
+  private updateUnaccountedAnimations(time: number): void {
+    for (const obj of this.creatureMeshes.values()) {
+      if (!(obj instanceof THREE.Group) || obj.userData.baseY === undefined) continue;
+      const seed = obj.userData.twitchSeed ?? 0;
+      const speed = obj.userData.speed ?? 1;
+
+      // Float with wrong frequency
+      obj.position.y = obj.userData.baseY + Math.sin(time * speed * 2 + seed) * 0.15;
+
+      // Twitch — sudden jerky rotations
+      const twitchPhase = (time * 3 + seed) % 1;
+      if (twitchPhase < 0.05) {
+        obj.rotation.z = Math.sin(time * 20 + seed) * 0.15;
+        obj.rotation.x = Math.cos(time * 17 + seed) * 0.1;
+      } else {
+        obj.rotation.z *= 0.9;
+        obj.rotation.x *= 0.9;
+      }
+
+      // Pulse scale wrong-speed
+      const s = 1 + Math.sin(time * speed * 4 + seed) * 0.08;
+      obj.scale.set(s, 1 / s, s);
+    }
+  }
+
+  private updateUnaccountedShaderTime(time: number): void {
+    for (const obj of this.creatureMeshes.values()) {
+      if (!(obj instanceof THREE.Group)) continue;
+      obj.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial) {
+          child.material.uniforms.uTime.value = time;
+        }
+      });
+    }
+  }
+
+  private updateChromaticAberration(): void {
+    const hasUnaccounted = Array.from(this.creatureMeshes.values()).some(
+      (obj) => obj instanceof THREE.Group
+    );
+    const canvas = this.renderer.domElement;
+    if (hasUnaccounted) {
+      canvas.style.filter =
+        'drop-shadow(2px 0 0 rgba(255,0,0,0.25)) drop-shadow(-2px 0 0 rgba(0,255,255,0.25))';
+    } else {
+      canvas.style.filter = '';
+    }
+  }
+
+  private setupAmbientParticles(dungeonType: string | undefined): void {
+    if (this.ambientParticleSystem) {
+      this.scene.remove(this.ambientParticleSystem.mesh);
+      this.ambientParticleSystem.dispose();
+      this.ambientParticleSystem = null;
+    }
+
+    const preset = dungeonType ? getParticlePreset(dungeonType) : null;
+    if (preset) {
+      this.ambientParticleSystem = new AmbientParticleSystem(preset);
+      this.scene.add(this.ambientParticleSystem.mesh);
+    }
   }
 
   private addBloomEffects(tiles: Tile[]): void {
@@ -613,6 +741,9 @@ export class DungeonRenderer {
     for (const particles of this.bloomParticles) {
       particles.update();
     }
+    this.ambientParticleSystem?.update(time);
+    this.updateUnaccountedAnimations(time);
+    this.updateUnaccountedShaderTime(time);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -620,6 +751,8 @@ export class DungeonRenderer {
     this.isDisposed = true;
     this.clearBloomEffects();
     this.clearCreatures();
+    this.ambientParticleSystem?.dispose();
+    this.ambientParticleSystem = null;
     this.renderer.dispose();
     this.wallTexture.dispose();
     this.floorTexture.dispose();

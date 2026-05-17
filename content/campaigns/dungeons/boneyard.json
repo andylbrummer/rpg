@@ -1,0 +1,22 @@
+{
+  "id": "boneyard",
+  "name": "The Boneyard",
+  "segmentPool": [
+    "boneyard_entrance",
+    "sorting_corridor",
+    "animation_chamber",
+    "tithe_archive",
+    "bone_nest"
+  ],
+  "segmentPriority": [
+    "boneyard_entrance",
+    "sorting_corridor",
+    "animation_chamber",
+    "tithe_archive",
+    "bone_nest"
+  ],
+  "targetRooms": 10,
+  "bossEncounterId": "by-d5-bone-lord",
+  "encounterTableId": "boneyard",
+  "wanderingTableId": "boneyard"
+}

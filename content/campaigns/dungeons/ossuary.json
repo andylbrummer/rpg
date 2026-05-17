@@ -1,0 +1,22 @@
+{
+  "id": "ossuary",
+  "name": "The Ossuary",
+  "segmentPool": [
+    "ossuary_entrance",
+    "memorial_corridor",
+    "family_vault",
+    "private_chamber",
+    "ancestral_hall"
+  ],
+  "segmentPriority": [
+    "ossuary_entrance",
+    "memorial_corridor",
+    "family_vault",
+    "private_chamber",
+    "ancestral_hall"
+  ],
+  "targetRooms": 10,
+  "bossEncounterId": "os-d5-ancestor",
+  "encounterTableId": "ossuary",
+  "wanderingTableId": "ossuary"
+}

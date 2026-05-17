@@ -14,6 +14,6 @@
   "ai": "ranged_priority",
   "abilities": ["bone_arrow", "skull_crack"],
   "lootTable": [
-    { "itemId": "bone_fragments", "chance": 0.6 }
+    { "itemId": "bone_fragment", "chance": 0.6 }
   ]
 }

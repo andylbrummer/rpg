@@ -8,6 +8,39 @@
       "enemies": [
         { "enemyId": "bone_archer", "count": 1, "rowOverride": 0 }
       ]
+    },
+    {
+      "id": "by-d5-bone-lord",
+      "weight": 1,
+      "enemies": [
+        { "enemyId": "bone_archer", "count": 3, "rowOverride": 0 },
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 1 }
+      ]
+    },
+    {
+      "id": "sv-d5-ward-keeper",
+      "weight": 1,
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 2, "rowOverride": 0 },
+        { "enemyId": "convocation_soldier", "count": 2, "rowOverride": 1 },
+        { "enemyId": "bone_archer", "count": 1, "rowOverride": 1 }
+      ]
+    },
+    {
+      "id": "sgw-d5-bloom-knight",
+      "weight": 1,
+      "enemies": [
+        { "enemyId": "bloom_wretch", "count": 2, "rowOverride": 0 },
+        { "enemyId": "bloom_mite", "count": 3, "rowOverride": 1 }
+      ]
+    },
+    {
+      "id": "os-d5-ancestor",
+      "weight": 1,
+      "enemies": [
+        { "enemyId": "bone_archer", "count": 4, "rowOverride": 0 },
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 1 }
+      ]
     }
   ]
 }
