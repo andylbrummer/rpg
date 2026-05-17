@@ -77,5 +77,7 @@ public class EpilogueTests
 
         var text = EpilogueGenerator.Generate(state);
         Assert.Contains("betrayal", text);
+        Assert.Contains("succeeded", text);
+        Assert.Contains("knife in the back", text);
     }
 }

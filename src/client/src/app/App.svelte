@@ -16,6 +16,7 @@
   import { UnaccountedAudioManager } from '$renderer/UnaccountedAudioManager';
   import type { GameState } from '$shared/types/game';
   import { loadBindings, keyToAction } from '$config/keybindings';
+  import { ALL_SYNERGIES } from '$shared/data/synergies';
 
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | null = null;
@@ -41,13 +42,6 @@
 
   const DISCOVERY_KEY = 'rpc_discovered_synergies';
   const REVEALED_KEY = 'rpc_revealed_synergies';
-
-  const ALL_SYNERGIES = [
-    { id: 'bonewarden_cauterist_bone_link', abilities: ['bone_link', 'pyre'], hint: 'Bone-link channels pyre damage to all linked allies.', effect: '+4 bonus damage' },
-    { id: 'stillblade_hollow_backstep', abilities: ['backstep', 'cheap_shot'], hint: 'A Stillblade feint creates the perfect opening for a Hollow cheap shot.', effect: '+6 bonus damage' },
-    { id: 'cauterist_hollow_purify', abilities: ['purify', 'cheap_shot'], hint: 'Purification exposes wounds, letting the Hollow\'s cheap shot apply a lasting debuff.', effect: 'applies status (-3 potency)' },
-    { id: 'fieldwright_inkblood_overcharge', abilities: ['overcharge', 'knowledge_bolt'], hint: 'Overcharged tools empower the Inkblood\'s knowledge bolt to strike farther.', effect: '+5 bonus damage' },
-  ];
 
   function loadSet(key: string): Set<string> {
     try {

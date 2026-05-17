@@ -184,20 +184,47 @@ public class CampaignService
     public bool UnlockFinalDungeon(GameState state)
     {
         if (state.CampaignConfig == null) return false;
-        if (state.AccusedFaction != state.CampaignConfig.Mastermind) return false;
-        if (!state.Evidence.Counters.Values.Any(v => v >= 10)) return false;
         if (state.FinalDungeonUnlocked) return false;
 
-        state.FinalDungeonUnlocked = true;
-        state.EmitActionLog("mastermind", "final_dungeon_unlocked", new Dictionary<string, string>
+        var mastermind = state.CampaignConfig.Mastermind;
+
+        if (state.Campaign.BetrayalPath)
         {
-            { "mastermind", state.CampaignConfig.Mastermind }
-        });
-        state.EmitActionLog("narrative", "scheme_exposed", new Dictionary<string, string>
+            // Betrayal path: high rep with mastermind faction unlocks the finale
+            var mastermindRep = state.Reputation[mastermind];
+            if (mastermindRep < 20)
+                return false;
+
+            state.FinalDungeonUnlocked = true;
+            state.EmitActionLog("mastermind", "final_dungeon_unlocked", new Dictionary<string, string>
+            {
+                { "mastermind", mastermind },
+                { "betrayal", "true" }
+            });
+            state.EmitActionLog("narrative", "scheme_alliance", new Dictionary<string, string>
+            {
+                { "mastermind", mastermind },
+                { "scheme", state.CampaignConfig.Scheme.ToString() }
+            });
+        }
+        else
         {
-            { "mastermind", state.CampaignConfig.Mastermind },
-            { "scheme", state.CampaignConfig.Scheme.ToString() }
-        });
+            // Standard path: accuse mastermind with evidence
+            if (state.AccusedFaction != mastermind) return false;
+            if (!state.Evidence.Counters.Values.Any(v => v >= 10)) return false;
+
+            state.FinalDungeonUnlocked = true;
+            state.EmitActionLog("mastermind", "final_dungeon_unlocked", new Dictionary<string, string>
+            {
+                { "mastermind", mastermind }
+            });
+            state.EmitActionLog("narrative", "scheme_exposed", new Dictionary<string, string>
+            {
+                { "mastermind", mastermind },
+                { "scheme", state.CampaignConfig.Scheme.ToString() }
+            });
+        }
+
         state.LastUpdate = DateTime.UtcNow;
         return true;
     }
@@ -326,11 +353,18 @@ public class CampaignService
         if (state.Campaign.BetrayalPath)
             return false;
 
+        // Prerequisite: must have evidence about the mastermind to prove you know what you're joining
+        var mastermind = state.CampaignConfig?.Mastermind;
+        if (string.IsNullOrEmpty(mastermind))
+            return false;
+        if (!state.Evidence.Counters.TryGetValue(mastermind, out var evidenceCount) || evidenceCount < 1)
+            return false;
+
         state.Campaign.BetrayalPath = true;
-        state.Analytics.RecordCampaignEnd(mastermindExposed: false, schemeStopped: false, betrayal: true, turns: state.Overworld.Turns, deaths: 0);
         state.EmitActionLog("campaign", "betrayal_chosen", new Dictionary<string, string>
         {
-            { "mastermind", state.CampaignConfig?.Mastermind ?? "unknown" }
+            { "mastermind", mastermind },
+            { "evidence", evidenceCount.ToString() }
         });
         return true;
     }

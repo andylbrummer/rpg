@@ -163,6 +163,14 @@ public class OverworldService
             state.CampaignEnded = true;
             state.CurrentDungeon = null;
             state.Mode = GameMode.Menu;
+
+            var deaths = state.ActionLog.Count(e => e.Type == "character_died");
+            state.Analytics.RecordCampaignEnd(
+                mastermindExposed: state.AccusedFaction == state.CampaignConfig?.Mastermind,
+                schemeStopped: state.FinalDungeonUnlocked && !state.Campaign.BetrayalPath,
+                betrayal: state.Campaign.BetrayalPath,
+                turns: state.Overworld.Turns,
+                deaths: deaths);
         }
     }
 

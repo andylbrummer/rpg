@@ -48,7 +48,12 @@ public class EpilogueGenerator
             $"What began as a simple contract from the {patron} spiraled into something far darker.");
 
         // Scheme outcome
-        if (campaign.CampaignEnded)
+        if (betrayal)
+        {
+            paragraphs.Add($"The {scheme} succeeded. With your help, the {mastermind} consolidated power across the Reach. " +
+                $"The patron's trust was rewarded with a knife in the back.");
+        }
+        else if (campaign.CampaignEnded)
         {
             paragraphs.Add($"The {scheme} was ultimately foiled. " +
                 $"The mastermind's plans came to nothing.");

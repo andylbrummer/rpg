@@ -202,7 +202,7 @@ public class SecretContentTests
     }
 
     [Fact]
-    public void ChooseBetrayal_SetsFlag_AndLogs()
+    public void ChooseBetrayal_RequiresEvidence()
     {
         var state = new GameState();
         state.Campaign.CampaignConfig = new CampaignConfig
@@ -213,10 +213,12 @@ public class SecretContentTests
         };
 
         var service = new CampaignService(null);
-        Assert.False(state.Campaign.BetrayalPath);
+        // No evidence — should fail
+        Assert.False(service.ChooseBetrayal(state));
 
-        var result = service.ChooseBetrayal(state);
-        Assert.True(result);
+        // Add evidence about mastermind
+        state.Evidence.AddEvidence("inkblood", "test_source");
+        Assert.True(service.ChooseBetrayal(state));
         Assert.True(state.Campaign.BetrayalPath);
 
         var log = state.ActionLog.LastOrDefault(e => e.Type == "betrayal_chosen");
@@ -230,13 +232,39 @@ public class SecretContentTests
         var state = new GameState();
         state.Campaign.CampaignConfig = new CampaignConfig
         {
+            Mastermind = "inkblood",
             FactionTimelines = new Dictionary<string, FactionTimeline>(),
             NpcCasting = new Dictionary<string, string>()
         };
+        state.Evidence.AddEvidence("inkblood", "test_source", 2);
 
         var service = new CampaignService(null);
         service.ChooseBetrayal(state);
         var result = service.ChooseBetrayal(state);
         Assert.False(result);
+    }
+
+    [Fact]
+    public void UnlockFinalDungeon_BetrayalPath_RequiresHighRep()
+    {
+        var state = new GameState();
+        state.Campaign.CampaignConfig = new CampaignConfig
+        {
+            Mastermind = "inkblood",
+            FactionTimelines = new Dictionary<string, FactionTimeline>(),
+            NpcCasting = new Dictionary<string, string>()
+        };
+        state.Campaign.BetrayalPath = true;
+
+        var service = new CampaignService(null);
+        // Rep too low
+        state.Reputation["inkblood"] = 10;
+        Assert.False(service.UnlockFinalDungeon(state));
+
+        // Rep high enough
+        state.Reputation["inkblood"] = 25;
+        Assert.True(service.UnlockFinalDungeon(state));
+        Assert.True(state.FinalDungeonUnlocked);
+        Assert.Contains(state.ActionLog, e => e.Type == "scheme_alliance");
     }
 }
