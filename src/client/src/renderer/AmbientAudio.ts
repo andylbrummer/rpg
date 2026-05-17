@@ -64,6 +64,30 @@ const TRACKS: Record<string, AmbientTrack> = {
     waveform: 'triangle',
     modulation: 0.6,
   },
+  'crypt': {
+    id: 'crypt',
+    displayName: 'Whispering Dark',
+    description: 'Echoing whispers and ghostly resonance',
+    frequencies: [100, 175, 250],
+    waveform: 'sine',
+    modulation: 0.7,
+  },
+  'sewers': {
+    id: 'sewers',
+    displayName: 'Drowned Echo',
+    description: 'Water dripping and distant current',
+    frequencies: [70, 105, 140],
+    waveform: 'sine',
+    modulation: 0.9,
+  },
+  'archive-of-contradictions': {
+    id: 'archive-of-contradictions',
+    displayName: 'Contradiction Drone',
+    description: 'Distant filing and conflicting frequencies',
+    frequencies: [120, 180, 240],
+    waveform: 'square',
+    modulation: 0.5,
+  },
 };
 
 export function getAmbientTrack(dungeonType: string): AmbientTrack {

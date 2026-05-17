@@ -17,6 +17,7 @@
   import type { GameState } from '$shared/types/game';
   import { loadBindings, keyToAction } from '$config/keybindings';
   import { ALL_SYNERGIES } from '$shared/data/synergies';
+  import { playClick, playConfirm, playWarning, playSynergyChime } from '$renderer/UISounds';
 
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | null = null;
@@ -72,21 +73,6 @@
   let discoveredOrder = $state<string[]>(loadArray(DISCOVERY_KEY));
   let revealedSynergies = $state<Set<string>>(loadSet(REVEALED_KEY));
   let pendingReveals = $state<string[]>([]);
-
-  function playBeep() {
-    try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      gain.gain.value = 0.1;
-      osc.start();
-      osc.stop(ctx.currentTime + 0.1);
-      setTimeout(() => ctx.close(), 200);
-    } catch {}
-  }
 
   serverErrorStore.subscribe((err) => {
     serverError = err;
@@ -612,7 +598,7 @@
           discoveredOrder={discoveredOrder}
           revealedIds={revealedSynergies}
           onClose={() => showFieldNotes = false}
-          onReplay={(id) => { replaySynergyId = id; playBeep(); }}
+          onReplay={(id) => { replaySynergyId = id; playSynergyChime(); }}
         />
       {/if}
       {#if showSettings}
