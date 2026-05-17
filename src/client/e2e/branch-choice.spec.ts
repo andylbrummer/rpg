@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Branch Choice Modal', () => {
   test('modal appears when character awaits branch choice', async ({ page }) => {
     await page.goto('/app');
-    await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 5000 });
+    await page.click('.title-btn.primary');
 
     await page.evaluate(() => {
       (window as any).__rpc_enableTestHooks();
@@ -65,7 +65,7 @@ test.describe('Branch Choice Modal', () => {
 
   test('modal blocks town UI until resolved', async ({ page }) => {
     await page.goto('/app');
-    await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 5000 });
+    await page.click('.title-btn.primary');
 
     await page.evaluate(() => {
       (window as any).__rpc_enableTestHooks();
@@ -119,10 +119,10 @@ test.describe('Branch Choice Modal', () => {
 
     await expect(page.locator('.branch-modal-overlay')).toBeVisible();
 
-    // Attempting to click a town button without force should fail because the overlay blocks it
-    const dungeonBtn = page.locator('.dungeon-btn').first();
-    await expect(dungeonBtn).toBeVisible();
-    await expect(dungeonBtn.click({ timeout: 1000 })).rejects.toThrow();
+    // Attempting to click town UI through the overlay should fail
+    const partyCard = page.locator('.character-card').first();
+    await expect(partyCard).toBeVisible();
+    await expect(partyCard.click({ timeout: 1000 })).rejects.toThrow();
 
     // Modal remains visible
     await expect(page.locator('.branch-modal-overlay')).toBeVisible();
@@ -130,7 +130,7 @@ test.describe('Branch Choice Modal', () => {
 
   test('modal appears at level 6 for specialization', async ({ page }) => {
     await page.goto('/app');
-    await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 5000 });
+    await page.click('.title-btn.primary');
 
     await page.evaluate(() => {
       (window as any).__rpc_enableTestHooks();

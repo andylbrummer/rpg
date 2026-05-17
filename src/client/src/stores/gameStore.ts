@@ -13,6 +13,11 @@ export interface GameStore {
 
 const state = writable<GameState | null>(null);
 const errorStore = writable<ErrorPayload | null>(null);
+const testSetStateCallbacks: Array<(s: GameState | null) => void> = [];
+
+export function onTestSetState(cb: (s: GameState | null) => void) {
+  testSetStateCallbacks.push(cb);
+}
 
 export const gameStore: GameStore = {
   subscribe: state.subscribe,
@@ -26,7 +31,10 @@ export const gameStore: GameStore = {
   disconnect: () => {
     console.warn('disconnect called before game store bootstrap');
   },
-  __testSetState: state.set,
+  __testSetState: (s: GameState | null) => {
+    state.set(s);
+    testSetStateCallbacks.forEach(cb => cb(s));
+  },
 };
 
 export let sendAction: (action: PlayerAction) => void = gameStore.sendAction;

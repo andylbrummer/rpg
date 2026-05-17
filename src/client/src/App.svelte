@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { gameStore, sendAction, serverErrorStore, bootstrapGameStore } from './stores/gameStore';
+  import { gameStore, sendAction, serverErrorStore, bootstrapGameStore, onTestSetState } from './stores/gameStore';
   import { GameClient } from './net/GameClient';
   import TownMenu from './ui/TownMenu.svelte';
   import type { PlayerAction } from './types/game';
@@ -10,6 +10,7 @@
   import FieldNotesPanel from './ui/FieldNotesPanel.svelte';
   import CharacterSheet from './ui/CharacterSheet.svelte';
   import SettingsPanel from './ui/SettingsPanel.svelte';
+  import TitleScreen from './ui/TitleScreen.svelte';
   import { DungeonRenderer } from './renderer/DungeonRenderer';
   import { AmbientAudioManager } from './renderer/AmbientAudio';
   import type { GameState } from './types/game';
@@ -29,6 +30,7 @@
   let replaySynergyId = $state<string | null>(null);
   let selectedMemberSlot = $state<number | null>(null);
   let showSettings = $state(false);
+  let showTitleScreen = $state(true);
   let keyBindings = $state(loadBindings());
 
   const DISCOVERY_KEY = 'rpc_discovered_synergies';
@@ -261,7 +263,13 @@
       // Expose test hooks unconditionally — e2e suite depends on window.gameClient
       (window as any).gameClient = client;
       (window as any).gameStore = gameStore;
+      (window as any).__rpc_enableTestHooks = () => {};
     }
+
+    // Auto-hide title screen when e2e tests inject state
+    const unsubTest = onTestSetState(() => {
+      showTitleScreen = false;
+    });
 
     gameStore.connect();
 
@@ -319,6 +327,7 @@
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       stopAllRepeats();
+      unsubTest();
     };
   });
 
@@ -437,7 +446,7 @@
         <span class="rep-toast-source">({toast.source})</span>
       </div>
     {/each}
-    {#if gameState?.mode !== 'Combat'}
+    {#if gameState?.mode !== 'Combat' && !showTitleScreen}
       <header class="top-bar">
         <div class="game-title">The Reach</div>
         <div class="game-info">
@@ -456,7 +465,13 @@
       </header>
     {/if}
     <section class="viewport">
-      {#if gameState?.mode === 'Menu'}
+      {#if gameState?.mode === 'Menu' && showTitleScreen}
+        <TitleScreen
+          onEnterTown={() => showTitleScreen = false}
+          onOpenSettings={() => showSettings = true}
+        />
+      {/if}
+      {#if gameState?.mode === 'Menu' && !showTitleScreen}
         <TownMenu
           gameState={gameState}
           onEnterDungeon={handleEnterDungeon}
@@ -547,7 +562,7 @@
         </div>
       {/if}
     </section>
-    {#if gameState?.mode !== 'Combat'}
+    {#if gameState?.mode !== 'Combat' && !showTitleScreen}
       <footer class="bottom-bar">
         <PartyStatusBar party={gameState?.party || []} onOpenInventory={handleOpenInventory} />
       </footer>
