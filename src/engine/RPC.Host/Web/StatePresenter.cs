@@ -60,6 +60,12 @@ public class StatePresenter
             titheTokens = state.TitheTokens,
             campaignEnded = state.CampaignEnded,
             isFragileState = state.IsFragileState,
+            rescueExpedition = state.RescueExpedition != null ? new
+            {
+                isActive = state.RescueExpedition.IsActive,
+                dungeonType = state.RescueExpedition.DungeonType,
+                tpkLocation = new { x = state.RescueExpedition.TpkLocation.X, y = state.RescueExpedition.TpkLocation.Y }
+            } : null,
             epilogue = state.CampaignEnded ? EpilogueGenerator.Generate(state) : null,
             factionStates = CampaignPresenter.PresentFactionStates(state),
             worldState = CampaignPresenter.PresentWorldState(state),

@@ -117,4 +117,49 @@ public class RescueExpeditionTests
         state.Party.Bench.Add(MakeChar("C", "stillblade"));
         Assert.False(state.IsFragileState); // Now bench == 3
     }
+
+    [Fact]
+    public void StartRescueExpedition_ResetsPlayerToEntrance()
+    {
+        var state = new GameState();
+        state.IsIronman = true;
+        state.CurrentDungeonType = "broken_engine";
+        state.Player = new RPC.Engine.Models.Dungeons.Player(new(5, 5), RPC.Engine.Models.Dungeons.Direction.North);
+
+        var dungeon = new RPC.Engine.Models.Dungeons.Dungeon(10, 10, "test");
+        dungeon.Tiles[1, 1] = new RPC.Engine.Models.Dungeons.Tile(RPC.Engine.Models.Dungeons.TileType.Floor);
+        state.CurrentDungeon = dungeon;
+
+        for (int i = 0; i < 3; i++)
+            state.Party.Bench.Add(MakeChar($"R{i}", "bonewarden"));
+
+        var result = state.StartRescueExpedition();
+        Assert.True(result);
+        Assert.Equal(new RPC.Engine.Models.Dungeons.Position(1, 1), state.Player.Position);
+        Assert.Equal(RPC.Engine.Models.Dungeons.Direction.North, state.Player.Facing);
+    }
+
+    [Fact]
+    public void ResolveRescueExpedition_Success_RecoversEquipmentToCache()
+    {
+        var state = new GameState();
+        state.IsIronman = true;
+        state.CurrentDungeonType = "broken_engine";
+        state.Player = new RPC.Engine.Models.Dungeons.Player(new(3, 3), RPC.Engine.Models.Dungeons.Direction.North);
+
+        for (int i = 0; i < 3; i++)
+            state.Party.Bench.Add(MakeChar($"R{i}", "bonewarden"));
+        state.StartRescueExpedition();
+
+        var dead = MakeChar("Dead", "hollow");
+        dead = dead with { ComponentInventory = new[] { new ComponentStack("bone_shard", 3, 20) } };
+        state.Party.DeadCharacters.Add(dead);
+
+        state.ResolveRescueExpedition(success: true);
+        Assert.Single(state.Party.ExpeditionCache);
+        Assert.Equal("bone_shard", state.Party.ExpeditionCache[0].ItemId);
+        Assert.Equal(3, state.Party.ExpeditionCache[0].Count);
+        Assert.Equal(GameMode.Menu, state.Mode);
+        Assert.Null(state.CurrentDungeon);
+    }
 }

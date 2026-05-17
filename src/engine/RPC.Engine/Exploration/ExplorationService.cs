@@ -123,6 +123,13 @@ public class ExplorationService
                 }
             }
 
+            // Check rescue expedition arrival
+            if (state.RescueExpedition?.IsActive == true && state.Player.Position == state.RescueExpedition.TpkLocation)
+            {
+                state.ResolveRescueExpedition(success: true);
+                return true;
+            }
+
             var encounterChance = 0.05 + (state.StepsSinceEncounter * 0.08);
             if (_encounterRng.Roll(0, 99) < encounterChance * 100)
             {

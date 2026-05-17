@@ -388,6 +388,17 @@ public class CombatService
                 state.EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", state.CurrentEncounterId } });
             }
 
+            // Rescue expedition failure: rescue party wiped out
+            if (allPlayersDead && state.RescueExpedition?.IsActive == true)
+            {
+                state.ResolveRescueExpedition(success: false);
+                state.Mode = GameMode.Menu;
+                state.CurrentDungeon = null;
+                state.CurrentDungeonType = null;
+                state.Exploration.Reset();
+                return true;
+            }
+
             // Ironman: attempt rescue expedition on total party kill
             if (allPlayersDead && state.IsIronman)
             {

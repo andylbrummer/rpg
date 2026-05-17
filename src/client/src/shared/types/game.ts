@@ -286,6 +286,11 @@ export interface GameState {
   titheTokens?: number;
   campaignEnded?: boolean;
   isFragileState?: boolean;
+  rescueExpedition?: {
+    isActive: boolean;
+    dungeonType: string;
+    tpkLocation: { x: number; y: number };
+  } | null;
   epilogue?: string | null;
   actionLog?: ActionLogEntry[];
   wildCardAlliance?: {

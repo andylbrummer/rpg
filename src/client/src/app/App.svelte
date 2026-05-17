@@ -515,6 +515,11 @@
               Turn {gameState.overworld.turns}/15
             </span>
           {/if}
+          {#if gameState?.rescueExpedition?.isActive}
+            <span class="rescue-badge" title="Rescue expedition in progress. Reach the TPK location to recover equipment.">
+              🛡️ Rescue
+            </span>
+          {/if}
           {#if gameState?.isFragileState}
             <span class="fragile-warning" title="Your roster is thin. A total party kill may end your campaign.">
               ⚠ Fragile
@@ -819,6 +824,17 @@
   .dungeon-badge {
     background: rgba(212, 168, 75, 0.2);
     color: #d4a84b;
+  }
+
+  .rescue-badge {
+    padding: 0.2rem 0.5rem;
+    background: rgba(68, 136, 204, 0.2);
+    border: 1px solid #4488cc;
+    border-radius: 0.25rem;
+    color: #88bbee;
+    font-size: clamp(0.6rem, 1.2vw, 0.7rem);
+    font-weight: bold;
+    cursor: help;
   }
 
   .viewport {

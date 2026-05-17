@@ -405,6 +405,27 @@ public class GameState
         foreach (var r in bench)
             Party.Bench.Remove(r);
 
+        // Reset rescue party to dungeon entrance
+        if (CurrentDungeon != null)
+        {
+            for (int x = 0; x < CurrentDungeon.Width; x++)
+            {
+                for (int y = 0; y < CurrentDungeon.Height; y++)
+                {
+                    if (CurrentDungeon.Tiles[x, y].Type == TileType.Floor)
+                    {
+                        Player.Position = new Position(x, y);
+                        Player.Facing = Direction.North;
+                        ExploreAroundPlayer();
+                        break;
+                    }
+                }
+                if (Player.Position.X != RescueExpedition.TpkLocation.X || Player.Position.Y != RescueExpedition.TpkLocation.Y)
+                    break;
+            }
+        }
+        StepsSinceEncounter = 0;
+
         EmitActionLog("meta", "rescue_started", new Dictionary<string, string>
         {
             { "dungeonType", RescueExpedition.DungeonType },
@@ -424,17 +445,33 @@ public class GameState
 
         if (success)
         {
-            // Recover equipment from dead characters
+            // Recover equipment from dead characters to expedition cache
+            var recovered = new List<ComponentStack>();
             foreach (var dead in Party.DeadCharacters.ToList())
             {
-                // Equipment recovery logic would go here
+                foreach (var item in dead.ComponentInventory)
+                {
+                    recovered.Add(item);
+                }
                 EmitActionLog("meta", "equipment_recovered", new Dictionary<string, string>
                 {
                     { "characterId", dead.Id.ToString() },
                     { "characterName", dead.Name }
                 });
             }
+            if (recovered.Count > 0)
+            {
+                Party.ExpeditionCache = Party.ExpeditionCache
+                    .Concat(recovered)
+                    .GroupBy(c => c.ItemId)
+                    .Select(g => new ComponentStack(g.Key, g.Sum(c => c.Count), g.First().MaxStack))
+                    .ToArray();
+            }
             EmitActionLog("meta", "rescue_succeeded", new Dictionary<string, string> { { "dungeonType", RescueExpedition.DungeonType } });
+            Mode = GameMode.Menu;
+            CurrentDungeon = null;
+            CurrentDungeonType = null;
+            Exploration.Reset();
         }
         else
         {
