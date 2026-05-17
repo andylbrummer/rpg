@@ -39,6 +39,8 @@
   let showTitleScreen = $state(true);
   let showStats = $state(false);
   let analyticsData = $state<import('$shared/types/game').AnalyticsData | null>(null);
+  let showTelemetryPrompt = $state(false);
+  const TELEMETRY_CONSENT_KEY = 'rpc_telemetry_consent';
   let keyBindings = $state(loadBindings());
 
   const DISCOVERY_KEY = 'rpc_discovered_synergies';
@@ -267,6 +269,15 @@
   $effect(() => {
     if (renderer && gameState) {
       renderer.updateState(gameState);
+    }
+  });
+
+  $effect(() => {
+    if (gameState?.campaignEnded) {
+      const consent = localStorage.getItem(TELEMETRY_CONSENT_KEY);
+      if (consent === null) {
+        showTelemetryPrompt = true;
+      }
     }
   });
 
@@ -588,6 +599,15 @@
               </div>
             {:else}
               <p class="campaign-end-desc">Your journey has come to an end.</p>
+            {/if}
+            {#if showTelemetryPrompt}
+              <div class="telemetry-prompt">
+                <p>Help improve The Reach by sharing anonymized play data?</p>
+                <div class="telemetry-buttons">
+                  <button class="telemetry-yes" onclick={() => { localStorage.setItem(TELEMETRY_CONSENT_KEY, 'true'); showTelemetryPrompt = false; }}>Yes</button>
+                  <button class="telemetry-no" onclick={() => { localStorage.setItem(TELEMETRY_CONSENT_KEY, 'false'); showTelemetryPrompt = false; }}>No</button>
+                </div>
+              </div>
             {/if}
             <button class="campaign-end-btn" onclick={() => handleReset()}>New Game</button>
           </div>
@@ -1035,6 +1055,55 @@
 
   .campaign-end-btn:hover {
     background: rgba(68, 170, 68, 0.35);
+  }
+
+  .telemetry-prompt {
+    margin: 0.75rem 0;
+    padding: 0.75rem;
+    background: rgba(68, 136, 204, 0.1);
+    border: 1px solid #4488cc;
+    border-radius: 0.375rem;
+    text-align: center;
+  }
+
+  .telemetry-prompt p {
+    margin: 0 0 0.5rem;
+    font-size: 0.875rem;
+    color: #88bbee;
+  }
+
+  .telemetry-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .telemetry-yes, .telemetry-no {
+    padding: 0.3rem 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    border: 1px solid;
+  }
+
+  .telemetry-yes {
+    background: rgba(68, 170, 68, 0.15);
+    border-color: #44aa44;
+    color: #88cc88;
+  }
+
+  .telemetry-yes:hover {
+    background: rgba(68, 170, 68, 0.3);
+  }
+
+  .telemetry-no {
+    background: rgba(170, 68, 68, 0.15);
+    border-color: #aa4444;
+    color: #cc8888;
+  }
+
+  .telemetry-no:hover {
+    background: rgba(170, 68, 68, 0.3);
   }
 
   @keyframes fadeIn {
