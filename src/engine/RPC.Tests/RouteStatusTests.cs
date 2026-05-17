@@ -136,7 +136,7 @@ public class RouteStatusTests
 
         RouteStatusSystem.ApplyComplicationTransition(ow, ComplicationType.OpenWar, new GameRandom(42));
 
-        Assert.True(ow.Routes.Any(r => r.Status == RouteStatus.Contested));
+        Assert.Contains(ow.Routes, r => r.Status == RouteStatus.Contested);
     }
 
     [Fact]

@@ -178,6 +178,63 @@ public class ProtocolEnvelopeTests : IDisposable
     }
 
     [Fact]
+    public async Task AckSeq_Only_Sent_To_Originating_Client()
+    {
+        using var ws1 = await ConnectAsync();
+        using var ws2 = await ConnectAsync();
+        await ReceiveAsync(ws1); // hello
+        await ReceiveAsync(ws2); // hello
+
+        await SendAsync(ws1, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await SendAsync(ws2, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await WaitForStateAsync(ws1, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+        await WaitForStateAsync(ws2, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        // Client 1 sends an action with seq = 99
+        await SendAsync(ws1, new { v = 2, type = "action", seq = 99, payload = new { type = "turn_left" } });
+
+        // Drain messages from both
+        JsonElement state1 = default, state2 = default;
+        var drainCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        int pongSeq = 300;
+
+        while (!drainCts.Token.IsCancellationRequested && (state1.ValueKind == JsonValueKind.Undefined || state2.ValueKind == JsonValueKind.Undefined))
+        {
+            if (ws1.State == WebSocketState.Open && state1.ValueKind == JsonValueKind.Undefined)
+            {
+                var msg1 = await ReceiveAsync(ws1);
+                var type1 = msg1.GetProperty("type").GetString();
+                if (type1 == "state") state1 = msg1;
+                else if (type1 == "heartbeat.ping")
+                {
+                    var pingSeq = msg1.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                    await SendAsync(ws1, new { v = 2, type = "heartbeat.pong", seq = pongSeq++, payload = new { pingSeq } });
+                }
+            }
+            if (ws2.State == WebSocketState.Open && state2.ValueKind == JsonValueKind.Undefined)
+            {
+                var msg2 = await ReceiveAsync(ws2);
+                var type2 = msg2.GetProperty("type").GetString();
+                if (type2 == "state") state2 = msg2;
+                else if (type2 == "heartbeat.ping")
+                {
+                    var pingSeq = msg2.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                    await SendAsync(ws2, new { v = 2, type = "heartbeat.pong", seq = pongSeq++, payload = new { pingSeq } });
+                }
+            }
+        }
+
+        Assert.Equal("state", state1.GetProperty("type").GetString());
+        Assert.Equal(99, state1.GetProperty("ackSeq").GetInt32());
+
+        Assert.Equal("state", state2.GetProperty("type").GetString());
+        if (state2.TryGetProperty("ackSeq", out var ackSeqProp))
+        {
+            Assert.True(ackSeqProp.ValueKind == JsonValueKind.Null, "Non-originating client should not receive a non-null ackSeq");
+        }
+    }
+
+    [Fact]
     public async Task Malformed_Json_Returns_Error_Malformed_Payload_Recoverable()
     {
         using var ws = await ConnectAsync();
@@ -388,5 +445,71 @@ public class ProtocolEnvelopeTests : IDisposable
 
         // Position should have changed (moved east from entrance)
         Assert.True(endX != startX || endY != startY, $"Expected position to change from ({startX},{startY}) but got ({endX},{endY})");
+    }
+
+    [Fact]
+    public async Task Concurrent_Actions_From_Two_Clients_Both_Receive_Valid_States()
+    {
+        using var ws1 = await ConnectAsync();
+        using var ws2 = await ConnectAsync();
+        await ReceiveAsync(ws1); // hello
+        await ReceiveAsync(ws2); // hello
+
+        await SendAsync(ws1, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await SendAsync(ws2, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await WaitForStateAsync(ws1, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+        await WaitForStateAsync(ws2, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        // Both clients send actions concurrently to stress the mutation + send paths
+        var t1 = SendAsync(ws1, new { v = 2, type = "action", seq = 2, payload = new { type = "turn_left" } });
+        var t2 = SendAsync(ws2, new { v = 2, type = "action", seq = 2, payload = new { type = "turn_right" } });
+        await Task.WhenAll(t1, t2);
+
+        // Drain messages from both clients; every received envelope must be valid JSON
+        var states1 = new List<JsonElement>();
+        var states2 = new List<JsonElement>();
+        var drainCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        int pongSeq = 300;
+
+        while (!drainCts.Token.IsCancellationRequested && (states1.Count < 2 || states2.Count < 2))
+        {
+            if (ws1.State == WebSocketState.Open)
+            {
+                var msg1 = await ReceiveAsync(ws1);
+                var type1 = msg1.GetProperty("type").GetString();
+                if (type1 == "state") states1.Add(msg1);
+                else if (type1 == "heartbeat.ping")
+                {
+                    var pingSeq = msg1.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                    await SendAsync(ws1, new { v = 2, type = "heartbeat.pong", seq = pongSeq++, payload = new { pingSeq } });
+                }
+            }
+            if (ws2.State == WebSocketState.Open)
+            {
+                var msg2 = await ReceiveAsync(ws2);
+                var type2 = msg2.GetProperty("type").GetString();
+                if (type2 == "state") states2.Add(msg2);
+                else if (type2 == "heartbeat.ping")
+                {
+                    var pingSeq = msg2.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                    await SendAsync(ws2, new { v = 2, type = "heartbeat.pong", seq = pongSeq++, payload = new { pingSeq } });
+                }
+            }
+        }
+
+        Assert.True(states1.Count >= 1, "Client 1 should have received at least one state update");
+        Assert.True(states2.Count >= 1, "Client 2 should have received at least one state update");
+
+        // All received payloads should be parseable objects (not malformed interleaved bytes)
+        foreach (var s in states1)
+        {
+            Assert.Equal("state", s.GetProperty("type").GetString());
+            Assert.True(s.GetProperty("payload").TryGetProperty("mode", out _), "State payload should contain mode");
+        }
+        foreach (var s in states2)
+        {
+            Assert.Equal("state", s.GetProperty("type").GetString());
+            Assert.True(s.GetProperty("payload").TryGetProperty("mode", out _), "State payload should contain mode");
+        }
     }
 }

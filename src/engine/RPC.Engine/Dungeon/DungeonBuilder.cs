@@ -6,11 +6,13 @@ namespace RPC.Engine.Dungeons;
 public class DungeonBuilder
 {
     private readonly List<RoomSegment> _segments = new();
-    private readonly Random _random;
+    private readonly GameRandom _random;
+    private readonly int _seed;
 
-    public DungeonBuilder(int? seed = null)
+    public DungeonBuilder(int seed)
     {
-        _random = seed.HasValue ? new Random(seed.Value) : new Random();
+        _seed = seed;
+        _random = new GameRandom(seed);
     }
 
     public void AddSegment(RoomSegment segment)
@@ -22,6 +24,7 @@ public class DungeonBuilder
     {
         // Simple dungeon generation: place rooms and connect with corridors
         var dungeon = new Dungeon(64, 64, name);
+        dungeon.Seed = _seed;
         var placedRooms = new List<PlacedRoom>();
 
         // Place entrance
@@ -203,7 +206,7 @@ public class DungeonBuilder
                     if (!dungeon.IsValidPosition(pos)) continue;
                     var tile = dungeon.Tiles[pos.X, pos.Y];
                     if (!tile.IsWalkable) continue;
-                    var rng = new GameRandom(_random.Next());
+                    var rng = new GameRandom(_random.NextInt());
                     var enc = encounterTables.RollEncounter(encounterTableId, rng);
                     dungeon.Tiles[pos.X, pos.Y] = tile with { EncounterId = enc.Id };
                 }

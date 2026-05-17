@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { GameState, Tile } from '../types/game';
+import type { GameState, Tile } from '$shared/types/game';
 import { getTheme, type DungeonTheme } from './DungeonTheme';
 import { BloomCluster, BloomParticleSystem } from './BloomEffects';
 import { getCreatureMaterials, type CreatureMaterialSet } from './CreatureMaterials';

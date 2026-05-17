@@ -1,0 +1,354 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://the-reach.io/protocol/v2",
+  "title": "TheReachProtocolV2",
+  "description": "Shared protocol schema for C# server and TS client",
+  "definitions": {
+    "ProtocolEnvelope": {
+      "type": "object",
+      "properties": {
+        "v": { "type": "integer", "const": 2 },
+        "type": { "type": "string" },
+        "seq": { "type": "integer" },
+        "ackSeq": { "type": "integer" },
+        "payload": {}
+      },
+      "required": ["v", "type", "seq"]
+    },
+    "HelloPayload": {
+      "type": "object",
+      "properties": {
+        "protocolVersion": { "type": "integer" },
+        "sessionId": { "type": "string" }
+      },
+      "required": ["protocolVersion", "sessionId"]
+    },
+    "ErrorPayload": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "recoverable": { "type": "boolean" }
+      },
+      "required": ["code", "message", "recoverable"]
+    },
+    "HeartbeatPingPayload": {
+      "type": "object",
+      "properties": {
+        "pingSeq": { "type": "integer" }
+      },
+      "required": ["pingSeq"]
+    },
+    "HeartbeatPongPayload": {
+      "type": "object",
+      "properties": {
+        "pingSeq": { "type": "integer" }
+      },
+      "required": ["pingSeq"]
+    },
+    "CombatAction": {
+      "type": "object",
+      "properties": {
+        "actorId": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["Attack", "Defend", "Wait", "UseAbility", "UseItem", "Flee"]
+        },
+        "targetId": { "type": "string" },
+        "abilityId": { "type": "string" },
+        "itemId": { "type": "string" }
+      },
+      "required": ["actorId", "type"]
+    },
+    "PlayerAction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "move_forward" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "move_back" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "strafe_left" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "strafe_right" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "turn_left" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "turn_right" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "cancel" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "enter_combat" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "enter_dungeon" },
+            "dungeonType": { "type": "string" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "combat_action" },
+            "action": { "$ref": "#/definitions/CombatAction" }
+          },
+          "required": ["type", "action"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "flee_combat" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "rest" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "return_to_town" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "save_game" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "reset_game" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "swap_row" },
+            "slot": { "type": "integer" }
+          },
+          "required": ["type", "slot"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "tavern_recruit" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "mission_accept" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "vendor_purchase" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "travel" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "resolve_travel_encounter" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "set_reputation" },
+            "targetId": { "type": "string" },
+            "value": { "type": "integer" }
+          },
+          "required": ["type", "targetId", "value"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "complete_mission" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "fail_mission" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "abandon_mission" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "dialogue_choice" },
+            "targetId": { "type": "string" },
+            "value": { "type": "integer" }
+          },
+          "required": ["type", "targetId", "value"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "encounter_choice" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "branch_choose" },
+            "targetId": { "type": "string" },
+            "branch": { "type": "string" }
+          },
+          "required": ["type", "targetId", "branch"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "accuse_faction" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "transfer_to_cache" },
+            "slot": { "type": "integer" },
+            "targetId": { "type": "string" },
+            "value": { "type": "integer" }
+          },
+          "required": ["type", "slot", "targetId", "value"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "transfer_from_cache" },
+            "slot": { "type": "integer" },
+            "targetId": { "type": "string" },
+            "value": { "type": "integer" }
+          },
+          "required": ["type", "slot", "targetId", "value"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "downtime_action" },
+            "targetId": { "type": "string" },
+            "downtimeAction": { "type": "string" }
+          },
+          "required": ["type", "targetId", "downtimeAction"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "resurrect_character" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "wildcard_alliance" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "rumor_verify" },
+            "targetId": { "type": "string" },
+            "source": { "type": "string" }
+          },
+          "required": ["type", "targetId", "source"]
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "envelope": { "$ref": "#/definitions/ProtocolEnvelope" },
+    "hello": { "$ref": "#/definitions/HelloPayload" },
+    "error": { "$ref": "#/definitions/ErrorPayload" },
+    "heartbeatPing": { "$ref": "#/definitions/HeartbeatPingPayload" },
+    "heartbeatPong": { "$ref": "#/definitions/HeartbeatPongPayload" },
+    "playerAction": { "$ref": "#/definitions/PlayerAction" },
+    "combatAction": { "$ref": "#/definitions/CombatAction" }
+  }
+}

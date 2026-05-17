@@ -182,4 +182,39 @@ public class SaveSystemTests : IDisposable
         Assert.Equal("branch_a", loadedMember.BranchChoice);
         Assert.Equal("branch_a6", loadedMember.BranchLevel6);
     }
+
+    [Fact]
+    public void SaveSystem_RoundTrip_RestoresPlayableDungeon()
+    {
+        var gs = new GameState(seed: 42);
+        var dungeon = new Dungeon(3, 3, "test");
+        for (int x = 0; x < 3; x++)
+            for (int y = 0; y < 3; y++)
+                dungeon.Tiles[x, y] = new Tile(TileType.Floor);
+        gs.EnterDungeon(dungeon, "test");
+        gs.Player = new Player(new Position(1, 2), Direction.East);
+        gs.ExploredTiles.Add("1,1");
+        gs.StepsSinceEncounter = 5;
+
+        gs.SaveGame(_testSavePath);
+
+        var gs2 = new GameState(seed: 99);
+        var loaded = gs2.LoadGame(_testSavePath, dungeonGenerator: (type, seed) =>
+        {
+            var d = new Dungeon(3, 3, type);
+            for (int x = 0; x < 3; x++)
+                for (int y = 0; y < 3; y++)
+                    d.Tiles[x, y] = new Tile(TileType.Floor);
+            return d;
+        });
+
+        Assert.True(loaded);
+        Assert.NotNull(gs2.CurrentDungeon);
+        Assert.Equal("test", gs2.CurrentDungeonType);
+        Assert.Equal(1, gs2.Player.Position.X);
+        Assert.Equal(2, gs2.Player.Position.Y);
+        Assert.True(gs2.ExploredTiles.Contains("1,1"));
+        Assert.Equal(5, gs2.StepsSinceEncounter);
+        Assert.True(gs2.TryMoveForward());
+    }
 }

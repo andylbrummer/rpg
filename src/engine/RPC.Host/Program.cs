@@ -35,9 +35,9 @@ class Program
 
         window.RegisterWebMessageReceivedHandler((sender, message) =>
         {
-            if (message == "getServerPort")
+            if (message == "getServerPort" && sender is PhotinoWindow photinoWindow)
             {
-                ((PhotinoWindow)sender).SendWebMessage($"serverPort:{server.Port}");
+                photinoWindow.SendWebMessage($"serverPort:{server.Port}");
             }
         });
 

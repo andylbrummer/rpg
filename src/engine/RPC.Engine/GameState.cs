@@ -1,75 +1,48 @@
 using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
+using RPC.Engine.Exploration;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Overworld;
 using RPC.Engine.Party;
-using RPC.Engine.Services;
 using RPC.Engine.Town;
 using RPC.Engine.Travel;
 
 namespace RPC.Engine;
 
-public record ActionLogEntry(int Turn, string Category, string Type, Dictionary<string, string> Payload);
-public record ParleyOffer(string EncounterId, string FactionId, string[] Options);
-public record ResurrectionResult(
-    bool Success,
-    string? Error = null,
-    int GoldCost = 0,
-    int TitheTokenCost = 0,
-    int StatLossCount = 0,
-    bool BranchLocked = false,
-    CharacterState? Character = null);
-
-public class JournalState
-{
-    public List<string> DiscoveryOrder { get; } = new();
-    public HashSet<string> Discovered { get; } = new();
-
-    public void Discover(string id)
-    {
-        if (Discovered.Add(id))
-            DiscoveryOrder.Add(id);
-    }
-
-    public bool IsDiscovered(string id) => Discovered.Contains(id);
-}
-
-public enum FactionState
-{
-    Investigating,
-    Preparing,
-    Executing
-}
-
-public enum WildCardAllianceStatus
-{
-    None,
-    Offered,
-    Accepted,
-    Refused,
-    Ignored
-}
-
-public class WorldState
-{
-    public Dictionary<string, string> Settlements { get; set; } = new();
-    public List<string> AccessibleDungeons { get; set; } = new();
-    public Dictionary<string, List<string>> FactionTerritory { get; set; } = new();
-
-    public void Reset()
-    {
-        Settlements.Clear();
-        AccessibleDungeons.Clear();
-        FactionTerritory.Clear();
-    }
-}
-
 public class GameState
 {
-    public Player Player { get; set; }
-    public Dungeon? CurrentDungeon { get; set; }
+    // Feature state aggregates
+    public ExplorationState Exploration { get; } = new();
+    public CampaignState Campaign { get; } = new();
+
+    // Exploration forwarding properties
+    public Player Player { get => Exploration.Player; set => Exploration.Player = value; }
+    public Dungeon? CurrentDungeon { get => Exploration.CurrentDungeon; set => Exploration.CurrentDungeon = value; }
+    public string? CurrentDungeonType { get => Exploration.CurrentDungeonType; set => Exploration.CurrentDungeonType = value; }
+    public BoundedTileSet ExploredTiles => Exploration.ExploredTiles;
+    public int StepsSinceEncounter { get => Exploration.StepsSinceEncounter; set => Exploration.StepsSinceEncounter = value; }
+    internal string? CurrentEncounterId { get => Exploration.CurrentEncounterId; set => Exploration.CurrentEncounterId = value; }
+    internal Position? PendingTaggedEncounterTile { get => Exploration.PendingTaggedEncounterTile; set => Exploration.PendingTaggedEncounterTile = value; }
+
+    // Campaign forwarding properties
+    public ReputationState Reputation => Campaign.Reputation;
+    public EvidenceState Evidence => Campaign.Evidence;
+    public HeatState Heat => Campaign.Heat;
+    public JournalState Journal => Campaign.Journal;
+    public WorldState WorldState { get => Campaign.WorldState; set => Campaign.WorldState = value; }
+    public CampaignConfig? CampaignConfig { get => Campaign.CampaignConfig; set => Campaign.CampaignConfig = value; }
+    public SchemeDef? CurrentScheme { get => Campaign.CurrentScheme; set => Campaign.CurrentScheme = value; }
+    public ComplicationDef? CurrentComplication { get => Campaign.CurrentComplication; set => Campaign.CurrentComplication = value; }
+    public bool CampaignEnded { get => Campaign.CampaignEnded; set => Campaign.CampaignEnded = value; }
+    public string? AccusedFaction { get => Campaign.AccusedFaction; set => Campaign.AccusedFaction = value; }
+    public bool MastermindAdvantage { get => Campaign.MastermindAdvantage; set => Campaign.MastermindAdvantage = value; }
+    public bool FinalDungeonUnlocked { get => Campaign.FinalDungeonUnlocked; set => Campaign.FinalDungeonUnlocked = value; }
+    public WildCardAllianceStatus WildCardAllianceStatus { get => Campaign.WildCardAllianceStatus; set => Campaign.WildCardAllianceStatus = value; }
+    public int WildCardAllianceTurn { get => Campaign.WildCardAllianceTurn; set => Campaign.WildCardAllianceTurn = value; }
+
+    // Cross-cutting state (remains on GameState as coordinator)
     public GameMode Mode { get; set; } = GameMode.Exploration;
     public DateTime LastUpdate { get; set; }
     public PartyState Party { get; set; } = new();
@@ -79,30 +52,16 @@ public class GameState
     public CombatResult? LastCombatResult { get; internal set; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
-    public ReputationState Reputation { get; } = new();
-    public EvidenceState Evidence { get; } = new();
-    public JournalState Journal { get; } = new();
-    public HeatState Heat { get; } = new();
     public int PartyGold { get; set; } = 500;
     public int TitheTokens { get; set; } = 0;
     public List<string> PartyInventory { get; set; } = new();
-    public bool CampaignEnded { get; set; } = false;
-    public CampaignConfig? CampaignConfig { get; set; }
-    public SchemeDef? CurrentScheme { get; set; }
-    public ComplicationDef? CurrentComplication { get; set; }
-    public WorldState WorldState { get; set; } = new();
     public int CurrentAct => Overworld.Turns <= 15 ? 1 : Overworld.Turns <= 25 ? 2 : 3;
-    public string? AccusedFaction { get; internal set; }
-    public bool MastermindAdvantage { get; internal set; }
-    public bool FinalDungeonUnlocked { get; internal set; }
-    public string? SettingsHash { get; set; }
     public TravelEncounterState? CurrentTravelEncounter { get; internal set; }
     public int RolledTravelEncounterCount { get; internal set; }
     public int ResolvedTravelEncounterCount { get; internal set; }
     public ParleyOffer? CurrentParley { get; internal set; }
     public IReadOnlySet<Guid> DowntimeCompleted => _downtimeCompleted;
-    public WildCardAllianceStatus WildCardAllianceStatus { get; set; } = WildCardAllianceStatus.None;
-    public int WildCardAllianceTurn { get; set; } = 0;
+    public string? SettingsHash { get; set; }
 
     public void ClearCombatResult()
     {
@@ -113,10 +72,7 @@ public class GameState
     private readonly EncounterTableRegistry? _encounterTables;
     private readonly ClassRegistry? _classRegistry;
     private readonly int _seed;
-    internal int _stepsSinceEncounter = 0;
     private int _actionLogTurn = 0;
-    internal string? _currentEncounterId;
-    internal Position? _pendingTaggedEncounterTile;
     internal readonly HashSet<Guid> _downtimeCompleted = new();
 
     private readonly CombatService _combatService;
@@ -128,13 +84,11 @@ public class GameState
 
     public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null)
     {
-        Player = new Player(new Position(32, 32), Direction.North);
         LastUpdate = DateTime.UtcNow;
         _seed = seed ?? DateTime.UtcNow.GetHashCode();
         _encounterRng = new GameRandom(_seed);
         _encounterTables = encounterTables;
         _classRegistry = classRegistry;
-        ExploredTiles = new BoundedTileSet(_exploredTilesSet, _exploredTilesOrder, MaxExploredTiles);
         _townService = new TownService(factionContent, rumors);
         InitializeDefaultParty();
         InitializeTown();
@@ -199,14 +153,6 @@ public class GameState
             Town.CurrentTownId = "the_reach";
         }
     }
-
-    private readonly HashSet<string> _exploredTilesSet = new();
-    private readonly Queue<string> _exploredTilesOrder = new();
-    private const int MaxExploredTiles = 4096;
-
-    public BoundedTileSet ExploredTiles { get; private set; } = null!;
-
-    public string? CurrentDungeonType { get; internal set; }
 
     public bool HasPendingBranchChoices => Party.Members.Any(m => m.Id != Guid.Empty && m.AwaitingBranchChoice);
 
@@ -294,16 +240,13 @@ public class GameState
     public void Reset()
     {
         Mode = GameMode.Menu;
-        CurrentDungeon = null;
         Combat = null;
         LastCombatResult = null;
-        _stepsSinceEncounter = 0;
         Player = new Player(new Position(32, 32), Direction.North);
-        ExploredTiles.Clear();
+        Exploration.Reset();
         Town = new TownState();
         Overworld = new OverworldState();
-        WorldState.Reset();
-        CampaignEnded = false;
+        Campaign.Reset();
         PartyGold = 500;
         TitheTokens = 0;
         PartyInventory.Clear();
@@ -312,14 +255,6 @@ public class GameState
         InitializeTown();
         ActionLog.Clear();
         _actionLogTurn = 0;
-        _currentEncounterId = null;
-        _pendingTaggedEncounterTile = null;
-        Reputation.Clear();
-        Evidence.Clear();
-        AccusedFaction = null;
-        MastermindAdvantage = false;
-        FinalDungeonUnlocked = false;
-        SettingsHash = null;
         CurrentTravelEncounter = null;
         RolledTravelEncounterCount = 0;
         ResolvedTravelEncounterCount = 0;
@@ -328,16 +263,16 @@ public class GameState
 
     internal void ClearTaggedEncounterTile(bool resolved)
     {
-        if (_pendingTaggedEncounterTile.HasValue && CurrentDungeon != null && resolved)
+        if (PendingTaggedEncounterTile.HasValue && CurrentDungeon != null && resolved)
         {
-            var pos = _pendingTaggedEncounterTile.Value;
+            var pos = PendingTaggedEncounterTile.Value;
             if (CurrentDungeon.IsValidPosition(pos))
             {
                 var tile = CurrentDungeon.Tiles[pos.X, pos.Y];
                 CurrentDungeon.Tiles[pos.X, pos.Y] = tile with { EncounterId = null };
             }
         }
-        _pendingTaggedEncounterTile = null;
+        PendingTaggedEncounterTile = null;
     }
 
     internal void EmitActionLog(string category, string type, Dictionary<string, string> payload)
@@ -390,7 +325,7 @@ public class GameState
         FinalDungeonUnlocked = value;
     }
 
-    public bool LoadGame(string? path = null) => Save.SaveSystem.Load(this, path, ContentHash);
+    public bool LoadGame(string? path = null, Func<string, int?, Dungeon>? dungeonGenerator = null) => Save.SaveSystem.Load(this, path, ContentHash, dungeonGenerator);
 
     public bool ChooseBranch(Guid characterId, string branch) => _campaignService.ChooseBranch(this, characterId, branch);
 
@@ -413,53 +348,4 @@ public class GameState
     public bool PurchaseVendorItem(string itemId) => _townService.PurchaseVendorItem(this, itemId);
 
     public bool VerifyRumor(string rumorId, RumorVerificationSource source) => _townService.VerifyRumor(this, rumorId, source);
-}
-
-public enum GameMode
-{
-    Menu,
-    Exploration,
-    Combat,
-    Dialog
-}
-
-public class BoundedTileSet
-{
-    private readonly HashSet<string> _set;
-    private readonly Queue<string> _order;
-    private readonly int _max;
-
-    public BoundedTileSet(HashSet<string> set, Queue<string> order, int max)
-    {
-        _set = set;
-        _order = order;
-        _max = max;
-    }
-
-    public int Count => _set.Count;
-
-    public bool Add(string key)
-    {
-        if (_set.Contains(key)) return false;
-        if (_set.Count >= _max)
-        {
-            var oldest = _order.Dequeue();
-            _set.Remove(oldest);
-        }
-        _set.Add(key);
-        _order.Enqueue(key);
-        return true;
-    }
-
-    public void Clear()
-    {
-        _set.Clear();
-        _order.Clear();
-    }
-
-    public bool Contains(string key) => _set.Contains(key);
-
-    public IEnumerable<string> AsEnumerable() => _set;
-
-    public IEnumerator<string> GetEnumerator() => _set.GetEnumerator();
 }

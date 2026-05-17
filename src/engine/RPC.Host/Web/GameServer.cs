@@ -4,6 +4,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using RPC.Content;
 using RPC.Engine;
 using RPC.Engine.Campaign;
@@ -14,16 +15,15 @@ using RPC.Engine.Content;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Inventory;
 using RPC.Engine.Models.Dungeons;
-using RPC.Engine.Services;
+using RPC.Engine.Protocol;
 using RPC.Engine.Town;
-using System.IO;
 
 namespace RPC.Host.Web;
 
 public class GameServer
 {
     private readonly HttpListener _listener;
-    private readonly List<ClientConnection> _clients = new();
+    private readonly ClientRegistry _registry = new();
     private readonly GameState _gameState;
     private readonly CancellationTokenSource _cts = new();
     private readonly JsonSerializerOptions _jsonOptions;
@@ -35,9 +35,12 @@ public class GameServer
     private readonly FileSystemWatcher? _segmentWatcher;
     private readonly GameCommandHandler _commandHandler;
     private readonly StatePresenter _statePresenter;
+    private readonly StateBroadcaster _broadcaster;
+    private readonly IDungeonGenerator _dungeonGenerator;
 
     private readonly IContentCatalog _catalog;
     private readonly Dictionary<string, DungeonTemplate> _dungeonTemplates;
+    private readonly SemaphoreSlim _gameStateLock = new(1, 1);
 
     public GameServer(int port = 8080, bool isDev = false)
     {
@@ -60,7 +63,6 @@ public class GameServer
         var rumorRepo = new RumorRepository(_catalog);
         _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry, synergies: _synergies, factionContent: factionRepo, rumors: rumorRepo);
         _gameState.ContentHash = contentHash;
-        _gameState.LoadGame();
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -68,8 +70,11 @@ public class GameServer
         };
         _dungeonTemplates = LoadDungeonTemplates(_catalog);
         _segments = LoadSegments(_catalog);
-        _commandHandler = new GameCommandHandler(_gameState, _encounterTables, _segments, _dungeonTemplates);
+        _dungeonGenerator = new DungeonGenerator(_segments, _dungeonTemplates, _encounterTables);
+        _commandHandler = new GameCommandHandler(_gameState, _dungeonGenerator);
         _statePresenter = new StatePresenter(_classRegistry, _itemRegistry);
+        _broadcaster = new StateBroadcaster(_registry, _statePresenter, _gameState, _jsonOptions, _cts);
+        _gameState.LoadGame(dungeonGenerator: (string type, int? seed) => _dungeonGenerator.Generate(type, seed));
         if (isDev)
         {
             _segmentWatcher = StartSegmentWatcher();
@@ -351,15 +356,17 @@ public class GameServer
         var wsContext = await context.AcceptWebSocketAsync(null);
         var socket = wsContext.WebSocket;
         var client = new ClientConnection(socket);
-
-        lock (_clients)
-        {
-            _clients.Add(client);
-        }
+        _registry.Add(client);
 
         try
         {
-            await SendHello(client);
+            await _broadcaster.SendEnvelope(client, new ProtocolEnvelope
+        {
+            V = 2,
+            Type = "hello",
+            Seq = client.NextServerSeq(),
+            Payload = new HelloPayload { ProtocolVersion = 2, SessionId = client.SessionId }
+        });
             _ = Task.Run(() => RunHeartbeatLoop(client));
 
             var buffer = new byte[4096];
@@ -388,10 +395,7 @@ public class GameServer
         finally
         {
             client.Dispose();
-            lock (_clients)
-            {
-                _clients.Remove(client);
-            }
+            _registry.Remove(client);
         }
     }
 
@@ -434,41 +438,27 @@ public class GameServer
         catch (OperationCanceledException) { }
     }
 
-    private async Task SendHello(ClientConnection client)
-    {
-        var envelope = new ProtocolEnvelope
-        {
-            V = 2,
-            Type = "hello",
-            Seq = client.NextServerSeq(),
-            Payload = new HelloPayload { ProtocolVersion = 2, SessionId = client.SessionId }
-        };
-        await SendEnvelope(client.Socket, envelope);
-    }
-
     private async Task SendPing(ClientConnection client, int pingSeq)
     {
-        var envelope = new ProtocolEnvelope
+        await _broadcaster.SendEnvelope(client, new ProtocolEnvelope
         {
             V = 2,
             Type = "heartbeat.ping",
             Seq = client.NextServerSeq(),
             Payload = new HeartbeatPingPayload { PingSeq = pingSeq }
-        };
-        await SendEnvelope(client.Socket, envelope);
+        });
     }
 
     private async Task SendError(ClientConnection client, string code, string message, bool recoverable, int? ackSeq = null)
     {
-        var envelope = new ProtocolEnvelope
+        await _broadcaster.SendEnvelope(client, new ProtocolEnvelope
         {
             V = 2,
             Type = "error",
             Seq = client.NextServerSeq(),
             AckSeq = ackSeq,
             Payload = new ErrorPayload { Code = code, Message = message, Recoverable = recoverable }
-        };
-        await SendEnvelope(client.Socket, envelope);
+        });
     }
 
     private async Task HandleMessage(ClientConnection client, string message)
@@ -493,7 +483,7 @@ public class GameServer
         if (envelope.Type == "ready")
         {
             client.IsReady = true;
-            await SendState(client);
+            await _broadcaster.SendState(client);
             return;
         }
 
@@ -544,16 +534,35 @@ public class GameServer
                 return;
             }
 
-            var result = _commandHandler.Execute(cmd);
-
-            if (result.StateChanged)
+            object? snapshot = null;
+            bool stateChanged = false;
+            bool clearCombatResult = false;
+            await _gameStateLock.WaitAsync(_cts.Token);
+            try
             {
-                await BroadcastState(envelope.Seq);
+                var result = _commandHandler.Execute(cmd);
+                stateChanged = result.StateChanged;
+                clearCombatResult = result.ClearCombatResult;
+
+                if (stateChanged)
+                {
+                    snapshot = _statePresenter.CreateStateMessage(_gameState);
+                }
+
+                if (clearCombatResult)
+                {
+                    _gameState.ClearCombatResult();
+                }
+            }
+            finally
+            {
+                _gameStateLock.Release();
             }
 
-            if (result.ClearCombatResult)
+            if (stateChanged && snapshot != null)
             {
-                _gameState.ClearCombatResult();
+                await _broadcaster.SendState(client, envelope.Seq, snapshot);
+                await _broadcaster.BroadcastState(excludeClient: client, payload: snapshot);
             }
         }
         catch (Exception ex)
@@ -628,95 +637,9 @@ public class GameServer
             var reloaded = LoadSegments(_catalog);
             _segments.Clear();
             _segments.AddRange(reloaded);
-            _ = BroadcastContentReload();
+            _ = _broadcaster.BroadcastContentReload();
         }
         catch { }
-    }
-
-    private async Task BroadcastContentReload()
-    {
-        List<ClientConnection> clients;
-        lock (_clients)
-        {
-            clients = _clients.ToList();
-        }
-
-        foreach (var client in clients)
-        {
-            try
-            {
-                if (client.Socket.State == WebSocketState.Open)
-                {
-                    var envelope = new ProtocolEnvelope
-                    {
-                        V = 2,
-                        Type = "content.reload",
-                        Seq = client.NextServerSeq(),
-                        Payload = new { category = "segments" }
-                    };
-                    await SendEnvelope(client.Socket, envelope);
-                }
-            }
-            catch { }
-        }
-    }
-
-    private async Task SendState(ClientConnection client)
-    {
-        var state = _statePresenter.CreateStateMessage(_gameState);
-        var envelope = new ProtocolEnvelope
-        {
-            V = 2,
-            Type = "state",
-            Seq = client.NextServerSeq(),
-            Payload = state
-        };
-        await SendEnvelope(client.Socket, envelope);
-    }
-
-    private async Task BroadcastState(int? ackSeq = null)
-    {
-        var state = _statePresenter.CreateStateMessage(_gameState);
-        List<ClientConnection> clients;
-        lock (_clients)
-        {
-            clients = _clients.ToList();
-        }
-
-        foreach (var client in clients)
-        {
-            try
-            {
-                if (client.Socket.State == WebSocketState.Open && client.IsReady)
-                {
-                    var envelope = new ProtocolEnvelope
-                    {
-                        V = 2,
-                        Type = "state",
-                        Seq = client.NextServerSeq(),
-                        AckSeq = ackSeq,
-                        Payload = state
-                    };
-                    await SendEnvelope(client.Socket, envelope);
-                }
-            }
-            catch { }
-        }
-    }
-
-    private async Task SendEnvelope(WebSocket socket, ProtocolEnvelope envelope)
-    {
-        var json = JsonSerializer.Serialize(envelope, _jsonOptions);
-        var bytes = Encoding.UTF8.GetBytes(json);
-
-        if (socket.State == WebSocketState.Open)
-        {
-            await socket.SendAsync(
-                new ArraySegment<byte>(bytes),
-                WebSocketMessageType.Text,
-                true,
-                _cts.Token);
-        }
     }
 
     private async Task HandleStatus(HttpListenerContext context)
@@ -777,58 +700,5 @@ public class GameServer
         context.Response.ContentLength64 = bytes.Length;
         await context.Response.OutputStream.WriteAsync(bytes);
         context.Response.Close();
-    }
-}
-
-public class ProtocolEnvelope
-{
-    public int V { get; set; }
-    public string Type { get; set; } = "";
-    public int Seq { get; set; }
-    public int? AckSeq { get; set; }
-    public object? Payload { get; set; }
-}
-
-public class HelloPayload
-{
-    public int ProtocolVersion { get; set; }
-    public string SessionId { get; set; } = "";
-}
-
-public class ErrorPayload
-{
-    public string Code { get; set; } = "";
-    public string Message { get; set; } = "";
-    public bool Recoverable { get; set; }
-}
-
-public class HeartbeatPingPayload
-{
-    public int PingSeq { get; set; }
-}
-
-public class ClientConnection : IDisposable
-{
-    public WebSocket Socket { get; }
-    public string SessionId { get; }
-    public bool IsReady { get; set; }
-    private int _serverSeq = -1;
-    private int _pingSeq = -1;
-    public int LastPingSeq { get; set; } = -1;
-    public DateTime LastPingTime { get; set; } = DateTime.MinValue;
-    public int LastPongSeq { get; set; } = -1;
-
-    public ClientConnection(WebSocket socket)
-    {
-        Socket = socket;
-        SessionId = Guid.NewGuid().ToString("N");
-    }
-
-    public int NextServerSeq() => Interlocked.Increment(ref _serverSeq);
-    public int NextPingSeq() => Interlocked.Increment(ref _pingSeq);
-
-    public void Dispose()
-    {
-        Socket.Dispose();
     }
 }

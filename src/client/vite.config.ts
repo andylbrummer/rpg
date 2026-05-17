@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
+import path from 'path'
 
 // Plugin to suppress Vite client script errors when HMR is unreliable
 const suppressViteClientErrors = () => ({
@@ -18,6 +19,15 @@ const suppressViteClientErrors = () => ({
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [svelte(), suppressViteClientErrors()],
+  resolve: {
+    alias: {
+      $features: path.resolve(__dirname, './src/features'),
+      $shared: path.resolve(__dirname, './src/shared'),
+      $renderer: path.resolve(__dirname, './src/renderer'),
+      $config: path.resolve(__dirname, './src/config'),
+      $app: path.resolve(__dirname, './src/app'),
+    }
+  },
   server: {
     hmr: false,
     host: true,

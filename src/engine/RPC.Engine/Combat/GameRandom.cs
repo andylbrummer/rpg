@@ -12,4 +12,6 @@ public class GameRandom
     public int Roll(int min, int max) => _rng.Next(min, max + 1);
 
     public int Next(int max) => _rng.Next(max);
+
+    public int NextInt() => _rng.Next();
 }

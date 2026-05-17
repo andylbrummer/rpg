@@ -55,6 +55,7 @@ public class Dungeon
     public string Name { get; }
     public string? WanderingTableId { get; set; }
     public string? EncounterTableId { get; set; }
+    public int Seed { get; set; }
     public List<RoomInfo> Rooms { get; } = new();
 
     public Dungeon(int width, int height, string name)

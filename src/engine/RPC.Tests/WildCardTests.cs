@@ -157,7 +157,7 @@ public class WildCardTests
         Assert.Equal(GameMode.Combat, gs.Mode);
         Assert.Contains(gs.CombatLog, l => l.Message.Contains("summoned", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(gs.ActionLog, e => e.Type == "wildcard_ally_summoned");
-        Assert.True(gs.Combat!.Combatants.Any(c => c.IsSummoned));
+        Assert.Contains(gs.Combat!.Combatants, c => c.IsSummoned);
     }
 
     [Fact]
