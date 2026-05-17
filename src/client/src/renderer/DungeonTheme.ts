@@ -117,6 +117,57 @@ const ossuaryTheme: DungeonTheme = {
   glowIntensity: 2,
 };
 
+const cryptTheme: DungeonTheme = {
+  wallColor: '#3a2a4a',
+  floorColor: '#2a1a3a',
+  doorColor: '#4a3a5a',
+  accentColor: '#aa66cc',
+  stairsUp: 0xaa66cc,
+  stairsDown: 0x4a3a5a,
+  secretDoor: 0x5a4a6a,
+  torchColor: 0x9966ff,
+  ambientColor: 0x2a1a3a,
+  fillColor: 0x3a2a4a,
+  rimColor: 0xaa66cc,
+  fogColor: 0x0a0514,
+  backgroundColor: 0x0a0514,
+  glowIntensity: 2,
+};
+
+const sewerTheme: DungeonTheme = {
+  wallColor: '#3a4030',
+  floorColor: '#2a3020',
+  doorColor: '#4a5040',
+  accentColor: '#669944',
+  stairsUp: 0x669944,
+  stairsDown: 0x4a5040,
+  secretDoor: 0x5a6050,
+  torchColor: 0x88bb44,
+  ambientColor: 0x2a3020,
+  fillColor: 0x3a4030,
+  rimColor: 0x669944,
+  fogColor: 0x0a1008,
+  backgroundColor: 0x0a1008,
+  glowIntensity: 2,
+};
+
+const archiveTheme: DungeonTheme = {
+  wallColor: '#5a5040',
+  floorColor: '#3a3028',
+  doorColor: '#7a6a50',
+  accentColor: '#c44444',
+  stairsUp: 0xc4a84a,
+  stairsDown: 0x5a5040,
+  secretDoor: 0x8a7a60,
+  torchColor: 0xff4444,
+  ambientColor: 0x3a3028,
+  fillColor: 0x5a5040,
+  rimColor: 0xc4a84a,
+  fogColor: 0x0a0804,
+  backgroundColor: 0x0a0804,
+  glowIntensity: 3,
+};
+
 export function getTheme(dungeonType: string | undefined): DungeonTheme {
   const normalized = dungeonType?.toLowerCase().replace(/_/g, '-');
   switch (normalized) {
@@ -130,6 +181,12 @@ export function getTheme(dungeonType: string | undefined): DungeonTheme {
       return settlementTheme;
     case 'ossuary':
       return ossuaryTheme;
+    case 'crypt':
+      return cryptTheme;
+    case 'sewers':
+      return sewerTheme;
+    case 'archive-of-contradictions':
+      return archiveTheme;
     default:
       return defaultTheme;
   }

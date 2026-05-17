@@ -744,7 +744,51 @@ export class DungeonRenderer {
     this.ambientParticleSystem?.update(time);
     this.updateUnaccountedAnimations(time);
     this.updateUnaccountedShaderTime(time);
+    this.updateAnimatedLighting(time);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private updateAnimatedLighting(time: number): void {
+    const type = this.currentDungeonType?.toLowerCase().replace(/_/g, '-');
+    const baseIntensity = this.currentTheme.glowIntensity;
+
+    // Universal subtle torch flicker
+    const flicker = 1 + Math.sin(time * 10) * 0.03 + Math.sin(time * 23) * 0.02;
+    this.torchLight.intensity = baseIntensity * flicker;
+
+    switch (type) {
+      case 'broken_engine': {
+        // Emergency red strobe
+        const strobe = Math.sin(time * 3) > 0.7 ? 1.5 : 1.0;
+        this.torchLight.color.setHex(0xffaa44);
+        this.torchLight.intensity = baseIntensity * flicker * strobe;
+        break;
+      }
+      case 'bloom-site': {
+        // Bioluminescent pulse
+        const pulse = 1 + Math.sin(time * 2) * 0.3;
+        this.torchLight.color.setHex(0x88ff44);
+        this.torchLight.intensity = baseIntensity * pulse;
+        break;
+      }
+      case 'sealed-vault': {
+        // Ward hum — gentle blue oscillation
+        const hum = 1 + Math.sin(time * 1.5) * 0.15;
+        this.torchLight.color.setHex(0x44aaff);
+        this.torchLight.intensity = baseIntensity * hum;
+        break;
+      }
+      case 'crypt': {
+        // Ghostly whisper — slow purple drift
+        const drift = 1 + Math.sin(time * 0.8) * 0.2;
+        this.torchLight.color.setHex(0x9966ff);
+        this.torchLight.intensity = baseIntensity * drift;
+        break;
+      }
+      default:
+        // Standard torch flicker already applied
+        break;
+    }
   }
 
   dispose(): void {
