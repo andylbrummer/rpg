@@ -25,10 +25,21 @@
   const availableDungeons = $derived(
     gameState?.overworld?.nodes?.filter(n => n.type === 'dungeon_entrance') ?? []
   );
+
+  const hasPendingBranches = $derived(
+    (gameState?.party ?? []).some(m => m.awaitingBranchChoice)
+  );
 </script>
 
 <div class="actions-panel">
   <h2>Actions</h2>
+
+  {#if hasPendingBranches}
+    <div class="pending-branches-banner">
+      <span class="pending-branches-icon">⚠</span>
+      <span class="pending-branches-text">Party members have pending branch choices. Resolve them in the Party tab before entering a dungeon.</span>
+    </div>
+  {/if}
 
   <div class="dungeon-list">
     {#each availableDungeons as dungeon}
@@ -133,6 +144,27 @@
     color: #666;
     font-size: clamp(0.7rem, 1.5vw, 0.85rem);
     font-style: italic;
+  }
+
+  .pending-branches-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    background: rgba(212, 168, 75, 0.1);
+    border: 0.0625em solid rgba(212, 168, 75, 0.4);
+    border-radius: 0.375rem;
+    color: #d4a84b;
+    font-size: clamp(0.65rem, 1.3vw, 0.8rem);
+  }
+
+  .pending-branches-icon {
+    flex-shrink: 0;
+    font-size: 1rem;
+  }
+
+  .pending-branches-text {
+    line-height: 1.4;
   }
 
   .utility-actions {

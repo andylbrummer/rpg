@@ -38,7 +38,7 @@
   const partyMembers = $derived(gameState?.party ?? []);
 
   const pendingBranchMembers = $derived(
-    partyMembers.filter(m => m.awaitingBranchChoice && (m.availableBranches?.length ?? 0) > 0)
+    partyMembers.filter(m => m.awaitingBranchChoice)
   );
 
   function formatBranchName(branchId: string): string {
