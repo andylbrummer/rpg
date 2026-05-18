@@ -14,7 +14,7 @@ export interface SynergyDef {
   hidden?: boolean;
 }
 
-const modules = import.meta.glob<{ default: SynergyDef }>('../../../../content/synergies/*.json', { eager: true });
+const modules = import.meta.glob<{ default: SynergyDef }>('../../../../../content/synergies/*.json', { eager: true });
 
 export const ALL_SYNERGIES: SynergyDef[] = Object.values(modules).map(m => m.default);
 export const VISIBLE_SYNERGIES = ALL_SYNERGIES.filter(s => !s.hidden);

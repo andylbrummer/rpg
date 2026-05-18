@@ -24,6 +24,9 @@ public class EventScheduler
 
         var turn = state.Overworld.Turns;
 
+        // Check faction state transitions and announce them
+        CheckFactionTransitions(state, config);
+
         // Check scheme events
         if (scheme?.Events != null)
         {
@@ -55,6 +58,48 @@ public class EventScheduler
                 }
             }
         }
+    }
+
+    private void CheckFactionTransitions(GameState state, CampaignConfig config)
+    {
+        foreach (var faction in CampaignConfig.FactionPool)
+        {
+            var factionState = _campaignService.GetFactionState(state, faction);
+            var stateKey = $"{faction}:{factionState}";
+
+            if (!state.Campaign.AnnouncedFactionStates.Contains(stateKey))
+            {
+                state.Campaign.AnnouncedFactionStates.Add(stateKey);
+
+                if (factionState == FactionState.Preparing)
+                {
+                    state.EmitActionLog("faction", "state_preparing", new Dictionary<string, string>
+                    {
+                        { "factionId", faction },
+                        { "role", GetFactionRole(faction, config) },
+                        { "turn", state.Overworld.Turns.ToString() }
+                    });
+                }
+                else if (factionState == FactionState.Executing)
+                {
+                    state.EmitActionLog("faction", "state_executing", new Dictionary<string, string>
+                    {
+                        { "factionId", faction },
+                        { "role", GetFactionRole(faction, config) },
+                        { "turn", state.Overworld.Turns.ToString() }
+                    });
+                }
+            }
+        }
+    }
+
+    private static string GetFactionRole(string factionId, CampaignConfig config)
+    {
+        if (factionId == config.Mastermind) return "mastermind";
+        if (factionId == config.Threat) return "threat";
+        if (factionId == config.Patron) return "patron";
+        if (factionId == config.WildCard) return "wildcard";
+        return "neutral";
     }
 
     private bool ShouldFireEvent(CampaignEventDef evt, GameState state)

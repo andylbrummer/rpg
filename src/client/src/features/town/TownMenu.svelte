@@ -19,17 +19,8 @@
     onTravel: (targetId: string) => void;
   }
 
-  let {
-    gameState,
-    onEnterDungeon,
-    onSave,
-    onReset,
-    onSwapRow,
-    onTavernRecruit,
-    onMissionAccept,
-    onVendorPurchase,
-    onTravel
-  }: Props = $props();
+  let props: Props = $props();
+  let gameState = $derived(props.gameState);
 
   let sheetMember = $state<PartyMember | null>(null);
   let showMap = $state(false);
@@ -104,24 +95,24 @@
   <div class="town-body">
     {#if currentTab === 'party'}
       <div class="tab-panel">
-        <PartyPanel gameState={gameState} {onSwapRow} onViewSheet={(m) => sheetMember = m} />
+        <PartyPanel gameState={gameState} onSwapRow={props.onSwapRow} onViewSheet={(m) => sheetMember = m} />
         <div class="town-services">
-          <TownServicesPanel gameState={gameState} {onTavernRecruit} {onMissionAccept} {onVendorPurchase} />
+          <TownServicesPanel gameState={gameState} onTavernRecruit={props.onTavernRecruit} onMissionAccept={props.onMissionAccept} onVendorPurchase={props.onVendorPurchase} />
         </div>
       </div>
 
       <TownActionsPanel
-        {onEnterDungeon}
-        {onSave}
-        {onReset}
+        onEnterDungeon={props.onEnterDungeon}
+        onSave={props.onSave}
+        onReset={props.onReset}
         onShowMap={() => showMap = true}
       />
     {:else if currentTab === 'dungeons'}
       <div class="tab-panel">
         <TownActionsPanel
-          {onEnterDungeon}
-          {onSave}
-          {onReset}
+          onEnterDungeon={props.onEnterDungeon}
+          onSave={props.onSave}
+          onReset={props.onReset}
           onShowMap={() => showMap = true}
         />
       </div>
@@ -180,7 +171,7 @@
     <CharacterSheet
       member={sheetMember}
       onClose={() => sheetMember = null}
-      onSwapRow={onSwapRow}
+      onSwapRow={props.onSwapRow}
       onTransferToCache={(itemId, count) => sendAction({ type: 'transfer_to_cache', slot: sheetMember!.slot, targetId: itemId, value: count })}
       onTransferFromCache={(itemId, count) => sendAction({ type: 'transfer_from_cache', slot: sheetMember!.slot, targetId: itemId, value: count })}
       expeditionCache={gameState?.expeditionCache ?? []}
@@ -190,7 +181,7 @@
   {#if showMap && gameState?.overworld}
     <OverworldMap
       overworld={gameState.overworld}
-      onTravel={onTravel}
+      onTravel={props.onTravel}
       onClose={() => showMap = false}
     />
   {/if}

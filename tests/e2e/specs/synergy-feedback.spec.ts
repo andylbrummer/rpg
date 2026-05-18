@@ -41,6 +41,11 @@ function makeMockCombat(partyCount: number, enemyCount: number) {
 }
 
 async function injectGameState(page: any, state: any) {
+  // Reset action-log turn tracker so injected low-turn entries are processed
+  await page.evaluate(() => {
+    const store = (window as any).gameStore;
+    store.__testSetState({ type: 'state', actionLog: [] });
+  });
   await page.evaluate((s: any) => {
     const store = (window as any).gameStore;
     store.__testSetState(s);
@@ -50,6 +55,11 @@ async function injectGameState(page: any, state: any) {
 test.describe('Synergy Feedback', () => {
   test('synergy trigger shows 500ms flash on target', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    await page.evaluate(() => {
+      localStorage.removeItem('rpc_discovered_synergies');
+      localStorage.removeItem('rpc_revealed_synergies');
+    });
+    await page.reload();
     await page.waitForTimeout(500);
 
     const combat = makeMockCombat(2, 2);
@@ -64,39 +74,44 @@ test.describe('Synergy Feedback', () => {
       combat,
       actionLog: [
         { turn: 100, category: 'combat', type: 'encounter_started', payload: { encounterId: 'enc-1' } },
-        { turn: 101, category: 'combat', type: 'synergy_triggered', payload: { synergyId: 'stillblade_hollow_backstep', encounterId: 'enc-1', targetId: 'e0' } }
+        { turn: 101, category: 'combat', type: 'synergy_triggered', payload: { synergyId: 'stillblade_hollow_smoke_silence', encounterId: 'enc-1', targetId: 'e0' } }
       ]
     });
 
     await expect(page.locator('.combat-overlay')).toBeVisible();
-    await page.waitForTimeout(100);
 
-    // Debug: check store state and flash class
-    const storeState = await page.evaluate(() => {
-      const store = (window as any).gameStore;
-      let currentState: any = null;
-      const unsub = store.subscribe((s: any) => { currentState = s; });
-      unsub();
-      return {
-        mode: currentState?.mode,
-        actionLogCount: currentState?.actionLog?.length,
-        hasFlash: document.querySelector('.synergy-flash') !== null,
-        flashTarget: document.querySelector('[data-testid="combat-overlay"]')?.getAttribute('data-flash-target') ?? 'no-overlay',
-      };
-    });
-    // Force output via expect message
-    expect(storeState.hasFlash, JSON.stringify(storeState)).toBe(true);
+    // Poll briefly for the flash to appear (avoids race with Svelte effect scheduling)
+    let flashInfo: { flashTarget: string; hasFlashClass: boolean; flashParentText: string } | null = null;
+    for (let i = 0; i < 20; i++) {
+      flashInfo = await page.evaluate(() => {
+        const overlay = document.querySelector('[data-testid="combat-overlay"]');
+        const flashEl = document.querySelector('.synergy-flash');
+        return {
+          flashTarget: overlay?.getAttribute('data-flash-target') ?? 'missing',
+          hasFlashClass: flashEl !== null,
+          flashParentText: flashEl?.closest('.enemy-side, .player-side')?.querySelector('h3')?.textContent ?? 'unknown',
+        };
+      });
+      if (flashInfo.hasFlashClass) break;
+      await page.waitForTimeout(25);
+    }
+    expect(flashInfo!.flashTarget).toBe('e0');
+    expect(flashInfo!.hasFlashClass).toBe(true);
+    expect(flashInfo!.flashParentText).toBe('Enemies');
 
-    const target = page.locator('.enemy-side .row-band.front-band .combatant').first();
-    await expect(target).toHaveClass(/synergy-flash/);
-
-    // Wait for 500ms flash to end
+    // Wait for 500ms flash to end, then verify it's gone
     await page.waitForTimeout(600);
-    await expect(target).not.toHaveClass(/synergy-flash/);
+    const hasFlashAfter = await page.evaluate(() => document.querySelector('.synergy-flash') !== null);
+    expect(hasFlashAfter).toBe(false);
   });
 
   test('field notes reveals entry post-combat not during', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    await page.evaluate(() => {
+      localStorage.removeItem('rpc_discovered_synergies');
+      localStorage.removeItem('rpc_revealed_synergies');
+    });
+    await page.reload();
     await page.waitForTimeout(500);
 
     const combat = makeMockCombat(2, 2);
@@ -111,7 +126,7 @@ test.describe('Synergy Feedback', () => {
       combat,
       actionLog: [
         { turn: 1, category: 'combat', type: 'encounter_started', payload: { encounterId: 'enc-1' } },
-        { turn: 2, category: 'combat', type: 'synergy_triggered', payload: { synergyId: 'stillblade_hollow_backstep', encounterId: 'enc-1', targetId: 'e0' } }
+        { turn: 2, category: 'combat', type: 'synergy_triggered', payload: { synergyId: 'stillblade_hollow_smoke_silence', encounterId: 'enc-1', targetId: 'e0' } }
       ]
     });
 
@@ -139,20 +154,25 @@ test.describe('Synergy Feedback', () => {
     await page.locator('.field-notes-toggle').click();
 
     // The discovered synergy should now be revealed
-    await expect(page.locator('.field-note-entry .field-note-names', { hasText: 'backstep + cheap_shot' })).toBeVisible();
+    await expect(page.locator('.field-note-entry .field-note-names', { hasText: 'silence_strike + smoke_bomb' })).toBeVisible();
 
     // Undiscovered synergies should still show ???
-    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(3);
+    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(17);
   });
 
   test('replay modal opens and shows animation', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    await page.evaluate(() => {
+      localStorage.removeItem('rpc_discovered_synergies');
+      localStorage.removeItem('rpc_revealed_synergies');
+    });
+    await page.reload();
     await page.waitForTimeout(500);
 
     // Pre-seed discovered and revealed synergies
     await page.evaluate(() => {
-      localStorage.setItem('rpc_discovered_synergies', JSON.stringify(['stillblade_hollow_backstep']));
-      localStorage.setItem('rpc_revealed_synergies', JSON.stringify(['stillblade_hollow_backstep']));
+      localStorage.setItem('rpc_discovered_synergies', JSON.stringify(['stillblade_hollow_smoke_silence']));
+      localStorage.setItem('rpc_revealed_synergies', JSON.stringify(['stillblade_hollow_smoke_silence']));
     });
 
     // Reload so the app picks up localStorage

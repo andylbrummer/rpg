@@ -23,6 +23,9 @@ public class CampaignState
     // Tracks which campaign events have already fired
     public HashSet<string> FiredEvents { get; set; } = new();
 
+    // Tracks which faction state transitions have been announced (factionId -> state)
+    public HashSet<string> AnnouncedFactionStates { get; set; } = new();
+
     // Secret content: unlocked optional dungeons and betrayal path
     public HashSet<string> UnlockedDungeons { get; set; } = new();
     public bool BetrayalPath { get; set; } = false;
@@ -44,5 +47,7 @@ public class CampaignState
         Evidence.Clear();
         UnlockedDungeons.Clear();
         BetrayalPath = false;
+        FiredEvents.Clear();
+        AnnouncedFactionStates.Clear();
     }
 }

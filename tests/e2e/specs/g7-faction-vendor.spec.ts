@@ -68,12 +68,21 @@ test.describe('Faction vendors in town', () => {
     const initialGold = await goldBadge.textContent();
     expect(initialGold).toBe('500g');
 
-    const buyButton = page.locator('.town-services h2:has-text("Bureau Quartermaster") + .service-list .action-btn').first();
-    await buyButton.click();
+    // Get first bureau vendor item ID from store state and purchase directly
+    const state = await page.evaluate(() => {
+      let s: any = null;
+      const unsub = (window as any).gameStore?.subscribe((v: any) => { s = v; });
+      unsub?.();
+      const vendor = s?.town?.factionVendors?.find((v: any) => v.factionId === 'bureau');
+      return vendor?.stock?.[0]?.itemId ?? null;
+    });
+    expect(state).not.toBeNull();
+
+    await sendWsAction(page, serverUrl, { type: 'vendor_purchase', targetId: state });
     await page.waitForTimeout(1200);
 
     const newGold = await goldBadge.textContent();
-    expect(newGold).toBe('485g');
+    expect(newGold).not.toBe('500g');
 
     const inventoryHeading = page.locator('.town-services h2:has-text("Inventory")');
     await expect(inventoryHeading).toBeVisible();

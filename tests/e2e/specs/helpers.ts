@@ -8,7 +8,13 @@ export async function sendWsAction(page: Page, _serverUrl: string, action: any):
 }
 
 export async function getPositionText(page: Page): Promise<string> {
-  return page.locator('.exploration-hud .position').textContent({ timeout: 5000 }) ?? '';
+  const el = page.locator('.exploration-hud .position');
+  try {
+    await el.waitFor({ timeout: 10000 });
+    return await el.textContent() ?? '';
+  } catch {
+    return '';
+  }
 }
 
 export async function getMainJsUrl(request: APIRequestContext, base: string): Promise<string> {

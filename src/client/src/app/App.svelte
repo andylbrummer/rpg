@@ -18,6 +18,7 @@
   import { loadBindings, keyToAction } from '$config/keybindings';
   import { ALL_SYNERGIES } from '$shared/data/synergies';
   import { playClick, playConfirm, playWarning, playSynergyChime } from '$renderer/UISounds';
+  import { GamepadManager } from '$renderer/GamepadManager';
 
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | null = null;
@@ -178,86 +179,94 @@
 
   let lastMode: string | null = null;
 
-  $effect(() => {
-    const unsub = gameStore.subscribe((s) => {
-      const wasCombat = lastMode === 'Combat';
-      lastMode = s?.mode ?? null;
-      gameState = s;
-      audioManager.update(s?.dungeonType);
-      unaccountedAudio.update(s);
-      subtitleEntries = unaccountedAudio.subtitles.getActive();
-      clearPending();
-      drainBuffer();
+  const unsubGameStore = gameStore.subscribe((s) => {
+    const wasCombat = lastMode === 'Combat';
+    const hadState = gameState !== null;
+    lastMode = s?.mode ?? null;
+    gameState = s;
 
-      // Check for new reputation changes in action log
-      const actionLog = s?.actionLog ?? [];
-      const maxTurn = actionLog.length > 0 ? Math.max(...actionLog.map((e: any) => e.turn)) : 0;
-      if (maxTurn > lastActionLogTurn) {
-        const newEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'rep_changed');
-        for (const entry of newEntries) {
-          const toast = {
-            id: nextToastId++,
-            factionId: entry.payload.factionId ?? 'unknown',
-            delta: parseInt(entry.payload.delta ?? '0', 10),
-            source: entry.payload.source ?? '',
-          };
-          repToasts = [...repToasts, toast];
+    // Auto-dismiss title screen on first server state (page refresh mid-game)
+    if (!hadState && s !== null) {
+      showTitleScreen = false;
+    }
+
+    audioManager.update(s?.dungeonType);
+    unaccountedAudio.update(s);
+    subtitleEntries = unaccountedAudio.subtitles.getActive();
+    clearPending();
+    drainBuffer();
+
+    // Check for new reputation changes in action log
+    const actionLog = s?.actionLog ?? [];
+    const maxTurn = actionLog.length > 0 ? Math.max(...actionLog.map((e: any) => e.turn)) : 0;
+    if (maxTurn > lastActionLogTurn) {
+      const newEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'rep_changed');
+      for (const entry of newEntries) {
+        const toast = {
+          id: nextToastId++,
+          factionId: entry.payload.factionId ?? 'unknown',
+          delta: parseInt(entry.payload.delta ?? '0', 10),
+          source: entry.payload.source ?? '',
+        };
+        repToasts = [...repToasts, toast];
+        setTimeout(() => {
+          repToasts = repToasts.filter((t) => t.id !== toast.id);
+        }, 4000);
+      }
+
+      const newSynergyEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'synergy_triggered');
+      for (const entry of newSynergyEntries) {
+        const sid = entry.payload?.synergyId;
+        const tid = entry.payload?.targetId;
+        if (sid && !discoveredOrder.includes(sid)) {
+          discoveredOrder = [...discoveredOrder, sid];
+          saveArray(DISCOVERY_KEY, discoveredOrder);
+        }
+        if (sid && !revealedSynergies.has(sid) && !pendingReveals.includes(sid)) {
+          pendingReveals = [...pendingReveals, sid];
+        }
+        if (tid) {
+          synergyFlashTargetId = tid;
+        }
+      }
+
+      const factionEvents = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.category === 'faction' && ['resolution', 'executing_collision', 'timeline_modified', 'event_fired'].includes(e.type));
+      for (const entry of factionEvents) {
+        let text = '';
+        if (entry.type === 'resolution') {
+          text = entry.payload?.description ?? 'Faction conflict resolved.';
+        } else if (entry.type === 'executing_collision') {
+          text = `Multiple factions are executing their schemes: ${entry.payload?.factions ?? ''}`;
+        } else if (entry.type === 'timeline_modified') {
+          text = `${entry.payload?.factionId ?? 'A faction'}'s timeline shifts.`;
+        } else if (entry.type === 'event_fired') {
+          text = entry.payload?.eventName ?? 'A campaign event unfolds.';
+        }
+        if (text) {
+          const noteId = nextToastId++;
+          factionNotifications = [...factionNotifications, { id: noteId, text }];
           setTimeout(() => {
-            repToasts = repToasts.filter((t) => t.id !== toast.id);
-          }, 4000);
+            factionNotifications = factionNotifications.filter((n) => n.id !== noteId);
+          }, 6000);
         }
-
-        const newSynergyEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'synergy_triggered');
-        for (const entry of newSynergyEntries) {
-          const sid = entry.payload?.synergyId;
-          const tid = entry.payload?.targetId;
-          if (sid && !discoveredOrder.includes(sid)) {
-            discoveredOrder = [...discoveredOrder, sid];
-            saveArray(DISCOVERY_KEY, discoveredOrder);
-          }
-          if (sid && !revealedSynergies.has(sid) && !pendingReveals.includes(sid)) {
-            pendingReveals = [...pendingReveals, sid];
-          }
-          if (tid) {
-            synergyFlashTargetId = tid;
-          }
-        }
-
-        const factionEvents = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.category === 'faction' && ['resolution', 'executing_collision', 'timeline_modified', 'event_fired'].includes(e.type));
-        for (const entry of factionEvents) {
-          let text = '';
-          if (entry.type === 'resolution') {
-            text = entry.payload?.description ?? 'Faction conflict resolved.';
-          } else if (entry.type === 'executing_collision') {
-            text = `Multiple factions are executing their schemes: ${entry.payload?.factions ?? ''}`;
-          } else if (entry.type === 'timeline_modified') {
-            text = `${entry.payload?.factionId ?? 'A faction'}'s timeline shifts.`;
-          } else if (entry.type === 'event_fired') {
-            text = entry.payload?.eventName ?? 'A campaign event unfolds.';
-          }
-          if (text) {
-            const noteId = nextToastId++;
-            factionNotifications = [...factionNotifications, { id: noteId, text }];
-            setTimeout(() => {
-              factionNotifications = factionNotifications.filter((n) => n.id !== noteId);
-            }, 6000);
-          }
-        }
-
-        lastActionLogTurn = maxTurn;
-      } else if (actionLog.length === 0 && lastActionLogTurn > 0) {
-        // Reset detected — clear turn tracker so future toasts fire
-        lastActionLogTurn = 0;
       }
 
-      // Reveal field notes entries post-combat
-      if (wasCombat && s?.mode !== 'Combat' && pendingReveals.length > 0) {
-        revealedSynergies = new Set([...revealedSynergies, ...pendingReveals]);
-        saveSet(REVEALED_KEY, revealedSynergies);
-        pendingReveals = [];
-      }
-    });
-    return unsub;
+      lastActionLogTurn = maxTurn;
+    } else if (actionLog.length === 0 && lastActionLogTurn > 0) {
+      // Reset detected — clear turn tracker so future toasts fire
+      lastActionLogTurn = 0;
+    }
+
+    // Reveal field notes entries post-combat
+    if (wasCombat && s?.mode !== 'Combat' && pendingReveals.length > 0) {
+      revealedSynergies = new Set([...revealedSynergies, ...pendingReveals]);
+      saveSet(REVEALED_KEY, revealedSynergies);
+      pendingReveals = [];
+    }
+  });
+
+  $effect(() => {
+    return () => unsubGameStore();
   });
 
   $effect(() => {
@@ -356,6 +365,12 @@
       stopRepeat(e.key);
     };
 
+    const gamepadManager = new GamepadManager((action: PlayerAction) => {
+      if (gameState?.mode === 'Exploration') {
+        enqueueAction(action);
+      }
+    });
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     return () => {
@@ -363,6 +378,7 @@
       window.removeEventListener('keyup', handleKeyUp);
       stopAllRepeats();
       unsubTest();
+      gamepadManager.dispose();
     };
   });
 

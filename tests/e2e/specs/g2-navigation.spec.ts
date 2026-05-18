@@ -15,13 +15,38 @@ test.describe('G2: Navigation', () => {
     await sendWsAction(page, serverUrl, { type: 'reset_game' });
     await page.waitForTimeout(500);
     await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-    const before = await getPositionText(page);
-    // Try turning and moving to find an open tile
-    await sendWsAction(page, serverUrl, { type: 'turn_right' });
-    await sendWsAction(page, serverUrl, { type: 'move_forward' });
-    const after = await getPositionText(page);
-    expect(after).not.toBe(before);
-    expect(after).toContain('Position:');
+    await page.waitForTimeout(1000);
+
+    const getPlayerPos = async () => {
+      return page.evaluate(() => {
+        let s: any = null;
+        const unsub = (window as any).gameStore?.subscribe((v: any) => { s = v; });
+        unsub?.();
+        return { x: s?.player?.x, y: s?.player?.y, mode: s?.mode };
+      });
+    };
+
+    const before = await getPlayerPos();
+    expect(before.mode).toBe('Exploration');
+
+    // Try turning and moving; if combat triggers, flee and retry
+    for (let attempt = 0; attempt < 8; attempt++) {
+      await sendWsAction(page, serverUrl, { type: 'turn_right' });
+      await page.waitForTimeout(300);
+      await sendWsAction(page, serverUrl, { type: 'move_forward' });
+      await page.waitForTimeout(400);
+
+      const state = await getPlayerPos();
+      if (state.mode === 'Combat') {
+        await sendWsAction(page, serverUrl, { type: 'flee_combat' });
+        await page.waitForTimeout(400);
+        continue;
+      }
+      if (state.x !== before.x || state.y !== before.y) {
+        return; // success
+      }
+    }
+    throw new Error('Player position did not change after multiple movement attempts');
   });
 
   test('automap receives tiles', async ({ page, serverUrl }) => {

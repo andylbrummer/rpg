@@ -4,9 +4,11 @@ import { sendWsAction } from './helpers';
 test.describe('G5: Game Loop', () => {
   test('initial state shows town menu', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    // Ensure town mode (server state may be shared across tests)
+    // Ensure clean state and town mode
+    await sendWsAction(page, serverUrl, { type: 'reset_game' });
+    await page.waitForTimeout(500);
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });
-    await expect(page.locator('.town-header h1')).toBeVisible();
+    await expect(page.locator('.town-menu')).toBeVisible();
     await expect(page.getByRole('button', { name: /Broken Engine/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Sewer Warrens/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Crypt of Whispers/ })).toBeVisible();
@@ -23,7 +25,7 @@ test.describe('G5: Game Loop', () => {
   test('rest heals party to full', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     // Damage party by entering combat and letting enemies act
-    await sendWsAction(page, serverUrl, { type: 'generate_dungeon' });
+    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
     await sendWsAction(page, serverUrl, { type: 'enter_combat' });
     // Wait for a few combat rounds to take damage
     for (let i = 0; i < 5; i++) {
@@ -33,7 +35,7 @@ test.describe('G5: Game Loop', () => {
       await page.waitForTimeout(300);
     }
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });
-    await expect(page.locator('.town-header h1')).toBeVisible();
+    await page.waitForSelector('.town-menu', { timeout: 10000 });
     // Verify at least one member is damaged
     const hpBefore = await page.locator('.hp-fill').first().evaluate((el: any) => el.style.width);
     if (hpBefore === '100%') {

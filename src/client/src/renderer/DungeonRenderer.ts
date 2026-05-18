@@ -30,6 +30,9 @@ export class DungeonRenderer {
   private ambientParticleSystem: AmbientParticleSystem | null = null;
   private bloomEffectsAdded = false;
   private creatureMeshes: Map<string, THREE.Object3D> = new Map();
+  private dyingUnaccounted: Map<string, { mesh: THREE.Group; startTime: number }> = new Map();
+  private lastCombatLogLength = 0;
+  private unaccountedAttackBoosts: Map<string, number> = new Map();
 
   static isSupported(): boolean {
     try {
@@ -298,10 +301,34 @@ export class DungeonRenderer {
   private clearCreatures(): void {
     for (const [, mesh] of this.creatureMeshes) {
       this.scene.remove(mesh);
-      mesh.geometry.dispose();
-      (mesh.material as THREE.Material).dispose();
+      mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
     }
     this.creatureMeshes.clear();
+    for (const [, data] of this.dyingUnaccounted) {
+      this.scene.remove(data.mesh);
+      data.mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+    }
+    this.dyingUnaccounted.clear();
+    this.lastCombatLogLength = 0;
+    this.unaccountedAttackBoosts.clear();
   }
 
   private clearBloomEffects(): void {
@@ -326,12 +353,31 @@ export class DungeonRenderer {
     const mats = getCreatureMaterials(this.currentDungeonType ?? '', this.currentTheme);
     const enemies = state.combat.combatants.filter(c => !c.isPlayer && c.alive);
     const alive = new Set(enemies.map(c => c.id));
+    // Detect unaccounted attacks for wrong-speed animation
+    this.detectUnaccountedAttacks(state);
+
     for (const [id, mesh] of this.creatureMeshes) {
       if (!alive.has(id)) {
-        this.scene.remove(mesh);
-        mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
-        this.creatureMeshes.delete(id);
+        const isUnaccounted = mesh.userData.isUnaccounted ?? false;
+        if (isUnaccounted && mesh instanceof THREE.Group) {
+          // Start death animation instead of instant removal
+          if (!this.dyingUnaccounted.has(id)) {
+            this.dyingUnaccounted.set(id, { mesh, startTime: performance.now() * 0.001 });
+          }
+        } else {
+          this.scene.remove(mesh);
+          mesh.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.geometry.dispose();
+              if (Array.isArray(child.material)) {
+                child.material.forEach(m => m.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          });
+          this.creatureMeshes.delete(id);
+        }
       }
     }
     const px = state.player.x * this.tileSize;
@@ -354,6 +400,8 @@ export class DungeonRenderer {
         : this.createCreatureMesh(mats);
       mesh.position.set(px + fx * d + rx * o, 0.75, pz + fz * d + rz * o);
       if (e.isUnaccounted) {
+        mesh.userData.isUnaccounted = true;
+        mesh.userData.combatantId = e.id;
         mesh.userData.baseY = 0.75;
         mesh.userData.twitchSeed = Math.random() * 100;
         mesh.userData.speed = 0.5 + Math.random() * 1.5; // wrong-speed
@@ -431,10 +479,24 @@ export class DungeonRenderer {
   }
 
   private updateUnaccountedAnimations(time: number): void {
+    // Update dying unaccounted (fold + fade)
+    this.updateUnaccountedDeathAnimations(time);
+
     for (const obj of this.creatureMeshes.values()) {
       if (!(obj instanceof THREE.Group) || obj.userData.baseY === undefined) continue;
       const seed = obj.userData.twitchSeed ?? 0;
-      const speed = obj.userData.speed ?? 1;
+      let speed = obj.userData.speed ?? 1;
+
+      // Wrong-speed attack: temporary boost from combat log detection
+      const boost = this.unaccountedAttackBoosts.get(obj.userData.combatantId ?? '');
+      if (boost !== undefined) {
+        const elapsed = time - boost;
+        if (elapsed < 0.5) {
+          speed *= (elapsed < 0.25 ? 2.0 : 0.5); // First half 2x, second half 0.5x
+        } else {
+          this.unaccountedAttackBoosts.delete(obj.userData.combatantId ?? '');
+        }
+      }
 
       // Float with wrong frequency
       obj.position.y = obj.userData.baseY + Math.sin(time * speed * 2 + seed) * 0.15;
@@ -452,7 +514,81 @@ export class DungeonRenderer {
       // Pulse scale wrong-speed
       const s = 1 + Math.sin(time * speed * 4 + seed) * 0.08;
       obj.scale.set(s, 1 / s, s);
+
+      // Color inversion flicker — brief random flashes
+      const flicker = Math.sin(time * 7 + seed) > 0.95 ? 1.0 : 0.0;
+      obj.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial) {
+          child.material.uniforms.uInvert.value = flicker;
+        }
+      });
     }
+  }
+
+  private updateUnaccountedDeathAnimations(time: number): void {
+    for (const [id, data] of this.dyingUnaccounted) {
+      const elapsed = time - data.startTime;
+      const mesh = data.mesh;
+
+      // Fold: rotate limbs inward, compress vertically
+      mesh.rotation.z = Math.sin(elapsed * 3) * 0.3;
+      mesh.rotation.x = Math.cos(elapsed * 2.5) * 0.2;
+      const foldScale = Math.max(0.1, 1.0 - elapsed * 0.8);
+      mesh.scale.set(foldScale * 0.6, foldScale * 0.3, foldScale * 0.6);
+
+      // Fade: reduce opacity over 2 seconds
+      const opacity = Math.max(0, 1.0 - elapsed * 0.5);
+      mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.material instanceof THREE.ShaderMaterial) {
+            child.material.uniforms.uOpacity.value = opacity;
+          } else if ('opacity' in child.material) {
+            (child.material as THREE.Material & { opacity: number }).opacity = opacity;
+            child.material.transparent = true;
+          }
+        }
+      });
+
+      // Remove after 2.5s
+      if (elapsed > 2.5) {
+        this.scene.remove(mesh);
+        mesh.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        });
+        this.dyingUnaccounted.delete(id);
+        this.creatureMeshes.delete(id);
+      }
+    }
+  }
+
+  private detectUnaccountedAttacks(state: GameState): void {
+    const combat = state.combat;
+    if (!combat) return;
+    if (combat.log.length <= this.lastCombatLogLength) {
+      this.lastCombatLogLength = combat.log.length;
+      return;
+    }
+    const newEntries = combat.log.slice(this.lastCombatLogLength);
+    const unaccountedNames = new Set(
+      combat.combatants.filter(c => c.isUnaccounted).map(c => c.name)
+    );
+    for (const entry of newEntries) {
+      if (unaccountedNames.has(entry.actor) && entry.message.toLowerCase().includes('attack')) {
+        // Find the combatant id for this actor
+        const combatant = combat.combatants.find(c => c.name === entry.actor);
+        if (combatant) {
+          this.unaccountedAttackBoosts.set(combatant.id, performance.now() * 0.001);
+        }
+      }
+    }
+    this.lastCombatLogLength = combat.log.length;
   }
 
   private updateUnaccountedShaderTime(time: number): void {
@@ -467,11 +603,12 @@ export class DungeonRenderer {
   }
 
   private updateChromaticAberration(): void {
-    const hasUnaccounted = Array.from(this.creatureMeshes.values()).some(
-      (obj) => obj instanceof THREE.Group
+    const hasAliveUnaccounted = Array.from(this.creatureMeshes.values()).some(
+      (obj) => obj.userData.isUnaccounted === true
     );
+    const hasDyingUnaccounted = this.dyingUnaccounted.size > 0;
     const canvas = this.renderer.domElement;
-    if (hasUnaccounted) {
+    if (hasAliveUnaccounted || hasDyingUnaccounted) {
       canvas.style.filter =
         'drop-shadow(2px 0 0 rgba(255,0,0,0.25)) drop-shadow(-2px 0 0 rgba(0,255,255,0.25))';
     } else {

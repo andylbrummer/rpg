@@ -194,4 +194,89 @@ public class EventSchedulerTests
 
         Assert.Equal("evacuated", state.WorldState.Settlements.GetValueOrDefault("ashford"));
     }
+
+    [Fact]
+    public void Tick_FactionTransition_Preparing_IsAnnounced()
+    {
+        var state = CreateState(1);
+        var config = CampaignConfig.Roll(new GameRandom(1));
+        state.GenerateOverworld(config);
+        state.CurrentComplication = null;
+        state.CurrentScheme = new SchemeDef("Test", "Test", "Test", "feel", Array.Empty<string>(), Array.Empty<CampaignEventDef>());
+
+        // Push patron to Preparing at turn 5 (default preparing is 12, so modifier -10 makes it 2)
+        state.Campaign.FactionTimelineModifiers[config.Patron] = -10;
+        state.Overworld.Turns = 5;
+        state.Mode = GameMode.Exploration;
+
+        var service = new CampaignService(null);
+        var scheduler = new EventScheduler(service);
+        scheduler.Tick(state);
+
+        Assert.Contains(state.ActionLog, e => e.Type == "state_preparing" && e.Payload["factionId"] == config.Patron);
+    }
+
+    [Fact]
+    public void Tick_FactionTransition_Executing_IsAnnounced()
+    {
+        var state = CreateState(1);
+        var config = CampaignConfig.Roll(new GameRandom(1));
+        state.GenerateOverworld(config);
+        state.CurrentComplication = null;
+        state.CurrentScheme = new SchemeDef("Test", "Test", "Test", "feel", Array.Empty<string>(), Array.Empty<CampaignEventDef>());
+
+        // Push threat to Executing at turn 15 (default executing is 22, so modifier -10 makes it 12)
+        state.Campaign.FactionTimelineModifiers[config.Threat] = -10;
+        state.Overworld.Turns = 15;
+        state.Mode = GameMode.Exploration;
+
+        var service = new CampaignService(null);
+        var scheduler = new EventScheduler(service);
+        scheduler.Tick(state);
+
+        Assert.Contains(state.ActionLog, e => e.Type == "state_executing" && e.Payload["factionId"] == config.Threat);
+    }
+
+    [Fact]
+    public void Tick_FactionTransition_NotAnnounced_Twice()
+    {
+        var state = CreateState(1);
+        var config = CampaignConfig.Roll(new GameRandom(1));
+        state.GenerateOverworld(config);
+        state.CurrentComplication = null;
+        state.CurrentScheme = new SchemeDef("Test", "Test", "Test", "feel", Array.Empty<string>(), Array.Empty<CampaignEventDef>());
+
+        state.Campaign.FactionTimelineModifiers[config.Mastermind] = -10;
+        state.Overworld.Turns = 15;
+        state.Mode = GameMode.Exploration;
+
+        var service = new CampaignService(null);
+        var scheduler = new EventScheduler(service);
+        scheduler.Tick(state);
+        scheduler.Tick(state);
+
+        var executingCount = state.ActionLog.Count(e => e.Type == "state_executing" && e.Payload["factionId"] == config.Mastermind);
+        Assert.Equal(1, executingCount);
+    }
+
+    [Fact]
+    public void Tick_FactionTransition_Role_IsCorrect()
+    {
+        var state = CreateState(1);
+        var config = CampaignConfig.Roll(new GameRandom(1));
+        state.GenerateOverworld(config);
+        state.CurrentComplication = null;
+        state.CurrentScheme = new SchemeDef("Test", "Test", "Test", "feel", Array.Empty<string>(), Array.Empty<CampaignEventDef>());
+
+        state.Campaign.FactionTimelineModifiers[config.Mastermind] = -10;
+        state.Overworld.Turns = 15;
+        state.Mode = GameMode.Exploration;
+
+        var service = new CampaignService(null);
+        var scheduler = new EventScheduler(service);
+        scheduler.Tick(state);
+
+        var log = state.ActionLog.First(e => e.Type == "state_executing" && e.Payload["factionId"] == config.Mastermind);
+        Assert.Equal("mastermind", log.Payload["role"]);
+    }
 }

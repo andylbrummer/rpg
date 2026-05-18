@@ -27,6 +27,8 @@ const fragmentShader = `
   uniform float uTime;
   uniform vec3 uColor;
   uniform vec3 uEmissive;
+  uniform float uInvert;
+  uniform float uOpacity;
   varying vec2 vUv;
   varying vec3 vViewPosition;
   varying vec3 vNormal;
@@ -36,7 +38,7 @@ const fragmentShader = `
     float fresnel = 1.0 - abs(dot(viewDir, vNormal));
 
     // Chromatic aberration: offset RGB channels by view angle
-    float aberration = fresnel * 0.04;
+    float aberration = fresnel * 0.06;
     vec2 offsetR = vec2(aberration, 0.0);
     vec2 offsetB = vec2(-aberration, 0.0);
 
@@ -48,11 +50,14 @@ const fragmentShader = `
     // Inverted brightness at edges
     baseColor = mix(baseColor, 1.0 - baseColor, fresnel * 0.3);
 
+    // Color inversion flicker (uInvert driven by CPU for timing control)
+    baseColor = mix(baseColor, 1.0 - baseColor, uInvert);
+
     // Emissive glow pulsing
     vec3 emissive = uEmissive * (0.7 + 0.3 * sin(uTime * 3.0));
 
     vec3 finalColor = baseColor + emissive * fresnel + glitch;
-    gl_FragColor = vec4(finalColor, 1.0);
+    gl_FragColor = vec4(finalColor, uOpacity);
   }
 `;
 
@@ -62,9 +67,12 @@ export function createUnaccountedMaterial(): THREE.ShaderMaterial {
       uTime: { value: 0 },
       uColor: { value: new THREE.Color(0xeeeeee) },
       uEmissive: { value: new THREE.Color(0x8800ff) },
+      uInvert: { value: 0 },
+      uOpacity: { value: 1.0 },
     },
     vertexShader,
     fragmentShader,
     side: THREE.DoubleSide,
+    transparent: true,
   });
 }

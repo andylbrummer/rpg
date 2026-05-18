@@ -1,6 +1,11 @@
 import { test, expect } from './fixtures';
 
 async function injectGameState(page: any, state: any) {
+  // Reset action-log turn tracker so injected low-turn entries are processed
+  await page.evaluate(() => {
+    const store = (window as any).gameStore;
+    store.__testSetState({ type: 'state', actionLog: [] });
+  });
   await page.evaluate((s: any) => {
     const store = (window as any).gameStore;
     store.__testSetState(s);
@@ -73,8 +78,8 @@ test.describe('Field Notes Journal', () => {
     await page.waitForTimeout(500);
 
     await page.evaluate(() => {
-      localStorage.setItem('rpc_discovered_synergies', JSON.stringify(['stillblade_hollow_backstep']));
-      localStorage.setItem('rpc_revealed_synergies', JSON.stringify(['stillblade_hollow_backstep']));
+      localStorage.setItem('rpc_discovered_synergies', JSON.stringify(['stillblade_hollow_smoke_silence']));
+      localStorage.setItem('rpc_revealed_synergies', JSON.stringify(['stillblade_hollow_smoke_silence']));
     });
     await page.reload();
     await page.waitForTimeout(500);
@@ -93,9 +98,9 @@ test.describe('Field Notes Journal', () => {
 
     await page.locator('.field-notes-toggle').click();
 
-    await expect(page.locator('.field-notes-count')).toHaveText('1/4 discovered');
-    await expect(page.locator('.field-note-entry .field-note-names', { hasText: 'backstep + cheap_shot' })).toBeVisible();
-    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(3);
+    await expect(page.locator('.field-notes-count')).toHaveText('1/18 discovered');
+    await expect(page.locator('.field-note-entry .field-note-names', { hasText: 'silence_strike + smoke_bomb' })).toBeVisible();
+    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(17);
   });
 
   test('Replay button opens modal', async ({ page, serverUrl }) => {
@@ -103,8 +108,8 @@ test.describe('Field Notes Journal', () => {
     await page.waitForTimeout(500);
 
     await page.evaluate(() => {
-      localStorage.setItem('rpc_discovered_synergies', JSON.stringify(['stillblade_hollow_backstep']));
-      localStorage.setItem('rpc_revealed_synergies', JSON.stringify(['stillblade_hollow_backstep']));
+      localStorage.setItem('rpc_discovered_synergies', JSON.stringify(['stillblade_hollow_smoke_silence']));
+      localStorage.setItem('rpc_revealed_synergies', JSON.stringify(['stillblade_hollow_smoke_silence']));
     });
     await page.reload();
     await page.waitForTimeout(500);

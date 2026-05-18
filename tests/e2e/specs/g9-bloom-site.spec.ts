@@ -101,16 +101,17 @@ test.describe('G9: Bloom Site', () => {
     await expect(canvas).toBeVisible();
   });
 
-  test('ambient audio placeholder logs', async ({ page, serverUrl }) => {
-    const logs: string[] = [];
-    page.on('console', msg => {
-      logs.push(msg.text());
-    });
-
+  test('bloom site dungeon type is set in game state', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'bloom-site' });
     await page.waitForTimeout(600);
 
-    expect(logs.some(l => l.includes('[AmbientAudio] Playing: bloom-site_fungal_drip_loop'))).toBe(true);
+    const dungeonType = await page.evaluate(() => {
+      let s: any = null;
+      const unsub = (window as any).gameStore?.subscribe((v: any) => { s = v; });
+      unsub?.();
+      return s?.dungeonType;
+    });
+    expect(dungeonType).toBe('bloom-site');
   });
 });

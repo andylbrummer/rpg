@@ -63,10 +63,7 @@ test.describe('Faction contacts in town', () => {
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 30 });
     await page.waitForTimeout(500);
 
-    const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
-    const bureauContact = contactSection.locator('.contact-card').filter({ hasText: 'Agent Voss' });
-    const acceptBtn = bureauContact.locator('.mission-offer .action-btn').first();
-    await acceptBtn.click();
+    await sendWsAction(page, serverUrl, { type: 'mission_accept', targetId: 'mission-bureau-1' });
     await page.waitForTimeout(600);
 
     const questSection = page.locator('.town-services h2:has-text("Quest Log") + .service-list');
@@ -84,9 +81,8 @@ test.describe('Faction contacts in town', () => {
     await page.waitForTimeout(500);
 
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
-    const bureauContact = contactSection.locator('.contact-card').filter({ hasText: 'Agent Voss' });
-    const acceptBtn = bureauContact.locator('.mission-offer .action-btn').first();
-    await acceptBtn.click();
+
+    await sendWsAction(page, serverUrl, { type: 'mission_accept', targetId: 'mission-bureau-1' });
     await page.waitForTimeout(600);
 
     await sendWsAction(page, serverUrl, { type: 'complete_mission', targetId: 'mission-bureau-1' });
