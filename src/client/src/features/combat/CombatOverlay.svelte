@@ -33,6 +33,7 @@
   let selectedAction = $state('Attack');
   let selectedAbilityId = $state<string | null>(null);
   let showResult = $state(false);
+  let validationFlash = $state(false);
 
   $effect(() => {
     if (lastResult) {
@@ -66,11 +67,22 @@
     return names[action] || action;
   }
 
+  function flashValidation() {
+    validationFlash = true;
+    setTimeout(() => validationFlash = false, 400);
+  }
+
   function submitAction() {
     const currentActor = getCurrentActor();
     if (!currentActor) return;
-    if (selectedAction === 'UseAbility' && !selectedAbilityId) return;
-    if ((selectedAction === 'Attack' || selectedAction === 'UseAbility') && !selectedTargetId) return;
+    if (selectedAction === 'UseAbility' && !selectedAbilityId) {
+      flashValidation();
+      return;
+    }
+    if ((selectedAction === 'Attack' || selectedAction === 'UseAbility') && !selectedTargetId) {
+      flashValidation();
+      return;
+    }
 
     if (selectedAction === 'UseAbility' && selectedAbilityId) {
       sendAction({
@@ -176,7 +188,7 @@
 
     <div class="combat-body">
       <div class="initiative-bar">
-        {#each getInitiativeEntries() as entry, i}
+        {#each getInitiativeEntries() as entry, i (entry.id)}
           <div
             class="initiative-entry"
             class:active={entry.isPlayer}
@@ -192,7 +204,7 @@
           <h3>Party</h3>
           <div class="row-band front-band">
             <span class="band-label">Front</span>
-            {#each getFrontRow(getParty()) as member}
+            {#each getFrontRow(getParty()) as member (member.id)}
               <div
                 class="combatant"
                 class:dead={member.hp <= 0}
@@ -211,7 +223,7 @@
           </div>
           <div class="row-band back-band">
             <span class="band-label">Back</span>
-            {#each getBackRow(getParty()) as member}
+            {#each getBackRow(getParty()) as member (member.id)}
               <div
                 class="combatant"
                 class:dead={member.hp <= 0}
@@ -236,7 +248,7 @@
           <h3>Enemies</h3>
           <div class="row-band front-band">
             <span class="band-label">Front</span>
-            {#each getFrontRow(getEnemies()) as enemy}
+            {#each getFrontRow(getEnemies()) as enemy (enemy.id)}
               <button
                 type="button"
                 class="combatant"
@@ -262,7 +274,7 @@
           </div>
           <div class="row-band back-band">
             <span class="band-label">Back</span>
-            {#each getBackRow(getEnemies()) as enemy}
+            {#each getBackRow(getEnemies()) as enemy (enemy.id)}
               <button
                 type="button"
                 class="combatant"
@@ -313,7 +325,7 @@
         </div>
         {#if selectedAction === 'UseAbility'}
           <div class="ability-select">
-            {#each getCurrentAbilities() as ability}
+            {#each getCurrentAbilities() as ability (ability.id)}
               <button
                 class="ability-btn"
                 class:selected={selectedAbilityId === ability.id}
@@ -329,7 +341,7 @@
             {/each}
           </div>
         {/if}
-        <div class="target-hint">
+        <div class="target-hint" class:validation-flash={validationFlash}>
           {#if selectedAction === 'Attack'}
             Click an enemy to select target
           {:else if selectedAction === 'UseAbility'}
@@ -514,10 +526,11 @@
     background: rgba(255, 255, 255, 0.05);
     border: 0.0625em solid #444;
     border-radius: 0.375rem;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
     cursor: default;
     flex: 1 1 0;
     min-width: 0;
+    position: relative;
   }
 
   .combatant.dead {
@@ -546,14 +559,37 @@
     cursor: pointer;
   }
 
-  .enemy-side .combatant.selected {
-    border-color: #44aaff;
-    box-shadow: 0 0 0.25em rgba(68, 170, 255, 0.3);
+  .enemy-side .combatant:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
   }
 
   .enemy-side .combatant.valid-target {
     border-color: #44aa44;
     box-shadow: 0 0 0.25em rgba(68, 170, 68, 0.3);
+  }
+
+  .enemy-side .combatant.selected {
+    border-color: #66bbff;
+    box-shadow: 0 0 0 0.0625em #66bbff, 0 0 0.75em 0.25em rgba(68, 170, 255, 0.55);
+    transform: scale(1.04);
+    z-index: 2;
+  }
+
+  .enemy-side .combatant.selected::after {
+    content: '✓ TARGET';
+    position: absolute;
+    top: 0.15rem;
+    right: 0.15rem;
+    background: rgba(0, 0, 0, 0.65);
+    color: #aaddff;
+    font-size: clamp(0.45rem, 0.9vw, 0.55rem);
+    font-weight: bold;
+    padding: 0.05rem 0.25rem;
+    border-radius: 0.15rem;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    line-height: 1.2;
   }
 
   .enemy-side .combatant.invalid-target {
@@ -703,6 +739,21 @@
     text-align: center;
     font-size: clamp(0.6rem, 1.2vw, 0.75rem);
     color: #888;
+    transition: color 0.15s, transform 0.15s;
+  }
+
+  .target-hint.validation-flash {
+    color: #ff6666;
+    transform: scale(1.05);
+    animation: shakeHint 0.4s ease-in-out;
+  }
+
+  @keyframes shakeHint {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
   }
 
   .action-submit {

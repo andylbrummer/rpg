@@ -118,7 +118,13 @@
       </div>
     {:else}
       <div class="tab-panel">
-        <TownServicesPanel gameState={gameState} onTavernRecruit={props.onTavernRecruit} onMissionAccept={props.onMissionAccept} onVendorPurchase={props.onVendorPurchase} />
+        <TownServicesPanel
+          gameState={gameState}
+          onTavernRecruit={props.onTavernRecruit}
+          onMissionAccept={props.onMissionAccept}
+          onVendorPurchase={props.onVendorPurchase}
+          activeTab={currentTab as 'tavern' | 'missions' | 'market' | 'clerk'}
+        />
       </div>
     {/if}
   </div>
@@ -198,6 +204,7 @@
     box-sizing: border-box;
     overflow: hidden;
     position: relative;
+    background: #08080c;
   }
 
   .town-atmosphere {

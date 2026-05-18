@@ -7,9 +7,10 @@
     onTavernRecruit: (id: string) => void;
     onMissionAccept: (id: string) => void;
     onVendorPurchase: (id: string) => void;
+    activeTab?: 'tavern' | 'missions' | 'market' | 'clerk';
   }
 
-  let { gameState, onTavernRecruit, onMissionAccept, onVendorPurchase }: Props = $props();
+  let { gameState, onTavernRecruit, onMissionAccept, onVendorPurchase, activeTab = 'tavern' }: Props = $props();
 
   const classColors: Record<string, string> = {
     bonewarden: '#8B7355',
@@ -114,6 +115,7 @@
   }
 </script>
 
+{#if activeTab === 'tavern'}
 <h2>Tavern</h2>
 <div class="service-list">
   {#each town?.tavernRoster || [] as recruit (recruit.id)}
@@ -138,7 +140,9 @@
     <div class="empty-state">No recruits available.</div>
   {/each}
 </div>
+{/if}
 
+{#if activeTab === 'missions'}
 <h2>Missions</h2>
 <div class="service-list">
   {#each town?.availableMissions || [] as mission (mission.id)}
@@ -157,7 +161,9 @@
     <div class="empty-state">No missions available.</div>
   {/each}
 </div>
+{/if}
 
+{#if activeTab === 'market'}
 <h2>Vendor</h2>
 <div class="service-list">
   {#each town?.vendorStock || [] as item (item.itemId)}
@@ -217,7 +223,9 @@
     {/each}
   </div>
 {/if}
+{/if}
 
+{#if activeTab === 'tavern'}
 <h2>Rumors</h2>
 <div class="service-list">
   {#each town?.rumors || [] as rumor (rumor.id)}
@@ -301,7 +309,9 @@
     <div class="empty-state">No faction contacts.</div>
   {/each}
 </div>
+{/if}
 
+{#if activeTab === 'missions'}
 <h2>Quest Log</h2>
 <div class="service-list">
   {#each town?.questLog || [] as quest (quest.id)}
@@ -338,7 +348,9 @@
     </div>
   </div>
 {/if}
+{/if}
 
+{#if activeTab === 'clerk'}
 <h2>Bone Clerk</h2>
 <div class="service-list">
   <div class="bone-clerk-info">
@@ -372,7 +384,9 @@
     <div class="empty-state">No dead to resurrect.</div>
   {/each}
 </div>
+{/if}
 
+{#if activeTab === 'tavern'}
 <h2>Downtime</h2>
 <div class="service-list">
   <div class="downtime-header">
@@ -408,6 +422,7 @@
     <div class="empty-state">No characters in party.</div>
   {/each}
 </div>
+{/if}
 
 <style>
   h2 {
