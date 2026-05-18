@@ -84,6 +84,30 @@ public class ActionLogTests : IDisposable
     }
 
     [Fact]
+    public void FleeCombat_EmitsEncounterFled()
+    {
+        var gs = new GameState(seed: 42);
+        gs.EnterDungeon(new Dungeon(3, 3, "test"), "test");
+        gs.ActionLog.Clear();
+
+        var encounter = new EncounterDef("test_enc", "Test", new[]
+        {
+            new EnemySpawn("rat", 1)
+        }, 0);
+
+        gs.TriggerEncounter(encounter);
+        Assert.NotNull(gs.Combat);
+
+        gs.FleeCombat();
+
+        Assert.Equal(GameMode.Exploration, gs.Mode);
+        var fled = gs.ActionLog.FirstOrDefault(e => e.Type == "encounter_fled");
+        Assert.NotNull(fled);
+        Assert.Equal("combat", fled.Category);
+        Assert.False(string.IsNullOrEmpty(fled.Payload["encounterId"]));
+    }
+
+    [Fact]
     public void SaveLoad_PreservesEventOrdering()
     {
         var gs = new GameState(seed: 42);
@@ -100,6 +124,7 @@ public class ActionLogTests : IDisposable
         for (int i = 0; i < gs.ActionLog.Count; i++)
         {
             Assert.Equal(gs.ActionLog[i].Turn, gs2.ActionLog[i].Turn);
+            Assert.Equal(gs.ActionLog[i].Act, gs2.ActionLog[i].Act);
             Assert.Equal(gs.ActionLog[i].Category, gs2.ActionLog[i].Category);
             Assert.Equal(gs.ActionLog[i].Type, gs2.ActionLog[i].Type);
             Assert.Equal(gs.ActionLog[i].Payload["dungeonType"], gs2.ActionLog[i].Payload["dungeonType"]);
@@ -118,6 +143,7 @@ public class ActionLogTests : IDisposable
         Assert.True(entry.Payload.ContainsKey("dungeonType"));
         Assert.Equal("crypt", entry.Payload["dungeonType"]);
         Assert.True(entry.Turn > 0);
+        Assert.True(entry.Act >= 1);
     }
 
     [Fact]

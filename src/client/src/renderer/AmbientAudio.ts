@@ -102,6 +102,7 @@ export class AmbientAudioManager {
   private lfo: OscillatorNode | null = null;
   private lfoGain: GainNode | null = null;
   private enabled = true;
+  private ducked = false;
 
   setEnabled(value: boolean): void {
     this.enabled = value;
@@ -110,6 +111,24 @@ export class AmbientAudioManager {
     } else if (this.currentTrack) {
       this.play(this.currentTrack.id);
     }
+  }
+
+  duck(): void {
+    if (this.ducked || !this.gainNode || !this.ctx) return;
+    this.ducked = true;
+    const now = this.ctx.currentTime;
+    this.gainNode.gain.cancelScheduledValues(now);
+    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+    this.gainNode.gain.linearRampToValueAtTime(0.01, now + 1);
+  }
+
+  unduck(): void {
+    if (!this.ducked || !this.gainNode || !this.ctx) return;
+    this.ducked = false;
+    const now = this.ctx.currentTime;
+    this.gainNode.gain.cancelScheduledValues(now);
+    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+    this.gainNode.gain.linearRampToValueAtTime(0.08, now + 2);
   }
 
   private getContext(): AudioContext {
@@ -174,6 +193,7 @@ export class AmbientAudioManager {
   }
 
   private stopInternal(): void {
+    this.ducked = false;
     if (this.gainNode && this.ctx) {
       const now = this.ctx.currentTime;
       this.gainNode.gain.cancelScheduledValues(now);

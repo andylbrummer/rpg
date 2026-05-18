@@ -72,6 +72,7 @@ public class StatePresenter
             actionLog = state.ActionLog.Select(e => new
             {
                 turn = e.Turn,
+                act = e.Act,
                 category = e.Category,
                 type = e.Type,
                 payload = e.Payload

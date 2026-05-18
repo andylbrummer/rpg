@@ -241,6 +241,7 @@
                 type="button"
                 class="combatant"
                 class:dead={enemy.hp <= 0}
+                class:unaccounted={enemy.isUnaccounted}
                 class:selected={selectedTargetId === enemy.id && isPlayerTurn()}
                 class:valid-target={isValidTarget(enemy)}
                 class:invalid-target={!isValidTarget(enemy) && selectedAction === 'UseAbility' && selectedAbilityId !== null}
@@ -266,6 +267,7 @@
                 type="button"
                 class="combatant"
                 class:dead={enemy.hp <= 0}
+                class:unaccounted={enemy.isUnaccounted}
                 class:selected={selectedTargetId === enemy.id && isPlayerTurn()}
                 class:valid-target={isValidTarget(enemy)}
                 class:invalid-target={!isValidTarget(enemy) && selectedAction === 'UseAbility' && selectedAbilityId !== null}
@@ -520,6 +522,19 @@
 
   .combatant.dead {
     opacity: 0.4;
+  }
+
+  .combatant.unaccounted {
+    border-color: #8800ff;
+    box-shadow: 0 0 0.4em rgba(136, 0, 255, 0.4);
+    animation: unaccountedTwitch 2s infinite;
+  }
+
+  @keyframes unaccountedTwitch {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(1px); }
+    50% { transform: translateX(-1px); }
+    75% { transform: translateX(0.5px); }
   }
 
   .combatant.current-turn {

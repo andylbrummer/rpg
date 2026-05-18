@@ -295,7 +295,7 @@ public class GameState
     internal void EmitActionLog(string category, string type, Dictionary<string, string> payload)
     {
         _actionLogTurn++;
-        ActionLog.Add(new ActionLogEntry(_actionLogTurn, category, type, new Dictionary<string, string>(payload)));
+        ActionLog.Add(new ActionLogEntry(_actionLogTurn, CurrentAct, category, type, new Dictionary<string, string>(payload)));
         if (ActionLog.Count >= 1000)
         {
             Console.Error.WriteLine($"[DEV] ActionLog size warning: {ActionLog.Count} events. Consider log rotation.");
@@ -307,6 +307,7 @@ public class GameState
         ActionLog.Clear();
         ActionLog.AddRange(entries);
         _actionLogTurn = entries.Count > 0 ? entries.Max(e => e.Turn) : 0;
+        // Act is derived from Overworld.Turns, not stored per entry; it will be recalculated on emit
     }
 
     public void DiscoverSecret(string secretType, string secretId) => _campaignService.DiscoverSecret(this, secretType, secretId);

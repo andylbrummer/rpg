@@ -233,6 +233,7 @@ export interface TravelEncounter {
 
 export interface ActionLogEntry {
   turn: number;
+  act: number;
   category: string;
   type: string;
   payload: Record<string, string>;

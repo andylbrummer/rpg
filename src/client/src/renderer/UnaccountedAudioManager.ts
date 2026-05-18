@@ -1,5 +1,6 @@
 import { SubtitleSystem } from './SubtitleSystem';
 import type { GameState, CombatLogEntry } from '$shared/types/game';
+import type { AmbientAudioManager } from './AmbientAudio';
 
 export class UnaccountedAudioManager {
   private ctx: AudioContext | null = null;
@@ -13,9 +14,22 @@ export class UnaccountedAudioManager {
   private lastLogLength = 0;
   private warningPlayed = false;
   private baseFreq = 110; // A2
+  private enabled = true;
+  private ambientManager: AmbientAudioManager | null = null;
+
+  constructor(ambientManager?: AmbientAudioManager) {
+    this.ambientManager = ambientManager ?? null;
+  }
 
   get subtitles(): SubtitleSystem {
     return this.subtitleSystem;
+  }
+
+  setEnabled(value: boolean): void {
+    this.enabled = value;
+    if (!value) {
+      this.stopDrone();
+    }
   }
 
   private ensureContext(): AudioContext {
@@ -128,6 +142,13 @@ export class UnaccountedAudioManager {
       (c) => c.isUnaccounted && c.alive
     ) ?? false;
 
+    if (!this.enabled) {
+      this.hasUnaccounted = unaccountedPresent;
+      this.lastLogLength = combat?.log.length ?? 0;
+      this.lastCombatRound = combat?.round ?? -1;
+      return;
+    }
+
     // Warning on entering combat with Unaccounted
     if (unaccountedPresent && !this.hasUnaccounted && !this.warningPlayed) {
       this.warningPlayed = true;
@@ -144,11 +165,13 @@ export class UnaccountedAudioManager {
       if (!this.hasUnaccounted) {
         // Shift to uncomfortable frequency
         this.startDrone(146.83, 15, 0.4); // D3 + detune, faster LFO
+        this.ambientManager?.duck();
         this.subtitleSystem.add('[Unnatural silence]', 3000);
       }
     } else {
       if (this.hasUnaccounted) {
         this.stopDrone();
+        this.ambientManager?.unduck();
       }
     }
 

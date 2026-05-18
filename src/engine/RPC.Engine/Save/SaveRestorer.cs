@@ -103,7 +103,7 @@ public static class SaveRestorer
     {
         state.RestoreActionLog(
             (data.ActionLog ?? Array.Empty<SaveActionLogEntry>())
-            .Select(e => new ActionLogEntry(e.Turn, e.Category, e.Type, e.Payload))
+            .Select(e => new ActionLogEntry(e.Turn, e.Act, e.Category, e.Type, e.Payload))
             .ToList());
     }
 

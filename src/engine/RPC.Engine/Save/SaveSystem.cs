@@ -233,6 +233,7 @@ public static class SaveSystem
             ActionLog = state.ActionLog.Select(e => new SaveActionLogEntry
             {
                 Turn = e.Turn,
+                Act = e.Act,
                 Category = e.Category,
                 Type = e.Type,
                 Payload = e.Payload

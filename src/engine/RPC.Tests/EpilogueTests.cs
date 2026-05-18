@@ -35,7 +35,7 @@ public class EpilogueTests
             FactionTimelines = new Dictionary<string, FactionTimeline>(),
             NpcCasting = new Dictionary<string, string>()
         };
-        state.ActionLog.Add(new ActionLogEntry(1, "combat", "character_died", new Dictionary<string, string>
+        state.ActionLog.Add(new ActionLogEntry(1, 1, "combat", "character_died", new Dictionary<string, string>
         {
             { "characterName", "Alice" }
         }));

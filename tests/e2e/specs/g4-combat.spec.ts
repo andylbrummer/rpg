@@ -204,6 +204,41 @@ test.describe('G4: Combat', () => {
     });
   });
 
+  test.describe('UnaccountedRendererTests', () => {
+    test('unaccounted enemies have distinct visual class', async ({ page, serverUrl }) => {
+      await page.goto(`${serverUrl}/app`);
+      await page.waitForTimeout(500);
+
+      const combat = makeMockCombat(2, 2);
+      combat.combatants[2].isUnaccounted = true;
+      combat.combatants[3].isUnaccounted = false;
+      await injectCombatState(page, combat);
+
+      await expect(page.locator('.combat-overlay')).toBeVisible();
+
+      const unaccountedEnemies = page.locator('.enemy-side .combatant.unaccounted');
+      const normalEnemies = page.locator('.enemy-side .combatant:not(.unaccounted)');
+
+      await expect(unaccountedEnemies).toHaveCount(1);
+      await expect(normalEnemies).toHaveCount(1);
+    });
+
+    test('unaccounted combat triggers subtitle overlay', async ({ page, serverUrl }) => {
+      await page.goto(`${serverUrl}/app`);
+      await page.waitForTimeout(500);
+
+      const combat = makeMockCombat(2, 2);
+      combat.combatants[2].isUnaccounted = true;
+      await injectCombatState(page, combat);
+
+      await expect(page.locator('.combat-overlay')).toBeVisible();
+
+      // Subtitle should appear within a short delay after Unaccounted enter combat
+      await expect(page.locator('.subtitle-overlay .subtitle-line', { hasText: '[Unnatural silence]' })).toBeVisible({ timeout: 3000 });
+      await expect(page.locator('.subtitle-overlay .subtitle-line', { hasText: '[Wrong pitch drone]' })).toBeVisible({ timeout: 3000 });
+    });
+  });
+
   test.describe('VisualOverlapTests', () => {
     test('no overlap at max encounter', async ({ page, serverUrl }) => {
       await page.setViewportSize({ width: 1920, height: 1080 });

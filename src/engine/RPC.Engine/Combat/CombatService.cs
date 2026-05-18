@@ -431,6 +431,10 @@ public class CombatService
     {
         if (state.Mode != GameMode.Combat) return;
         state.Mode = GameMode.Exploration;
+        if (state.CurrentEncounterId != null)
+        {
+            state.EmitActionLog("combat", "encounter_fled", new Dictionary<string, string> { { "encounterId", state.CurrentEncounterId } });
+        }
         state.Combat = null;
         state.ClearTaggedEncounterTile(resolved: false);
         state.LastUpdate = DateTime.UtcNow;

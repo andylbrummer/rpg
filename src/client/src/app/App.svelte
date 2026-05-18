@@ -23,7 +23,7 @@
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
   let renderer: DungeonRenderer | null = null;
   const audioManager = new AmbientAudioManager();
-  const unaccountedAudio = new UnaccountedAudioManager();
+  const unaccountedAudio = new UnaccountedAudioManager(audioManager);
   let gameState = $state<GameState | null>(null);
   let serverError = $state<{ code: string; message: string; recoverable: boolean } | null>(null);
   let combatCancelSignal = $state(0);
@@ -641,7 +641,7 @@
         <SettingsPanel
           open={showSettings}
           onClose={() => showSettings = false}
-          onAudioToggle={(enabled) => audioManager.setEnabled(enabled)}
+          onAudioToggle={(enabled) => { audioManager.setEnabled(enabled); unaccountedAudio.setEnabled(enabled); }}
         />
       {/if}
       {#if showStats}
