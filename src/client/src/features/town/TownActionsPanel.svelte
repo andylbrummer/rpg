@@ -1,40 +1,50 @@
 <script lang="ts">
+  import type { GameState } from '$shared/types/game';
+
   interface Props {
+    gameState: GameState | null;
     onEnterDungeon: (type: string) => void;
     onSave: () => void;
     onReset: () => void;
     onShowMap: () => void;
   }
 
-  let { onEnterDungeon, onSave, onReset, onShowMap }: Props = $props();
+  let { gameState, onEnterDungeon, onSave, onReset, onShowMap }: Props = $props();
 
-  const dungeonTypes = [
-    { id: 'broken_engine', name: 'Broken Engine', level: 1, desc: 'Shallow caves infested with goblins.' },
-    { id: 'sewers', name: 'Sewer Warrens', level: 3, desc: 'Crumbling ruins of a lost civilization.' },
-    { id: 'crypt', name: 'Crypt of Whispers', level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
-    { id: 'bloom_site', name: 'Bloom Site', level: 4, desc: 'A fungal infestation spreading through abandoned machinery.' },
-    { id: 'boneyard', name: 'The Boneyard', level: 2, desc: 'Bone-sorting halls and tithe archives overrun by rogue constructs.' },
-    { id: 'sealed_vault', name: 'Sealed Vault', level: 6, desc: 'Imperial wards and dead-language inscriptions guarding sealed horrors.' },
-    { id: 'settlement_gone_wrong', name: 'Settlement Gone Wrong', level: 3, desc: 'A ruined town overtaken by bloom pockets and hostile survivors.' },
-    { id: 'ossuary', name: 'The Ossuary', level: 4, desc: 'Family vaults and memorial halls where ancestors do not rest quietly.' },
-  ];
+  const dungeonMeta: Record<string, { level: number; desc: string }> = {
+    broken_engine: { level: 1, desc: 'Shallow caves infested with goblins.' },
+    sewers: { level: 3, desc: 'Crumbling ruins of a lost civilization.' },
+    crypt: { level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
+    bloom_site: { level: 4, desc: 'A fungal infestation spreading through abandoned machinery.' },
+    boneyard: { level: 2, desc: 'Bone-sorting halls and tithe archives overrun by rogue constructs.' },
+    sealed_vault: { level: 6, desc: 'Imperial wards and dead-language inscriptions guarding sealed horrors.' },
+    settlement_gone_wrong: { level: 3, desc: 'A ruined town overtaken by bloom pockets and hostile survivors.' },
+    ossuary: { level: 4, desc: 'Family vaults and memorial halls where ancestors do not rest quietly.' },
+  };
+
+  const availableDungeons = $derived(
+    gameState?.overworld?.nodes?.filter(n => n.type === 'dungeon_entrance') ?? []
+  );
 </script>
 
 <div class="actions-panel">
   <h2>Actions</h2>
 
   <div class="dungeon-list">
-    {#each dungeonTypes as dungeon}
+    {#each availableDungeons as dungeon}
+      {@const meta = dungeonMeta[dungeon.id]}
       <button
         class="dungeon-btn"
         onclick={() => onEnterDungeon(dungeon.id)}
       >
         <div class="dungeon-name">{dungeon.name}</div>
         <div class="dungeon-info">
-          <span class="dungeon-level">Lv.{dungeon.level}</span>
-          <span class="dungeon-desc">{dungeon.desc}</span>
+          <span class="dungeon-level">Lv.{meta?.level ?? '?'}</span>
+          <span class="dungeon-desc">{meta?.desc ?? 'Unknown location.'}</span>
         </div>
       </button>
+    {:else}
+      <div class="empty-state">No dungeons available.</div>
     {/each}
   </div>
 
@@ -115,6 +125,14 @@
   .dungeon-desc {
     font-size: clamp(0.6rem, 1.2vw, 0.7rem);
     color: #888;
+  }
+
+  .empty-state {
+    padding: 1rem;
+    text-align: center;
+    color: #666;
+    font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+    font-style: italic;
   }
 
   .utility-actions {

@@ -102,6 +102,7 @@
       </div>
 
       <TownActionsPanel
+        gameState={gameState}
         onEnterDungeon={props.onEnterDungeon}
         onSave={props.onSave}
         onReset={props.onReset}
@@ -110,6 +111,7 @@
     {:else if currentTab === 'dungeons'}
       <div class="tab-panel">
         <TownActionsPanel
+          gameState={gameState}
           onEnterDungeon={props.onEnterDungeon}
           onSave={props.onSave}
           onReset={props.onReset}
