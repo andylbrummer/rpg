@@ -1,0 +1,22 @@
+{
+  "id": "underway_entrance",
+  "name": "Flooded Platform",
+  "description": "A subterranean rail platform half-submerged in cold black water. A pre-Bloom locomotive sits derelict on the tracks, its boiler split open.",
+  "tags": ["entrance", "underway"],
+  "width": 4,
+  "height": 3,
+  "tiles": [
+    { "x": 0, "y": 0, "type": "Floor" },
+    { "x": 1, "y": 0, "type": "Floor" },
+    { "x": 2, "y": 0, "type": "Floor" },
+    { "x": 3, "y": 0, "type": "Floor" },
+    { "x": 0, "y": 1, "type": "Floor" },
+    { "x": 1, "y": 1, "type": "Floor" },
+    { "x": 2, "y": 1, "type": "Floor" },
+    { "x": 3, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 0, "y": 2, "type": "Floor", "west": "BreakableWall" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 2, "y": 2, "type": "Floor" },
+    { "x": 3, "y": 2, "type": "Floor" }
+  ]
+}

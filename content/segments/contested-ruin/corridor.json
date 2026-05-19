@@ -1,0 +1,13 @@
+{
+  "id": "ruin_corridor",
+  "name": "Skirmish Corridor",
+  "description": "A long hallway pockmarked by bayonet thrust and burst spellfire. Spent shell casings mingle with prayer beads underfoot.",
+  "tags": ["corridor", "contested_ruin"],
+  "tiles": [
+    { "x": 0, "y": 0, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
+    { "x": 0, "y": -1, "type": "Floor" },
+    { "x": 0, "y": -2, "type": "Floor", "east": "SecretDoor" },
+    { "x": 0, "y": -3, "type": "Floor" },
+    { "x": 0, "y": -4, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" }
+  ]
+}

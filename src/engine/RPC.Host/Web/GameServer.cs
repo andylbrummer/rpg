@@ -608,7 +608,7 @@ public class GameServer
     private static List<RoomSegment> LoadSegments(IContentCatalog catalog)
     {
         var segments = new List<RoomSegment>();
-        foreach (var dir in new[] { "segments", "segments/broken-engine", "segments/bloom-site", "segments/boneyard", "segments/sealed-vault", "segments/settlement-gone-wrong", "segments/ossuary" })
+        foreach (var dir in new[] { "segments", "segments/broken-engine", "segments/bloom-site", "segments/boneyard", "segments/sealed-vault", "segments/settlement-gone-wrong", "segments/ossuary", "segments/contested-ruin", "segments/underway" })
         {
             foreach (var file in catalog.EnumerateFiles(dir, "*.json"))
             {

@@ -1,0 +1,27 @@
+{
+  "id": "underway",
+  "name": "The Underway",
+  "segmentPool": [
+    "underway_entrance",
+    "underway_tunnel",
+    "underway_junction",
+    "underway_maintenance",
+    "underway_dead_end",
+    "underway_terminus"
+  ],
+  "segmentPriority": [
+    "underway_entrance",
+    "underway_tunnel",
+    "underway_junction",
+    "underway_maintenance",
+    "underway_dead_end",
+    "underway_terminus"
+  ],
+  "targetRooms": 8,
+  "bossEncounterId": "uw-boss-leviathan",
+  "encounterTableId": "underway",
+  "wanderingTableId": "underway",
+  "unlockConditions": [
+    { "factionId": "cartography", "minReputation": 10 }
+  ]
+}

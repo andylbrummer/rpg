@@ -1,0 +1,64 @@
+{
+  "id": "contested_ruin",
+  "name": "Contested Ruin Encounters",
+  "entries": [
+    {
+      "id": "cr-rat-pack",
+      "weight": 25,
+      "enemies": [
+        { "enemyId": "rat", "count": 2, "rowOverride": 0 }
+      ]
+    },
+    {
+      "id": "cr-scavenger-mixed",
+      "weight": 20,
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 1, "rowOverride": 0 },
+        { "enemyId": "rat", "count": 1, "rowOverride": 1 }
+      ]
+    },
+    {
+      "id": "cr-bureau-patrol",
+      "weight": 15,
+      "factionId": "bureau",
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 2, "rowOverride": 0 }
+      ]
+    },
+    {
+      "id": "cr-convocation-patrol",
+      "weight": 15,
+      "factionId": "convocation",
+      "enemies": [
+        { "enemyId": "convocation_soldier", "count": 2, "rowOverride": 0 }
+      ]
+    },
+    {
+      "id": "cr-mixed-patrol",
+      "weight": 12,
+      "factionId": "bureau",
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 1, "rowOverride": 0 },
+        { "enemyId": "convocation_soldier", "count": 1, "rowOverride": 1 }
+      ]
+    },
+    {
+      "id": "cr-cartography-scouts",
+      "weight": 8,
+      "factionId": "cartography",
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 0 }
+      ]
+    },
+    {
+      "id": "cr-boss-arbiter",
+      "weight": 5,
+      "dangerRating": 5,
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 1, "rowOverride": 0 },
+        { "enemyId": "convocation_soldier", "count": 1, "rowOverride": 0 },
+        { "enemyId": "rat", "count": 2, "rowOverride": 1 }
+      ]
+    }
+  ]
+}
