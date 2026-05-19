@@ -49,6 +49,10 @@ public class CombatService
             var hasAshmouth = state.Party.Members.Any(m => m.ClassId == "ashmouth" && m.IsAlive);
             var options = new List<string>();
             if (rep >= 25) options.Add("Parley");
+            // Bureau (bureaucracy) and Convocation (zealot order) accept formal diplomatic
+            // protocols at high reputation: commission paperwork or doctrinal exchange.
+            if (rep >= 25 && (factionId == "bureau" || factionId == "convocation"))
+                options.Add("Diplomatic");
             if (hasAshmouth) options.Add("Negotiate");
             options.Add("Fight");
 
@@ -134,36 +138,131 @@ public class CombatService
     {
         if (state.CurrentParley == null) return false;
 
-        if (choice == "parley")
+        var factionId = state.CurrentParley.FactionId;
+        var normalized = choice?.ToLowerInvariant() ?? "fight";
+
+        switch (normalized)
         {
-            state.EmitActionLog("combat", "encounter_parleyed", new Dictionary<string, string>
-            {
-                { "encounterId", state.CurrentEncounterId ?? "unknown" },
-                { "factionId", state.CurrentParley.FactionId }
-            });
-            state.CurrentParley = null;
-            state.Mode = GameMode.Exploration;
-            return true;
-        }
-        else if (choice == "negotiate")
-        {
-            return ResolveAshmouthNegotiation(state);
-        }
-        else
-        {
-            var encounter = _encounterTables?.GetEncounterById(state.CurrentParley.EncounterId);
-            if (encounter == null)
-            {
-                encounter = new EncounterDef("random", "Random Encounter", new[]
+            case "parley":
+                ApplyReputationDelta(state, factionId, +2);
+                state.EmitActionLog("combat", "encounter_parleyed", new Dictionary<string, string>
                 {
-                    new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
-                    new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
+                    { "encounterId", state.CurrentEncounterId ?? "unknown" },
+                    { "factionId", factionId },
+                    { "repDelta", "+2" }
                 });
-            }
-            state.CurrentParley = null;
-            EnterCombat(state, encounter);
-            return true;
+                ClosePeacefulEncounter(state);
+                return true;
+
+            case "diplomatic":
+                return ResolveDiplomaticEncounter(state, factionId);
+
+            case "negotiate":
+                return ResolveAshmouthNegotiation(state);
+
+            case "escalate":
+                ApplyReputationDelta(state, factionId, -5);
+                state.EmitActionLog("combat", "encounter_escalated", new Dictionary<string, string>
+                {
+                    { "encounterId", state.CurrentEncounterId ?? "unknown" },
+                    { "factionId", factionId },
+                    { "repDelta", "-5" }
+                });
+                EscalateToReinforcedCombat(state, factionId);
+                return true;
+
+            case "fight":
+            default:
+                ApplyReputationDelta(state, factionId, -3);
+                state.EmitActionLog("combat", "encounter_parley_refused", new Dictionary<string, string>
+                {
+                    { "encounterId", state.CurrentEncounterId ?? "unknown" },
+                    { "factionId", factionId },
+                    { "repDelta", "-3" }
+                });
+                var encounter = ResolveOrFallbackEncounter(state);
+                state.CurrentParley = null;
+                EnterCombat(state, encounter);
+                return true;
         }
+    }
+
+    private bool ResolveDiplomaticEncounter(GameState state, string factionId)
+    {
+        // Bureau: commission paperwork yields intel; Convocation: doctrinal exchange yields blessing.
+        // Both clear the encounter peacefully and grant a larger rep boost than plain Parley.
+        string outcomeType;
+        int repDelta = +5;
+        switch (factionId)
+        {
+            case "bureau":
+                outcomeType = "intel_exchanged";
+                break;
+            case "convocation":
+                outcomeType = "blessing_granted";
+                break;
+            default:
+                // Non-eligible factions fall through to standard parley behavior.
+                outcomeType = "parley_accepted";
+                repDelta = +2;
+                break;
+        }
+
+        ApplyReputationDelta(state, factionId, repDelta);
+        state.EmitActionLog("combat", "encounter_diplomatic", new Dictionary<string, string>
+        {
+            { "encounterId", state.CurrentEncounterId ?? "unknown" },
+            { "factionId", factionId },
+            { "outcome", outcomeType },
+            { "repDelta", $"{(repDelta >= 0 ? "+" : "")}{repDelta}" }
+        });
+        ClosePeacefulEncounter(state);
+        return true;
+    }
+
+    private void EscalateToReinforcedCombat(GameState state, string factionId)
+    {
+        var encounter = ResolveOrFallbackEncounter(state);
+        var reinforced = encounter.Enemies
+            .Concat(new[] { new EnemySpawn("faction_soldier", 1) })
+            .ToArray();
+        encounter = encounter with { Enemies = reinforced };
+        state.CurrentParley = null;
+        EnterCombatWithSurprise(state, encounter);
+    }
+
+    private EncounterDef ResolveOrFallbackEncounter(GameState state)
+    {
+        var encounter = _encounterTables?.GetEncounterById(state.CurrentParley!.EncounterId);
+        return encounter ?? new EncounterDef("random", "Random Encounter", new[]
+        {
+            new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
+            new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
+        });
+    }
+
+    private static void ApplyReputationDelta(GameState state, string factionId, int delta)
+    {
+        var current = state.Reputation[factionId];
+        state.Reputation[factionId] = Math.Clamp(current + delta, -100, 100);
+    }
+
+    /// <summary>
+    /// Tear down parley state when the encounter ends without combat: clear parley + encounter id,
+    /// mark the encounter tile resolved so the player can move on, and emit the wrap-up log entry.
+    /// </summary>
+    private static void ClosePeacefulEncounter(GameState state)
+    {
+        var encounterId = state.CurrentEncounterId;
+        state.CurrentParley = null;
+        state.Mode = GameMode.Exploration;
+        state.ClearTaggedEncounterTile(resolved: true);
+        if (encounterId != null)
+        {
+            state.EmitActionLog("combat", "encounter_resolved_peacefully",
+                new Dictionary<string, string> { { "encounterId", encounterId } });
+        }
+        state.CurrentEncounterId = null;
     }
 
     private bool ResolveAshmouthNegotiation(GameState state)
@@ -171,7 +270,6 @@ public class CombatService
         if (state.CurrentParley == null) return false;
 
         var factionId = state.CurrentParley.FactionId;
-        var encounter = _encounterTables?.GetEncounterById(state.CurrentParley.EncounterId);
 
         var ashmouth = state.Party.Members
             .Where(m => m.ClassId == "ashmouth" && m.IsAlive)
@@ -187,57 +285,48 @@ public class CombatService
         // Enemy leader level approximated by encounter danger
         var leaderLevel = 2;
         var repModifier = state.Reputation[factionId] / 10;
+        // Ashmouth Broker branch bonus (per spec doc 05): broker training adds +2 to the
+        // total. We approximate "trained" as level >= 3 since branches are picked at L3.
+        var brokerBonus = ashmouth.Level >= 3 ? 2 : 0;
         var successThreshold = leaderLevel - repModifier;
         var roll = _encounterRng.Roll(1, 6);
-        var total = ashmouth.Level + roll;
+        var total = ashmouth.Level + roll + brokerBonus;
+
+        var logMeta = new Dictionary<string, string>
+        {
+            { "encounterId", state.CurrentEncounterId ?? "unknown" },
+            { "factionId", factionId },
+            { "ashmouthLevel", ashmouth.Level.ToString() },
+            { "roll", roll.ToString() },
+            { "brokerBonus", brokerBonus.ToString() }
+        };
 
         if (total >= successThreshold + 3)
         {
-            // Complete success
-            state.EmitActionLog("combat", "negotiation_complete_success", new Dictionary<string, string>
-            {
-                { "encounterId", state.CurrentEncounterId ?? "unknown" },
-                { "factionId", factionId },
-                { "ashmouthLevel", ashmouth.Level.ToString() },
-                { "roll", roll.ToString() }
-            });
-            state.CurrentParley = null;
-            state.Mode = GameMode.Exploration;
+            // Complete success: rep boost + peaceful resolution
+            ApplyReputationDelta(state, factionId, +3);
+            logMeta["repDelta"] = "+3";
+            state.EmitActionLog("combat", "negotiation_complete_success", logMeta);
+            ClosePeacefulEncounter(state);
             return true;
         }
         else if (total >= successThreshold)
         {
-            // Partial success
-            state.EmitActionLog("combat", "negotiation_partial_success", new Dictionary<string, string>
-            {
-                { "encounterId", state.CurrentEncounterId ?? "unknown" },
-                { "factionId", factionId },
-                { "ashmouthLevel", ashmouth.Level.ToString() },
-                { "roll", roll.ToString() }
-            });
-            state.CurrentParley = null;
-            state.Mode = GameMode.Exploration;
+            // Partial success: small rep boost, peaceful resolution
+            ApplyReputationDelta(state, factionId, +1);
+            logMeta["repDelta"] = "+1";
+            state.EmitActionLog("combat", "negotiation_partial_success", logMeta);
+            ClosePeacefulEncounter(state);
             return true;
         }
         else
         {
-            // Failure - combat with surprise round
-            state.EmitActionLog("combat", "negotiation_failure", new Dictionary<string, string>
-            {
-                { "encounterId", state.CurrentEncounterId ?? "unknown" },
-                { "factionId", factionId },
-                { "ashmouthLevel", ashmouth.Level.ToString() },
-                { "roll", roll.ToString() }
-            });
+            // Failure: faction insulted, surprise combat, larger rep penalty
+            ApplyReputationDelta(state, factionId, -4);
+            logMeta["repDelta"] = "-4";
+            state.EmitActionLog("combat", "negotiation_failure", logMeta);
 
-            if (encounter == null)
-            {
-                encounter = new EncounterDef("random", "Random Encounter", new[]
-                {
-                    new EnemySpawn("rat", _encounterRng.Roll(1, 2)),
-                    new EnemySpawn("goblin_scavenger", _encounterRng.Roll(0, 1))
-                });
-            }
+            var encounter = ResolveOrFallbackEncounter(state);
             state.CurrentParley = null;
             EnterCombatWithSurprise(state, encounter);
             return true;
