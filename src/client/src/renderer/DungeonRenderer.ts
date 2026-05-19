@@ -23,6 +23,10 @@ export class DungeonRenderer {
   private wallTexture: THREE.CanvasTexture;
   private floorTexture: THREE.CanvasTexture;
   private doorTexture: THREE.CanvasTexture;
+  private breakableWallTexture: THREE.CanvasTexture;
+  private breakingWalls: Map<string, { mesh: THREE.Mesh; startTime: number; duration: number }> = new Map();
+  /** Public for tests / debug overlays. ms duration of the break animation. */
+  static readonly BREAK_ANIMATION_MS = 600;
   private currentTheme: DungeonTheme;
   private currentDungeonType: string | undefined;
   private bloomClusters: BloomCluster[] = [];
@@ -57,6 +61,7 @@ export class DungeonRenderer {
     this.wallTexture = this.createBrickTexture(this.currentTheme);
     this.floorTexture = this.createStoneTileTexture(this.currentTheme);
     this.doorTexture = this.createWoodTexture(this.currentTheme);
+    this.breakableWallTexture = this.createBreakableWallTexture(this.currentTheme);
 
     // Scene setup
     this.scene = new THREE.Scene();
@@ -210,6 +215,96 @@ export class DungeonRenderer {
     return texture;
   }
 
+  private createBreakableWallTexture(theme: DungeonTheme): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.fillStyle = theme.wallColor;
+    ctx.fillRect(0, 0, 256, 256);
+
+    const brickHeight = 32;
+    const brickWidth = 64;
+    const rows = 256 / brickHeight;
+
+    for (let row = 0; row < rows; row++) {
+      const offset = (row % 2) * (brickWidth / 2);
+      for (let col = -1; col < 5; col++) {
+        const x = col * brickWidth + offset;
+        const y = row * brickHeight;
+
+        ctx.globalAlpha = 0.12 + Math.random() * 0.18;
+        ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000';
+        ctx.fillRect(x + 1, y + 1, brickWidth - 2, brickHeight - 2);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+
+    // Crack network — branching dark fractures, deterministic per-texture
+    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+    ctx.lineCap = 'round';
+    const trunks = 3;
+    for (let t = 0; t < trunks; t++) {
+      const startX = 40 + t * 80 + Math.random() * 20;
+      let x = startX;
+      let y = 20 + Math.random() * 30;
+      let angle = Math.PI / 2 + (Math.random() - 0.5) * 0.6;
+      const segments = 14 + Math.floor(Math.random() * 6);
+      ctx.lineWidth = 2.2;
+      for (let s = 0; s < segments; s++) {
+        const len = 8 + Math.random() * 14;
+        const nx = x + Math.cos(angle) * len;
+        const ny = y + Math.sin(angle) * len;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(nx, ny);
+        ctx.stroke();
+        x = nx;
+        y = ny;
+        angle += (Math.random() - 0.5) * 0.9;
+
+        if (Math.random() < 0.25) {
+          // Spawn branch
+          const branchAngle = angle + (Math.random() > 0.5 ? 1 : -1) * (0.6 + Math.random() * 0.4);
+          let bx = x;
+          let by = y;
+          ctx.lineWidth = 1.2;
+          for (let b = 0; b < 4 + Math.floor(Math.random() * 4); b++) {
+            const blen = 5 + Math.random() * 8;
+            const bnx = bx + Math.cos(branchAngle) * blen;
+            const bny = by + Math.sin(branchAngle) * blen;
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
+            ctx.lineTo(bnx, bny);
+            ctx.stroke();
+            bx = bnx;
+            by = bny;
+          }
+          ctx.lineWidth = 2.2;
+        }
+      }
+    }
+
+    // Highlight along cracks for depth
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 40; i++) {
+      const sx = Math.random() * 256;
+      const sy = Math.random() * 256;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + (Math.random() - 0.5) * 6, sy + (Math.random() - 0.5) * 6);
+      ctx.stroke();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1.5);
+    return texture;
+  }
+
   updateState(state: GameState): void {
     this.currentState = state;
 
@@ -244,9 +339,11 @@ export class DungeonRenderer {
     this.wallTexture.dispose();
     this.floorTexture.dispose();
     this.doorTexture.dispose();
+    this.breakableWallTexture.dispose();
     this.wallTexture = this.createBrickTexture(theme);
     this.floorTexture = this.createStoneTileTexture(theme);
     this.doorTexture = this.createWoodTexture(theme);
+    this.breakableWallTexture = this.createBreakableWallTexture(theme);
 
     this.clearTiles();
     this.clearCreatures();
@@ -289,13 +386,21 @@ export class DungeonRenderer {
   }
 
   private clearTiles(): void {
-    for (const [key, mesh] of this.tileMeshes) {
+    // Drop break-animation refs first; the actual mesh disposal happens in the
+    // tileMeshes loop below, but tickBreakingWalls would otherwise touch a
+    // disposed material on its next frame.
+    this.clearBreakingWalls();
+    for (const [, mesh] of this.tileMeshes) {
       this.scene.remove(mesh);
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
     }
     this.tileMeshes.clear();
     this.clearBloomEffects();
+  }
+
+  private clearBreakingWalls(): void {
+    this.breakingWalls.clear();
   }
 
   private clearCreatures(): void {
@@ -760,6 +865,7 @@ export class DungeonRenderer {
   private createBorderPanel(x: number, z: number, side: 'north' | 'south' | 'east' | 'west', borderType: string): THREE.Mesh {
     const isDoor = borderType === 'Door';
     const isSecret = borderType === 'SecretDoor';
+    const isBreakable = borderType === 'BreakableWall';
 
     let geometry: THREE.BoxGeometry;
     let material: THREE.MeshStandardMaterial;
@@ -773,6 +879,24 @@ export class DungeonRenderer {
       material = new THREE.MeshStandardMaterial({
         map: this.doorTexture,
         roughness: 0.7
+      });
+    } else if (isBreakable) {
+      // Slightly inset + thicker bump to read as compromised structure
+      geometry = new THREE.BoxGeometry(
+        side === 'east' || side === 'west' ? this.wallThickness * 1.15 : this.tileSize * 0.98,
+        this.wallHeight * 0.98,
+        side === 'north' || side === 'south' ? this.wallThickness * 1.15 : this.tileSize * 0.98
+      );
+      this.jitterVertices(geometry, 0.04);
+      const tint = this.currentTheme.breakableWall ?? this.currentTheme.secretDoor;
+      material = new THREE.MeshStandardMaterial({
+        map: this.breakableWallTexture,
+        roughness: 0.95,
+        bumpMap: this.breakableWallTexture,
+        bumpScale: 0.22,
+        color: tint,
+        transparent: true,
+        opacity: 1
       });
     } else {
       geometry = new THREE.BoxGeometry(
@@ -809,6 +933,62 @@ export class DungeonRenderer {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     return mesh;
+  }
+
+  /**
+   * Displace box vertices by up to `amplitude` units to break the flat-wall silhouette
+   * on breakable walls. Cheaper than custom geometry and keeps UVs valid.
+   */
+  private jitterVertices(geometry: THREE.BoxGeometry, amplitude: number): void {
+    const pos = geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      pos.setX(i, pos.getX(i) + (Math.random() - 0.5) * amplitude);
+      pos.setY(i, pos.getY(i) + (Math.random() - 0.5) * amplitude * 0.5);
+      pos.setZ(i, pos.getZ(i) + (Math.random() - 0.5) * amplitude);
+    }
+    pos.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }
+
+  /**
+   * Trigger the break animation for a wall at (tileX, tileY) on the given side.
+   * Mesh fades + shrinks over BREAK_ANIMATION_MS and is then disposed and removed
+   * from the scene. No-op if no mesh exists at that key.
+   */
+  breakWall(tileX: number, tileY: number, side: 'N' | 'S' | 'E' | 'W'): boolean {
+    const key = `border:${tileX},${tileY}:${side}`;
+    const mesh = this.tileMeshes.get(key);
+    if (!mesh || this.breakingWalls.has(key)) return false;
+
+    this.breakingWalls.set(key, {
+      mesh,
+      startTime: performance.now(),
+      duration: DungeonRenderer.BREAK_ANIMATION_MS
+    });
+    return true;
+  }
+
+  private tickBreakingWalls(now: number): void {
+    if (this.breakingWalls.size === 0) return;
+    const finished: string[] = [];
+    for (const [key, entry] of this.breakingWalls) {
+      const t = Math.min(1, (now - entry.startTime) / entry.duration);
+      const eased = 1 - (1 - t) * (1 - t);
+      const material = entry.mesh.material as THREE.MeshStandardMaterial;
+      material.opacity = 1 - eased;
+      const scale = 1 - eased * 0.4;
+      entry.mesh.scale.set(scale, Math.max(0.05, 1 - eased), scale);
+      entry.mesh.position.y += (1 - t) * 0.002; // tiny upward shudder
+      if (t >= 1) finished.push(key);
+    }
+    for (const key of finished) {
+      const entry = this.breakingWalls.get(key)!;
+      this.scene.remove(entry.mesh);
+      entry.mesh.geometry.dispose();
+      (entry.mesh.material as THREE.Material).dispose();
+      this.tileMeshes.delete(key);
+      this.breakingWalls.delete(key);
+    }
   }
 
   private createStairs(x: number, z: number, isUp: boolean): THREE.Mesh {
@@ -882,6 +1062,7 @@ export class DungeonRenderer {
     this.updateUnaccountedAnimations(time);
     this.updateUnaccountedShaderTime(time);
     this.updateAnimatedLighting(time);
+    this.tickBreakingWalls(performance.now());
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -934,10 +1115,12 @@ export class DungeonRenderer {
     this.clearCreatures();
     this.ambientParticleSystem?.dispose();
     this.ambientParticleSystem = null;
+    this.clearBreakingWalls();
     this.renderer.dispose();
     this.wallTexture.dispose();
     this.floorTexture.dispose();
     this.doorTexture.dispose();
+    this.breakableWallTexture.dispose();
     for (const mesh of this.tileMeshes.values()) {
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();

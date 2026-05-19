@@ -9,7 +9,7 @@ export interface Player {
   facing: 'North' | 'East' | 'South' | 'West';
 }
 
-export type BorderType = 'None' | 'Wall' | 'Door' | 'SecretDoor';
+export type BorderType = 'None' | 'Wall' | 'Door' | 'SecretDoor' | 'BreakableWall';
 
 export interface Tile {
   x: number;

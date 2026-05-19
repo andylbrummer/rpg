@@ -6,6 +6,8 @@ export interface DungeonTheme {
   stairsUp: number;
   stairsDown: number;
   secretDoor: number;
+  /** Tint applied to breakable wall material; falls back to secretDoor when omitted. */
+  breakableWall?: number;
   torchColor: number;
   ambientColor: number;
   fillColor: number;
