@@ -83,3 +83,4 @@ desktop.ini
 secrets.json
 .dartai/*.local.md
 content/out/
+.worktrack/
