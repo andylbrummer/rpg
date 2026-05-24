@@ -24,6 +24,7 @@ test.describe('Faction vendors in town', () => {
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 24 });
     await page.waitForTimeout(500);
 
+    await page.getByRole('button', { name: 'Market', exact: true }).click();
     const bureauHeading = page.locator('.town-services h2:has-text("Bureau Quartermaster")');
     await expect(bureauHeading).toBeVisible();
 
@@ -44,6 +45,7 @@ test.describe('Faction vendors in town', () => {
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 25 });
     await page.waitForTimeout(500);
 
+    await page.getByRole('button', { name: 'Market', exact: true }).click();
     const bureauHeading = page.locator('.town-services h2:has-text("Bureau Quartermaster")');
     await expect(bureauHeading).toBeVisible();
     await expect(bureauHeading).not.toHaveClass(/locked-heading/);
@@ -84,6 +86,7 @@ test.describe('Faction vendors in town', () => {
     const newGold = await goldBadge.textContent();
     expect(newGold).not.toBe('500g');
 
+    await page.getByRole('button', { name: 'Market', exact: true }).click();
     const inventoryHeading = page.locator('.town-services h2:has-text("Inventory")');
     await expect(inventoryHeading).toBeVisible();
 
@@ -100,6 +103,7 @@ test.describe('Faction vendors in town', () => {
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'convocation', value: 25 });
     await page.waitForTimeout(500);
 
+    await page.getByRole('button', { name: 'Market', exact: true }).click();
     const convocationHeading = page.locator('.town-services h2:has-text("Convocation Arcanist")');
     await expect(convocationHeading).toBeVisible();
 

@@ -66,6 +66,7 @@ test.describe('Faction contacts in town', () => {
     await sendWsAction(page, serverUrl, { type: 'mission_accept', targetId: 'mission-bureau-1' });
     await page.waitForTimeout(600);
 
+    await page.getByRole('button', { name: 'Missions', exact: true }).click();
     const questSection = page.locator('.town-services h2:has-text("Quest Log") + .service-list');
     const quests = questSection.locator('.service-item');
     await expect(quests).toHaveCount(1);
@@ -88,10 +89,12 @@ test.describe('Faction contacts in town', () => {
     await sendWsAction(page, serverUrl, { type: 'complete_mission', targetId: 'mission-bureau-1' });
     await page.waitForTimeout(600);
 
+    await page.getByRole('button', { name: 'Missions', exact: true }).click();
     const questSection = page.locator('.town-services h2:has-text("Quest Log") + .service-list');
     const questStatus = questSection.locator('.quest-status').first();
     await expect(questStatus).toHaveText('completed');
 
+    await page.getByRole('button', { name: 'Tavern', exact: true }).click();
     const bureauContact2 = contactSection.locator('.contact-card').filter({ hasText: 'Agent Voss' });
     const repValue = bureauContact2.locator('.rep-value').first();
     await expect(repValue).toHaveText('35');

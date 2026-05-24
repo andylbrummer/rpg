@@ -38,12 +38,16 @@ test.describe('Town: server-authoritative state', () => {
 
     await resetGame(page, serverUrl);
 
+    await page.getByRole('button', { name: 'Missions', exact: true }).click();
     const missionsSection = page.locator('.town-services h2:has-text("Missions") + .service-list');
-    const factionSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
-    const vendorSection = page.locator('.town-services h2:has-text("Vendor") + .service-list');
-
     await expect(missionsSection.locator('.service-item')).toHaveCount(20);
+
+    await page.getByRole('button', { name: 'Tavern', exact: true }).click();
+    const factionSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     await expect(factionSection.locator('.contact-card')).toHaveCount(5);
+
+    await page.getByRole('button', { name: 'Market', exact: true }).click();
+    const vendorSection = page.locator('.town-services h2:has-text("Vendor") + .service-list');
     await expect(vendorSection.locator('.empty-state')).toBeVisible();
   });
 

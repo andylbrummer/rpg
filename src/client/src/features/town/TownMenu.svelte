@@ -120,13 +120,15 @@
       </div>
     {:else}
       <div class="tab-panel">
-        <TownServicesPanel
-          gameState={gameState}
-          onTavernRecruit={props.onTavernRecruit}
-          onMissionAccept={props.onMissionAccept}
-          onVendorPurchase={props.onVendorPurchase}
-          activeTab={currentTab as 'tavern' | 'missions' | 'market' | 'clerk'}
-        />
+        <div class="town-services">
+          <TownServicesPanel
+            gameState={gameState}
+            onTavernRecruit={props.onTavernRecruit}
+            onMissionAccept={props.onMissionAccept}
+            onVendorPurchase={props.onVendorPurchase}
+            activeTab={currentTab as 'tavern' | 'missions' | 'market' | 'clerk'}
+          />
+        </div>
       </div>
     {/if}
   </div>
