@@ -1,0 +1,18 @@
+{
+  "id": "cauterist_stillblade_silent_mercy",
+  "abilities": [
+    "stabilize",
+    "silence_strike"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "status_effect",
+    "value": 0,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Wounds stabilized beneath a silence-strike's hush — a silent mercy no scream betrays.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true
+}

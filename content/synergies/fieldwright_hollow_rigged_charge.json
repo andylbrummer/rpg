@@ -1,0 +1,17 @@
+{
+  "id": "fieldwright_hollow_rigged_charge",
+  "abilities": [
+    "coil_overload",
+    "smoke_bomb"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 7,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A rigged coil overload buried in the Hollow's smoke detonates before anyone sees it.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

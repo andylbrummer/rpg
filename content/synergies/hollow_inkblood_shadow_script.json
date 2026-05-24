@@ -1,0 +1,17 @@
+{
+  "id": "hollow_inkblood_shadow_script",
+  "abilities": [
+    "smoke_bomb",
+    "knowledge_bolt"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Knowledge-bolts cast through the Hollow's smoke strike from impossible angles.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

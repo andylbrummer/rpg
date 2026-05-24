@@ -1,0 +1,18 @@
+{
+  "id": "bonewarden_inkblood_crimson_legion",
+  "abilities": [
+    "death_pact",
+    "blood_rune"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 7,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A death pact sealed in blood runes calls up a crimson legion that fights past death.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true
+}

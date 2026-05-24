@@ -1,0 +1,17 @@
+{
+  "id": "ashmouth_hollow_feinting_shadow",
+  "abilities": [
+    "intimidate",
+    "backstab"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 7,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "An intimidating front fixes the enemy's eyes forward, blind to the Hollow's backstab.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

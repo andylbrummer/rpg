@@ -1,0 +1,17 @@
+{
+  "id": "ashmouth_fieldwright_siege_order",
+  "abilities": [
+    "bash",
+    "overcharge"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "The Ashmouth's bash channels the Fieldwright's overcharge into a siege-breaking blow.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

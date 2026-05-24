@@ -12,6 +12,21 @@ public class SynergyContentTests
     };
 
     private static string SynergyDir => "../../../../../../content/synergies";
+    private static string ClassDir => "../../../../../../content/classes";
+
+    private static Dictionary<string, string> BuildAbilityToClassMap()
+    {
+        var map = new Dictionary<string, string>();
+        foreach (var classFile in Directory.EnumerateFiles(ClassDir, "*.json"))
+        {
+            var classDef = JsonSerializer.Deserialize<RPC.Engine.Character.ClassDef>(
+                File.ReadAllText(classFile), JsonOptions);
+            Assert.NotNull(classDef);
+            foreach (var ability in classDef!.Abilities)
+                map[ability.Id] = classDef.Id;
+        }
+        return map;
+    }
 
     [Fact]
     public void AllSynergyFiles_AreValidJson()
@@ -133,5 +148,36 @@ public class SynergyContentTests
         Assert.DoesNotContain(map.Keys, k => k.Contains("bone_spear") && k.Contains("rend"));
 
         Directory.Delete(tempDir, recursive: true);
+    }
+
+    [Fact]
+    public void Library_HasAtLeastThirtyFiveSynergies()
+    {
+        var count = Directory.EnumerateFiles(SynergyDir, "*.json").Count();
+        Assert.True(count >= 35, $"Expected at least 35 synergies, found {count}");
+    }
+
+    [Fact]
+    public void AllSynergies_ReferenceRealAbilitiesAcrossTwoDistinctClasses()
+    {
+        var abilityToClass = BuildAbilityToClassMap();
+
+        foreach (var file in Directory.EnumerateFiles(SynergyDir, "*.json"))
+        {
+            var name = Path.GetFileName(file);
+            var def = JsonSerializer.Deserialize<SynergyDef>(File.ReadAllText(file), JsonOptions);
+            Assert.NotNull(def);
+
+            var classes = new HashSet<string>();
+            foreach (var ability in def!.Abilities)
+            {
+                Assert.True(abilityToClass.TryGetValue(ability, out var classId),
+                    $"{name}: ability '{ability}' not defined in any class roster");
+                classes.Add(classId!);
+            }
+
+            Assert.True(classes.Count == 2,
+                $"{name}: abilities must span exactly 2 distinct classes, found {classes.Count}");
+        }
     }
 }

@@ -1,0 +1,17 @@
+{
+  "id": "ashmouth_cauterist_searing_command",
+  "abilities": [
+    "war_cry",
+    "purifying_flame"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "An Ashmouth's war cry hardens the Cauterist's flame into a searing command.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

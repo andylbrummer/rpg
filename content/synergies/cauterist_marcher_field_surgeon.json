@@ -1,0 +1,17 @@
+{
+  "id": "cauterist_marcher_field_surgeon",
+  "abilities": [
+    "stabilize",
+    "terrain_adaptation"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "status_effect",
+    "value": 0,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A Cauterist who reads the terrain keeps the whole company on its feet and fighting.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

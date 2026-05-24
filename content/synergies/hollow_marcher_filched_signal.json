@@ -1,0 +1,17 @@
+{
+  "id": "hollow_marcher_filched_signal",
+  "abilities": [
+    "filch",
+    "skirmish"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 5,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A filched signal flag turns the Marcher's skirmish into a flawless ambush.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

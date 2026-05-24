@@ -1,0 +1,18 @@
+{
+  "id": "inkblood_marcher_marked_glyph",
+  "abilities": [
+    "forbidden_glyph",
+    "called_shot"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 8,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A glyph burned onto the target guides the Marcher's called shot straight to its heart.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true
+}
