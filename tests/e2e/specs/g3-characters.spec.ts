@@ -1,33 +1,14 @@
 import { test, expect } from './fixtures';
-
-async function getState(page: any, serverUrl: string): Promise<any> {
-  return page.evaluate((url: string) => {
-    return new Promise<any>((resolve) => {
-      let clientSeq = 1;
-      const ws = new WebSocket(`ws://${new URL(url).host}/`);
-      ws.onmessage = (e) => {
-        const envelope = JSON.parse(e.data);
-        if (envelope.type === 'hello') {
-          ws.send(JSON.stringify({ v: 2, type: 'ready', seq: clientSeq++, payload: {} }));
-        } else if (envelope.type === 'state') {
-          ws.close();
-          resolve(envelope.payload);
-        }
-      };
-      ws.onerror = () => { ws.close(); resolve(null); };
-      setTimeout(() => { ws.close(); resolve(null); }, 3000);
-    });
-  }, serverUrl);
-}
+import { getGameState, resetGame } from './helpers';
 
 test.describe('G3: Characters', () => {
   test.beforeEach(async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
   });
 
-  test('party members in initial state', async ({ page, serverUrl }) => {
-    const state = await getState(page, serverUrl);
+  test('party members in initial state', async ({ page }) => {
+    const state = await getGameState(page);
     expect(state).not.toBeNull();
     expect(state.party).toBeDefined();
     expect(state.party.length).toBe(6);
@@ -41,8 +22,8 @@ test.describe('G3: Characters', () => {
     expect(names).toContain('Orin');
   });
 
-  test('party members have HP and maxHP', async ({ page, serverUrl }) => {
-    const state = await getState(page, serverUrl);
+  test('party members have HP and maxHP', async ({ page }) => {
+    const state = await getGameState(page);
     expect(state.party.length).toBe(6);
 
     for (const member of state.party) {
@@ -52,8 +33,8 @@ test.describe('G3: Characters', () => {
     }
   });
 
-  test('character classes and rows assigned', async ({ page, serverUrl }) => {
-    const state = await getState(page, serverUrl);
+  test('character classes and rows assigned', async ({ page }) => {
+    const state = await getGameState(page);
     const classes = state.party.map((m: any) => m.classId);
     expect(classes).toContain('bonewarden');
     expect(classes).toContain('stillblade');

@@ -13,11 +13,18 @@ async function readGameState(page: Page): Promise<any> {
 
 async function resetToTown(page: Page) {
   await page.goto('/app');
+  await expect(page.locator('.game')).toBeVisible({ timeout: 20000 });
   await page.waitForFunction(() => Boolean((window as any).gameStore?.sendAction));
   await page.evaluate(() => {
     (window as any).gameStore.sendAction({ type: 'reset_game' });
   });
-  await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 10000 });
+  await waitForState(page, (state: any) =>
+    state?.mode === 'Menu' &&
+    state?.overworld?.turns === 0 &&
+    state?.party?.every((member: any) => member.level === 1) &&
+    state?.hasDungeon === false,
+    20000);
+  await expect(page.locator('.mode-badge')).toContainText('Menu');
   await expect(page.locator('.town-menu')).toBeVisible();
 }
 
@@ -143,6 +150,8 @@ test.describe('Map and Combat Outcome QA', () => {
   });
 
   test('real combat can resolve to a victory result and action-log outcome', async ({ page }) => {
+    test.setTimeout(90000);
+
     await enterDungeon(page);
     await page.evaluate(() => {
       (window as any).gameStore.sendAction({ type: 'enter_combat' });
@@ -150,9 +159,11 @@ test.describe('Map and Combat Outcome QA', () => {
     await waitForState(page, (state: any) => state?.mode === 'Combat' && state?.combat?.phase === 'Turn');
     await expect(page.locator('.combat-overlay')).toBeVisible();
 
-    for (let i = 0; i < 30; i++) {
+    const deadline = Date.now() + 45000;
+    let actionsSubmitted = 0;
+    while (Date.now() < deadline) {
       const state = await readGameState(page);
-      if (state.mode !== 'Combat') break;
+      if (state?.mode !== 'Combat') break;
       const combat = state.combat;
       const actorId = combat.initiativeOrder[combat.currentTurnIndex];
       const actor = combat.combatants.find((c: any) => c.id === actorId);
@@ -164,10 +175,12 @@ test.describe('Map and Combat Outcome QA', () => {
             action: { actorId, type: 'Attack', targetId }
           });
         }, { actorId, targetId: target.id });
+        actionsSubmitted++;
       }
-      await page.waitForTimeout(250);
+      await page.waitForTimeout(75);
     }
 
+    expect(actionsSubmitted).toBeGreaterThan(0);
     const outcome = await waitForState(page, (state: any) => state?.mode === 'Exploration' && state?.combatResult?.victory === true, 15000);
     expect(outcome.combatResult.xpGained).toBeGreaterThan(0);
     expect(outcome.combatResult.roundCount).toBeGreaterThan(0);

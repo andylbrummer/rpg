@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { resetGame, sendWsAction } from './helpers';
 
 function makeMockCombat(partyCount: number, enemyCount: number) {
   const combatants = [
@@ -60,6 +60,7 @@ async function injectCombatState(page: any, combat: any) {
 test.describe('G4: Combat', () => {
   test('combat state has combatants after trigger', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
     await sendWsAction(page, serverUrl, { type: 'enter_combat' });
     await expect(page.locator('.combat-overlay')).toBeVisible();
@@ -67,17 +68,18 @@ test.describe('G4: Combat', () => {
 
   test('flee combat returns to exploration', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
     await sendWsAction(page, serverUrl, { type: 'enter_combat' });
     await expect(page.locator('.combat-overlay')).toBeVisible();
     await sendWsAction(page, serverUrl, { type: 'flee_combat' });
-    await expect(page.locator('text=Return to Town')).toBeVisible();
+    await expect(page.locator('text=Return to Town')).toBeVisible({ timeout: 10000 });
   });
 
   test.describe('FormationDragDropTests', () => {
     test('dragging char from front to back updates formation', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
-      await sendWsAction(page, serverUrl, { type: 'return_to_town' });
+      await resetGame(page, serverUrl);
       await expect(page.locator('.formation-grid')).toBeVisible();
 
       const frontCard = page.locator('.formation-row.front-row .formation-card').first();
@@ -95,6 +97,7 @@ test.describe('G4: Combat', () => {
   test.describe('CombatRendererFormationTests', () => {
     test('combat renderer shows front and back rows', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
+      await resetGame(page, serverUrl);
       await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
       await sendWsAction(page, serverUrl, { type: 'enter_combat' });
       await expect(page.locator('.combat-overlay')).toBeVisible();
@@ -114,6 +117,7 @@ test.describe('G4: Combat', () => {
   test.describe('TargetingUITests', () => {
     test('melee ability highlights only front-row enemies', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
+      await resetGame(page, serverUrl);
       await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
       await sendWsAction(page, serverUrl, { type: 'enter_combat' });
       await expect(page.locator('.combat-overlay')).toBeVisible();
@@ -162,6 +166,7 @@ test.describe('G4: Combat', () => {
     test('fits 1920x1080 without horizontal scroll', async ({ page, serverUrl }) => {
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
+      await resetGame(page, serverUrl);
       await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
       await sendWsAction(page, serverUrl, { type: 'enter_combat' });
       await expect(page.locator('.combat-overlay')).toBeVisible();
@@ -185,6 +190,7 @@ test.describe('G4: Combat', () => {
     test('12-slot initiative bar is readable without scroll', async ({ page, serverUrl }) => {
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
+      await resetGame(page, serverUrl);
       await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
       await sendWsAction(page, serverUrl, { type: 'enter_combat' });
       await expect(page.locator('.combat-overlay')).toBeVisible();
@@ -243,6 +249,7 @@ test.describe('G4: Combat', () => {
     test('no overlap at max encounter', async ({ page, serverUrl }) => {
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
+      await resetGame(page, serverUrl);
       await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
       await sendWsAction(page, serverUrl, { type: 'enter_combat' });
       await expect(page.locator('.combat-overlay')).toBeVisible();

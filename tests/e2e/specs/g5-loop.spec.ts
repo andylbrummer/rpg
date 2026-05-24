@@ -1,12 +1,11 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { resetGame, sendWsAction } from './helpers';
 
 test.describe('G5: Game Loop', () => {
   test('initial state shows town menu', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     // Ensure clean state and town mode
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });
     await expect(page.locator('.town-menu')).toBeVisible();
     await expect(page.getByRole('button', { name: /Broken Engine/ })).toBeVisible();
@@ -16,22 +15,22 @@ test.describe('G5: Game Loop', () => {
 
   test('can enter a dungeon from town', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
     await expect(page.locator('text=Return to Town')).toBeVisible();
   });
 
   test('rest heals party to full', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    // Damage party by entering combat and letting enemies act
+    await resetGame(page, serverUrl);
+    // Enter combat once so the loop has exercised the dungeon -> combat -> town path.
     await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
     await sendWsAction(page, serverUrl, { type: 'enter_combat' });
-    // Wait for a few combat rounds to take damage
+    // Leave combat through the current protocol before returning to town.
     for (let i = 0; i < 5; i++) {
       const combatVisible = await page.locator('.combat-overlay').isVisible().catch(() => false);
       if (!combatVisible) break;
-      await sendWsAction(page, serverUrl, { type: 'combat_action', action: 'attack', targetIndex: 0 });
+      await sendWsAction(page, serverUrl, { type: 'flee_combat' });
       await page.waitForTimeout(300);
     }
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });

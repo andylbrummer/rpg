@@ -1,6 +1,7 @@
 import { expect, type Page, type APIRequestContext } from '@playwright/test';
 
 export async function sendWsAction(page: Page, _serverUrl: string, action: any): Promise<void> {
+  await page.waitForFunction(() => Boolean((window as any).gameClient?.sendAction));
   await page.evaluate((act: any) => {
     (window as any).gameClient?.sendAction(act);
   }, action);
@@ -17,6 +18,27 @@ export async function getGameState(page: Page): Promise<any> {
     unsubscribe();
     return current;
   });
+}
+
+export async function waitForGameState(page: Page, predicate: (state: any) => boolean, timeout = 10000): Promise<any> {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const state = await getGameState(page);
+    if (predicate(state)) return state;
+    await page.waitForTimeout(100);
+  }
+
+  throw new Error(`Timed out waiting for game state after ${timeout}ms`);
+}
+
+export async function resetGame(page: Page, serverUrl: string): Promise<any> {
+  await sendWsAction(page, serverUrl, { type: 'reset_game' });
+  return waitForGameState(page, (state: any) =>
+    state?.mode === 'Menu' &&
+    state?.overworld?.turns === 0 &&
+    state?.hasDungeon === false &&
+    state?.party?.every((member: any) => member.level === 1),
+    20000);
 }
 
 export async function resolveCombatByAttacking(page: Page, serverUrl: string, maxActions = 80): Promise<void> {

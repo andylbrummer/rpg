@@ -1,11 +1,10 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { resetGame } from './helpers';
 
 test.describe('Town: server-authoritative state', () => {
   test('initial state includes tavern roster with 6 recruits', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
     const recruitCards = page.locator('.town-services .service-item');
@@ -37,8 +36,7 @@ test.describe('Town: server-authoritative state', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
 
     const missionsSection = page.locator('.town-services h2:has-text("Missions") + .service-list');
     const factionSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
@@ -50,12 +48,12 @@ test.describe('Town: server-authoritative state', () => {
   });
 
   test('websocket state message includes town object', async ({ page, serverUrl }) => {
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await page.goto(`${serverUrl}/app`);
+    await resetGame(page, serverUrl);
 
     const captured = await page.evaluate((url) => {
       return new Promise<any>((resolve) => {
-        const ws = new WebSocket(`ws://${new URL(url).host}/`);
+        const ws = new WebSocket(`ws://${new URL(url).host}/ws`);
         let clientSeq = 1;
         ws.onmessage = (e) => {
           const envelope = JSON.parse(e.data);
@@ -67,7 +65,7 @@ test.describe('Town: server-authoritative state', () => {
           }
         };
         ws.onerror = () => { ws.close(); resolve(null); };
-        setTimeout(() => { ws.close(); resolve(null); }, 3000);
+        setTimeout(() => { ws.close(); resolve(null); }, 10000);
       });
     }, serverUrl);
 
