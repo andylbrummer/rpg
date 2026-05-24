@@ -23,7 +23,7 @@
   };
 
   const availableDungeons = $derived(
-    gameState?.overworld?.nodes?.filter(n => n.type === 'dungeon_entrance') ?? []
+    gameState?.overworld?.nodes?.filter(n => n.type === 'dungeon') ?? []
   );
 
   const hasPendingBranches = $derived(
@@ -43,10 +43,12 @@
 
   <div class="dungeon-list">
     {#each availableDungeons as dungeon}
-      {@const meta = dungeonMeta[dungeon.id]}
+      {@const dungeonType = dungeon.dungeonTemplateId ?? dungeon.id}
+      {@const meta = dungeonMeta[dungeonType]}
       <button
         class="dungeon-btn"
-        onclick={() => onEnterDungeon(dungeon.id)}
+        disabled={hasPendingBranches}
+        onclick={() => onEnterDungeon(dungeonType)}
       >
         <div class="dungeon-name">{dungeon.name}</div>
         <div class="dungeon-info">

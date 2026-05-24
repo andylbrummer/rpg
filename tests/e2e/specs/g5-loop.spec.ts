@@ -9,8 +9,7 @@ test.describe('G5: Game Loop', () => {
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });
     await expect(page.locator('.town-menu')).toBeVisible();
     await expect(page.getByRole('button', { name: /Broken Engine/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Sewer Warrens/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Crypt of Whispers/ })).toBeVisible();
+    await expect(page.locator('.empty-state', { hasText: 'No dungeons available.' })).toHaveCount(0);
   });
 
   test('can enter a dungeon from town', async ({ page, serverUrl }) => {

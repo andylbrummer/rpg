@@ -58,6 +58,7 @@ public class GameServer
         _classRegistry = LoadClassRegistry(_catalog);
         _itemRegistry = LoadItemRegistry(_catalog);
         _synergies = LoadSynergies(_catalog);
+        _dungeonTemplates = LoadDungeonTemplates(_catalog);
         var factionContent = LoadFactionContent(_catalog);
         var factionRepo = new FactionContentRepository(factionContent);
         var rumorRepo = new RumorRepository(_catalog);
@@ -68,7 +69,6 @@ public class GameServer
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
-        _dungeonTemplates = LoadDungeonTemplates(_catalog);
         _segments = LoadSegments(_catalog);
         _dungeonGenerator = new DungeonGenerator(_segments, _dungeonTemplates, _encounterTables);
         _commandHandler = new GameCommandHandler(_gameState, _dungeonGenerator);

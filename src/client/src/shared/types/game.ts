@@ -199,8 +199,9 @@ export interface TownState {
 export interface OverworldNode {
   id: string;
   name: string;
-  type: 'town' | 'dungeon_entrance';
+  type: 'town' | 'dungeon' | 'pass';
   factionPresence?: string[];
+  dungeonTemplateId?: string;
 }
 
 export interface OverworldRoute {
