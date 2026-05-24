@@ -42,7 +42,7 @@ public class GameServer
     private readonly Dictionary<string, DungeonTemplate> _dungeonTemplates;
     private readonly SemaphoreSlim _gameStateLock = new(1, 1);
 
-    public GameServer(int port = 8080, bool isDev = false)
+    public GameServer(int port = 8080, bool isDev = false, bool loadSave = true)
     {
         _listener = new HttpListener();
         Port = port;
@@ -74,7 +74,10 @@ public class GameServer
         _commandHandler = new GameCommandHandler(_gameState, _dungeonGenerator);
         _statePresenter = new StatePresenter(_classRegistry, _itemRegistry);
         _broadcaster = new StateBroadcaster(_registry, _statePresenter, _gameState, _jsonOptions, _cts);
-        _gameState.LoadGame(dungeonGenerator: (string type, int? seed) => _dungeonGenerator.Generate(type, seed));
+        if (loadSave)
+        {
+            _gameState.LoadGame(dungeonGenerator: (string type, int? seed) => _dungeonGenerator.Generate(type, seed));
+        }
         if (isDev)
         {
             _segmentWatcher = StartSegmentWatcher();

@@ -15,7 +15,7 @@ public class ProtocolEnvelopeTests : IDisposable
     public ProtocolEnvelopeTests()
     {
         var port = GetFreePort();
-        _server = new GameServer(port: port);
+        _server = new GameServer(port: port, loadSave: false);
         _server.Start();
     }
 
