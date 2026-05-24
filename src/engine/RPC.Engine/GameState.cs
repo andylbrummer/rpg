@@ -292,6 +292,36 @@ public class GameState
         PendingTaggedEncounterTile = null;
     }
 
+    internal void ResolveTravelCombatOutcome(string choice)
+    {
+        if (RolledTravelEncounterCount <= 0 ||
+            ResolvedTravelEncounterCount >= RolledTravelEncounterCount ||
+            CurrentTravelEncounter != null)
+        {
+            return;
+        }
+
+        EmitActionLog("overworld", "travel_encounter_resolved", new Dictionary<string, string>
+        {
+            { "encounterId", CurrentEncounterId ?? "combat" },
+            { "resolutionType", "combat" },
+            { "choice", choice }
+        });
+
+        ResolvedTravelEncounterCount = RolledTravelEncounterCount;
+        Mode = GameMode.Menu;
+
+        var node = Overworld.Nodes.GetValueOrDefault(Overworld.CurrentNodeId);
+        if (node?.Type == NodeType.Town)
+        {
+            EmitActionLog("overworld", "town_reached", new Dictionary<string, string>
+            {
+                { "townId", Overworld.CurrentNodeId }
+            });
+            _downtimeCompleted.Clear();
+        }
+    }
+
     internal void EmitActionLog(string category, string type, Dictionary<string, string> payload)
     {
         _actionLogTurn++;

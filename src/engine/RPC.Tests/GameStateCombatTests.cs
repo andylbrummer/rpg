@@ -16,6 +16,21 @@ public class GameStateCombatTests
         return dungeon;
     }
 
+    private static void ResolveCombatByAttacking(GameState gs)
+    {
+        for (var i = 0; i < 30 && gs.Mode == GameMode.Combat; i++)
+        {
+            var combat = gs.Combat!;
+            var actor = combat.CurrentActor;
+            if (actor?.IsPlayer != true)
+                continue;
+
+            var target = combat.Combatants.FirstOrDefault(c => !c.IsPlayer && c.IsAlive);
+            Assert.True(target.IsAlive, "Expected at least one living enemy while combat is active.");
+            Assert.True(gs.SubmitCombatAction(new CombatAction(actor.Value.Id, ActionType.Attack, target.Id, null, null)));
+        }
+    }
+
     [Fact]
     public void GameState_MenuMode_ByDefault()
     {
@@ -83,5 +98,44 @@ public class GameStateCombatTests
         gs.FleeCombat();
         Assert.Equal(GameMode.Exploration, gs.Mode);
         Assert.Null(gs.Combat);
+    }
+
+    [Fact]
+    public void GameState_CombatVictory_SetsResultAndEncounterWonLog()
+    {
+        var gs = new GameState(seed: 42);
+        gs.EnterDungeon(CreateTinyDungeon(), "test");
+        gs.TriggerEncounter(new EncounterDef("test", "Test", new[]
+        {
+            new EnemySpawn("rat", 1, 0)
+        }));
+
+        ResolveCombatByAttacking(gs);
+
+        Assert.Equal(GameMode.Exploration, gs.Mode);
+        Assert.Null(gs.Combat);
+        Assert.NotNull(gs.LastCombatResult);
+        Assert.True(gs.LastCombatResult.Victory);
+        Assert.True(gs.LastCombatResult.XpGained > 0);
+        Assert.Contains(gs.ActionLog, e => e.Type == "encounter_won");
+    }
+
+    [Fact]
+    public void GameState_FleeCombat_LogsFleeWithoutVictoryResult()
+    {
+        var gs = new GameState(seed: 42);
+        gs.EnterDungeon(CreateTinyDungeon(), "test");
+        gs.TriggerEncounter(new EncounterDef("test", "Test", new[]
+        {
+            new EnemySpawn("rat", 1, 0)
+        }));
+
+        gs.FleeCombat();
+
+        Assert.Equal(GameMode.Exploration, gs.Mode);
+        Assert.Null(gs.Combat);
+        Assert.Null(gs.LastCombatResult);
+        Assert.Contains(gs.ActionLog, e => e.Type == "encounter_fled");
+        Assert.DoesNotContain(gs.ActionLog, e => e.Type == "encounter_won");
     }
 }

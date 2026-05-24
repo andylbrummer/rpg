@@ -253,6 +253,90 @@ public class ActionLogTests : IDisposable
     }
 
     [Fact]
+    public void FleeTravelCombat_ToDungeon_ReturnsToMenuAndResolvesTravelEncounter()
+    {
+        for (int seed = 0; seed < 1000; seed++)
+        {
+            var gs = new GameState(seed: seed);
+
+            gs.Travel("broken_engine");
+            if (gs.Mode != GameMode.Combat)
+            {
+                continue;
+            }
+
+            gs.FleeCombat();
+
+            Assert.Equal(GameMode.Menu, gs.Mode);
+            Assert.Equal(gs.RolledTravelEncounterCount, gs.ResolvedTravelEncounterCount);
+            Assert.Contains(gs.ActionLog, e =>
+                e.Category == "overworld" &&
+                e.Type == "travel_encounter_resolved" &&
+                e.Payload["resolutionType"] == "combat" &&
+                e.Payload["choice"] == "flee");
+            Assert.DoesNotContain(gs.ActionLog, e => e.Type == "town_reached");
+            return;
+        }
+
+        Assert.Fail("Expected at least one seed to roll a combat encounter while traveling to a dungeon");
+    }
+
+    [Fact]
+    public void FleeTravelCombat_ToTown_EmitsTravelResolvedAndTownReached()
+    {
+        for (int seed = 0; seed < 1000; seed++)
+        {
+            var gs = new GameState(seed: seed);
+
+            gs.Travel("broken_engine");
+            ResolveOutstandingTravelOutcome(gs);
+
+            gs.ActionLog.Clear();
+            gs.Travel("the_reach");
+            if (gs.Mode != GameMode.Combat)
+            {
+                continue;
+            }
+
+            gs.FleeCombat();
+
+            Assert.Equal(GameMode.Menu, gs.Mode);
+            Assert.Contains(gs.ActionLog, e =>
+                e.Category == "overworld" &&
+                e.Type == "travel_encounter_resolved" &&
+                e.Payload["resolutionType"] == "combat" &&
+                e.Payload["choice"] == "flee");
+            Assert.Contains(gs.ActionLog, e =>
+                e.Category == "overworld" &&
+                e.Type == "town_reached" &&
+                e.Payload["townId"] == "the_reach");
+            return;
+        }
+
+        Assert.Fail("Expected at least one seed to roll a combat encounter while returning to town");
+    }
+
+    private static void ResolveOutstandingTravelOutcome(GameState gs)
+    {
+        for (var i = 0; i < 5; i++)
+        {
+            if (gs.Mode == GameMode.Combat)
+            {
+                gs.FleeCombat();
+                continue;
+            }
+
+            if (gs.CurrentTravelEncounter != null)
+            {
+                gs.ResolveTravelEncounter(gs.CurrentTravelEncounter.Options?.FirstOrDefault() ?? "roll");
+                continue;
+            }
+
+            return;
+        }
+    }
+
+    [Fact]
     public void ResolveTravelEncounter_EmitsTravelEncounterResolved()
     {
         for (int seed = 0; seed < 300; seed++)

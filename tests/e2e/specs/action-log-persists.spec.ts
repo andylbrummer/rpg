@@ -1,21 +1,5 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
-
-async function getGameState(page: any): Promise<any> {
-  return page.evaluate(() => {
-    return new Promise((resolve) => {
-      const store = (window as any).gameStore;
-      let resolved = false;
-      const unsub = store.subscribe((s: any) => {
-        if (s && !resolved) {
-          resolved = true;
-          resolve(s);
-          unsub();
-        }
-      });
-    });
-  });
-}
+import { resolveCombatByAttacking, sendWsAction } from './helpers';
 
 test.describe('Action Log Persists', () => {
   test('combat log events survive save and reload', async ({ page, serverUrl, request }) => {
@@ -28,39 +12,10 @@ test.describe('Action Log Persists', () => {
     // Enter dungeon and trigger combat
     await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
     await sendWsAction(page, serverUrl, { type: 'enter_combat' });
-    await page.waitForTimeout(500);
-
-    // Resolve combat by sending Attack actions via WebSocket
-    let iterations = 0;
-    while (iterations < 50) {
-      const state = await getGameState(page);
-      if (state.mode !== 'Combat') break;
-
-      const combat = state.combat;
-      if (!combat || combat.phase !== 'Turn') {
-        await page.waitForTimeout(200);
-        iterations++;
-        continue;
-      }
-
-      const currentId = combat.initiativeOrder[combat.currentTurnIndex];
-      const target = combat.combatants.find((c: any) => !c.isPlayer && c.alive);
-      if (!target) break;
-
-      await sendWsAction(page, serverUrl, {
-        type: 'combat_action',
-        action: {
-          actorId: currentId,
-          type: 'Attack',
-          targetId: target.id,
-        },
-      });
-      await page.waitForTimeout(300);
-      iterations++;
-    }
+    await resolveCombatByAttacking(page, serverUrl);
 
     // Ensure we returned to exploration
-    await expect(page.locator('text=Return to Town')).toBeVisible();
+    await expect(page.locator('text=Return to Town')).toBeVisible({ timeout: 10000 });
 
     // Return to town to complete dungeon
     await sendWsAction(page, serverUrl, { type: 'return_to_town' });

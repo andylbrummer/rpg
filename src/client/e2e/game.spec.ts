@@ -1,44 +1,40 @@
 import { test, expect } from '@playwright/test';
 
+async function expectTownReady(page: import('@playwright/test').Page) {
+  await page.goto('/app');
+  await expect(page.locator('.game')).toBeVisible();
+  await page.waitForFunction(() => Boolean((window as any).gameStore?.sendAction));
+  await page.evaluate(() => {
+    (window as any).gameStore.sendAction({ type: 'reset_game' });
+  });
+  await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 10000 });
+  await expect(page.locator('.town-menu')).toBeVisible();
+}
+
+async function enterFirstDungeon(page: import('@playwright/test').Page) {
+  await expectTownReady(page);
+  await page.locator('.town-nav-btn').filter({ hasText: 'Dungeons' }).click();
+  await page.locator('.dungeon-btn').first().click();
+  await expect(page.locator('.mode-badge')).toContainText('Exploration', { timeout: 10000 });
+  await expect(page.locator('.position')).toBeVisible({ timeout: 10000 });
+}
+
 test.describe('The Reach Game', () => {
   test('page loads and shows initial state', async ({ page }) => {
-    await page.goto('/app');
-    
-    // Wait for the game container to be visible
-    await expect(page.locator('.game-container')).toBeVisible();
-    
-    // Check that status bar shows connecting or connected
-    const statusBar = page.locator('.status-bar');
-    await expect(statusBar).toBeVisible();
-    
-    // Wait for connection (should show "Connected" within 5 seconds)
-    await expect(page.locator('.connection-status')).toContainText('Connected', { timeout: 5000 });
+    await expectTownReady(page);
+    await expect(page.locator('.game-title')).toContainText('The Reach');
   });
 
-  test('dungeon generates on connect', async ({ page }) => {
-    await page.goto('/app');
-    
-    // Wait for connection
-    await expect(page.locator('.connection-status')).toContainText('Connected', { timeout: 5000 });
-    
-    // Wait for position info to appear (means dungeon was generated)
-    await expect(page.locator('.position')).toBeVisible({ timeout: 5000 });
-    
-    // Position should show coordinates
+  test('dungeon generates from town action', async ({ page }) => {
+    await enterFirstDungeon(page);
+
     const positionText = await page.locator('.position').textContent();
-    expect(positionText).toMatch(/Pos:\s*\(\d+,\s*\d+\)/);
+    expect(positionText).toMatch(/Position:\s*\(\d+,\s*\d+\)/);
   });
 
   test('keyboard controls work', async ({ page }) => {
-    await page.goto('/app');
-    
-    // Wait for connection and dungeon
-    await expect(page.locator('.connection-status')).toContainText('Connected', { timeout: 5000 });
-    await expect(page.locator('.position')).toBeVisible({ timeout: 5000 });
-    
-    // Get initial position
-    const initialPosition = await page.locator('.position').textContent();
-    
+    await enterFirstDungeon(page);
+
     // Press turn keys (these should always work even if movement is blocked)
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(100);
@@ -50,37 +46,28 @@ test.describe('The Reach Game', () => {
     await expect(page.locator('.position')).toBeVisible();
   });
 
-  test('new dungeon button works', async ({ page }) => {
-    await page.goto('/app');
-    
-    // Wait for connection
-    await expect(page.locator('.connection-status')).toContainText('Connected', { timeout: 5000 });
-    
-    // Click the new dungeon button
-    await page.locator('button:has-text("New Dungeon")').click();
-    
-    // Position should still be visible after generating new dungeon
-    await expect(page.locator('.position')).toBeVisible({ timeout: 5000 });
+  test('returning to town and entering another dungeon works', async ({ page }) => {
+    await enterFirstDungeon(page);
+
+    await page.getByRole('button', { name: 'Return to Town' }).click();
+    await expect(page.locator('.mode-badge')).toContainText('Menu', { timeout: 10000 });
+    await page.locator('.town-nav-btn').filter({ hasText: 'Dungeons' }).click();
+    await page.locator('.dungeon-btn').nth(1).click();
+    await expect(page.locator('.mode-badge')).toContainText('Exploration', { timeout: 10000 });
+    await expect(page.locator('.position')).toBeVisible({ timeout: 10000 });
   });
 
   test('WebSocket receives state updates', async ({ page }) => {
-    // Check console for WebSocket messages
-    const consoleMessages: string[] = [];
-    page.on('console', msg => {
-      consoleMessages.push(msg.text());
+    const wsMessages: string[] = [];
+    page.on('websocket', ws => {
+      ws.on('framereceived', data => {
+        wsMessages.push(data.payload.toString());
+      });
     });
     
-    await page.goto('/app');
+    await expectTownReady(page);
     
-    // Wait for connection
-    await expect(page.locator('.connection-status')).toContainText('Connected', { timeout: 5000 });
-    
-    // Wait a bit for any console messages
-    await page.waitForTimeout(1000);
-    
-    // Should have connected to WebSocket
-    const wsMessages = consoleMessages.filter(m => m.includes('WebSocket'));
-    expect(wsMessages.length).toBeGreaterThan(0);
+    await expect.poll(() => wsMessages.filter(m => m.includes('"type":"state"')).length).toBeGreaterThan(0);
   });
 
   test('WebSocket connection completes and receives initial state', async ({ page }) => {
@@ -95,13 +82,8 @@ test.describe('The Reach Game', () => {
       });
     });
     
-    await page.goto('/app');
-    
-    // Wait for WebSocket to be created
-    await page.waitForFunction(() => {
-      return (window as any).wsConnected === true || document.querySelector('.connection-status')?.textContent?.includes('Connected');
-    }, { timeout: 5000 });
-    
+    await expectTownReady(page);
+
     // Wait for initial state message
     await page.waitForTimeout(500);
     
@@ -110,8 +92,9 @@ test.describe('The Reach Game', () => {
     expect(stateMessages.length).toBeGreaterThan(0);
     
     // Parse the state message and verify structure
-    const state = JSON.parse(stateMessages[0]);
-    expect(state.type).toBe('state');
+    const envelope = JSON.parse(stateMessages[0]);
+    expect(envelope.type).toBe('state');
+    const state = envelope.payload;
     expect(state.mode).toBeDefined();
     expect(state.player).toBeDefined();
     expect(state.tiles).toBeDefined();
@@ -119,15 +102,8 @@ test.describe('The Reach Game', () => {
   });
 
   test('WebSocket bidirectional communication works', async ({ page }) => {
-    await page.goto('/app');
-    
-    // Wait for connection
-    await expect(page.locator('.connection-status')).toContainText('Connected', { timeout: 5000 });
-    await expect(page.locator('.position')).toBeVisible({ timeout: 5000 });
-    
-    // Get initial position
-    const initialPosition = await page.locator('.position').textContent();
-    
+    await enterFirstDungeon(page);
+
     // Send a command via keyboard (this sends WebSocket message)
     await page.keyboard.press('ArrowRight');
     
@@ -139,6 +115,8 @@ test.describe('The Reach Game', () => {
     expect(newPosition).toBeDefined();
     
     // The position text should still contain valid coordinates
-    expect(newPosition).toMatch(/Pos:\s*\(\d+,\s*\d+\)\s*Facing:\s*(North|East|South|West)/);
+    const compassText = await page.locator('.compass').textContent();
+    expect(newPosition).toMatch(/Position:\s*\(\d+,\s*\d+\)/);
+    expect(compassText).toMatch(/Facing:\s*(North|East|South|West)/);
   });
 });

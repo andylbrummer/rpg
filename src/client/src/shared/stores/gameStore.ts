@@ -9,14 +9,22 @@ export interface GameStore {
   connect: () => void;
   disconnect: () => void;
   __testSetState: (state: GameState | null) => void;
+  __testClearStateOverride: () => void;
 }
 
 const state = writable<GameState | null>(null);
 const errorStore = writable<ErrorPayload | null>(null);
 const testSetStateCallbacks: Array<(s: GameState | null) => void> = [];
+let testStateOverrideActive = false;
 
-export function onTestSetState(cb: (s: GameState | null) => void) {
+export function onTestSetState(cb: (s: GameState | null) => void): () => void {
   testSetStateCallbacks.push(cb);
+  return () => {
+    const index = testSetStateCallbacks.indexOf(cb);
+    if (index >= 0) {
+      testSetStateCallbacks.splice(index, 1);
+    }
+  };
 }
 
 export const gameStore: GameStore = {
@@ -32,8 +40,14 @@ export const gameStore: GameStore = {
     console.warn('disconnect called before game store bootstrap');
   },
   __testSetState: (s: GameState | null) => {
+    testStateOverrideActive = true;
     state.set(s);
-    testSetStateCallbacks.forEach(cb => cb(s));
+    for (const cb of [...testSetStateCallbacks]) {
+      cb(s);
+    }
+  },
+  __testClearStateOverride: () => {
+    testStateOverrideActive = false;
   },
 };
 
@@ -42,6 +56,7 @@ export let serverErrorStore: typeof errorStore = errorStore;
 
 export function bootstrapGameStore(client: GameClient): GameStore {
   client.onState((s) => {
+    if (testStateOverrideActive) return;
     state.set(s);
   });
 

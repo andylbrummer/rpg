@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { getGameState, resolveTravelOutcomes, sendWsAction } from './helpers';
 
 test.describe('G9.5 Action Log Categories', () => {
   test('completing bureau side mission emits mission_completed + rep_changed + vendor_unlocked', async ({ page, serverUrl, request }) => {
@@ -55,41 +55,35 @@ test.describe('G9.5 Action Log Categories', () => {
     expect(travelStarted.payload.from).toBe('the_reach');
     expect(travelStarted.payload.to).toBe('broken_engine');
 
-    // Resolve any travel encounters (combat or non-combat)
-    let nonCombatEncounterCount = 0;
-    async function resolveTravelOutcome() {
-      for (let i = 0; i < 5; i++) {
-        const combatVisible = await page.locator('.combat-overlay').isVisible().catch(() => false);
-        const encounterVisible = await page.locator('.travel-encounter-overlay').isVisible().catch(() => false);
-        if (combatVisible) {
-          await sendWsAction(page, serverUrl, { type: 'flee_combat' });
-          await page.waitForTimeout(600);
-        } else if (encounterVisible) {
-          nonCombatEncounterCount++;
-          await page.locator('.travel-action-btn').first().click();
-          await page.waitForTimeout(500);
-        } else {
-          break;
-        }
+    await resolveTravelOutcomes(page, serverUrl);
+
+    let log2: any = log1;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const state = await getGameState(page);
+      const currentNodeId = state?.overworld?.currentNodeId;
+      const targetId = currentNodeId === 'the_reach' ? 'broken_engine' : 'the_reach';
+
+      await sendWsAction(page, serverUrl, { type: 'travel', targetId });
+      await page.waitForTimeout(600);
+      await resolveTravelOutcomes(page, serverUrl);
+
+      const res2 = await request.get(`${serverUrl}/api/action-log`);
+      expect(res2.ok()).toBeTruthy();
+      log2 = await res2.json();
+
+      const hasEncounterResolved = log2.events.some((e: any) => e.type === 'travel_encounter_resolved');
+      const hasTownReached = log2.events.some((e: any) => e.type === 'town_reached');
+      if (hasEncounterResolved && hasTownReached) {
+        break;
       }
     }
 
-    await resolveTravelOutcome();
-
-    // Travel back to the_reach
-    await sendWsAction(page, serverUrl, { type: 'travel', targetId: 'the_reach' });
-    await page.waitForTimeout(600);
-
-    await resolveTravelOutcome();
-
-    const res2 = await request.get(`${serverUrl}/api/action-log`);
-    expect(res2.ok()).toBeTruthy();
-    const log2 = await res2.json();
-
     const encounterResolved = log2.events.filter((e: any) => e.type === 'travel_encounter_resolved');
-    expect(encounterResolved.length).toBeGreaterThanOrEqual(nonCombatEncounterCount);
+    expect(encounterResolved.length).toBeGreaterThanOrEqual(1);
 
+    const state = await getGameState(page);
     const townReached = log2.events.find((e: any) => e.type === 'town_reached');
+    expect(townReached, JSON.stringify({ mode: state?.mode, overworld: state?.overworld, travelEncounter: state?.travelEncounter, events: log2.events }, null, 2)).toBeTruthy();
     expect(townReached).toBeTruthy();
     expect(townReached.category).toBe('overworld');
     expect(townReached.payload.townId).toBe('the_reach');

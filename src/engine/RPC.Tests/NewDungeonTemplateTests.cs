@@ -24,6 +24,15 @@ public class NewDungeonTemplateTests
         new object[] { "ossuary", "ossuary_entrance", "ancestral_hall", "os-d5-ancestor" }
     };
 
+    public static IEnumerable<object[]> NewDungeonSegmentIds => NewDungeonIds
+        .Select(row => new[] { row[0], row[1], row[2] });
+
+    public static IEnumerable<object[]> NewDungeonEncounterIds => NewDungeonIds
+        .Select(row => new[] { row[0] });
+
+    public static IEnumerable<object[]> NewDungeonBossEncounterIds => NewDungeonIds
+        .Select(row => new[] { row[3] });
+
     [Theory]
     [MemberData(nameof(NewDungeonIds))]
     public void DungeonTemplate_Loads(string dungeonId, string entranceId, string bossId, string bossEncounterId)
@@ -39,15 +48,16 @@ public class NewDungeonTemplateTests
         Assert.NotEmpty(template.Name);
         Assert.True(template.TargetRooms > 0);
         Assert.Equal(bossEncounterId, template.BossEncounterId);
-        Assert.NotEmpty(template.EncounterTableId);
-        Assert.NotEmpty(template.WanderingTableId);
+        Assert.False(string.IsNullOrWhiteSpace(template.EncounterTableId));
+        Assert.False(string.IsNullOrWhiteSpace(template.WanderingTableId));
+        Assert.NotNull(template.SegmentPool);
         Assert.Contains(entranceId, template.SegmentPool);
         Assert.Contains(bossId, template.SegmentPool);
     }
 
     [Theory]
-    [MemberData(nameof(NewDungeonIds))]
-    public void Segments_Load(string dungeonId, string entranceId, string bossId, string bossEncounterId)
+    [MemberData(nameof(NewDungeonSegmentIds))]
+    public void Segments_Load(string dungeonId, string entranceId, string bossId)
     {
         var dir = ContentPath($"segments/{dungeonId.Replace('_', '-')}");
         Assert.True(Directory.Exists(dir), $"Missing segment directory: {dir}");
@@ -78,8 +88,8 @@ public class NewDungeonTemplateTests
     }
 
     [Theory]
-    [MemberData(nameof(NewDungeonIds))]
-    public void EncounterTable_Loads(string dungeonId, string entranceId, string bossId, string bossEncounterId)
+    [MemberData(nameof(NewDungeonEncounterIds))]
+    public void EncounterTable_Loads(string dungeonId)
     {
         var path = ContentPath($"encounters/{dungeonId}.json");
         Assert.True(File.Exists(path), $"Missing encounter table: {path}");
@@ -95,8 +105,8 @@ public class NewDungeonTemplateTests
     }
 
     [Theory]
-    [MemberData(nameof(NewDungeonIds))]
-    public void BossEncounter_Exists(string dungeonId, string entranceId, string bossId, string bossEncounterId)
+    [MemberData(nameof(NewDungeonBossEncounterIds))]
+    public void BossEncounter_Exists(string bossEncounterId)
     {
         var path = ContentPath("encounters/boss.json");
         var json = File.ReadAllText(path);

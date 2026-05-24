@@ -1,9 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function loadTown(page: Page) {
+  await page.goto('/app');
+  await page.waitForFunction(() => Boolean((window as any).gameStore?.__testSetState));
+  await expect(page.locator('.town-menu')).toBeVisible({ timeout: 10000 });
+}
 
 test.describe('Branch Choice Modal', () => {
   test('modal appears when character awaits branch choice', async ({ page }) => {
-    await page.goto('/app');
-    await page.click('.title-btn.primary');
+    await loadTown(page);
 
     await page.evaluate(() => {
       (window as any).__rpc_enableTestHooks();
@@ -64,8 +69,7 @@ test.describe('Branch Choice Modal', () => {
   });
 
   test('modal blocks town UI until resolved', async ({ page }) => {
-    await page.goto('/app');
-    await page.click('.title-btn.primary');
+    await loadTown(page);
 
     await page.evaluate(() => {
       (window as any).__rpc_enableTestHooks();
@@ -129,8 +133,7 @@ test.describe('Branch Choice Modal', () => {
   });
 
   test('modal appears at level 6 for specialization', async ({ page }) => {
-    await page.goto('/app');
-    await page.click('.title-btn.primary');
+    await loadTown(page);
 
     await page.evaluate(() => {
       (window as any).__rpc_enableTestHooks();

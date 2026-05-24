@@ -63,7 +63,7 @@ test.describe('Synergy Feedback', () => {
     await page.waitForTimeout(500);
 
     const combat = makeMockCombat(2, 2);
-    await injectGameState(page, {
+    const baseState = {
       type: 'state',
       mode: 'Combat',
       player: { x: 0, y: 0, facing: 'North' },
@@ -72,13 +72,25 @@ test.describe('Synergy Feedback', () => {
       hasDungeon: true,
       party: [],
       combat,
+    };
+
+    await injectGameState(page, {
+      ...baseState,
+      actionLog: []
+    });
+
+    await expect(page.locator('.combat-overlay')).toBeVisible();
+
+    await page.evaluate((s: any) => {
+      const store = (window as any).gameStore;
+      store.__testSetState(s);
+    }, {
+      ...baseState,
       actionLog: [
         { turn: 100, category: 'combat', type: 'encounter_started', payload: { encounterId: 'enc-1' } },
         { turn: 101, category: 'combat', type: 'synergy_triggered', payload: { synergyId: 'stillblade_hollow_smoke_silence', encounterId: 'enc-1', targetId: 'e0' } }
       ]
     });
-
-    await expect(page.locator('.combat-overlay')).toBeVisible();
 
     // Poll briefly for the flash to appear (avoids race with Svelte effect scheduling)
     let flashInfo: { flashTarget: string; hasFlashClass: boolean; flashParentText: string } | null = null;

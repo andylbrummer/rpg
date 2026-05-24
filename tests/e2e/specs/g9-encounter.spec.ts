@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { resolveTravelOutcomes, sendWsAction } from './helpers';
 
 async function injectTravelEncounter(page: any, encounter: any) {
   await page.evaluate(() => {
@@ -140,12 +140,7 @@ test.describe('G9: Travel Encounters', () => {
 
     await page.waitForTimeout(800);
 
-    // If a non-combat encounter appeared, resolve it
-    const encounterVisible = await page.locator('.travel-encounter-overlay').isVisible().catch(() => false);
-    if (encounterVisible) {
-      const btn = page.locator('.travel-action-btn').first();
-      await btn.click();
-      await expect(page.locator('.travel-encounter-overlay')).not.toBeVisible();
-    }
+    await resolveTravelOutcomes(page, serverUrl);
+    await expect(page.locator('.travel-encounter-overlay')).not.toBeVisible();
   });
 });

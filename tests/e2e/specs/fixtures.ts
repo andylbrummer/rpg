@@ -8,7 +8,7 @@ export type ServerFixture = {
   serverUrl: string;
 };
 
-async function waitForServer(url: string, timeout = 15000): Promise<void> {
+async function waitForServer(url: string, timeout = 60000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     try {

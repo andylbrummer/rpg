@@ -253,11 +253,17 @@ test.describe('G4: Combat', () => {
 
       const cards = page.locator('.combat-arena .combatant');
       const count = await cards.count();
-      for (let i = 0; i < count; i++) {
-        const box = await cards.nth(i).boundingBox();
-        expect(box).not.toBeNull();
-        expect(box!.width).toBeGreaterThan(0);
-        expect(box!.height).toBeGreaterThan(0);
+      const boxes = await cards.evaluateAll((elements) =>
+        elements.map((el) => {
+          const rect = el.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        })
+      );
+
+      expect(boxes).toHaveLength(count);
+      for (const box of boxes) {
+        expect(box.width).toBeGreaterThan(0);
+        expect(box.height).toBeGreaterThan(0);
       }
 
       const arena = page.locator('.combat-arena');

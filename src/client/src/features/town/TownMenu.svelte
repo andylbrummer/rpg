@@ -118,7 +118,7 @@
       </div>
     {:else}
       <div class="tab-panel">
-        <TownServicesPanel gameState={gameState} {onTavernRecruit} {onMissionAccept} {onVendorPurchase} />
+        <TownServicesPanel gameState={gameState} onTavernRecruit={props.onTavernRecruit} onMissionAccept={props.onMissionAccept} onVendorPurchase={props.onVendorPurchase} />
       </div>
     {/if}
   </div>

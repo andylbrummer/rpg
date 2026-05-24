@@ -477,6 +477,8 @@ public class CombatService
                 state.EmitActionLog("combat", "encounter_won", new Dictionary<string, string> { { "encounterId", state.CurrentEncounterId } });
             }
 
+            state.ResolveTravelCombatOutcome(allEnemiesDead ? "victory" : "defeat");
+
             // Rescue expedition failure: rescue party wiped out
             if (allPlayersDead && state.RescueExpedition?.IsActive == true)
             {
@@ -524,6 +526,7 @@ public class CombatService
         {
             state.EmitActionLog("combat", "encounter_fled", new Dictionary<string, string> { { "encounterId", state.CurrentEncounterId } });
         }
+        state.ResolveTravelCombatOutcome("flee");
         state.Combat = null;
         state.ClearTaggedEncounterTile(resolved: false);
         state.LastUpdate = DateTime.UtcNow;
