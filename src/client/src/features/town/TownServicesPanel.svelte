@@ -88,22 +88,58 @@
   const partyInventory = $derived(gameState?.partyInventory ?? []);
   const downtimeCompleted = $derived(gameState?.downtimeCompleted ?? []);
 
-  const downtimeActions = [
-    { value: 'Rest', label: 'Rest' },
-    { value: 'Train', label: 'Train' },
-    { value: 'Craft', label: 'Craft' },
-    { value: 'Network', label: 'Network' },
-    { value: 'Investigate', label: 'Investigate' },
-    { value: 'LayLow', label: 'Lay Low' },
-    { value: 'TendBlooms', label: 'Tend Blooms' },
+  interface DowntimeActionMeta {
+    value: string;
+    label: string;
+    desc: string;
+    /** Faction-reputation / heat impact hint, shown when the action shifts standing. */
+    repImpact?: string;
+  }
+
+  // Descriptions mirror RPC.Engine DowntimeSystem.PerformAction outcomes.
+  const downtimeActions: DowntimeActionMeta[] = [
+    { value: 'Rest', label: 'Rest', desc: 'Recover to full HP and clear temporary modifiers.' },
+    { value: 'Train', label: 'Train', desc: 'Drill for the next fight. Gain 15 XP.' },
+    { value: 'Craft', label: 'Craft', desc: 'Fabricate a random crafting component (needs an inventory slot).' },
+    { value: 'Network', label: 'Network', desc: 'Work the local contacts.', repImpact: 'Reputation +5 with a faction.' },
+    { value: 'Investigate', label: 'Investigate', desc: 'Dig into faction dealings.', repImpact: 'Adds evidence against a faction.' },
+    { value: 'LayLow', label: 'Lay Low', desc: 'Keep your heads down and out of sight.', repImpact: 'Eases your worst negative reputation; Heat −30.' },
+    { value: 'TendBlooms', label: 'Tend Blooms', desc: 'Tend the bloom growths. Heal ~25% HP, maybe gather bloom essence.' },
   ];
+
+  const downtimeActionByValue = $derived(
+    new Map(downtimeActions.map(a => [a.value, a] as const))
+  );
+
+  // Per-character action currently selected in the picker (before it is performed).
+  let selectedAction = $state<Record<string, string>>({});
+
+  const actionLog = $derived(gameState?.actionLog ?? []);
 
   function isDowntimeDone(member: PartyMember): boolean {
     return downtimeCompleted.includes(member.id);
   }
 
+  /** Most recent downtime outcome message for a character, derived from the action log. */
+  function downtimeOutcome(memberId: string): string | null {
+    for (let i = actionLog.length - 1; i >= 0; i--) {
+      const e = actionLog[i];
+      if (e.category === 'downtime' && e.payload?.characterId === memberId) {
+        return e.payload?.message ?? null;
+      }
+    }
+    return null;
+  }
+
   function sendDowntimeAction(memberId: string, action: string) {
     sendAction({ type: 'downtime_action', targetId: memberId, downtimeAction: action });
+  }
+
+  function performSelected(memberId: string) {
+    const action = selectedAction[memberId];
+    if (!action) return;
+    sendDowntimeAction(memberId, action);
+    delete selectedAction[memberId];
   }
 
   function restAll() {
@@ -395,26 +431,57 @@
   </div>
   {#each partyMembers as member (member.id)}
     {#if member.id}
-      <div class="service-item downtime-row">
+      {@const selected = selectedAction[member.id]}
+      {@const preview = selected ? downtimeActionByValue.get(selected) : undefined}
+      <div class="service-item downtime-row" class:done={isDowntimeDone(member)}>
         <div class="downtime-char">
           <span class="downtime-name">{member.name}</span>
           <span class="downtime-class">{member.className}</span>
         </div>
+
         {#if isDowntimeDone(member)}
-          <span class="downtime-done">Done</span>
+          {@const outcome = downtimeOutcome(member.id)}
+          <div class="downtime-result">
+            <span class="downtime-done">Done</span>
+            {#if outcome}
+              <span class="downtime-outcome">{outcome}</span>
+            {/if}
+          </div>
         {:else}
-          <select
-            class="downtime-select"
-            onchange={(e) => {
-              const value = (e.target as HTMLSelectElement).value;
-              if (value) sendDowntimeAction(member.id, value);
-            }}
-          >
-            <option value="">Select action...</option>
-            {#each downtimeActions as action}
-              <option value={action.value}>{action.label}</option>
-            {/each}
-          </select>
+          <div class="downtime-picker">
+            <div class="downtime-controls">
+              <select
+                class="downtime-select"
+                value={selected ?? ''}
+                onchange={(e) => { selectedAction[member.id] = (e.target as HTMLSelectElement).value; }}
+              >
+                <option value="">Select action…</option>
+                {#each downtimeActions as action}
+                  <option value={action.value}>{action.label}</option>
+                {/each}
+              </select>
+              <button
+                type="button"
+                class="action-btn downtime-perform"
+                disabled={!selected}
+                onclick={() => performSelected(member.id)}
+              >
+                Perform
+              </button>
+            </div>
+
+            {#if preview}
+              <div class="downtime-preview">
+                <p class="downtime-desc">{preview.desc}</p>
+                <div class="downtime-tags">
+                  <span class="downtime-tag cost">Costs: 1 downtime action</span>
+                  {#if preview.repImpact}
+                    <span class="downtime-tag rep">{preview.repImpact}</span>
+                  {/if}
+                </div>
+              </div>
+            {/if}
+          </div>
         {/if}
       </div>
     {/if}
@@ -745,8 +812,12 @@
   .downtime-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  .downtime-row.done {
+    align-items: center;
   }
 
   .downtime-char {
@@ -794,6 +865,80 @@
   .downtime-select option {
     background: #1a1a2e;
     color: #ccc;
+  }
+
+  .downtime-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 0 0 auto;
+    max-width: 14rem;
+  }
+
+  .downtime-controls {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+
+  .downtime-perform {
+    flex-shrink: 0;
+  }
+
+  .downtime-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 0.0625em solid #383838;
+    border-radius: 0.25rem;
+  }
+
+  .downtime-desc {
+    margin: 0;
+    color: #bbb;
+    font-size: clamp(0.58rem, 1.1vw, 0.68rem);
+    line-height: 1.35;
+  }
+
+  .downtime-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .downtime-tag {
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.2rem;
+    font-size: clamp(0.52rem, 1vw, 0.62rem);
+    white-space: nowrap;
+  }
+
+  .downtime-tag.cost {
+    background: rgba(100, 100, 100, 0.2);
+    color: #999;
+  }
+
+  .downtime-tag.rep {
+    background: rgba(212, 168, 75, 0.15);
+    color: #d4a84b;
+  }
+
+  .downtime-result {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    flex: 0 0 auto;
+    max-width: 14rem;
+  }
+
+  .downtime-outcome {
+    color: #8fae8f;
+    font-size: clamp(0.55rem, 1.05vw, 0.65rem);
+    line-height: 1.3;
+    text-align: right;
   }
 
   .bone-clerk-info {
