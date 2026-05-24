@@ -344,6 +344,18 @@ public class GameState
 
     public void ChooseSettlementFate(string settlementId, string fate) => _campaignService.ChooseSettlementFate(this, settlementId, fate);
 
+    public void RegisterSettlement(string settlementId) => _campaignService.RegisterSettlement(this, settlementId);
+
+    public string RollSettlementFate(string settlementId) => _campaignService.RollSettlementFate(this, settlementId, _encounterRng);
+
+    public int RollPendingSettlementFates() => _campaignService.RollPendingSettlementFates(this, _encounterRng);
+
+    public string GetSettlementFate(string settlementId) => _campaignService.GetSettlementFate(this, settlementId);
+
+    public IReadOnlyList<string> GetSettlementsByFate(string fate) => _campaignService.GetSettlementsByFate(this, fate);
+
+    public IReadOnlyDictionary<string, int> GetSettlementFateCounts() => _campaignService.GetSettlementFateCounts(this);
+
     public string? ContentHash { get; set; }
 
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path, ContentHash);

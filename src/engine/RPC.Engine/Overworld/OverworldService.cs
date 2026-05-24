@@ -164,6 +164,10 @@ public class OverworldService
             state.CurrentDungeon = null;
             state.Mode = GameMode.Menu;
 
+            // Resolve the fate of every settlement still contested as the campaign closes,
+            // so the epilogue and world-state reflect the final shape of the Reach.
+            state.RollPendingSettlementFates();
+
             var deaths = state.ActionLog.Count(e => e.Type == "character_died");
             state.Analytics.RecordCampaignEnd(
                 mastermindExposed: state.AccusedFaction == state.CampaignConfig?.Mastermind,

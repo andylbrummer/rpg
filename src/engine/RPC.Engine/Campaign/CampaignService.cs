@@ -1,5 +1,6 @@
 using RPC.Engine.Campaign;
 using RPC.Engine.Character;
+using RPC.Engine.Combat;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Overworld;
 using RPC.Engine.Town;
@@ -260,15 +261,118 @@ public class CampaignService
         state.LastUpdate = DateTime.UtcNow;
     }
 
+    // ---- Settlement fate system ----
+    // Settlements progress from Contested to a terminal fate (Saved/Lost/Abandoned) either by
+    // explicit player choice or by a campaign roll driven by Heat + faction pressure. Terminal
+    // fates are locked; rolls only act on still-Contested settlements. The fate set feeds the
+    // epilogue and the world-state queries below.
+
+    /// <summary>Track a settlement as Contested if it is not already known. No-op once registered.</summary>
+    public void RegisterSettlement(GameState state, string settlementId)
+    {
+        if (string.IsNullOrWhiteSpace(settlementId)) return;
+        if (state.WorldState.Settlements.ContainsKey(settlementId)) return;
+        state.WorldState.Settlements[settlementId] = SettlementFate.Contested;
+    }
+
     public void ChooseSettlementFate(GameState state, string settlementId, string fate)
     {
+        var previous = state.WorldState.Settlements.GetValueOrDefault(settlementId, SettlementFate.Contested);
         state.WorldState.Settlements[settlementId] = fate;
         state.EmitActionLog("dungeon", "settlement_fate_chosen", new Dictionary<string, string>
         {
             { "settlementId", settlementId },
-            { "fate", fate }
+            { "fate", fate },
+            { "previousFate", previous },
+            { "source", "player_choice" }
         });
         state.LastUpdate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Resolve a single Contested settlement by campaign roll. Already-terminal settlements are
+    /// left untouched and their current fate returned.
+    /// </summary>
+    public string RollSettlementFate(GameState state, string settlementId, GameRandom rng)
+    {
+        var current = SettlementFate.Normalize(state.WorldState.Settlements.GetValueOrDefault(settlementId));
+        if (SettlementFate.IsTerminal(current)) return current;
+
+        var pressure = SettlementPressure(state);
+        var roll = rng.Roll(1, 100);
+        var fate = roll <= pressure / 2 ? SettlementFate.Lost
+            : roll <= pressure ? SettlementFate.Abandoned
+            : SettlementFate.Saved;
+
+        state.WorldState.Settlements[settlementId] = fate;
+        state.EmitActionLog("dungeon", "settlement_fate_rolled", new Dictionary<string, string>
+        {
+            { "settlementId", settlementId },
+            { "fate", fate },
+            { "pressure", pressure.ToString() },
+            { "roll", roll.ToString() },
+            { "source", "campaign_roll" }
+        });
+        state.LastUpdate = DateTime.UtcNow;
+        return fate;
+    }
+
+    /// <summary>
+    /// Seed every overworld town as a tracked settlement, then roll a fate for each one still
+    /// Contested. Returns the number of settlements resolved. Called as the campaign concludes.
+    /// </summary>
+    public int RollPendingSettlementFates(GameState state, GameRandom rng)
+    {
+        foreach (var node in state.Overworld.Nodes.Values)
+        {
+            if (node.Type == NodeType.Town)
+                RegisterSettlement(state, node.Id);
+        }
+
+        var pending = state.WorldState.Settlements
+            .Where(kv => !SettlementFate.IsTerminal(kv.Value))
+            .Select(kv => kv.Key)
+            .ToList();
+
+        foreach (var id in pending)
+            RollSettlementFate(state, id, rng);
+
+        return pending.Count;
+    }
+
+    /// <summary>Campaign pressure (0-100) that biases settlement rolls toward Lost/Abandoned.</summary>
+    private int SettlementPressure(GameState state)
+    {
+        var pressure = state.Heat.Value;
+        var anyExecuting = CampaignConfig.FactionPool.Any(f => GetFactionState(state, f) == FactionState.Executing);
+        if (anyExecuting) pressure += 20;
+        return Math.Clamp(pressure, 0, 100);
+    }
+
+    public string GetSettlementFate(GameState state, string settlementId) =>
+        SettlementFate.Normalize(state.WorldState.Settlements.GetValueOrDefault(settlementId));
+
+    public IReadOnlyList<string> GetSettlementsByFate(GameState state, string fate)
+    {
+        var target = SettlementFate.Normalize(fate);
+        return state.WorldState.Settlements
+            .Where(kv => SettlementFate.Normalize(kv.Value) == target)
+            .Select(kv => kv.Key)
+            .ToList();
+    }
+
+    public IReadOnlyDictionary<string, int> GetSettlementFateCounts(GameState state)
+    {
+        var counts = new Dictionary<string, int>
+        {
+            [SettlementFate.Saved] = 0,
+            [SettlementFate.Lost] = 0,
+            [SettlementFate.Abandoned] = 0,
+            [SettlementFate.Contested] = 0
+        };
+        foreach (var raw in state.WorldState.Settlements.Values)
+            counts[SettlementFate.Normalize(raw)]++;
+        return counts;
     }
 
     public bool ApplyDialogueReputation(GameState state, string factionId, int delta)

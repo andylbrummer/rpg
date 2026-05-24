@@ -27,11 +27,13 @@ public class EpilogueGenerator
         var deaths = log.Where(e => e.Type == "character_died").ToList();
         var deathCount = deaths.Count;
 
-        // Settlement fates chosen
-        var settlementFates = log
-            .Where(e => e.Type == "settlement_fate_chosen")
-            .Select(e => e.Payload.GetValueOrDefault("fate", "unknown"))
-            .ToList();
+        // Settlement fates from tracked world state (player choices + campaign rolls).
+        var settlementFateCounts = state.WorldState.Settlements.Values
+            .GroupBy(SettlementFate.Normalize)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var settlementsSaved = settlementFateCounts.GetValueOrDefault(SettlementFate.Saved);
+        var settlementsLost = settlementFateCounts.GetValueOrDefault(SettlementFate.Lost);
+        var settlementsAbandoned = settlementFateCounts.GetValueOrDefault(SettlementFate.Abandoned);
 
         // Check wild card alliance
         var wildCardStatus = campaign.WildCardAllianceStatus.ToString().ToLowerInvariant();
@@ -64,10 +66,13 @@ public class EpilogueGenerator
         }
 
         // Settlement fates
-        if (settlementFates.Count > 0)
+        if (settlementsSaved + settlementsLost + settlementsAbandoned > 0)
         {
-            var verb = settlementFates.Count == 1 ? "was" : "were";
-            paragraphs.Add($"Across the Reach, {settlementFates.Count} settlement{(settlementFates.Count > 1 ? "s" : "")} {verb} shaped by your choices.");
+            var parts = new List<string>();
+            if (settlementsSaved > 0) parts.Add($"{settlementsSaved} saved");
+            if (settlementsLost > 0) parts.Add($"{settlementsLost} lost");
+            if (settlementsAbandoned > 0) parts.Add($"{settlementsAbandoned} abandoned");
+            paragraphs.Add($"Across the Reach, the settlements' fates were sealed: {string.Join(", ", parts)}.");
         }
 
         // Party losses
