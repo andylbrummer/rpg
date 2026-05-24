@@ -259,6 +259,48 @@ public class UnaccountedTests
     }
 
     [Fact]
+    public void WardingStance_Prevents_Unaccounted_Phasing()
+    {
+        // Across seeds, a warded player must always anchor the Unaccounted (row never
+        // flips), and the counter branch must demonstrably fire on at least one phase roll.
+        var anchoredLogSeen = false;
+
+        for (int seed = 1; seed <= 20; seed++)
+        {
+            var hero = new Combatant(
+                new Guid("6f726548-2020-2020-2020-202020202020"),
+                "Hero", true, 100, 100, 5, 0,
+                new List<StatusEffect> { new StatusEffect("warding_stance", 999, null) }, 5);
+
+            var unaccounted = new Combatant(
+                new Guid("756e6163-636f-756e-7465-642020202020"),
+                "Unaccounted", false, 100, 100, 7, 0,
+                new List<StatusEffect>(), 5, null, false, 0, null, "unaccounted");
+
+            var state = new CombatState(
+                new[] { hero, unaccounted },
+                1,
+                new[] { unaccounted.Id },
+                0,
+                new List<CombatLogEntry>(),
+                null,
+                CombatPhase.Turn,
+                10);
+
+            // Run the Unaccounted's turn — phase decision happens here.
+            state = CombatEngine.Tick(state, null, new GameRandom(seed));
+
+            var u = state.Combatants.First(c => !c.IsPlayer);
+            Assert.Equal(0, u.Row);
+
+            if (state.Log.Any(l => l.Message.Contains("warding stance anchors")))
+                anchoredLogSeen = true;
+        }
+
+        Assert.True(anchoredLogSeen, "Warding stance should anchor the Unaccounted on at least one phase attempt");
+    }
+
+    [Fact]
     public void Burned_Corpse_Does_Not_Reassemble()
     {
         var uid1 = Guid.NewGuid();

@@ -107,16 +107,37 @@ public static class CombatEngine
             var actorIdx = Array.FindIndex(newCombatants, c => c.Id == actor.Value.Id);
             var currentActor = newCombatants[actorIdx];
 
-            // Phase: Unaccounted can teleport between rows before acting
+            // Phase: Unaccounted can teleport between rows before acting.
+            // Counter — Warding Stance: a Stillblade's ward anchors the Unaccounted in place,
+            // preventing it from phasing. The roll is always consumed to keep RNG parity.
+            List<CombatLogEntry>? phaseLog = null;
             if (IsUnaccounted(currentActor) && rng.Next(2) == 0)
             {
-                var newRow = currentActor.Row == 0 ? 1 : 0;
-                newCombatants[actorIdx] = currentActor with { Row = newRow };
-                currentActor = newCombatants[actorIdx];
+                var warded = state.Combatants.Any(c =>
+                    c.IsPlayer && c.IsAlive && c.StatusEffects.Any(s => s.Type == "warding_stance"));
+                if (warded)
+                {
+                    phaseLog = new List<CombatLogEntry>(state.Log)
+                    {
+                        new(currentActor.Id, $"A warding stance anchors {currentActor.Name}, preventing it from phasing", state.Round)
+                    };
+                }
+                else
+                {
+                    var newRow = currentActor.Row == 0 ? 1 : 0;
+                    newCombatants[actorIdx] = currentActor with { Row = newRow };
+                    currentActor = newCombatants[actorIdx];
+                }
             }
 
             var aiAction = GenerateAIAction(state, currentActor, rng);
-            return state with { Combatants = newCombatants, PendingAction = aiAction, Phase = CombatPhase.Resolve };
+            return state with
+            {
+                Combatants = newCombatants,
+                PendingAction = aiAction,
+                Phase = CombatPhase.Resolve,
+                Log = phaseLog ?? state.Log
+            };
         }
 
         // Player turn -> wait for action
