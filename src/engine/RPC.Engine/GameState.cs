@@ -149,7 +149,7 @@ public class GameState
     {
         if (Town.TavernRoster.Count == 0)
         {
-            Town.TavernRoster = TavernRecruitGenerator.GenerateRoster(_seed);
+            Town.TavernRoster = TavernRecruitGenerator.GenerateRoster(_seed, Reputation);
         }
         if (Town.FactionContacts.Count == 0)
         {

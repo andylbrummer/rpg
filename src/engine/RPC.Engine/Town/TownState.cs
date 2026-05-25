@@ -75,6 +75,22 @@ public static class TavernRecruitGenerator
         new BaseStats(5, 4, 5, 3, 4),
     };
 
+    // Faction-locked recruit archetypes. Each appears in the tavern only once the player's
+    // reputation with the gating faction reaches the threshold ("Compact" is the inkblood
+    // Ossuary Compact). These are the alternate path to the faction-locked class branches.
+    public record ExclusiveRecruitDef(string ClassId, string Name, string FactionId, int RepThreshold, int Level, BaseStats BaseStats);
+
+    private static readonly ExclusiveRecruitDef[] ExclusiveRecruits = new[]
+    {
+        new ExclusiveRecruitDef("beastkeeper", "Aldric the Tamer", "inkblood", 25, 3, new BaseStats(4, 4, 5, 4, 5)),
+        new ExclusiveRecruitDef("heretic", "Sister Vael", "convocation", 25, 3, new BaseStats(3, 4, 4, 6, 5)),
+        new ExclusiveRecruitDef("liar", "Smiling Cassius", "bureau", 20, 2, new BaseStats(3, 5, 4, 5, 5)),
+    };
+
+    public static IReadOnlyList<ExclusiveRecruitDef> ExclusiveRecruitDefs => ExclusiveRecruits;
+
+    public const string ExclusiveIdPrefix = "recruit-exclusive-";
+
     public static List<TavernRecruit> GenerateRoster(int seed)
     {
         var rng = new Random(seed);
@@ -103,6 +119,34 @@ public static class TavernRecruitGenerator
                 Cost: cost));
         }
 
+        return roster;
+    }
+
+    /// <summary>The faction-exclusive recruits the player currently qualifies for, by reputation.</summary>
+    public static List<TavernRecruit> GetExclusiveRecruits(ReputationState reputation)
+    {
+        var list = new List<TavernRecruit>();
+        foreach (var ex in ExclusiveRecruits)
+        {
+            if (reputation[ex.FactionId] >= ex.RepThreshold)
+            {
+                list.Add(new TavernRecruit(
+                    Id: $"{ExclusiveIdPrefix}{ex.ClassId}",
+                    Name: ex.Name,
+                    ClassId: ex.ClassId,
+                    Level: ex.Level,
+                    BaseStats: ex.BaseStats,
+                    Cost: ex.Level * 60 + 50));
+            }
+        }
+        return list;
+    }
+
+    /// <summary>Standard roster plus any faction-exclusive recruits unlocked by reputation.</summary>
+    public static List<TavernRecruit> GenerateRoster(int seed, ReputationState reputation)
+    {
+        var roster = GenerateRoster(seed);
+        roster.AddRange(GetExclusiveRecruits(reputation));
         return roster;
     }
 }

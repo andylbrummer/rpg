@@ -86,7 +86,28 @@ public class TownService
         state.IncrementTurns(1);
         state._downtimeCompleted.Clear();
         state.CheckWildCardTrigger();
+        RefreshExclusiveRecruits(state);
         GenerateRumors(state);
+    }
+
+    /// <summary>
+    /// Re-evaluate faction-exclusive recruits against current reputation: drop any the player no
+    /// longer qualifies for (and hasn't recruited) and add newly unlocked ones. Standard recruits
+    /// are left untouched.
+    /// </summary>
+    private static void RefreshExclusiveRecruits(GameState state)
+    {
+        var eligible = TavernRecruitGenerator.GetExclusiveRecruits(state.Reputation);
+        var eligibleIds = eligible.Select(e => e.Id).ToHashSet();
+
+        state.Town.TavernRoster.RemoveAll(r =>
+            r.Id.StartsWith(TavernRecruitGenerator.ExclusiveIdPrefix) && !eligibleIds.Contains(r.Id));
+
+        foreach (var ex in eligible)
+        {
+            if (!state.Town.TavernRoster.Any(r => r.Id == ex.Id))
+                state.Town.TavernRoster.Add(ex);
+        }
     }
 
     private void GenerateRumors(GameState state)
