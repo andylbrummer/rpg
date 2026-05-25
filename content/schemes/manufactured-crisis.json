@@ -13,7 +13,12 @@
     "supply_requisition_fraud",
     "forged_evidence",
     "communication_intercept",
-    "final_confrontation_proof"
+    "final_confrontation_proof",
+    "false_flag_uniform_tag",
+    "paymaster_ledger",
+    "instigator_dossier",
+    "planted_witness_bribe",
+    "crisis_timeline_memo"
   ],
   "events": [
     {
