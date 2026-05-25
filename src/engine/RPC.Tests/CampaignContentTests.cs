@@ -69,6 +69,7 @@ public class CampaignContentTests
     [Theory]
     [InlineData("BloomHarvest")]
     [InlineData("CascadeFailure")]
+    [InlineData("EngineSeizure")]
     public void Scheme_HasFullEvidenceChain(string schemeId)
     {
         var scheme = CampaignContentLoader.GetSchemeById(schemeId, GetContentDir("schemes"));

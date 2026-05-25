@@ -10,7 +10,15 @@
     "engineered_monster_remains",
     "blackout_grid_map",
     "core_breach_warnings",
-    "prime_engine_schematics"
+    "prime_engine_schematics",
+    "fieldwright_defection_record",
+    "coolant_diversion_logs",
+    "overseer_keycard",
+    "sabotaged_governor_part",
+    "control_room_manifest",
+    "harmonic_tuning_notes",
+    "engine_cult_sigil",
+    "final_seizure_timetable"
   ],
   "events": [
     {
