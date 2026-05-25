@@ -60,15 +60,23 @@ public class LLMContentGenerator
                 var response = await _provider!.CompleteAsync(prompt, ct);
                 var json = ExtractJson(response);
                 var config = TryParseConfig(json);
-                string? validationError = null;
 
-                if (config != null && ValidateConfig(config, out validationError))
+                if (config != null)
                 {
-                    _cache.Put(cacheKey, json);
-                    return config;
+                    var issues = CampaignConfigValidator.Validate(config);
+                    if (issues.Count == 0)
+                    {
+                        _cache.Put(cacheKey, json);
+                        return config;
+                    }
+                    lastError = CampaignConfigValidator.Summarize(issues);
+                }
+                else
+                {
+                    lastError = "Response was not valid CampaignConfig JSON.";
                 }
 
-                lastError = validationError ?? "Validation failed";
+                // Feed the specific critique back so the next attempt can fix exactly what failed.
                 prompt = prompt with
                 {
                     UserPrompt = prompt.UserPrompt + $"\n\nPrevious attempt failed: {lastError}. Fix the issue and try again."
@@ -134,27 +142,6 @@ public class LLMContentGenerator
         {
             return null;
         }
-    }
-
-    private static bool ValidateConfig(CampaignConfig config, out string? error)
-    {
-        if (string.IsNullOrEmpty(config.Patron))
-        {
-            error = "Missing patron";
-            return false;
-        }
-        if (string.IsNullOrEmpty(config.Mastermind))
-        {
-            error = "Missing mastermind";
-            return false;
-        }
-        if (config.EvidenceChain.Count == 0)
-        {
-            error = "Empty evidence chain";
-            return false;
-        }
-        error = null;
-        return true;
     }
 
     private static string ExtractJson(string response)

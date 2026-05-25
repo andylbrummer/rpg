@@ -34,6 +34,10 @@ public class LLMGenerationTests : IDisposable
         Assert.False(string.IsNullOrEmpty(config.Patron));
         Assert.False(string.IsNullOrEmpty(config.Mastermind));
         Assert.NotEmpty(config.EvidenceChain);
+        // Prove the validated LLM config was returned, not the deterministic fallback:
+        // "seal_broken" is unique to the mock; the fallback uses generic clue ids.
+        Assert.Contains("seal_broken", config.EvidenceChain);
+        Assert.Equal("bureau", config.Patron);
     }
 
     [Fact]

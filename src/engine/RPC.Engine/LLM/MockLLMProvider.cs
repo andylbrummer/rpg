@@ -21,7 +21,7 @@ public class MockLLMProvider : ILLMProvider
               "mastermind": "inkblood",
               "scheme": "TheVault",
               "wildCard": "cartography",
-              "complication": "WildCardArrival",
+              "complication": "OpenWar",
               "evidenceChain": ["seal_broken", "ink_stains", "guardian_defeated"],
               "factionTimelines": {
                 "inkblood": { "preparing": 5, "executing": 10 },
