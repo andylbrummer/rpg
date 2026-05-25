@@ -10,7 +10,15 @@
     "bloom_touched_corpses",
     "ritual_site_discovered",
     "essence_extraction_tools",
-    "harvest_master_orders"
+    "harvest_master_orders",
+    "spore_ledger",
+    "drained_hollow_survivor",
+    "essence_vial_cache",
+    "harvester_brand_mark",
+    "convocation_requisition_slip",
+    "bloom_heart_sketch",
+    "tithe_of_flesh_note",
+    "witness_recantation"
   ],
   "events": [
     {
