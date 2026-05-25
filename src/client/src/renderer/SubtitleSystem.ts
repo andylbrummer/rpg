@@ -30,3 +30,9 @@ export class SubtitleSystem {
     this.entries = [];
   }
 }
+
+/**
+ * Shared subtitle channel for all audio events (Unaccounted cues, synergy chime, …) so a single
+ * overlay renders them. Audio emitters tag their sound by adding a caption here.
+ */
+export const subtitles = new SubtitleSystem();

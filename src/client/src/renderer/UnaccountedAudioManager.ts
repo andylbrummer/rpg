@@ -1,4 +1,4 @@
-import { SubtitleSystem } from './SubtitleSystem';
+import { SubtitleSystem, subtitles as sharedSubtitles } from './SubtitleSystem';
 import type { GameState, CombatLogEntry } from '$shared/types/game';
 import type { AmbientAudioManager } from './AmbientAudio';
 
@@ -8,7 +8,7 @@ export class UnaccountedAudioManager {
   private droneGain: GainNode | null = null;
   private lfoNode: OscillatorNode | null = null;
   private lfoGain: GainNode | null = null;
-  private subtitleSystem = new SubtitleSystem();
+  private subtitleSystem = sharedSubtitles;
   private hasUnaccounted = false;
   private lastCombatRound = -1;
   private lastLogLength = 0;

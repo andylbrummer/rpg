@@ -20,6 +20,7 @@
   import { loadAccessibilitySettings, applyAccessibilityToDocument, type AccessibilitySettings } from '$config/accessibilitySettings';
   import { ALL_SYNERGIES } from '$shared/data/synergies';
   import { playClick, playConfirm, playWarning, playSynergyChime } from '$renderer/UISounds';
+  import { subtitles as sharedSubtitles } from '$renderer/SubtitleSystem';
   import { GamepadManager } from '$renderer/GamepadManager';
 
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
@@ -218,6 +219,11 @@
       }
 
       const newSynergyEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'synergy_triggered');
+      if (newSynergyEntries.length > 0) {
+        // Audio event: synergy chime, captioned for subtitle/a11y support.
+        playSynergyChime();
+        sharedSubtitles.add('[Synergy chime — abilities combine]', 2500);
+      }
       for (const entry of newSynergyEntries) {
         const sid = entry.payload?.synergyId;
         const tid = entry.payload?.targetId;
@@ -322,6 +328,7 @@
       (window as any).gameClient = client;
       (window as any).gameStore = gameStore;
       (window as any).__rpc_enableTestHooks = () => {};
+      (window as any).__rpc_subtitles = sharedSubtitles;
     }
 
     // Auto-hide title screen when e2e tests inject state
