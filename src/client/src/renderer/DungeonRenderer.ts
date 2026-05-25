@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { GameState, Tile } from '$shared/types/game';
 import { getTheme, type DungeonTheme } from './DungeonTheme';
-import { BloomCluster, BloomParticleSystem } from './BloomEffects';
+import { BloomCluster, BloomParticleSystem, BloomHazardOverlay } from './BloomEffects';
 import { getCreatureMaterials, type CreatureMaterialSet } from './CreatureMaterials';
 import { createUnaccountedMaterial } from './UnaccountedMaterial';
 import { AmbientParticleSystem, getParticlePreset } from './AmbientParticles';
@@ -33,8 +33,10 @@ export class DungeonRenderer {
   private currentDungeonType: string | undefined;
   private bloomClusters: BloomCluster[] = [];
   private bloomParticles: BloomParticleSystem[] = [];
+  private bloomHazards: BloomHazardOverlay[] = [];
   private ambientParticleSystem: AmbientParticleSystem | null = null;
   private bloomEffectsAdded = false;
+  private nextBloomMutation = 0;
   private creatureMeshes: Map<string, THREE.Object3D> = new Map();
   private dyingUnaccounted: Map<string, { mesh: THREE.Group; startTime: number }> = new Map();
   private lastCombatLogLength = 0;
@@ -449,7 +451,13 @@ export class DungeonRenderer {
       particles.dispose();
     }
     this.bloomParticles = [];
+    for (const hazard of this.bloomHazards) {
+      this.scene.remove(hazard.mesh);
+      hazard.dispose();
+    }
+    this.bloomHazards = [];
     this.bloomEffectsAdded = false;
+    this.nextBloomMutation = 0;
   }
 
   private updateCreatures(state: GameState): void {
@@ -750,9 +758,15 @@ export class DungeonRenderer {
       if (floorIndex % 3 === 0) {
         const fx = tile.x * this.tileSize;
         const fz = tile.y * this.tileSize;
-        const cluster = new BloomCluster(new THREE.Vector3(fx, 0.15, fz), this.currentTheme);
+        const clusterPos = new THREE.Vector3(fx, 0.15, fz);
+        const cluster = new BloomCluster(clusterPos, this.currentTheme);
         this.bloomClusters.push(cluster);
         this.scene.add(cluster.mesh);
+
+        // Mark the contaminated tile beneath each cluster with a hazard overlay.
+        const hazard = new BloomHazardOverlay(clusterPos, this.currentTheme, this.tileSize * 0.62);
+        this.bloomHazards.push(hazard);
+        this.scene.add(hazard.mesh);
       }
       floorIndex++;
     }
@@ -1095,11 +1109,22 @@ export class DungeonRenderer {
     if (this.isDisposed) return;
     requestAnimationFrame(() => this.animate());
     const time = performance.now() * 0.001;
+    // Periodically trigger a mutation transition on a random cluster.
+    if (!this.reduceMotion && this.bloomClusters.length > 0 && time >= this.nextBloomMutation) {
+      const idle = this.bloomClusters.filter((c) => !c.isMutating());
+      if (idle.length > 0) {
+        idle[Math.floor(Math.random() * idle.length)].mutate(time);
+      }
+      this.nextBloomMutation = time + 2.5 + Math.random() * 3.5;
+    }
     for (const cluster of this.bloomClusters) {
       cluster.update(time);
     }
     for (const particles of this.bloomParticles) {
       particles.update();
+    }
+    for (const hazard of this.bloomHazards) {
+      hazard.update(time);
     }
     this.ambientParticleSystem?.update(time);
     this.updateUnaccountedAnimations(time);
