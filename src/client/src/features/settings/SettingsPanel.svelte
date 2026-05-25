@@ -15,13 +15,68 @@
     type KeybindingContext,
   } from '$config/keybindings';
 
+  import {
+    loadDisplaySettings,
+    saveDisplaySettings,
+    resetDisplaySettings,
+    FOV_MIN,
+    FOV_MAX,
+    RESOLUTION_SCALES,
+    type DisplaySettings,
+  } from '$config/displaySettings';
+
   interface Props {
     open: boolean;
     onClose: () => void;
     onAudioToggle?: (enabled: boolean) => void;
+    onDisplayChange?: (settings: DisplaySettings) => void;
   }
 
-  let { open, onClose, onAudioToggle }: Props = $props();
+  let { open, onClose, onAudioToggle, onDisplayChange }: Props = $props();
+
+  let display = $state<DisplaySettings>(loadDisplaySettings());
+  let isFullscreen = $state(typeof document !== 'undefined' && !!document.fullscreenElement);
+
+  function applyDisplay() {
+    saveDisplaySettings(display);
+    onDisplayChange?.(display);
+  }
+
+  function setFov(value: number) {
+    display = { ...display, fov: value };
+    applyDisplay();
+  }
+
+  function setResolutionScale(value: number) {
+    display = { ...display, resolutionScale: value };
+    applyDisplay();
+  }
+
+  function toggleVsync() {
+    display = { ...display, vsync: !display.vsync };
+    applyDisplay();
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {
+      // Fullscreen may be unavailable (e.g. denied) — fall through and read ground truth.
+    }
+    // Derive state from the document so a denied/failed request is reflected accurately.
+    isFullscreen = !!document.fullscreenElement;
+    display = { ...display, fullscreen: isFullscreen };
+    applyDisplay();
+  }
+
+  function resetDisplay() {
+    display = resetDisplaySettings();
+    onDisplayChange?.(display);
+  }
 
   let bindings = $state<Keybinding[]>(loadBindings());
   let capturingAction = $state<string | null>(null);
@@ -120,6 +175,49 @@
           <input type="checkbox" checked={audioEnabled} onchange={toggleAudio} />
           <span>Ambient audio {audioEnabled ? 'ON' : 'OFF'}</span>
         </label>
+      </div>
+
+      <div class="settings-section">
+        <h3>Display</h3>
+        <div class="display-row">
+          <label class="display-label" for="fov-slider">Field of View</label>
+          <input
+            id="fov-slider"
+            class="fov-slider"
+            type="range"
+            min={FOV_MIN}
+            max={FOV_MAX}
+            value={display.fov}
+            oninput={(e) => setFov(Number((e.target as HTMLInputElement).value))}
+          />
+          <span class="display-value">{display.fov}°</span>
+        </div>
+
+        <div class="display-row">
+          <label class="display-label" for="res-scale">Resolution</label>
+          <select
+            id="res-scale"
+            class="display-select"
+            value={display.resolutionScale}
+            onchange={(e) => setResolutionScale(Number((e.target as HTMLSelectElement).value))}
+          >
+            {#each RESOLUTION_SCALES as scale}
+              <option value={scale}>{Math.round(scale * 100)}%</option>
+            {/each}
+          </select>
+        </div>
+
+        <label class="audio-toggle">
+          <input type="checkbox" checked={display.vsync} onchange={toggleVsync} />
+          <span>V-Sync {display.vsync ? 'ON' : 'OFF'}</span>
+        </label>
+
+        <div class="display-row">
+          <button class="display-btn" onclick={toggleFullscreen}>
+            {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          </button>
+          <button class="reset-btn" onclick={resetDisplay}>Reset Display</button>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -233,6 +331,43 @@
   .conflict-item {
     display: inline-block;
     margin-right: 0.75rem;
+  }
+
+  .display-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .display-label {
+    flex: 0 0 auto;
+    min-width: 6rem;
+    color: #ccc;
+    font-size: 0.85rem;
+  }
+
+  .fov-slider {
+    flex: 1 1 auto;
+  }
+
+  .display-value {
+    flex: 0 0 auto;
+    min-width: 2.5rem;
+    text-align: right;
+    color: #888;
+    font-size: 0.8rem;
+  }
+
+  .display-select,
+  .display-btn {
+    padding: 0.3rem 0.6rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 0.0625em solid #444;
+    border-radius: 0.25rem;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.8rem;
   }
 
   .binding-context-label {

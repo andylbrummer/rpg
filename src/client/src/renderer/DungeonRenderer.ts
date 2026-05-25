@@ -10,6 +10,7 @@ export class DungeonRenderer {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
+  private resolutionScale = 1;
   private tileMeshes: Map<string, THREE.Mesh> = new Map();
   private tileSize = 2;
   private wallHeight = 3;
@@ -74,7 +75,7 @@ export class DungeonRenderer {
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * this.resolutionScale);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -1067,6 +1068,18 @@ export class DungeonRenderer {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+  }
+
+  /** Set the camera vertical field of view (degrees). */
+  setFov(fov: number): void {
+    this.camera.fov = fov;
+    this.camera.updateProjectionMatrix();
+  }
+
+  /** Set the render resolution scale (multiplies device pixel ratio). */
+  setResolutionScale(scale: number): void {
+    this.resolutionScale = scale;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * scale);
   }
 
   private animate(): void {

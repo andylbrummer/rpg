@@ -16,6 +16,7 @@
   import { UnaccountedAudioManager } from '$renderer/UnaccountedAudioManager';
   import type { GameState } from '$shared/types/game';
   import { loadBindings, keyToAction } from '$config/keybindings';
+  import { loadDisplaySettings, type DisplaySettings } from '$config/displaySettings';
   import { ALL_SYNERGIES } from '$shared/data/synergies';
   import { playClick, playConfirm, playWarning, playSynergyChime } from '$renderer/UISounds';
   import { GamepadManager } from '$renderer/GamepadManager';
@@ -273,8 +274,16 @@
   $effect(() => {
     if (gameContainer && !renderer) {
       renderer = new DungeonRenderer(gameContainer);
+      const d = loadDisplaySettings();
+      renderer.setFov(d.fov);
+      renderer.setResolutionScale(d.resolutionScale);
     }
   });
+
+  function applyDisplaySettings(d: DisplaySettings) {
+    renderer?.setFov(d.fov);
+    renderer?.setResolutionScale(d.resolutionScale);
+  }
 
   $effect(() => {
     if (renderer && gameState) {
@@ -644,6 +653,7 @@
           open={showSettings}
           onClose={() => showSettings = false}
           onAudioToggle={(enabled) => { audioManager.setEnabled(enabled); unaccountedAudio.setEnabled(enabled); }}
+          onDisplayChange={applyDisplaySettings}
         />
       {/if}
       {#if showStats}
