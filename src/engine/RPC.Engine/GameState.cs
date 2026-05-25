@@ -90,6 +90,9 @@ public class GameState
     private readonly IReadOnlyDictionary<string, DungeonTemplate> _dungeonTemplates;
     public Analytics.AnalyticsTracker Analytics { get; } = new();
 
+    /// <summary>Secret definitions for the current run, indexed for document-triggered discovery.</summary>
+    public SecretRegistry Secrets { get; } = new();
+
     public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null)
     {
         LastUpdate = DateTime.UtcNow;
@@ -264,6 +267,7 @@ public class GameState
         Town = new TownState();
         Overworld = new OverworldState();
         Campaign.Reset();
+        Secrets.Clear();
         PartyGold = 500;
         TitheTokens = 0;
         PartyInventory.Clear();
@@ -340,7 +344,9 @@ public class GameState
         // Act is derived from Overworld.Turns, not stored per entry; it will be recalculated on emit
     }
 
-    public void DiscoverSecret(string secretType, string secretId) => _campaignService.DiscoverSecret(this, secretType, secretId);
+    public bool DiscoverSecret(string? secretType, string secretId, string trigger = "manual") => _campaignService.DiscoverSecret(this, secretType, secretId, trigger);
+
+    public IReadOnlyList<string> ReadDocument(string documentId) => _campaignService.ReadDocument(this, documentId);
 
     public void ChooseSettlementFate(string settlementId, string fate) => _campaignService.ChooseSettlementFate(this, settlementId, fate);
 

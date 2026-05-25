@@ -30,6 +30,9 @@ public class CampaignState
     public HashSet<string> UnlockedDungeons { get; set; } = new();
     public bool BetrayalPath { get; set; } = false;
 
+    // Lore documents the party has already read (drives document-triggered secret discovery)
+    public HashSet<string> ReadDocuments { get; set; } = new();
+
     public void Reset()
     {
         WorldState.Reset();
@@ -47,6 +50,7 @@ public class CampaignState
         Evidence.Clear();
         UnlockedDungeons.Clear();
         BetrayalPath = false;
+        ReadDocuments.Clear();
         FiredEvents.Clear();
         AnnouncedFactionStates.Clear();
     }

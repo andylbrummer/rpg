@@ -251,14 +251,51 @@ public class CampaignService
         return false;
     }
 
-    public void DiscoverSecret(GameState state, string secretType, string secretId)
+    public bool DiscoverSecret(GameState state, string? secretType, string secretId, string trigger = "manual")
     {
+        if (string.IsNullOrEmpty(secretId)) return false;
+        if (state.Journal.IsDiscovered(secretId)) return false; // already found — idempotent
+
+        secretType ??= "unknown";
+        state.Journal.Discover(secretId);
+        state.Analytics.RecordSecretDiscovered(secretId);
         state.EmitActionLog("dungeon", "secret_discovered", new Dictionary<string, string>
         {
             { "secretType", secretType },
-            { "secretId", secretId }
+            { "secretId", secretId },
+            { "trigger", trigger }
         });
         state.LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    /// <summary>
+    /// Mark a lore document as read and passively reveal every still-hidden secret it hints at.
+    /// Idempotent per document. Returns the secret ids newly discovered by this read.
+    /// </summary>
+    public IReadOnlyList<string> ReadDocument(GameState state, string documentId)
+    {
+        if (string.IsNullOrEmpty(documentId)) return Array.Empty<string>();
+        if (!state.Campaign.ReadDocuments.Add(documentId))
+            return Array.Empty<string>(); // already read
+
+        state.Analytics.RecordDocumentRead(documentId);
+        state.EmitActionLog("dungeon", "document_read", new Dictionary<string, string>
+        {
+            { "documentId", documentId }
+        });
+
+        var discovered = new List<string>();
+        foreach (var secretId in state.Secrets.SecretsForDocument(documentId))
+        {
+            var secret = state.Secrets.Get(secretId);
+            if (secret is null) continue;
+            if (DiscoverSecret(state, secret.Type, secret.Id, "document"))
+                discovered.Add(secret.Id);
+        }
+
+        state.LastUpdate = DateTime.UtcNow;
+        return discovered;
     }
 
     // ---- Settlement fate system ----

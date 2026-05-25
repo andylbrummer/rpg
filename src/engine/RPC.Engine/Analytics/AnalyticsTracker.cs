@@ -34,6 +34,18 @@ public class AnalyticsTracker
         Save();
     }
 
+    public void RecordSecretDiscovered(string secretId)
+    {
+        _data.SecretsDiscovered.Add(secretId);
+        Save();
+    }
+
+    public void RecordDocumentRead(string documentId)
+    {
+        _data.DocumentsRead.Add(documentId);
+        Save();
+    }
+
     public void RecordBranchChosen(string classId, string branch, int level)
     {
         _data.BranchesChosen.Add($"{classId}:{branch}:{level}");
@@ -101,6 +113,8 @@ public class AnalyticsData
     public int TotalTurns { get; set; }
     public int TotalDeaths { get; set; }
     public HashSet<string> SynergiesDiscovered { get; set; } = new();
+    public HashSet<string> SecretsDiscovered { get; set; } = new();
+    public HashSet<string> DocumentsRead { get; set; } = new();
     public HashSet<string> SchemesEncountered { get; set; } = new();
     public HashSet<string> ClassesPlayed { get; set; } = new();
     public HashSet<string> BranchesChosen { get; set; } = new();
