@@ -44,8 +44,16 @@ public class RumorRepository
             false,
             null,
             r.RelatedContentId,
-            r.RelatedFactionId)).ToList();
+            r.RelatedFactionId,
+            r.HiddenTag)).ToList();
     }
+
+    /// <summary>
+    /// Rumors carrying a given hidden tag. NPC dialogue keys off these tags to react to what is
+    /// circulating in town; the tag itself is never shown to the player.
+    /// </summary>
+    public IReadOnlyList<RumorDef> GetRumorsByHiddenTag(string hiddenTag)
+        => _rumors.Where(r => r.HiddenTag == hiddenTag).ToList();
 
     public bool VerifyRumor(TownRumor rumor, RumorVerificationSource source, GameRandom rng)
     {

@@ -1,6 +1,10 @@
 [
-  { "id": "bureau_patrol_missing", "text": "A Bureau patrol went missing near the old sewers. They were carrying Engine schematics.", "truthStatus": "true", "relatedContentId": "sewers", "relatedFactionId": "bureau" },
-  { "id": "bureau_quarantine_lifted", "text": "The Bureau has lifted quarantine on the eastern district. It's safe to pass through.", "truthStatus": "outdated", "relatedFactionId": "bureau" },
-  { "id": "bureau_agent_traitor", "text": "A high-ranking Bureau agent has been selling quarantine codes to smugglers.", "truthStatus": "planted", "relatedFactionId": "bureau" },
-  { "id": "bureau_engine_repair", "text": "The Bureau is recruiting outsiders for an emergency Engine repair team. Good pay, high risk.", "truthStatus": "true", "relatedFactionId": "bureau" }
+  { "id": "bureau_patrol_missing", "text": "A Bureau patrol went missing near the old sewers. They were carrying Engine schematics.", "truthStatus": "true", "relatedContentId": "sewers", "relatedFactionId": "bureau", "hiddenTag": "engine_crisis" },
+  { "id": "bureau_quarantine_lifted", "text": "The Bureau has lifted quarantine on the eastern district. It's safe to pass through.", "truthStatus": "outdated", "relatedFactionId": "bureau", "hiddenTag": "quarantine" },
+  { "id": "bureau_agent_traitor", "text": "A high-ranking Bureau agent has been selling quarantine codes to smugglers.", "truthStatus": "planted", "relatedFactionId": "bureau", "hiddenTag": "bureau_corruption" },
+  { "id": "bureau_engine_repair", "text": "The Bureau is recruiting outsiders for an emergency Engine repair team. Good pay, high risk.", "truthStatus": "true", "relatedFactionId": "bureau", "hiddenTag": "engine_crisis" },
+  { "id": "bureau_ledger_burned", "text": "Someone torched the Bureau's evidence ledger the night before the audit.", "truthStatus": "true", "relatedFactionId": "bureau", "hiddenTag": "bureau_corruption" },
+  { "id": "bureau_curfew", "text": "A new curfew bell rings at dusk. The Bureau says it is for everyone's safety.", "truthStatus": "true", "relatedFactionId": "bureau", "hiddenTag": "lockdown" },
+  { "id": "bureau_amnesty", "text": "The Bureau is offering amnesty to anyone who surrenders bloom-touched kin. No questions asked.", "truthStatus": "planted", "relatedFactionId": "bureau", "hiddenTag": "bloom_fear" },
+  { "id": "bureau_inspector", "text": "An inspector from the capital arrived in a sealed carriage. No one has seen them since.", "truthStatus": "outdated", "relatedFactionId": "bureau", "hiddenTag": "mastermind_clue" }
 ]

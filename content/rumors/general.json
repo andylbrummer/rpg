@@ -1,6 +1,12 @@
 [
-  { "id": "general_rats_mutated", "text": "The rats in the lower districts have grown larger. Something in the water.", "truthStatus": "true" },
-  { "id": "general_merchant_road", "text": "A merchant caravan found a shortcut through the marshlands. No bloom sightings.", "truthStatus": "planted" },
-  { "id": "general_winter_early", "text": "Winter is coming early this year. The white storms will close the mountain passes.", "truthStatus": "outdated" },
-  { "id": "general_dungeon_loot", "text": "Scavengers found intact imperial weaponry in the Broken Engine lower levels.", "truthStatus": "true", "relatedContentId": "broken_engine" }
+  { "id": "general_rats_mutated", "text": "The rats in the lower districts have grown larger. Something in the water.", "truthStatus": "true", "hiddenTag": "bloom_fear" },
+  { "id": "general_merchant_road", "text": "A merchant caravan found a shortcut through the marshlands. No bloom sightings.", "truthStatus": "planted", "hiddenTag": "route_intel" },
+  { "id": "general_winter_early", "text": "Winter is coming early this year. The white storms will close the mountain passes.", "truthStatus": "outdated", "hiddenTag": "route_danger" },
+  { "id": "general_dungeon_loot", "text": "Scavengers found intact imperial weaponry in the Broken Engine lower levels.", "truthStatus": "true", "relatedContentId": "broken_engine", "hiddenTag": "treasure" },
+  { "id": "general_tavern_debt", "text": "The Salted Hound is calling in every tab this week. The owner looks frightened.", "truthStatus": "true", "hiddenTag": "compact_debt" },
+  { "id": "general_night_market", "text": "A night market trades in things that should not be sold. It moves each time it's found.", "truthStatus": "true", "hiddenTag": "smuggling" },
+  { "id": "general_lights_engine", "text": "Strange lights flicker in the Broken Engine at night, in a rhythm like breathing.", "truthStatus": "true", "relatedContentId": "broken_engine", "hiddenTag": "engine_crisis" },
+  { "id": "general_vanished_crew", "text": "A whole expedition crew walked into the boneyard and never came back out.", "truthStatus": "true", "relatedContentId": "boneyard", "hiddenTag": "secret_location" },
+  { "id": "general_false_relic", "text": "A peddler sells 'bloom-ward charms.' They are painted river stones, nothing more.", "truthStatus": "planted", "hiddenTag": "bloom_cure_scam" },
+  { "id": "general_old_song", "text": "Children sing a new rhyme about a name no adult will repeat aloud.", "truthStatus": "true", "hiddenTag": "mastermind_clue" }
 ]

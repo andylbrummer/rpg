@@ -176,6 +176,7 @@ public class SaveTownRumor
     public bool? VerificationResult { get; set; }
     public string? RelatedContentId { get; set; }
     public string? RelatedFactionId { get; set; }
+    public string? HiddenTag { get; set; }
 }
 
 public class SaveOverworldNode

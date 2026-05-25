@@ -20,7 +20,9 @@ public record RumorDef(
     string Text,
     RumorTruthStatus TruthStatus,
     string? RelatedContentId = null,
-    string? RelatedFactionId = null);
+    string? RelatedFactionId = null,
+    // Server-only tag that drives NPC dialogue; never surfaced to the player.
+    string? HiddenTag = null);
 
 public record TownRumor(
     string Id,
@@ -29,4 +31,6 @@ public record TownRumor(
     bool Verified,
     bool? VerificationResult = null,
     string? RelatedContentId = null,
-    string? RelatedFactionId = null);
+    string? RelatedFactionId = null,
+    // Server-only tag that drives NPC dialogue; never surfaced to the player.
+    string? HiddenTag = null);

@@ -94,7 +94,8 @@ public static class SaveRestorer
                     r.Verified,
                     r.VerificationResult,
                     r.RelatedContentId,
-                    r.RelatedFactionId))
+                    r.RelatedFactionId,
+                    r.HiddenTag))
                 .ToList();
         }
     }

@@ -1,5 +1,10 @@
 [
-  { "id": "inkblood_ritual", "text": "An Inkblood ritual at midnight can reveal the true name of any spirit in the Reach.", "truthStatus": "true", "relatedFactionId": "inkblood" },
-  { "id": "inkblood_contract", "text": "The Compact is offering binding contracts that grant immunity to bloom infection.", "truthStatus": "planted", "relatedFactionId": "inkblood" },
-  { "id": "inkblood_ossuary", "text": "The sealed ossuary beneath the Reach has been opened. Something walked out.", "truthStatus": "outdated", "relatedFactionId": "inkblood" }
+  { "id": "inkblood_ritual", "text": "An Inkblood ritual at midnight can reveal the true name of any spirit in the Reach.", "truthStatus": "true", "relatedFactionId": "inkblood", "hiddenTag": "convocation_ritual" },
+  { "id": "inkblood_contract", "text": "The Compact is offering binding contracts that grant immunity to bloom infection.", "truthStatus": "planted", "relatedFactionId": "inkblood", "hiddenTag": "bloom_cure_scam" },
+  { "id": "inkblood_ossuary", "text": "The sealed ossuary beneath the Reach has been opened. Something walked out.", "truthStatus": "outdated", "relatedContentId": "ossuary", "relatedFactionId": "inkblood", "hiddenTag": "secret_location" },
+  { "id": "inkblood_debt_ledger", "text": "The Compact keeps a ledger of every favor owed. Your name may be in it already.", "truthStatus": "true", "relatedFactionId": "inkblood", "hiddenTag": "compact_debt" },
+  { "id": "inkblood_tithe_rise", "text": "The tithe of bone has doubled. The Compact says the dead demand more each season.", "truthStatus": "true", "relatedFactionId": "inkblood", "hiddenTag": "tithe_crisis" },
+  { "id": "inkblood_forbidden_text", "text": "A scribe smuggled out a forbidden text. The Compact wants it back, quietly.", "truthStatus": "true", "relatedFactionId": "inkblood", "hiddenTag": "mastermind_clue" },
+  { "id": "inkblood_resurrection", "text": "They say the Compact can return the dead — for a price no one should pay.", "truthStatus": "planted", "relatedFactionId": "inkblood", "hiddenTag": "resurrection_scheme" },
+  { "id": "inkblood_archive_flood", "text": "The deep archive flooded with black ink. The records it held are lost — or hidden.", "truthStatus": "outdated", "relatedFactionId": "inkblood", "hiddenTag": "compact_debt" }
 ]

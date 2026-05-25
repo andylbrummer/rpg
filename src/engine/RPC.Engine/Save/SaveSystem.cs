@@ -227,7 +227,8 @@ public static class SaveSystem
                         Verified = r.Verified,
                         VerificationResult = r.VerificationResult,
                         RelatedContentId = r.RelatedContentId,
-                        RelatedFactionId = r.RelatedFactionId
+                        RelatedFactionId = r.RelatedFactionId,
+                        HiddenTag = r.HiddenTag
                     }).ToArray()
             },
             ActionLog = state.ActionLog.Select(e => new SaveActionLogEntry
