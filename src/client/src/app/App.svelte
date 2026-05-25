@@ -395,8 +395,16 @@
     };
 
     const gamepadManager = new GamepadManager((action: PlayerAction) => {
-      if (gameState?.mode === 'Exploration') {
-        enqueueAction(action);
+      // Movement is buffered and only meaningful while exploring; other mapped buttons
+      // (cancel, enter/return) dispatch through the normal path regardless of mode so they
+      // aren't dead outside Exploration.
+      const isMovement = action.type === 'move_forward' || action.type === 'move_back'
+        || action.type === 'strafe_left' || action.type === 'strafe_right'
+        || action.type === 'turn_left' || action.type === 'turn_right';
+      if (isMovement) {
+        if (gameState?.mode === 'Exploration') enqueueAction(action);
+      } else {
+        sendAction(action);
       }
     });
 
