@@ -314,6 +314,7 @@ export interface AnalyticsData {
   classesPlayed: string[];
   branchesChosen: string[];
   optionalDungeonsUnlocked: string[];
+  factionEndStates?: Record<string, number>;
 }
 
 export type { PlayerAction, CombatAction, ProtocolEnvelope, HelloPayload, ErrorPayload, HeartbeatPingPayload, HeartbeatPongPayload } from './protocol.gen';

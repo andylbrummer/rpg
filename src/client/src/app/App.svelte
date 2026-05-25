@@ -10,6 +10,7 @@
   import FieldNotesPanel from '$features/field-notes/FieldNotesPanel.svelte';
   import CharacterSheet from '$features/party/CharacterSheet.svelte';
   import SettingsPanel from '$features/settings/SettingsPanel.svelte';
+  import AnalyticsDashboard from '$features/analytics/AnalyticsDashboard.svelte';
   import TitleScreen from '../ui/TitleScreen.svelte';
   import { DungeonRenderer } from '$renderer/DungeonRenderer';
   import { AmbientAudioManager } from '$renderer/AmbientAudio';
@@ -689,40 +690,7 @@
           <div class="stats-card">
             <h2 class="stats-title">Your Stats</h2>
             {#if analyticsData}
-              <div class="stats-grid">
-                <div class="stat-item">
-                  <span class="stat-value">{analyticsData.campaignsStarted}</span>
-                  <span class="stat-label">Campaigns Started</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">{analyticsData.campaignsCompleted}</span>
-                  <span class="stat-label">Completed</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">{analyticsData.mastermindsExposed}</span>
-                  <span class="stat-label">Masterminds Exposed</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">{analyticsData.schemesStopped}</span>
-                  <span class="stat-label">Schemes Stopped</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">{analyticsData.betrayals}</span>
-                  <span class="stat-label">Betrayals</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">{analyticsData.totalTurns}</span>
-                  <span class="stat-label">Total Turns</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">{analyticsData.totalDeaths}</span>
-                  <span class="stat-label">Deaths</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">{analyticsData.synergiesDiscovered.length}</span>
-                  <span class="stat-label">Synergies Found</span>
-                </div>
-              </div>
+              <AnalyticsDashboard data={analyticsData} />
               {#if analyticsData.classesPlayed.length > 0}
                 <div class="stats-section">
                   <h3>Classes Played</h3>
@@ -1238,34 +1206,6 @@
     margin: 0 0 1rem 0;
     color: #ddd;
     font-size: 1.25rem;
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.25rem;
-  }
-
-  .stat-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #88cc88;
-  }
-
-  .stat-label {
-    font-size: 0.75rem;
-    color: #888;
-    margin-top: 0.25rem;
   }
 
   .stats-section {

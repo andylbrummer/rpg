@@ -514,7 +514,8 @@ public class GameServer
                 synergiesDiscovered = data.SynergiesDiscovered.ToArray(),
                 classesPlayed = data.ClassesPlayed.ToArray(),
                 branchesChosen = data.BranchesChosen.ToArray(),
-                optionalDungeonsUnlocked = data.OptionalDungeonsUnlocked.ToArray()
+                optionalDungeonsUnlocked = data.OptionalDungeonsUnlocked.ToArray(),
+                factionEndStates = data.FactionEndStates
             };
             var responseEnvelope = new ProtocolEnvelope { V = 2, Type = "analytics.data", Payload = response, Seq = 0 };
             var json = JsonSerializer.Serialize(responseEnvelope, _jsonOptions);
