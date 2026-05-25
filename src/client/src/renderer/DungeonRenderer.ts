@@ -842,6 +842,8 @@ export class DungeonRenderer {
         return this.createStairs(x, z, true);
       case 'StairsDown':
         return this.createStairs(x, z, false);
+      case 'IllusoryFloor':
+        return this.createFloor(x, z, true);
       case 'Empty':
         return null;
       default:
@@ -849,16 +851,20 @@ export class DungeonRenderer {
     }
   }
 
-  private createFloor(x: number, z: number): THREE.Mesh {
+  private createFloor(x: number, z: number, illusory = false): THREE.Mesh {
     const geometry = new THREE.PlaneGeometry(this.tileSize * 0.95, this.tileSize * 0.95);
     const material = new THREE.MeshStandardMaterial({
       map: this.floorTexture,
-      roughness: 0.8
+      // A revealed illusory floor reads as a darkened, sunken pit trap.
+      roughness: illusory ? 1 : 0.8,
+      color: illusory ? 0x4a3530 : 0xffffff
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(x, 0, z);
+    // Recess the pit slightly below the surrounding floor plane.
+    mesh.position.set(x, illusory ? -0.12 : 0, z);
     mesh.receiveShadow = true;
+    if (illusory) mesh.name = 'illusory-floor';
     return mesh;
   }
 
@@ -866,6 +872,7 @@ export class DungeonRenderer {
     const isDoor = borderType === 'Door';
     const isSecret = borderType === 'SecretDoor';
     const isBreakable = borderType === 'BreakableWall';
+    const isCompartment = borderType === 'ConcealedCompartment';
 
     let geometry: THREE.BoxGeometry;
     let material: THREE.MeshStandardMaterial;
@@ -897,6 +904,20 @@ export class DungeonRenderer {
         color: tint,
         transparent: true,
         opacity: 1
+      });
+    } else if (isCompartment) {
+      // A wall with a faint seam betraying a hidden compartment — wall-like, secret-tinted.
+      geometry = new THREE.BoxGeometry(
+        side === 'east' || side === 'west' ? this.wallThickness * 1.05 : this.tileSize,
+        this.wallHeight,
+        side === 'north' || side === 'south' ? this.wallThickness * 1.05 : this.tileSize
+      );
+      material = new THREE.MeshStandardMaterial({
+        map: this.wallTexture,
+        roughness: 0.85,
+        bumpMap: this.wallTexture,
+        bumpScale: 0.18,
+        color: this.currentTheme.secretDoor
       });
     } else {
       geometry = new THREE.BoxGeometry(

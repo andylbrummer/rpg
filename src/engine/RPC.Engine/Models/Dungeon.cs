@@ -5,7 +5,9 @@ public enum TileType
     Empty,
     Floor,
     StairsUp,
-    StairsDown
+    StairsDown,
+    // A pit trap disguised as ordinary floor — walkable (and treacherous) until revealed.
+    IllusoryFloor
 }
 
 public enum BorderType
@@ -14,7 +16,9 @@ public enum BorderType
     Wall,
     Door,
     SecretDoor,
-    BreakableWall
+    BreakableWall,
+    // A wall hiding a compartment — impassable like a wall until its secret is opened.
+    ConcealedCompartment
 }
 
 public readonly record struct Tile(
@@ -26,7 +30,7 @@ public readonly record struct Tile(
     int RoomId = -1,
     string? EncounterId = null)
 {
-    public bool IsWalkable => Type is TileType.Floor or TileType.StairsUp or TileType.StairsDown;
+    public bool IsWalkable => Type is TileType.Floor or TileType.StairsUp or TileType.StairsDown or TileType.IllusoryFloor;
 
     public BorderType GetBorder(Direction dir) => dir switch
     {
@@ -81,7 +85,7 @@ public class Dungeon
         if (!tile.IsWalkable) return false;
 
         var border = tile.GetBorder(dir);
-        if (border is BorderType.Wall or BorderType.SecretDoor or BorderType.BreakableWall)
+        if (border is BorderType.Wall or BorderType.SecretDoor or BorderType.BreakableWall or BorderType.ConcealedCompartment)
             return false;
 
         var to = from.Move(dir);

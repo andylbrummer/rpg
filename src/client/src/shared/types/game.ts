@@ -9,12 +9,12 @@ export interface Player {
   facing: 'North' | 'East' | 'South' | 'West';
 }
 
-export type BorderType = 'None' | 'Wall' | 'Door' | 'SecretDoor' | 'BreakableWall';
+export type BorderType = 'None' | 'Wall' | 'Door' | 'SecretDoor' | 'BreakableWall' | 'ConcealedCompartment';
 
 export interface Tile {
   x: number;
   y: number;
-  type: 'Empty' | 'Floor' | 'StairsUp' | 'StairsDown';
+  type: 'Empty' | 'Floor' | 'StairsUp' | 'StairsDown' | 'IllusoryFloor';
   north: BorderType;
   south: BorderType;
   east: BorderType;
