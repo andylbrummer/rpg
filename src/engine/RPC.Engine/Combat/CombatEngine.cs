@@ -9,7 +9,8 @@ public static class CombatEngine
         PartyState party,
         EncounterDef encounter,
         GameRandom rng,
-        EnemyRegistry? enemies = null)
+        EnemyRegistry? enemies = null,
+        string? environment = null)
     {
         var enemyCombatants = SpawnEnemies(encounter, rng, enemies);
         var all = party.Active.Select(ToCombatant)
@@ -26,7 +27,7 @@ public static class CombatEngine
                 new List<CombatLogEntry> { new(Guid.Empty, "Victory!", 1) },
                 null,
                 CombatPhase.Ended,
-                encounter.XpReward);
+                encounter.XpReward) { Environment = environment };
         }
 
         var order = RollInitiative(all, rng);
@@ -39,7 +40,7 @@ public static class CombatEngine
             new List<CombatLogEntry>(),
             null,
             CombatPhase.RoundStart,
-            encounter.XpReward);
+            encounter.XpReward) { Environment = environment };
     }
 
     public static CombatState Tick(CombatState state, CombatAction? action, GameRandom rng, ClassRegistry? classes = null, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null, SynergyRegistry? synergies = null)
@@ -428,7 +429,7 @@ public static class CombatEngine
         {
             foreach (var used in state.AbilitiesUsedThisRound)
             {
-                var synEntry = synergies?.LookupWithId(abilityId, used);
+                var synEntry = synergies?.LookupWithId(abilityId, used, state.Environment);
                 if (synEntry is not null)
                 {
                     ApplySynergyEffect(synEntry.Value.Effect, a, new SynergyContext(newCombatants, newLog, state.Round, idx));

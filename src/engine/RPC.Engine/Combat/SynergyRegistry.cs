@@ -9,7 +9,7 @@ namespace RPC.Engine.Combat;
 /// </summary>
 public class SynergyRegistry
 {
-    private readonly Dictionary<string, (string? Id, SynergyEffect Effect, bool Hidden)> _effects = new();
+    private readonly Dictionary<string, (string? Id, SynergyEffect Effect, bool Hidden, string? Environment)> _effects = new();
 
     public static string MakeKey(string a, string b)
     {
@@ -21,9 +21,9 @@ public class SynergyRegistry
             : $"{b}|{a}";
     }
 
-    public void Register(string a, string b, SynergyEffect effect, string? id = null, bool hidden = false)
+    public void Register(string a, string b, SynergyEffect effect, string? id = null, bool hidden = false, string? environment = null)
     {
-        _effects[MakeKey(a, b)] = (id, effect, hidden);
+        _effects[MakeKey(a, b)] = (id, effect, hidden, environment);
     }
 
     public SynergyEffect? Lookup(string a, string b)
@@ -35,13 +35,20 @@ public class SynergyRegistry
         return _effects.TryGetValue(key, out var entry) ? entry.Effect : null;
     }
 
-    public (string? Id, SynergyEffect Effect)? LookupWithId(string a, string b)
+    public (string? Id, SynergyEffect Effect)? LookupWithId(string a, string b, string? environment = null)
     {
         var key = MakeKey(a, b);
         if (string.IsNullOrEmpty(key))
             return null;
 
-        return _effects.TryGetValue(key, out var entry) ? (entry.Id, entry.Effect) : null;
+        if (!_effects.TryGetValue(key, out var entry))
+            return null;
+
+        // Environment-gated synergies only trigger in their dungeon; ungated ones trigger anywhere.
+        if (!string.IsNullOrEmpty(entry.Environment) && !string.Equals(entry.Environment, environment, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        return (entry.Id, entry.Effect);
     }
 
     public bool IsHidden(string a, string b)
@@ -75,7 +82,7 @@ public class SynergyRegistry
             def.Effect.Type,
             def.Effect.Value);
 
-        Register(def.Abilities[0], def.Abilities[1], effect, def.Id, def.Hidden);
+        Register(def.Abilities[0], def.Abilities[1], effect, def.Id, def.Hidden, def.Environment);
     }
 
     public void LoadFromDirectory(string directoryPath)
@@ -104,7 +111,9 @@ public record SynergyDef(
     SynergyDefEffect Effect,
     string Hint,
     SynergyFieldNotes FieldNotes,
-    bool Hidden = false);
+    bool Hidden = false,
+    // When set, the synergy only triggers in this dungeon type (environmental secret synergy).
+    string? Environment = null);
 
 public record SynergyDefEffect(
     string Type,

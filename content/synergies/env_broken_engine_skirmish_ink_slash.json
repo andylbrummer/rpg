@@ -1,0 +1,19 @@
+{
+  "id": "env_broken_engine_skirmish_ink_slash",
+  "abilities": [
+    "skirmish",
+    "ink_slash"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 7,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Engine harmonics lock the two actions into lethal sync.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true,
+  "environment": "broken_engine"
+}

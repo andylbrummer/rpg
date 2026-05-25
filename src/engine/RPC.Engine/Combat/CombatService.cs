@@ -83,7 +83,7 @@ public class CombatService
     private void EnterCombat(GameState state, EncounterDef encounter)
     {
         state.CurrentEncounterId = Guid.NewGuid().ToString();
-        state.Combat = CombatEngine.Enter(state.Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)));
+        state.Combat = CombatEngine.Enter(state.Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)), environment: state.CurrentDungeonType);
 
         state.EmitActionLog("combat", "encounter_started", new Dictionary<string, string> { { "encounterId", state.CurrentEncounterId } });
 

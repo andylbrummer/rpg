@@ -1,0 +1,19 @@
+{
+  "id": "env_broken_engine_skirmish_rend",
+  "abilities": [
+    "skirmish",
+    "rend"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 7,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Stray current arcs between the two abilities here.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true,
+  "environment": "broken_engine"
+}

@@ -70,6 +70,8 @@ public record CombatState(
     public HashSet<string> AbilitiesUsedThisRound { get; init; } = new();
     public Dictionary<int, Guid> SummonSlotAssignments { get; init; } = new();
     public List<DeadUnaccounted> DeadUnaccounted { get; init; } = new();
+    /// <summary>Current dungeon type, for environment-gated (secret) synergies. Null outside dungeons.</summary>
+    public string? Environment { get; init; }
 
     public Combatant? CurrentActor =>
         Phase == CombatPhase.Turn && CurrentTurnIndex < InitiativeOrder.Length
