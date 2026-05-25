@@ -18,17 +18,26 @@ public class DungeonGenerator : IDungeonGenerator
 
     public Dungeon Generate(string dungeonType, int? seed = null)
     {
-        var template = _dungeonTemplates.GetValueOrDefault(dungeonType) ?? new DungeonTemplate(
-            dungeonType,
-            dungeonType,
-            new[] { "entrance", "corridor", "chamber", "dead_end", "boss_room" },
-            new[] { "entrance", "corridor", "chamber", "dead_end", "boss_room" },
-            8,
-            "boss-encounter-1",
-            dungeonType,
-            dungeonType);
-
         var effectiveSeed = seed ?? StableHash(dungeonType);
+
+        // A hand-authored config means there is a registered template for this dungeon type.
+        if (_dungeonTemplates.TryGetValue(dungeonType, out var template))
+        {
+            var authored = BuildFromTemplate(template, effectiveSeed);
+            // Validate before use: a hand-authored layout should be fully connected, but if a bad
+            // segment set produced an unreachable pocket, drop to the procedural fallback instead
+            // of shipping a broken dungeon.
+            if (DungeonConnectivityValidator.IsFullyConnected(authored))
+                return authored;
+        }
+
+        // No hand-authored config (e.g. an LLM-generated campaign referenced an unknown dungeon),
+        // or the authored build came out disconnected: procedurally stitch a fallback.
+        return BuildProcedural(dungeonType, effectiveSeed, template);
+    }
+
+    private Dungeon BuildFromTemplate(DungeonTemplate template, int effectiveSeed)
+    {
         var builder = new DungeonBuilder(effectiveSeed);
 
         var pool = template.SegmentPool.ToHashSet();
@@ -48,6 +57,51 @@ public class DungeonGenerator : IDungeonGenerator
         dungeon.WanderingTableId = template.WanderingTableId ?? template.EncounterTableId;
         dungeon.EncounterTableId = template.EncounterTableId;
         TagBossTile(dungeon, template.BossEncounterId);
+        return dungeon;
+    }
+
+    /// <summary>
+    /// Procedurally stitch a dungeon for a type with no usable hand-authored config. Uses the
+    /// template's segment pool when one exists, otherwise every loaded segment, then paces
+    /// encounters by depth. The stitcher guarantees connectivity; we re-validate before returning.
+    /// </summary>
+    private Dungeon BuildProcedural(string dungeonType, int effectiveSeed, DungeonTemplate? template)
+    {
+        var name = template?.Name ?? dungeonType;
+        var encounterTableId = template?.EncounterTableId ?? dungeonType;
+        var bossEncounterId = template?.BossEncounterId ?? "boss-encounter-1";
+        var targetRooms = template?.TargetRooms ?? 8;
+
+        // Restrict to the template pool when given; otherwise stitch from all available segments.
+        IEnumerable<RoomSegment> pool = _segments;
+        if (template is not null)
+        {
+            var allowed = template.SegmentPool.ToHashSet();
+            var filtered = _segments.Where(s => allowed.Contains(s.Id)).ToList();
+            if (filtered.Count > 0) pool = filtered;
+        }
+
+        var stitcher = new SegmentStitcher(pool, effectiveSeed);
+        var dungeon = stitcher.Stitch(name, targetRooms);
+        dungeon.WanderingTableId = template?.WanderingTableId ?? encounterTableId;
+        dungeon.EncounterTableId = encounterTableId;
+
+        // Pace encounters across the assembled geometry (depth-scaled difficulty curve).
+        if (_encounterTables is not null && _encounterTables.Get(encounterTableId) is not null)
+        {
+            var pacer = new DungeonPacer();
+            var plan = pacer.Plan(dungeon);
+            pacer.Apply(dungeon, plan, _encounterTables, encounterTableId, new GameRandom(effectiveSeed));
+        }
+
+        TagBossTile(dungeon, bossEncounterId);
+
+        // Connectivity is contractually guaranteed by the stitcher; assert it before use so a future
+        // regression surfaces loudly rather than shipping an unreachable dungeon.
+        if (!DungeonConnectivityValidator.IsFullyConnected(dungeon))
+            throw new InvalidOperationException(
+                $"Procedural fallback for '{dungeonType}' produced a disconnected dungeon.");
+
         return dungeon;
     }
 
