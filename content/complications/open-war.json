@@ -2,6 +2,23 @@
   "id": "OpenWar",
   "name": "Open War",
   "description": "Two major factions have declared open war. Their soldiers clash on the roads, settlements choose sides, and neutrality is no longer an option.",
+  "evidenceChain": [
+    "troop_movement_map",
+    "war_declaration_copy",
+    "border_skirmish_reports",
+    "mass_conscription_notice",
+    "supply_line_seizure",
+    "atrocity_witness_account",
+    "mercenary_contract",
+    "captured_battle_orders",
+    "faction_alliance_pact",
+    "siege_engine_manifest",
+    "casualty_ledger",
+    "war_profiteer_records",
+    "false_flag_uniform",
+    "escalation_timeline",
+    "warmonger_directive"
+  ],
   "worldStateModifiers": {
     "routeStatusChance": {
       "contested": 0.5,

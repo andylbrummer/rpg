@@ -2,6 +2,23 @@
   "id": "TitheCollapse",
   "name": "Tithe Collapse",
   "description": "The Bone Tithe system that sustains resurrection is failing. Tithe tokens are losing value, resurrection costs are spiking, and the dead may soon stay dead permanently.",
+  "evidenceChain": [
+    "tithe_default_ledger",
+    "empty_ossuary_report",
+    "bone_shortage_notice",
+    "riot_in_the_archive",
+    "collector_disappearance",
+    "forged_tithe_receipts",
+    "debt_call_records",
+    "black_market_bone_cache",
+    "compact_emergency_decree",
+    "starving_district_census",
+    "tithe_route_ambush",
+    "embezzlement_audit",
+    "ossuary_breach_log",
+    "instigator_debt_scheme",
+    "collapse_architect_orders"
+  ],
   "worldStateModifiers": {
     "resurrectionCostMultiplier": 2.0,
     "titheTokenValue": 0.5,

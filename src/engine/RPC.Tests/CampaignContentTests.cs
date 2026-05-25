@@ -117,6 +117,22 @@ public class CampaignContentTests
     [InlineData("ErraticEngine")]
     [InlineData("MissingTeam")]
     [InlineData("ClosingPasses")]
+    public void Complication_HasFullEvidenceChain(string complicationId)
+    {
+        var complication = CampaignContentLoader.GetComplicationById(complicationId, GetContentDir("complications"));
+        Assert.NotNull(complication);
+        Assert.NotNull(complication!.EvidenceChain);
+        Assert.True(complication.EvidenceChain!.Length >= 15, $"{complicationId} evidence chain should be fully authored (>=15)");
+        Assert.Equal(complication.EvidenceChain.Length, complication.EvidenceChain.Distinct().Count());
+    }
+
+    [Theory]
+    [InlineData("BloomSiege")]
+    [InlineData("OpenWar")]
+    [InlineData("TitheCollapse")]
+    [InlineData("ErraticEngine")]
+    [InlineData("MissingTeam")]
+    [InlineData("ClosingPasses")]
     public void Complication_HasEvents(string complicationId)
     {
         var complication = CampaignContentLoader.GetComplicationById(complicationId, GetContentDir("complications"));

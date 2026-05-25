@@ -53,4 +53,6 @@ public record ComplicationDef(
     string Name,
     string Description,
     WorldStateModifiers WorldStateModifiers,
-    CampaignEventDef[] Events);
+    CampaignEventDef[] Events,
+    // Placed evidence docs that let players trace this complication to its instigator.
+    string[]? EvidenceChain = null);

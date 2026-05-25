@@ -2,6 +2,23 @@
   "id": "BloomSiege",
   "name": "Bloom Siege",
   "description": "The Bloom has become aggressive, actively sieging settlements and blocking major routes. Towns are fortified, but supplies are running low.",
+  "evidenceChain": [
+    "bloom_barricade_reports",
+    "siege_breach_map",
+    "fortified_town_census",
+    "supply_convoy_losses",
+    "spore_wall_samples",
+    "evacuation_orders",
+    "bloom_tide_timeline",
+    "defender_casualty_list",
+    "sealed_gate_logs",
+    "ration_ledger",
+    "bloom_growth_survey",
+    "refugee_testimony",
+    "perimeter_failure_notice",
+    "instigator_spore_cache",
+    "siege_master_orders"
+  ],
   "worldStateModifiers": {
     "routeStatusChance": {
       "bloomAffected": 0.4,

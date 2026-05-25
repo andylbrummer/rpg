@@ -2,6 +2,23 @@
   "id": "MissingTeam",
   "name": "Missing Team",
   "description": "A Bureau investigation team has gone missing in the field, leaving behind a trail of evidence that points toward an early suspect for the Mastermind.",
+  "evidenceChain": [
+    "last_known_location",
+    "abandoned_camp_survey",
+    "distress_signal_log",
+    "recovered_gear_manifest",
+    "search_party_report",
+    "blood_trail_notes",
+    "ambush_site_evidence",
+    "ransom_demand_note",
+    "captor_faction_sigil",
+    "witness_sighting",
+    "expedition_roster",
+    "supply_drop_failure",
+    "rescue_route_map",
+    "betrayer_correspondence",
+    "abductor_orders"
+  ],
   "worldStateModifiers": {
     "routeStatusChance": {
       "investigationSite": 0.2,
