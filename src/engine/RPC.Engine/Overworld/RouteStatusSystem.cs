@@ -91,6 +91,40 @@ public static class RouteStatusSystem
         }
     }
 
+    /// <summary>
+    /// Decide whether the player can negotiate passage through a degraded route by trading on
+    /// reputation with the faction that controls it. Contested routes need Friendly standing (>=25),
+    /// fully Blocked routes need Allied standing (>=50). Bloom-affected routes cannot be negotiated.
+    /// Pure decision — no mutation; the caller applies the status change and reputation cost.
+    /// </summary>
+    public static PassageNegotiation EvaluateNegotiation(OverworldRoute route, OverworldState overworld, ReputationState reputation)
+    {
+        if (route.Status == RouteStatus.Open)
+            return new PassageNegotiation(false, "Route is already open.", null, route.Status, 0);
+        if (route.Status == RouteStatus.BloomAffected)
+            return new PassageNegotiation(false, "The bloom cannot be reasoned with.", null, route.Status, 0);
+
+        var controllers = new HashSet<string>();
+        if (overworld.Nodes.GetValueOrDefault(route.From) is { } fromNode)
+            foreach (var f in fromNode.FactionPresence) controllers.Add(f);
+        if (overworld.Nodes.GetValueOrDefault(route.To) is { } toNode)
+            foreach (var f in toNode.FactionPresence) controllers.Add(f);
+
+        if (controllers.Count == 0)
+            return new PassageNegotiation(false, "No faction controls this route.", null, route.Status, 0);
+
+        var faction = controllers.OrderByDescending(f => reputation[f]).ThenBy(f => f).First();
+        var standing = reputation[faction];
+        var required = route.Status == RouteStatus.Blocked ? 50 : 25;
+
+        if (standing < required)
+            return new PassageNegotiation(false, $"Insufficient standing with {faction} ({standing}/{required}).", faction, route.Status, 0);
+
+        // Blocked routes only reopen one tier (to Contested); Contested routes clear fully.
+        var newStatus = route.Status == RouteStatus.Blocked ? RouteStatus.Contested : RouteStatus.Open;
+        return new PassageNegotiation(true, $"{faction} grants passage.", faction, newStatus, 5);
+    }
+
     private static void ContestFactionRoutes(OverworldState overworld, string factionId, GameRandom rng)
     {
         var affected = overworld.Routes
@@ -171,3 +205,6 @@ public static class RouteStatusSystem
         }
     }
 }
+
+/// <summary>Outcome of evaluating a route-passage negotiation.</summary>
+public record PassageNegotiation(bool Success, string Message, string? FactionId, RouteStatus NewStatus, int RepCost);

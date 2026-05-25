@@ -362,6 +362,45 @@ public class GameState
 
     public IReadOnlyDictionary<string, int> GetSettlementFateCounts() => _campaignService.GetSettlementFateCounts(this);
 
+    /// <summary>
+    /// Attempt to negotiate passage through a contested or blocked route by spending reputation
+    /// with the controlling faction. On success the route status improves one tier and the
+    /// faction's reputation is reduced by the negotiation cost.
+    /// </summary>
+    public PassageNegotiation NegotiatePassage(string fromNodeId, string toNodeId)
+    {
+        var route = Overworld.GetRoute(fromNodeId, toNodeId);
+        if (route == null)
+            return new PassageNegotiation(false, "No route between those locations.", null, RouteStatus.Open, 0);
+
+        var result = RouteStatusSystem.EvaluateNegotiation(route, Overworld, Reputation);
+        if (!result.Success)
+        {
+            EmitActionLog("overworld", "route_negotiation_failed", new Dictionary<string, string>
+            {
+                { "from", fromNodeId },
+                { "to", toNodeId },
+                { "reason", result.Message }
+            });
+            return result;
+        }
+
+        var previous = route.Status;
+        route.Status = result.NewStatus;
+        _campaignService.ApplyReputationDelta(this, result.FactionId!, -result.RepCost, "route_negotiation");
+        EmitActionLog("overworld", "route_negotiated", new Dictionary<string, string>
+        {
+            { "from", fromNodeId },
+            { "to", toNodeId },
+            { "factionId", result.FactionId! },
+            { "previousStatus", previous.ToString() },
+            { "newStatus", result.NewStatus.ToString() },
+            { "repCost", result.RepCost.ToString() }
+        });
+        LastUpdate = DateTime.UtcNow;
+        return result;
+    }
+
     public string? ContentHash { get; set; }
 
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path, ContentHash);
