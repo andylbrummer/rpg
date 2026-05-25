@@ -21,6 +21,12 @@ public class OverworldService
 
     public void GenerateOverworld(GameState state, CampaignConfig config)
     {
+        // Campaign start: pull in cross-run meta-progression (optionally from disk) and let it bias
+        // this run's starting reputation / unlocks / difficulty before the world is built.
+        if (state.MetaPersistenceEnabled)
+            state.LoadMetaProgression();
+        Save.MetaProgressionApplicator.Apply(state, state.Meta);
+
         state.CampaignConfig = config;
         state.CurrentScheme = CampaignContentLoader.GetSchemeById(config.Scheme.ToString());
         state.CurrentComplication = CampaignContentLoader.GetComplicationById(config.Complication.ToString());
@@ -175,6 +181,12 @@ public class OverworldService
                 betrayal: state.Campaign.BetrayalPath,
                 turns: state.Overworld.Turns,
                 deaths: deaths);
+
+            // Campaign end: fold this finished run into cross-run meta-progression so the next run
+            // inherits it. Persist to disk only when meta persistence is enabled (real game, not tests).
+            Save.MetaProgressionStore.RecordCampaignEnd(state.Meta, state);
+            if (state.MetaPersistenceEnabled)
+                state.SaveMetaProgression();
         }
     }
 

@@ -64,6 +64,9 @@ public class GameServer
         var rumorRepo = new RumorRepository(_catalog);
         _gameState = new GameState(encounterTables: _encounterTables, classRegistry: _classRegistry, synergies: _synergies, factionContent: factionRepo, rumors: rumorRepo, dungeonTemplates: _dungeonTemplates);
         _gameState.ContentHash = contentHash;
+        // Real game sessions persist cross-campaign meta-progression to disk; campaign start loads
+        // and biases the run, campaign end folds the result back and saves it.
+        _gameState.MetaPersistenceEnabled = true;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

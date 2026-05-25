@@ -90,6 +90,26 @@ public class GameState
     private readonly IReadOnlyDictionary<string, DungeonTemplate> _dungeonTemplates;
     public Analytics.AnalyticsTracker Analytics { get; } = new();
 
+    /// <summary>
+    /// Cross-campaign meta-progression for the current session. Defaults to an empty instance so
+    /// applying it to a new run is a no-op until populated (via <see cref="LoadMetaProgression"/> or
+    /// by the host). Disk persistence is opt-in via <see cref="MetaPersistenceEnabled"/> so headless
+    /// tests never read or write the shared meta file.
+    /// </summary>
+    public Save.MetaProgression Meta { get; set; } = new();
+
+    /// <summary>When true, campaign start loads and campaign end saves <see cref="Meta"/> to disk.</summary>
+    public bool MetaPersistenceEnabled { get; set; }
+
+    /// <summary>Override for the meta-save file path; null uses <see cref="Save.MetaProgressionStore.DefaultPath"/>.</summary>
+    public string? MetaPath { get; set; }
+
+    /// <summary>Load cross-campaign meta-progression from disk into <see cref="Meta"/>.</summary>
+    public void LoadMetaProgression() => Meta = Save.MetaProgressionStore.Load(MetaPath);
+
+    /// <summary>Persist the current <see cref="Meta"/> to disk.</summary>
+    public void SaveMetaProgression() => Save.MetaProgressionStore.Save(Meta, MetaPath);
+
     /// <summary>Secret definitions for the current run, indexed for document-triggered discovery.</summary>
     public SecretRegistry Secrets { get; } = new();
 
