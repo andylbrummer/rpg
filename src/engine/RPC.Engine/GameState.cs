@@ -341,13 +341,24 @@ public class GameState
         }
     }
 
+    /// <summary>
+    /// Sink for the dev-time action-log size warning. Defaults to stderr; tests inject a capture so
+    /// they don't have to redirect the process-global <see cref="Console.Error"/> (which races under
+    /// parallel test execution).
+    /// </summary>
+    public Action<string>? ActionLogSizeWarningSink { get; set; }
+
     internal void EmitActionLog(string category, string type, Dictionary<string, string> payload)
     {
         _actionLogTurn++;
         ActionLog.Add(new ActionLogEntry(_actionLogTurn, CurrentAct, category, type, new Dictionary<string, string>(payload)));
         if (ActionLog.Count >= 1000)
         {
-            Console.Error.WriteLine($"[DEV] ActionLog size warning: {ActionLog.Count} events. Consider log rotation.");
+            var warning = $"[DEV] ActionLog size warning: {ActionLog.Count} events. Consider log rotation.";
+            if (ActionLogSizeWarningSink != null)
+                ActionLogSizeWarningSink(warning);
+            else
+                Console.Error.WriteLine(warning);
         }
     }
 

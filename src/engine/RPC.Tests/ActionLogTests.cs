@@ -411,22 +411,18 @@ public class ActionLogTests : IDisposable
     public void ActionLog_SizeCapWarning_At1000Events()
     {
         var gs = new GameState(seed: 42);
-        var sw = new StringWriter();
-        var originalError = Console.Error;
-        Console.SetError(sw);
-        try
+        var captured = new System.Text.StringBuilder();
+        // Inject a per-instance sink instead of redirecting the process-global Console.Error,
+        // which raced with other tests writing to stderr under xUnit parallelism.
+        gs.ActionLogSizeWarningSink = msg => captured.AppendLine(msg);
+
+        for (int i = 0; i < 1000; i++)
         {
-            for (int i = 0; i < 1000; i++)
-            {
-                gs.DiscoverSecret("breakable_wall", $"secret-{i}");
-            }
-            var output = sw.ToString();
-            Assert.Contains("ActionLog size warning", output);
-            Assert.Contains("1000", output);
+            gs.DiscoverSecret("breakable_wall", $"secret-{i}");
         }
-        finally
-        {
-            Console.SetError(originalError);
-        }
+
+        var output = captured.ToString();
+        Assert.Contains("ActionLog size warning", output);
+        Assert.Contains("1000", output);
     }
 }
