@@ -90,19 +90,34 @@ public class LLMContentGenerator
     /// </summary>
     public async Task<string> GenerateEpilogueAsync(GameState state, CancellationToken ct = default)
     {
+        // Cache per run: once an epilogue exists for this run, reuse it instead of re-calling the LLM.
+        if (state.CachedEpilogue is { } cached)
+            return cached;
+
         if (!IsOnline)
-            return EpilogueGenerator.Generate(state);
+        {
+            var template = EpilogueGenerator.Generate(state);
+            state.SetCachedEpilogue(template);
+            return template;
+        }
 
         var prompt = _promptBuilder.BuildEpiloguePrompt(state);
+        string result;
         try
         {
             var response = await _provider!.CompleteAsync(prompt, ct);
-            return response.Trim();
+            result = response.Trim();
+            // Guard against an empty/whitespace LLM response — fall back to the template.
+            if (string.IsNullOrWhiteSpace(result))
+                result = EpilogueGenerator.Generate(state);
         }
         catch
         {
-            return EpilogueGenerator.Generate(state);
+            result = EpilogueGenerator.Generate(state);
         }
+
+        state.SetCachedEpilogue(result);
+        return result;
     }
 
     private static CampaignConfig? TryParseConfig(string json)

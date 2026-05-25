@@ -93,6 +93,20 @@ public class GameState
     /// <summary>Secret definitions for the current run, indexed for document-triggered discovery.</summary>
     public SecretRegistry Secrets { get; } = new();
 
+    // Cached campaign epilogue for the current run — generated once (LLM or template) and reused
+    // across state snapshots so a slow/failed LLM call doesn't regenerate on every frame.
+    private string? _cachedEpilogue;
+    public string? CachedEpilogue => _cachedEpilogue;
+
+    /// <summary>Store a generated epilogue (e.g. the LLM result), overriding any cached template.</summary>
+    public void SetCachedEpilogue(string epilogue) => _cachedEpilogue = epilogue;
+
+    /// <summary>
+    /// Return the cached epilogue, falling back to the template generator (and caching it) when
+    /// nothing has been produced yet. A later <see cref="SetCachedEpilogue"/> still upgrades it.
+    /// </summary>
+    public string ResolveEpilogue() => _cachedEpilogue ??= EpilogueGenerator.Generate(this);
+
     public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null)
     {
         LastUpdate = DateTime.UtcNow;
@@ -268,6 +282,7 @@ public class GameState
         Overworld = new OverworldState();
         Campaign.Reset();
         Secrets.Clear();
+        _cachedEpilogue = null;
         PartyGold = 500;
         TitheTokens = 0;
         PartyInventory.Clear();

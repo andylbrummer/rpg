@@ -66,7 +66,7 @@ public class StatePresenter
                 dungeonType = state.RescueExpedition.DungeonType,
                 tpkLocation = new { x = state.RescueExpedition.TpkLocation.X, y = state.RescueExpedition.TpkLocation.Y }
             } : null,
-            epilogue = state.CampaignEnded ? EpilogueGenerator.Generate(state) : null,
+            epilogue = state.CampaignEnded ? state.ResolveEpilogue() : null,
             factionStates = CampaignPresenter.PresentFactionStates(state),
             worldState = CampaignPresenter.PresentWorldState(state),
             actionLog = state.ActionLog.Select(e => new
