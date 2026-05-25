@@ -14,7 +14,9 @@ public record EnemyDef(
     string Ai,
     string[] Abilities,
     LootEntry[] LootTable,
-    string? FactionId = null);
+    string? FactionId = null,
+    // Creature family, e.g. "bloom" — bloom creatures may mutate mid-combat.
+    string? Type = null);
 
 public record LootEntry(string ItemId, double Chance);
 

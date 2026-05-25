@@ -79,15 +79,34 @@ public static class CombatEngine
             }
         }
 
+        var roundLog = new List<CombatLogEntry>(state.Log)
+        {
+            new(Guid.Empty, $"Round {state.Round} begins", state.Round)
+        };
+
+        // Bloom creatures may mutate at the start of the round (unless a counter suppresses them).
+        var combatants = state.Combatants.ToArray();
+        var anyMutated = false;
+        for (int i = 0; i < combatants.Length; i++)
+        {
+            var c = combatants[i];
+            if (c.IsPlayer || !BloomMutationSystem.IsBloom(c)) continue;
+            var (result, mutation) = BloomMutationSystem.TryMutate(c, rng);
+            if (mutation != null)
+            {
+                combatants[i] = result;
+                anyMutated = true;
+                roundLog.Add(new(c.Id, $"{c.Name} mutates — {mutation}!", state.Round));
+            }
+        }
+
         return state with
         {
+            Combatants = anyMutated ? combatants : state.Combatants,
             InitiativeOrder = order,
             CurrentTurnIndex = 0,
             Phase = CombatPhase.Turn,
-            Log = new List<CombatLogEntry>(state.Log)
-            {
-                new(Guid.Empty, $"Round {state.Round} begins", state.Round)
-            },
+            Log = roundLog,
             AbilitiesUsedThisRound = new HashSet<string>()
         };
     }
@@ -790,6 +809,11 @@ public static class CombatEngine
                 if (def?.FactionId == "convocation")
                 {
                     statusEffects.Add(new StatusEffect("bloom_resistance", 999, null));
+                }
+                // Bloom creatures carry a marker so they can mutate mid-combat.
+                if (def?.Type == "bloom")
+                {
+                    statusEffects.Add(new StatusEffect("bloom", 999, null));
                 }
 
                 // Phase: Unaccounted can appear at any range band
