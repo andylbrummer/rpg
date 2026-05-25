@@ -10,7 +10,15 @@
     "engine_power_surge",
     "forbidden_resurrection_text",
     "awakening_signs",
-    "entity_signature"
+    "entity_signature",
+    "grave_robber_confession",
+    "embalmer_purchase_record",
+    "vessel_preparation_notes",
+    "tithe_archive_breach",
+    "binding_circle_diagram",
+    "donor_disappearance_pattern",
+    "ossuary_access_log",
+    "anchor_relic_inventory"
   ],
   "events": [
     {
