@@ -1,13 +1,32 @@
 <script lang="ts">
   import type { OverworldState, OverworldRoute } from '$shared/types/game';
+  import type { AmbientAudioManager } from '$renderer/AmbientAudio';
 
   interface Props {
     overworld: OverworldState;
     onTravel: (targetId: string) => void;
     onClose: () => void;
+    audioManager?: AmbientAudioManager;
   }
 
-  let { overworld, onTravel, onClose }: Props = $props();
+  let { overworld, onTravel, onClose, audioManager }: Props = $props();
+
+  /** Factions patrolling a route — the union of faction presence at its two endpoints. */
+  function routeFactions(route: OverworldRoute): string[] {
+    const from = overworld.nodes.find((n) => n.id === route.from);
+    const to = overworld.nodes.find((n) => n.id === route.to);
+    return [...new Set([...(from?.factionPresence ?? []), ...(to?.factionPresence ?? [])])];
+  }
+
+  // Perceive the dominant faction at the current location through its ambient motif.
+  $effect(() => {
+    const current = overworld.nodes.find((n) => n.id === overworld.currentNodeId);
+    const dominant = current?.factionPresence?.[0];
+    if (dominant) audioManager?.playFactionMotif(dominant);
+  });
+
+  // Silence the faction motif when the map closes.
+  $effect(() => () => audioManager?.stop());
 
   let confirmTarget = $state<string | null>(null);
   let tooltip = $state<{ x: number; y: number; text: string } | null>(null);
@@ -133,6 +152,30 @@
           onmousemove={handleRouteMove}
           onmouseleave={handleRouteLeave}
         />
+      {/if}
+    {/each}
+    {#each overworld.routes as route (route.from + '-' + route.to + '-patrol')}
+      {@const fromPos = nodePositions.get(route.from)}
+      {@const toPos = nodePositions.get(route.to)}
+      {#if fromPos && toPos && route.status !== 'Blocked'}
+        {#each routeFactions(route) as factionId, i (factionId)}
+          <circle
+            class="patrol-sprite"
+            data-faction={factionId}
+            r="4"
+            fill={factionColors[factionId] ?? '#888'}
+            stroke="#111"
+            stroke-width="1"
+            aria-hidden="true"
+          >
+            <animateMotion
+              dur="{5 + i}s"
+              begin="{i * -1.5}s"
+              repeatCount="indefinite"
+              path="M{fromPos.x},{fromPos.y} L{toPos.x},{toPos.y}"
+            />
+          </circle>
+        {/each}
       {/if}
     {/each}
     {#each overworld.nodes as node (node.id)}

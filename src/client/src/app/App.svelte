@@ -556,6 +556,7 @@
           onMissionAccept={handleMissionAccept}
           onVendorPurchase={handleVendorPurchase}
           onTravel={handleTravel}
+          audioManager={audioManager}
         />
       {/if}
       {#if gameState?.mode === 'Combat'}

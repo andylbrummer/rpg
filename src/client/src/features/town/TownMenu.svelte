@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GameState, PartyMember } from '$shared/types/game';
+  import type { AmbientAudioManager } from '$renderer/AmbientAudio';
   import { sendAction } from '$shared/stores/gameStore';
   import CharacterSheet from '$features/party/CharacterSheet.svelte';
   import OverworldMap from '$features/overworld/OverworldMap.svelte';
@@ -17,6 +18,7 @@
     onMissionAccept: (id: string) => void;
     onVendorPurchase: (id: string) => void;
     onTravel: (targetId: string) => void;
+    audioManager?: AmbientAudioManager;
   }
 
   let props: Props = $props();
@@ -193,6 +195,7 @@
       overworld={gameState.overworld}
       onTravel={props.onTravel}
       onClose={() => showMap = false}
+      audioManager={props.audioManager}
     />
   {/if}
 </div>

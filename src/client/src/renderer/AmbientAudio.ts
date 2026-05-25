@@ -94,6 +94,55 @@ export function getAmbientTrack(dungeonType: string): AmbientTrack {
   return TRACKS[dungeonType] ?? TRACKS.default;
 }
 
+// Faction ambient motifs — heard on the overworld so the player perceives a faction's
+// presence through the soundscape before any menu or encounter.
+const FACTION_MOTIFS: Record<string, AmbientTrack> = {
+  bureau: {
+    id: 'faction-bureau',
+    displayName: 'Bureau Cadence',
+    description: 'Disciplined marching drone',
+    frequencies: [98, 147],
+    waveform: 'square',
+    modulation: 0.15,
+  },
+  convocation: {
+    id: 'faction-convocation',
+    displayName: 'Convocation Chant',
+    description: 'Layered ritual harmonics',
+    frequencies: [174, 261, 349],
+    waveform: 'sine',
+    modulation: 0.5,
+  },
+  cartography: {
+    id: 'faction-cartography',
+    displayName: 'Cartographers Survey',
+    description: 'Measured clicks and chimes',
+    frequencies: [220, 277],
+    waveform: 'triangle',
+    modulation: 0.3,
+  },
+  inkblood: {
+    id: 'faction-inkblood',
+    displayName: 'Compact Dirge',
+    description: 'Low ossuary resonance',
+    frequencies: [73, 110, 146],
+    waveform: 'sawtooth',
+    modulation: 0.4,
+  },
+  stillness: {
+    id: 'faction-stillness',
+    displayName: 'Stillness Hush',
+    description: 'Near-silent void tone',
+    frequencies: [55],
+    waveform: 'sine',
+    modulation: 0.9,
+  },
+};
+
+export function getFactionMotif(factionId: string): AmbientTrack | null {
+  return FACTION_MOTIFS[factionId] ?? null;
+}
+
 export class AmbientAudioManager {
   currentTrack: AmbientTrack | null = null;
   private ctx: AudioContext | null = null;
@@ -107,9 +156,14 @@ export class AmbientAudioManager {
   setEnabled(value: boolean): void {
     this.enabled = value;
     if (!value) {
-      this.stop();
+      // Stop the oscillators but KEEP currentTrack so re-enable can restore it.
+      this.stopInternal();
     } else if (this.currentTrack) {
-      this.play(this.currentTrack.id);
+      // Reuse the stored track object directly — re-resolving by id would lose faction
+      // motifs (their ids aren't in the dungeon TRACKS lookup) and fall back to default.
+      const track = this.currentTrack;
+      this.currentTrack = null; // force playTrack to restart it rather than dedup-skip
+      this.playTrack(track);
     }
   }
 
@@ -142,7 +196,16 @@ export class AmbientAudioManager {
   }
 
   play(trackId: string): void {
-    const track = getAmbientTrack(trackId);
+    this.playTrack(getAmbientTrack(trackId));
+  }
+
+  /** Play a faction motif on the overworld. No-op for unknown factions. */
+  playFactionMotif(factionId: string): void {
+    const motif = getFactionMotif(factionId);
+    if (motif) this.playTrack(motif);
+  }
+
+  private playTrack(track: AmbientTrack): void {
     if (this.currentTrack?.id === track.id) return;
 
     this.stopInternal();
