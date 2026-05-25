@@ -13,7 +13,12 @@
     "containment_breach_warning",
     "imperial_warning_text",
     "vault_contents_list",
-    "horror_description"
+    "horror_description",
+    "excavation_crew_roster",
+    "forged_excavation_permit",
+    "seal_breaker_device",
+    "dead_language_translation",
+    "vault_keeper_final_log"
   ],
   "events": [
     {
