@@ -24,15 +24,62 @@
     RESOLUTION_SCALES,
     type DisplaySettings,
   } from '$config/displaySettings';
+  import {
+    loadAccessibilitySettings,
+    saveAccessibilitySettings,
+    resetAccessibilitySettings,
+    applyAccessibilityToDocument,
+    COLORBLIND_MODES,
+    COLORBLIND_LABELS,
+    TEXT_SCALE_MIN,
+    TEXT_SCALE_MAX,
+    type AccessibilitySettings,
+    type ColorblindMode,
+  } from '$config/accessibilitySettings';
 
   interface Props {
     open: boolean;
     onClose: () => void;
     onAudioToggle?: (enabled: boolean) => void;
     onDisplayChange?: (settings: DisplaySettings) => void;
+    onAccessibilityChange?: (settings: AccessibilitySettings) => void;
   }
 
-  let { open, onClose, onAudioToggle, onDisplayChange }: Props = $props();
+  let { open, onClose, onAudioToggle, onDisplayChange, onAccessibilityChange }: Props = $props();
+
+  let a11y = $state<AccessibilitySettings>(loadAccessibilitySettings());
+
+  function applyA11y() {
+    saveAccessibilitySettings(a11y);
+    applyAccessibilityToDocument(a11y);
+    onAccessibilityChange?.(a11y);
+  }
+
+  function setColorblind(mode: ColorblindMode) {
+    a11y = { ...a11y, colorblindMode: mode };
+    applyA11y();
+  }
+
+  function setTextScale(value: number) {
+    a11y = { ...a11y, textScale: value };
+    applyA11y();
+  }
+
+  function toggleReduceMotion() {
+    a11y = { ...a11y, reduceMotion: !a11y.reduceMotion };
+    applyA11y();
+  }
+
+  function toggleHighContrast() {
+    a11y = { ...a11y, highContrast: !a11y.highContrast };
+    applyA11y();
+  }
+
+  function resetA11y() {
+    a11y = resetAccessibilitySettings();
+    applyAccessibilityToDocument(a11y);
+    onAccessibilityChange?.(a11y);
+  }
 
   let display = $state<DisplaySettings>(loadDisplaySettings());
   let isFullscreen = $state(typeof document !== 'undefined' && !!document.fullscreenElement);
@@ -217,6 +264,52 @@
             {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
           </button>
           <button class="reset-btn" onclick={resetDisplay}>Reset Display</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Accessibility</h3>
+        <div class="display-row">
+          <label class="display-label" for="colorblind-select">Colorblind</label>
+          <select
+            id="colorblind-select"
+            class="display-select"
+            value={a11y.colorblindMode}
+            onchange={(e) => setColorblind((e.target as HTMLSelectElement).value as ColorblindMode)}
+          >
+            {#each COLORBLIND_MODES as mode}
+              <option value={mode}>{COLORBLIND_LABELS[mode]}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="display-row">
+          <label class="display-label" for="text-scale">Text Size</label>
+          <input
+            id="text-scale"
+            class="fov-slider"
+            type="range"
+            min={TEXT_SCALE_MIN}
+            max={TEXT_SCALE_MAX}
+            step="0.05"
+            value={a11y.textScale}
+            oninput={(e) => setTextScale(Number((e.target as HTMLInputElement).value))}
+          />
+          <span class="display-value">{Math.round(a11y.textScale * 100)}%</span>
+        </div>
+
+        <label class="audio-toggle">
+          <input type="checkbox" checked={a11y.reduceMotion} onchange={toggleReduceMotion} />
+          <span>Reduce motion {a11y.reduceMotion ? 'ON' : 'OFF'}</span>
+        </label>
+
+        <label class="audio-toggle">
+          <input type="checkbox" checked={a11y.highContrast} onchange={toggleHighContrast} />
+          <span>High contrast {a11y.highContrast ? 'ON' : 'OFF'}</span>
+        </label>
+
+        <div class="display-row">
+          <button class="reset-btn" onclick={resetA11y}>Reset Accessibility</button>
         </div>
       </div>
 

@@ -11,6 +11,7 @@ export class DungeonRenderer {
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private resolutionScale = 1;
+  private reduceMotion = false;
   private tileMeshes: Map<string, THREE.Mesh> = new Map();
   private tileSize = 2;
   private wallHeight = 3;
@@ -585,8 +586,11 @@ export class DungeonRenderer {
   }
 
   private updateUnaccountedAnimations(time: number): void {
-    // Update dying unaccounted (fold + fade)
+    // Update dying unaccounted (fold + fade) — gameplay feedback, always shown.
     this.updateUnaccountedDeathAnimations(time);
+
+    // Motion reduction: skip the unsettling idle float/twitch/pulse/flicker.
+    if (this.reduceMotion) return;
 
     for (const obj of this.creatureMeshes.values()) {
       if (!(obj instanceof THREE.Group) || obj.userData.baseY === undefined) continue;
@@ -1080,6 +1084,11 @@ export class DungeonRenderer {
   setResolutionScale(scale: number): void {
     this.resolutionScale = scale;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * scale);
+  }
+
+  /** When enabled, freeze unsettling idle creature motion (accessibility motion reduction). */
+  setReduceMotion(value: boolean): void {
+    this.reduceMotion = value;
   }
 
   private animate(): void {

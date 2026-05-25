@@ -17,6 +17,7 @@
   import type { GameState } from '$shared/types/game';
   import { loadBindings, keyToAction } from '$config/keybindings';
   import { loadDisplaySettings, type DisplaySettings } from '$config/displaySettings';
+  import { loadAccessibilitySettings, applyAccessibilityToDocument, type AccessibilitySettings } from '$config/accessibilitySettings';
   import { ALL_SYNERGIES } from '$shared/data/synergies';
   import { playClick, playConfirm, playWarning, playSynergyChime } from '$renderer/UISounds';
   import { GamepadManager } from '$renderer/GamepadManager';
@@ -271,18 +272,29 @@
     return () => unsubGameStore();
   });
 
+  // Apply persisted accessibility settings to the document once on mount.
+  $effect(() => {
+    applyAccessibilityToDocument(loadAccessibilitySettings());
+  });
+
   $effect(() => {
     if (gameContainer && !renderer) {
       renderer = new DungeonRenderer(gameContainer);
       const d = loadDisplaySettings();
       renderer.setFov(d.fov);
       renderer.setResolutionScale(d.resolutionScale);
+      renderer.setReduceMotion(loadAccessibilitySettings().reduceMotion);
     }
   });
 
   function applyDisplaySettings(d: DisplaySettings) {
     renderer?.setFov(d.fov);
     renderer?.setResolutionScale(d.resolutionScale);
+  }
+
+  function applyAccessibilitySettings(a: AccessibilitySettings) {
+    applyAccessibilityToDocument(a);
+    renderer?.setReduceMotion(a.reduceMotion);
   }
 
   $effect(() => {
@@ -654,6 +666,7 @@
           onClose={() => showSettings = false}
           onAudioToggle={(enabled) => { audioManager.setEnabled(enabled); unaccountedAudio.setEnabled(enabled); }}
           onDisplayChange={applyDisplaySettings}
+          onAccessibilityChange={applyAccessibilitySettings}
         />
       {/if}
       {#if showStats}
