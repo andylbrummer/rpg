@@ -173,7 +173,8 @@
   }
 
   function resolveKeyToAction(key: string): PlayerAction | null {
-    const action = keyToAction(keyBindings, key);
+    // Movement bindings live in the 'overworld' context (exploration + overworld traversal).
+    const action = keyToAction(keyBindings, key, 'overworld');
     return action ? ({ type: action } as PlayerAction) : null;
   }
 

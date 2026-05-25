@@ -4,9 +4,15 @@
     saveBindings,
     resetToDefaults,
     findConflicts,
+    eventToChord,
     ACTION_LABELS,
+    ACTIONS,
+    ACTION_CONTEXT,
+    CONTEXT_LABELS,
+    CONTEXT_ORDER,
     DEFAULT_BINDINGS,
     type Keybinding,
+    type KeybindingContext,
   } from '$config/keybindings';
 
   interface Props {
@@ -41,16 +47,21 @@
     event.preventDefault();
     event.stopPropagation();
 
-    const key = event.key;
-    if (key === 'Escape') {
+    if (event.key === 'Escape') {
       capturingAction = null;
       return;
     }
+    // Ignore lone modifier presses — wait for the full chord.
+    if (event.key === 'Control' || event.key === 'Alt' || event.key === 'Shift' || event.key === 'Meta') {
+      return;
+    }
 
-    // Remove existing binding for this action
+    const key = eventToChord(event);
+    const context = ACTION_CONTEXT[capturingAction] ?? 'global';
+
+    // Remove existing binding(s) for this action, then add the captured chord in its context.
     bindings = bindings.filter(b => b.action !== capturingAction);
-    // Add new binding
-    bindings = [...bindings, { action: capturingAction, key }];
+    bindings = [...bindings, { action: capturingAction, key, context }];
     saveBindings(bindings);
     updateConflicts();
     capturingAction = null;
@@ -81,7 +92,16 @@
     return key;
   }
 
-  const actions = Object.keys(ACTION_LABELS);
+  function actionsForContext(ctx: KeybindingContext): string[] {
+    return ACTIONS.filter(a => a.context === ctx).map(a => a.action);
+  }
+
+  // Conflict map is keyed "context|key"; build the lookup key for a given action's binding.
+  function conflictKeyFor(action: string): string {
+    return `${ACTION_CONTEXT[action] ?? 'global'}|${getBindingKey(action)}`;
+  }
+
+  const populatedContexts = CONTEXT_ORDER.filter(ctx => actionsForContext(ctx).length > 0);
 </script>
 
 {#if open}
@@ -107,31 +127,35 @@
         {#if conflictMap.size > 0}
           <div class="conflict-banner">
             ⚠️ Conflicts detected:
-            {#each Array.from(conflictMap.entries()) as [key, actions]}
+            {#each Array.from(conflictMap.entries()) as [bucket, actions]}
+              {@const key = bucket.split('|').slice(1).join('|')}
               <span class="conflict-item">{formatKey(key)} → {actions.map(a => ACTION_LABELS[a]).join(', ')}</span>
             {/each}
           </div>
         {/if}
-        <div class="binding-list">
-          {#each actions as action}
-            <div class="binding-row">
-              <span class="binding-label">{ACTION_LABELS[action]}</span>
-              <button
-                class="binding-key"
-                class:capturing={capturingAction === action}
-                class:conflict={conflictMap.has(getBindingKey(action))}
-                onclick={() => startCapture(action)}
-              >
-                {#if capturingAction === action}
-                  Press a key...
-                {:else}
-                  {formatKey(getBindingKey(action)) || '—'}
-                {/if}
-              </button>
-              <button class="clear-btn" onclick={() => clearBinding(action)} aria-label="Clear binding">×</button>
-            </div>
-          {/each}
-        </div>
+        {#each populatedContexts as ctx}
+          <h4 class="binding-context-label">{CONTEXT_LABELS[ctx]}</h4>
+          <div class="binding-list">
+            {#each actionsForContext(ctx) as action}
+              <div class="binding-row">
+                <span class="binding-label">{ACTION_LABELS[action]}</span>
+                <button
+                  class="binding-key"
+                  class:capturing={capturingAction === action}
+                  class:conflict={conflictMap.has(conflictKeyFor(action))}
+                  onclick={() => startCapture(action)}
+                >
+                  {#if capturingAction === action}
+                    Press a key…
+                  {:else}
+                    {formatKey(getBindingKey(action)) || '—'}
+                  {/if}
+                </button>
+                <button class="clear-btn" onclick={() => clearBinding(action)} aria-label="Clear binding">×</button>
+              </div>
+            {/each}
+          </div>
+        {/each}
         <div class="binding-actions">
           <button class="reset-btn" onclick={resetAll}>Reset to Defaults</button>
         </div>
@@ -209,6 +233,14 @@
   .conflict-item {
     display: inline-block;
     margin-right: 0.75rem;
+  }
+
+  .binding-context-label {
+    margin: 0.6rem 0 0.3rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888;
   }
 
   .binding-list {
