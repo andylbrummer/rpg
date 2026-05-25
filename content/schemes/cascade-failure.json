@@ -10,7 +10,15 @@
     "afflicted_mage_testimony",
     "convergence_readings",
     "summoning_circle_evidence",
-    "rift_anchor_location"
+    "rift_anchor_location",
+    "warden_resonance_logs",
+    "amplifier_schematic",
+    "missing_ward_keystones",
+    "scryer_madness_account",
+    "barrier_thinning_map",
+    "beyond_voice_transcript",
+    "saboteur_glyph_signature",
+    "cult_of_the_eye_roster"
   ],
   "events": [
     {

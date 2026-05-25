@@ -65,12 +65,15 @@ public class CampaignContentTests
         Assert.True(scheme.EvidenceChain.Length >= 5, $"Scheme {schemeId} should have at least 5 evidence items");
     }
 
-    [Fact]
-    public void Scheme_BloomHarvest_HasFullEvidenceChain()
+    // Schemes whose evidence chain has been fully authored (>=15 unique placed docs).
+    [Theory]
+    [InlineData("BloomHarvest")]
+    [InlineData("CascadeFailure")]
+    public void Scheme_HasFullEvidenceChain(string schemeId)
     {
-        var scheme = CampaignContentLoader.GetSchemeById("BloomHarvest", GetContentDir("schemes"));
+        var scheme = CampaignContentLoader.GetSchemeById(schemeId, GetContentDir("schemes"));
         Assert.NotNull(scheme);
-        Assert.True(scheme!.EvidenceChain.Length >= 15, "Bloom Harvest evidence chain should be fully authored (>=15)");
+        Assert.True(scheme!.EvidenceChain.Length >= 15, $"{schemeId} evidence chain should be fully authored (>=15)");
         Assert.Equal(scheme.EvidenceChain.Length, scheme.EvidenceChain.Distinct().Count());
     }
 
