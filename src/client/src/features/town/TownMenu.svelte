@@ -5,8 +5,10 @@
   import CharacterSheet from '$features/party/CharacterSheet.svelte';
   import OverworldMap from '$features/overworld/OverworldMap.svelte';
   import TownActionsPanel from './TownActionsPanel.svelte';
-  import PartyPanel from './PartyPanel.svelte';
   import TownServicesPanel from './TownServicesPanel.svelte';
+  import PartyBroadsheet from '$features/party/PartyBroadsheet.svelte';
+  import TavernHall from './TavernHall.svelte';
+  import MessageBoard from './MessageBoard.svelte';
 
   interface Props {
     gameState: GameState | null;
@@ -97,10 +99,15 @@
   <div class="town-body">
     {#if currentTab === 'party'}
       <div class="tab-panel">
-        <PartyPanel gameState={gameState} onSwapRow={props.onSwapRow} onViewSheet={(m) => sheetMember = m} />
-        <div class="town-services">
-          <TownServicesPanel gameState={gameState} onTavernRecruit={props.onTavernRecruit} onMissionAccept={props.onMissionAccept} onVendorPurchase={props.onVendorPurchase} />
-        </div>
+        <PartyBroadsheet
+          party={gameState?.party ?? []}
+          onSwapRow={props.onSwapRow}
+          onOpenSheet={(slot) => { sheetMember = gameState?.party?.find((m) => m.slot === slot) ?? null; }}
+          onChooseBranch={(slot, branch) => {
+            const m = gameState?.party?.find((x) => x.slot === slot);
+            if (m) chooseBranch(m.id, branch);
+          }}
+        />
       </div>
 
       <TownActionsPanel
@@ -118,6 +125,25 @@
           onSave={props.onSave}
           onReset={props.onReset}
           onShowMap={() => showMap = true}
+        />
+      </div>
+    {:else if currentTab === 'tavern'}
+      <div class="tab-panel">
+        <TavernHall
+          recruits={gameState?.town?.tavernRoster ?? []}
+          gold={gameState?.partyGold ?? 0}
+          onRecruit={props.onTavernRecruit}
+          onRest={() => sendAction({ type: 'rest' })}
+        />
+      </div>
+    {:else if currentTab === 'missions'}
+      <div class="tab-panel">
+        <MessageBoard
+          missions={gameState?.town?.availableMissions ?? []}
+          rumors={gameState?.town?.rumors ?? []}
+          viewedMissions={gameState?.town?.viewedMissions ?? []}
+          onAcceptMission={props.onMissionAccept}
+          onVerifyRumor={(id) => sendAction({ type: 'rumor_verify', targetId: id, source: 'Firsthand' })}
         />
       </div>
     {:else}
