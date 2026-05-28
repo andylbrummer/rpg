@@ -303,9 +303,13 @@ public class GameServer
 
         var filePath = Path.Combine(clientDir, relativePath);
 
+        // Append the separator so a sibling like "dist-evil" can't prefix-match "dist".
         var fullClientDir = Path.GetFullPath(clientDir);
+        var clientDirPrefix = fullClientDir.EndsWith(Path.DirectorySeparatorChar)
+            ? fullClientDir
+            : fullClientDir + Path.DirectorySeparatorChar;
         var fullFilePath = Path.GetFullPath(filePath);
-        if (!fullFilePath.StartsWith(fullClientDir))
+        if (!fullFilePath.StartsWith(clientDirPrefix, StringComparison.Ordinal))
         {
             context.Response.StatusCode = 403;
             context.Response.Close();
@@ -504,29 +508,42 @@ public class GameServer
 
         if (envelope.Type == "analytics.request")
         {
-            var data = _gameState.Analytics.GetData();
-            var response = new
+            // Snapshot under the game-state lock: GetData() and the .ToArray() reads below
+            // race against command-thread mutations (RecordSynergyDiscovered etc.) otherwise.
+            object response;
+            await _gameStateLock.WaitAsync(_cts.Token);
+            try
             {
-                campaignsStarted = data.CampaignsStarted,
-                campaignsCompleted = data.CampaignsCompleted,
-                mastermindsExposed = data.MastermindsExposed,
-                schemesStopped = data.SchemesStopped,
-                betrayals = data.Betrayals,
-                totalTurns = data.TotalTurns,
-                totalDeaths = data.TotalDeaths,
-                synergiesDiscovered = data.SynergiesDiscovered.ToArray(),
-                classesPlayed = data.ClassesPlayed.ToArray(),
-                branchesChosen = data.BranchesChosen.ToArray(),
-                optionalDungeonsUnlocked = data.OptionalDungeonsUnlocked.ToArray(),
-                factionEndStates = data.FactionEndStates
-            };
-            var responseEnvelope = new ProtocolEnvelope { V = 2, Type = "analytics.data", Payload = response, Seq = 0 };
-            var json = JsonSerializer.Serialize(responseEnvelope, _jsonOptions);
-            await client.Socket.SendAsync(
-                new ArraySegment<byte>(System.Text.Encoding.UTF8.GetBytes(json)),
-                WebSocketMessageType.Text,
-                true,
-                _cts.Token);
+                var data = _gameState.Analytics.GetData();
+                response = new
+                {
+                    campaignsStarted = data.CampaignsStarted,
+                    campaignsCompleted = data.CampaignsCompleted,
+                    mastermindsExposed = data.MastermindsExposed,
+                    schemesStopped = data.SchemesStopped,
+                    betrayals = data.Betrayals,
+                    totalTurns = data.TotalTurns,
+                    totalDeaths = data.TotalDeaths,
+                    synergiesDiscovered = data.SynergiesDiscovered.ToArray(),
+                    classesPlayed = data.ClassesPlayed.ToArray(),
+                    branchesChosen = data.BranchesChosen.ToArray(),
+                    optionalDungeonsUnlocked = data.OptionalDungeonsUnlocked.ToArray(),
+                    factionEndStates = data.FactionEndStates
+                };
+            }
+            finally
+            {
+                _gameStateLock.Release();
+            }
+            // Send via the broadcaster so the per-client SendLock serializes against
+            // concurrent heartbeat/broadcast sends on the same socket.
+            await _broadcaster.SendEnvelope(client, new ProtocolEnvelope
+            {
+                V = 2,
+                Type = "analytics.data",
+                Seq = client.NextServerSeq(),
+                Payload = response
+            });
             return;
         }
 
@@ -668,12 +685,27 @@ public class GameServer
     {
         try
         {
+            // Load outside the lock (file I/O), then swap under the game-state lock so the
+            // mutation can't tear a concurrent DungeonGenerator read (generation runs under
+            // the same lock via the command handler).
             var reloaded = LoadSegments(_catalog);
-            _segments.Clear();
-            _segments.AddRange(reloaded);
+            _gameStateLock.Wait(_cts.Token);
+            try
+            {
+                _segments.Clear();
+                _segments.AddRange(reloaded);
+            }
+            finally
+            {
+                _gameStateLock.Release();
+            }
             _ = _broadcaster.BroadcastContentReload();
         }
-        catch { }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Content] Segment hot-reload failed: {ex.Message}");
+        }
     }
 
     private async Task HandleStatus(HttpListenerContext context)
@@ -718,16 +750,27 @@ public class GameServer
 
     private async Task HandleActionLog(HttpListenerContext context)
     {
-        var response = new
+        object response;
+        // ActionLog is a List<> appended under the game-state lock during command execution;
+        // enumerate it under the same lock to avoid a "Collection was modified" throw.
+        await _gameStateLock.WaitAsync(_cts.Token);
+        try
         {
-            events = _gameState.ActionLog.Select(e => new
+            response = new
             {
-                turn = e.Turn,
-                category = e.Category,
-                type = e.Type,
-                payload = e.Payload
-            }).ToArray()
-        };
+                events = _gameState.ActionLog.Select(e => new
+                {
+                    turn = e.Turn,
+                    category = e.Category,
+                    type = e.Type,
+                    payload = e.Payload
+                }).ToArray()
+            };
+        }
+        finally
+        {
+            _gameStateLock.Release();
+        }
         var json = JsonSerializer.Serialize(response, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
         context.Response.ContentType = "application/json";
