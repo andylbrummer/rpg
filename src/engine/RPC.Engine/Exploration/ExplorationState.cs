@@ -12,6 +12,7 @@ public class ExplorationState
     public int StepsSinceEncounter { get; set; }
     public Position? PendingTaggedEncounterTile { get; set; }
     public string? CurrentEncounterId { get; set; }
+    public HashSet<string> CollectedLoot { get; private set; } = new();
 
     private readonly HashSet<string> _exploredTilesSet = new();
     private readonly Queue<string> _exploredTilesOrder = new();
@@ -31,6 +32,7 @@ public class ExplorationState
         StepsSinceEncounter = 0;
         PendingTaggedEncounterTile = null;
         CurrentEncounterId = null;
+        CollectedLoot.Clear();
         Player = new Player(new Position(32, 32), Direction.North);
     }
 }

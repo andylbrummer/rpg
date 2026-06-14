@@ -67,6 +67,7 @@ public static class SaveSystem
             SaveRestorer.RestoreParty(state, data);
             SaveRestorer.RestorePlayer(state, data);
             SaveRestorer.RestoreExploredTiles(state, data);
+            SaveRestorer.RestoreCollectedLoot(state, data);
             SaveRestorer.RestoreMode(state, data);
             SaveRestorer.RestoreDungeonType(state, data);
             SaveRestorer.RestoreTown(state, data);
@@ -252,6 +253,7 @@ public static class SaveSystem
                 Count = c.Count,
                 MaxStack = c.MaxStack
             }).ToArray(),
+            CollectedLoot = state.Exploration.CollectedLoot.ToArray(),
             DeadCharacters = state.Party.DeadCharacters.Select(d => new SavePartyMember
             {
                 Id = d.Id,

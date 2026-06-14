@@ -51,6 +51,13 @@ public static class SaveRestorer
             state.ExploredTiles.Add(tile);
     }
 
+    public static void RestoreCollectedLoot(GameState state, SaveData data)
+    {
+        state.Exploration.CollectedLoot.Clear();
+        foreach (var key in data.CollectedLoot ?? Array.Empty<string>())
+            state.Exploration.CollectedLoot.Add(key);
+    }
+
     public static void RestoreMode(GameState state, SaveData data)
     {
         if (Enum.TryParse<GameMode>(data.Mode, out var mode))
