@@ -30,7 +30,15 @@
     )
   );
   const currentTileHasLoot = $derived(!!currentTile?.hasLoot);
-  const currentLootName = $derived(currentTile?.lootName ?? 'item');
+  const currentLootName = $derived(
+    currentTile?.lootName
+      ? currentTile.lootName
+          .split(/[_-]/)
+          .filter(Boolean)
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ')
+      : 'item'
+  );
 </script>
 
 <div class="exploration-hud">
