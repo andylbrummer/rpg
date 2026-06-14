@@ -103,20 +103,66 @@ public class DungeonGeneratorFallbackTests
         Assert.True(encounters > 0, "procedural fallback should pace in encounters");
     }
 
+    private static DungeonTemplate AuthoredTemplate() => new(
+        Id: "authored",
+        Name: "Authored Hall",
+        SegmentPool: new[] { "entrance", "chamber", "corridor" },
+        SegmentPriority: new[] { "entrance" },
+        TargetRooms: 4,
+        BossEncounterId: "boss-1",
+        EncounterTableId: "authored",
+        WanderingTableId: "authored");
+
+    private static bool TilesEqual(Dungeon a, Dungeon b)
+    {
+        if (a.Width != b.Width || a.Height != b.Height) return false;
+        for (int x = 0; x < a.Width; x++)
+            for (int y = 0; y < a.Height; y++)
+                if (!Equals(a.Tiles[x, y], b.Tiles[x, y])) return false;
+        return true;
+    }
+
+    [Fact]
+    public void Generate_TemplateBased_SameSeed_IsDeterministic()
+    {
+        // The interface contract: same (dungeonType, seed) + same constructor inputs
+        // must yield structurally-equal dungeons, including the hand-authored path.
+        var templates = new Dictionary<string, DungeonTemplate> { ["authored"] = AuthoredTemplate() };
+
+        var a = new DungeonGenerator(Pool(), templates, null).Generate("authored", seed: 42);
+        var b = new DungeonGenerator(Pool(), templates, null).Generate("authored", seed: 42);
+
+        Assert.True(TilesEqual(a, b), "template-based generation must be deterministic for a fixed seed");
+    }
+
+    [Fact]
+    public void Generate_ProceduralFallback_DifferentSeeds_ProduceDifferentDungeons()
+    {
+        var gen = new DungeonGenerator(Pool(), null, null);
+
+        var a = gen.Generate("vault", seed: 1);
+        var b = gen.Generate("vault", seed: 2);
+
+        // A deterministic RNG must actually use the seed — distinct seeds should produce
+        // distinct layouts. Equal output would mean the seed was being ignored.
+        Assert.False(TilesEqual(a, b), "different seeds should produce different procedural dungeons");
+    }
+
+[Fact]
+    public void Generate_NullSeed_IsReproducibleViaStableHash()
+    {
+        // No explicit seed: the contract says we fall back to a stable hash of the
+        // dungeon type so the call is still reproducible across processes.
+        var a = new DungeonGenerator(Pool(), null, null).Generate("vault");
+        var b = new DungeonGenerator(Pool(), null, null).Generate("vault");
+
+        Assert.True(TilesEqual(a, b), "null-seed generation must still be reproducible (stable hash of dungeonType)");
+    }
+
     [Fact]
     public void Generate_KnownTemplate_ProducesConnectedDungeon()
     {
-        var template = new DungeonTemplate(
-            Id: "authored",
-            Name: "Authored Hall",
-            SegmentPool: new[] { "entrance", "chamber", "corridor" },
-            SegmentPriority: new[] { "entrance" },
-            TargetRooms: 4,
-            BossEncounterId: "boss-1",
-            EncounterTableId: "authored",
-            WanderingTableId: "authored");
-
-        var templates = new Dictionary<string, DungeonTemplate> { ["authored"] = template };
+        var templates = new Dictionary<string, DungeonTemplate> { ["authored"] = AuthoredTemplate() };
         var generator = new DungeonGenerator(Pool(), templates, null);
 
         var dungeon = generator.Generate("authored", seed: 9);
