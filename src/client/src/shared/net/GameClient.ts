@@ -4,7 +4,9 @@ export class GameClient {
   private ws: WebSocket | null = null;
   private serverPort: number;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  // Retry indefinitely with capped backoff: a dev backend restart (or any transient
+  // drop) should auto-heal without a manual page reload. Backoff is capped at 30s.
+  private reconnectClosed = false;
   private nextSeq = 1;
   private isReady = false;
   private actionQueue: PlayerAction[] = [];
@@ -21,6 +23,7 @@ export class GameClient {
 
   connect(): void {
     const wsUrl = `ws://${window.location.host}/ws`;
+    this.reconnectClosed = false;
 
     try {
       this.ws = new WebSocket(wsUrl);
@@ -36,6 +39,9 @@ export class GameClient {
 
       this.ws.onclose = () => {
         this.isReady = false;
+        // Drop any actions queued against the dead socket — replaying stale input
+        // (e.g. clicks made while disconnected) after reconnect would corrupt state.
+        this.actionQueue = [];
         this.onDisconnectCallback?.();
         this.attemptReconnect();
       };
@@ -123,16 +129,16 @@ export class GameClient {
   }
 
   private attemptReconnect(): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      const delay = Math.min(Math.pow(2, this.reconnectAttempts) * 1000, 30000);
-      setTimeout(() => this.connect(), delay);
-    } else {
-      console.error('Max reconnect attempts reached');
-    }
+    if (this.reconnectClosed) return; // explicit disconnect() — stop retrying
+    this.reconnectAttempts++;
+    // Exponential backoff capped at 30s; keep retrying forever so a backend
+    // restart recovers on its own instead of bricking the session.
+    const delay = Math.min(Math.pow(2, Math.min(this.reconnectAttempts, 5)) * 1000, 30000);
+    setTimeout(() => this.connect(), delay);
   }
 
   disconnect(): void {
+    this.reconnectClosed = true;
     this.ws?.close();
     this.ws = null;
   }

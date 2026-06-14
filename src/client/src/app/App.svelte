@@ -330,6 +330,13 @@
       (window as any).gameStore = gameStore;
       (window as any).__rpc_enableTestHooks = () => {};
       (window as any).__rpc_subtitles = sharedSubtitles;
+
+      // Dev-only high-level automation harness (window.__rpg) for scripting test sequences.
+      if (import.meta.env.DEV) {
+        import('$shared/net/testHarness').then(({ installTestHarness }) => {
+          installTestHarness(client, gameStore as any);
+        });
+      }
     }
 
     // Auto-hide title screen when e2e tests inject state
