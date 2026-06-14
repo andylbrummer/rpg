@@ -136,26 +136,42 @@
     return combatants.filter(c => c.row === 1);
   }
 
-  function getCurrentAbilities(): { id: string; name: string; range?: string; available: boolean }[] {
+  function getCurrentAbilities(): { id: string; name: string; range?: string; target?: string; available: boolean }[] {
     const actor = getCurrentActor();
     if (!actor || !actor.isPlayer) return [];
     return actor.abilities?.map(a => ({
       id: a.id,
       name: a.name,
       range: a.range,
+      target: a.target,
       available: !a.requiredRow
         || (a.requiredRow === 'front' && actor.row === 0)
         || (a.requiredRow === 'back' && actor.row === 1)
     })) ?? [];
   }
 
-  function isValidTarget(enemy: Combatant): boolean {
+  function targetSide(target: string | undefined): 'ally' | 'enemy' | 'self' {
+    if (!target) return 'enemy';
+    if (target === 'self') return 'self';
+    if (target.startsWith('ally') || target.startsWith('downed')) return 'ally';
+    return 'enemy';
+  }
+
+  function isValidTarget(c: Combatant): boolean {
     if (!isPlayerTurn()) return false;
-    if (selectedAction === 'Attack') return true;
+    const actor = getCurrentActor();
+    if (!actor) return false;
+    if (selectedAction === 'Attack') return !c.isPlayer && c.alive;
     if (selectedAction !== 'UseAbility' || !selectedAbilityId) return false;
     const ability = getCurrentAbilities().find(a => a.id === selectedAbilityId);
     if (!ability) return false;
-    if (ability.range === 'melee') return enemy.row === 0;
+    const side = targetSide(ability.target);
+    const allowDead = (ability.target ?? '').includes('downed');
+    if (!allowDead && !c.alive) return false;
+    if (side === 'self') return c.id === actor.id;
+    if (side === 'ally' && c.isPlayer !== actor.isPlayer) return false;
+    if (side === 'enemy' && c.isPlayer === actor.isPlayer) return false;
+    if (side === 'enemy' && ability.range === 'melee' && c.row !== 0) return false;
     return true;
   }
 
@@ -205,11 +221,17 @@
           <div class="row-band front-band">
             <span class="band-label">Front</span>
             {#each getFrontRow(getParty()) as member (member.id)}
-              <div
+              <button
+                type="button"
                 class="combatant"
                 class:dead={member.hp <= 0}
                 class:current-turn={member.isCurrent}
                 class:synergy-flash={flashingTargetId === member.id}
+                class:selected={selectedTargetId === member.id && isPlayerTurn()}
+                class:valid-target={isValidTarget(member)}
+                class:invalid-target={!isValidTarget(member) && selectedAction === 'UseAbility' && selectedAbilityId !== null}
+                onclick={() => { if (isValidTarget(member)) selectedTargetId = member.id; }}
+                disabled={!isValidTarget(member)}
               >
                 <div class="combatant-header">
                   <span class="combatant-name">{member.name}</span>
@@ -218,17 +240,23 @@
                   <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
                   <div class="hp-text">{member.hp}/{member.maxHp}</div>
                 </div>
-              </div>
+              </button>
             {/each}
           </div>
           <div class="row-band back-band">
             <span class="band-label">Back</span>
             {#each getBackRow(getParty()) as member (member.id)}
-              <div
+              <button
+                type="button"
                 class="combatant"
                 class:dead={member.hp <= 0}
                 class:current-turn={member.isCurrent}
                 class:synergy-flash={flashingTargetId === member.id}
+                class:selected={selectedTargetId === member.id && isPlayerTurn()}
+                class:valid-target={isValidTarget(member)}
+                class:invalid-target={!isValidTarget(member) && selectedAction === 'UseAbility' && selectedAbilityId !== null}
+                onclick={() => { if (isValidTarget(member)) selectedTargetId = member.id; }}
+                disabled={!isValidTarget(member)}
               >
                 <div class="combatant-header">
                   <span class="combatant-name">{member.name}</span>
@@ -237,7 +265,7 @@
                   <div class="hp-fill" style="width: {(member.hp / member.maxHp) * 100}%"></div>
                   <div class="hp-text">{member.hp}/{member.maxHp}</div>
                 </div>
-              </div>
+              </button>
             {/each}
           </div>
         </div>
@@ -265,6 +293,15 @@
                 <div class="combatant-header">
                   <span class="combatant-name">{enemy.name}</span>
                 </div>
+                {#if enemy.classId}
+                  <img
+                    class="enemy-portrait"
+                    src={`/enemies/${enemy.classId}.png`}
+                    alt=""
+                    loading="lazy"
+                    onerror={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                {/if}
                 <div class="hp-bar">
                   <div class="hp-fill" style="width: {(enemy.hp / enemy.maxHp) * 100}%"></div>
                   <div class="hp-text">{enemy.hp}/{enemy.maxHp}</div>
@@ -291,6 +328,15 @@
                 <div class="combatant-header">
                   <span class="combatant-name">{enemy.name}</span>
                 </div>
+                {#if enemy.classId}
+                  <img
+                    class="enemy-portrait"
+                    src={`/enemies/${enemy.classId}.png`}
+                    alt=""
+                    loading="lazy"
+                    onerror={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                {/if}
                 <div class="hp-bar">
                   <div class="hp-fill" style="width: {(enemy.hp / enemy.maxHp) * 100}%"></div>
                   <div class="hp-text">{enemy.hp}/{enemy.maxHp}</div>
@@ -555,28 +601,28 @@
     box-shadow: 0 0 0.25em rgba(212, 168, 75, 0.3);
   }
 
-  .enemy-side .combatant {
+  .combatant {
     cursor: pointer;
   }
 
-  .enemy-side .combatant:disabled {
+  .combatant:disabled {
     cursor: not-allowed;
     opacity: 0.4;
   }
 
-  .enemy-side .combatant.valid-target {
+  .combatant.valid-target {
     border-color: #44aa44;
     box-shadow: 0 0 0.25em rgba(68, 170, 68, 0.3);
   }
 
-  .enemy-side .combatant.selected {
+  .combatant.selected {
     border-color: #66bbff;
     box-shadow: 0 0 0 0.0625em #66bbff, 0 0 0.75em 0.25em rgba(68, 170, 255, 0.55);
     transform: scale(1.04);
     z-index: 2;
   }
 
-  .enemy-side .combatant.selected::after {
+  .combatant.selected::after {
     content: '✓ TARGET';
     position: absolute;
     top: 0.15rem;
@@ -592,7 +638,7 @@
     line-height: 1.2;
   }
 
-  .enemy-side .combatant.invalid-target {
+  .combatant.invalid-target {
     opacity: 0.4;
     cursor: not-allowed;
   }
@@ -610,6 +656,20 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .enemy-portrait {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 0.25rem;
+    background: #111;
+    image-rendering: auto;
+    margin: 0.15rem 0;
+  }
+
+  .combatant.dead .enemy-portrait {
+    filter: grayscale(1) brightness(0.5);
   }
 
   .hp-bar {

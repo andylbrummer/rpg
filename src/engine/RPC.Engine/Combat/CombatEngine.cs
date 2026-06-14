@@ -830,7 +830,7 @@ public static class CombatEngine
                     row,
                     statusEffects,
                     def?.Stats.Strength ?? 0,
-                    null,
+                    spawn.EnemyId,
                     false,
                     0,
                     null,
