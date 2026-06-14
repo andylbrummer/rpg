@@ -19,6 +19,8 @@ export interface Tile {
   south: BorderType;
   east: BorderType;
   west: BorderType;
+  hasLoot?: boolean;
+  lootName?: string | null;
 }
 
 export interface CharacterStats {

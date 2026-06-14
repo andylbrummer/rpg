@@ -10,6 +10,7 @@
     onReturnToTown: () => void;
     onRest: () => void;
     onSave: () => void;
+    onPickup: () => void;
   }
 
   let {
@@ -19,10 +20,17 @@
     onTurnRight,
     onReturnToTown,
     onRest,
-    onSave
+    onSave,
+    onPickup
   }: Props = $props();
 
-
+  const currentTile = $derived(
+    gameState?.tiles?.find(
+      t => t.x === gameState?.player?.x && t.y === gameState?.player?.y
+    )
+  );
+  const currentTileHasLoot = $derived(!!currentTile?.hasLoot);
+  const currentLootName = $derived(currentTile?.lootName ?? 'item');
 </script>
 
 <div class="exploration-hud">
@@ -38,6 +46,11 @@
       <div class="position">
         Position: ({gameState?.player?.x}, {gameState?.player?.y})
       </div>
+      {#if currentTileHasLoot}
+        <button class="hud-btn take-btn" onclick={onPickup}>
+          Take {currentLootName}
+        </button>
+      {/if}
     </div>
 
     <div class="hud-right">
@@ -143,6 +156,7 @@
   .return-btn { border-color: #886644; color: #ccaa77; }
   .rest-btn { border-color: #446644; color: #88cc88; }
   .save-btn { border-color: #444466; color: #8888cc; }
+  .take-btn { border-color: #d4a84b; color: #ffcc44; }
 
   .movement-bar {
     flex: 0 0 auto;

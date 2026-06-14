@@ -466,6 +466,10 @@
     sendAction({ type: 'save_game' });
   }
 
+  function handlePickup() {
+    sendAction({ type: 'pickup_loot' });
+  }
+
   function handleReset() {
     sendAction({ type: 'reset_game' });
   }
@@ -616,6 +620,7 @@
           onReturnToTown={handleReturnToTown}
           onRest={handleRest}
           onSave={handleSave}
+          onPickup={handlePickup}
         />
       {/if}
       {#if gameState?.travelEncounter && gameState?.mode === 'Menu'}

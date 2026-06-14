@@ -60,6 +60,10 @@ export type PlayerAction =
 
     }
   | {
+      type: "pickup_loot";
+
+    }
+  | {
       type: "reset_game";
 
     }

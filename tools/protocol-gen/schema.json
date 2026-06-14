@@ -165,6 +165,13 @@
         {
           "type": "object",
           "properties": {
+            "type": { "type": "string", "const": "pickup_loot" }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
             "type": { "type": "string", "const": "reset_game" }
           },
           "required": ["type"]

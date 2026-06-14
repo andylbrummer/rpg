@@ -787,6 +787,7 @@ export class DungeonRenderer {
       if (tile.south !== 'None') visibleKeys.add(`border:${tile.x},${tile.y}:S`);
       if (tile.east !== 'None') visibleKeys.add(`border:${tile.x},${tile.y}:E`);
       if (tile.west !== 'None') visibleKeys.add(`border:${tile.x},${tile.y}:W`);
+      if (tile.hasLoot) visibleKeys.add(`loot:${tile.x},${tile.y}`);
     }
 
     // Remove meshes that are no longer visible
@@ -849,6 +850,29 @@ export class DungeonRenderer {
           this.tileMeshes.set(key, mesh);
           this.scene.add(mesh);
         }
+      }
+
+      // Loot glint marker
+      const lootKey = `loot:${tile.x},${tile.y}`;
+      if (tile.hasLoot && !this.tileMeshes.has(lootKey)) {
+        const geo = new THREE.OctahedronGeometry(this.tileSize * 0.18);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0xffcc44,
+          emissive: 0xaa7711,
+          emissiveIntensity: 0.8,
+          metalness: 0.6,
+          roughness: 0.3,
+        });
+        const marker = new THREE.Mesh(geo, mat);
+        marker.position.set(tile.x * this.tileSize, this.tileSize * 0.35, tile.y * this.tileSize);
+        this.tileMeshes.set(lootKey, marker);
+        this.scene.add(marker);
+      } else if (!tile.hasLoot && this.tileMeshes.has(lootKey)) {
+        const m = this.tileMeshes.get(lootKey)!;
+        this.scene.remove(m);
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
+        this.tileMeshes.delete(lootKey);
       }
     }
   }
