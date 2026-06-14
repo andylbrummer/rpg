@@ -16,6 +16,7 @@ public static class ExplorationPresenter
     {
         var tiles = new List<object>();
         var explored = new List<object>();
+        var collected = state.Exploration.CollectedLoot;
 
         if (state.CurrentDungeon != null)
         {
@@ -30,7 +31,7 @@ public static class ExplorationPresenter
                     var tile = state.CurrentDungeon.Tiles[x, y];
                     if (tile.Type != TileType.Empty)
                     {
-                        tiles.Add(SerializeTile(x, y, tile));
+                        tiles.Add(SerializeTile(x, y, tile, collected));
                     }
                 }
             }
@@ -41,7 +42,7 @@ public static class ExplorationPresenter
                 var x = int.Parse(parts[0]);
                 var y = int.Parse(parts[1]);
                 var tile = state.CurrentDungeon.Tiles[x, y];
-                explored.Add(SerializeTile(x, y, tile));
+                explored.Add(SerializeTile(x, y, tile, collected));
             }
         }
 
@@ -58,6 +59,17 @@ public static class ExplorationPresenter
             state.CurrentDungeonType);
     }
 
-    private static object SerializeTile(int x, int y, Tile tile)
-        => new { x, y, type = tile.Type.ToString(), north = tile.North.ToString(), south = tile.South.ToString(), east = tile.East.ToString(), west = tile.West.ToString() };
+    private static object SerializeTile(int x, int y, Tile tile, HashSet<string> collected)
+    {
+        bool hasLoot = tile.LootId != null && !collected.Contains($"{x},{y}");
+        return new
+        {
+            x, y,
+            type = tile.Type.ToString(),
+            north = tile.North.ToString(), south = tile.South.ToString(),
+            east = tile.East.ToString(), west = tile.West.ToString(),
+            hasLoot,
+            lootName = hasLoot ? tile.LootId : null
+        };
+    }
 }
