@@ -133,6 +133,14 @@ public static class ComponentInventorySystem
         return party;
     }
 
+    /// <summary>Add an item directly to the expedition cache (e.g. dungeon loot). Returns the party.</summary>
+    public static PartyState AddToExpeditionCache(PartyState party, string itemId, int count)
+    {
+        party.ExpeditionCache = AddComponent(
+            party.ExpeditionCache, itemId, count, PartyState.MaxExpeditionCacheSlots);
+        return party;
+    }
+
     public static PartyState TransferFromExpeditionCache(PartyState party, int memberIndex, string itemId, int count)
     {
         if (memberIndex < 0 || memberIndex >= 6)

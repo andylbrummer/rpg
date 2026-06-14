@@ -15,6 +15,7 @@ public static class CommandDispatcher
             "strafe_right" => new StrafeRightCommand(),
             "turn_left" => new TurnLeftCommand(),
             "turn_right" => new TurnRightCommand(),
+            "pickup_loot" => new PickupLootCommand(),
             "cancel" => new CancelCommand(),
             "combat_action" => new CombatActionCommand(action.Action ?? throw new ArgumentException("CombatAction required")),
             "flee_combat" => new FleeCombatCommand(),

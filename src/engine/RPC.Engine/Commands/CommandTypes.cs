@@ -10,6 +10,7 @@ public record StrafeLeftCommand : ICommand;
 public record StrafeRightCommand : ICommand;
 public record TurnLeftCommand : ICommand;
 public record TurnRightCommand : ICommand;
+public record PickupLootCommand : ICommand;
 
 // Combat
 public record CombatActionCommand(CombatAction Action) : ICommand;

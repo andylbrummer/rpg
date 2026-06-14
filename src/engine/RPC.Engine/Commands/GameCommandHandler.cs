@@ -48,6 +48,9 @@ public class GameCommandHandler
                 _gameState.TurnRight();
                 stateChanged = true;
                 break;
+            case PickupLootCommand:
+                stateChanged = _gameState.TryPickupLoot();
+                break;
             case CancelCommand:
                 stateChanged = true;
                 break;

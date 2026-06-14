@@ -4,6 +4,7 @@ using RPC.Engine.Combat;
 using RPC.Engine.Exploration;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
+using RPC.Engine.Inventory;
 using RPC.Engine.Overworld;
 using RPC.Engine.Party;
 using RPC.Engine.Save;
@@ -224,6 +225,38 @@ public class GameState
 
     public void TurnLeft() => _explorationService.TurnLeft(this);
     public void TurnRight() => _explorationService.TurnRight(this);
+
+    /// <summary>
+    /// Pick up loot on the player's current tile into the expedition cache. No-op (returns false)
+    /// if there is no loot, it was already collected, or the cache is full.
+    /// </summary>
+    public bool TryPickupLoot()
+    {
+        if (CurrentDungeon is null) return false;
+        var pos = Player.Position;
+        if (!CurrentDungeon.IsValidPosition(pos)) return false;
+
+        var tile = CurrentDungeon.Tiles[pos.X, pos.Y];
+        if (tile.LootId is not { } itemId) return false;
+
+        var key = $"{pos.X},{pos.Y}";
+        if (Exploration.CollectedLoot.Contains(key)) return false;
+
+        if (!ComponentInventorySystem.CanAddComponent(
+                Party.ExpeditionCache, itemId, 1, PartyState.MaxExpeditionCacheSlots))
+            return false; // cache full — leave loot on the floor
+
+        ComponentInventorySystem.AddToExpeditionCache(Party, itemId, 1);
+        Exploration.CollectedLoot.Add(key);
+
+        EmitActionLog("dungeon", "loot_collected", new Dictionary<string, string>
+        {
+            { "itemId", itemId },
+            { "x", pos.X.ToString() },
+            { "y", pos.Y.ToString() }
+        });
+        return true;
+    }
 
     public void TriggerEncounter(EncounterDef? encounter = null)
     {
