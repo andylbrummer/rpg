@@ -13,4 +13,5 @@ public record DungeonTemplate(
     string BossEncounterId,
     string EncounterTableId,
     string? WanderingTableId = null,
-    DungeonUnlockConditions[]? UnlockConditions = null);
+    DungeonUnlockConditions[]? UnlockConditions = null,
+    string? LootTableId = null);

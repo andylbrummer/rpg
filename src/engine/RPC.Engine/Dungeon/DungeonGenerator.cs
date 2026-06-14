@@ -8,12 +8,57 @@ public class DungeonGenerator : IDungeonGenerator
     private readonly List<RoomSegment> _segments;
     private readonly Dictionary<string, DungeonTemplate> _dungeonTemplates;
     private readonly EncounterTableRegistry? _encounterTables;
+    private readonly DungeonLootTableRegistry? _lootTables;
 
-    public DungeonGenerator(List<RoomSegment> segments, Dictionary<string, DungeonTemplate>? dungeonTemplates = null, EncounterTableRegistry? encounterTables = null)
+    public DungeonGenerator(List<RoomSegment> segments, Dictionary<string, DungeonTemplate>? dungeonTemplates = null, EncounterTableRegistry? encounterTables = null, DungeonLootTableRegistry? lootTables = null)
     {
         _segments = segments;
         _dungeonTemplates = dungeonTemplates ?? new Dictionary<string, DungeonTemplate>();
         _encounterTables = encounterTables;
+        _lootTables = lootTables;
+    }
+
+    /// <summary>Classify rooms and place loot. No-op when no loot table resolves.</summary>
+    private void Decorate(Dungeon dungeon, string dungeonType, DungeonTemplate? template, int effectiveSeed)
+    {
+        if (_lootTables is null) return;
+        var lootTableId = template?.LootTableId ?? dungeonType;
+        var table = _lootTables.Get(lootTableId) ?? _lootTables.Get("default");
+        if (table is null) return;
+
+        // The stitcher/builder tag each tile with a RoomId but do not populate dungeon.Rooms;
+        // the classifier works off Rooms, so derive room bounds from the tile RoomIds first.
+        EnsureRooms(dungeon);
+
+        var roles = new DungeonPathClassifier().Classify(dungeon);
+        new DungeonLootPlacer().Place(dungeon, roles, table, effectiveSeed);
+    }
+
+    /// <summary>Derive <see cref="Dungeon.Rooms"/> from per-tile RoomIds when not already populated.</summary>
+    private static void EnsureRooms(Dungeon dungeon)
+    {
+        if (dungeon.Rooms.Count > 0) return;
+
+        var bounds = new Dictionary<int, (int minX, int minY, int maxX, int maxY)>();
+        for (int x = 0; x < dungeon.Width; x++)
+            for (int y = 0; y < dungeon.Height; y++)
+            {
+                var tile = dungeon.Tiles[x, y];
+                if (!tile.IsWalkable || tile.RoomId < 0) continue;
+                if (bounds.TryGetValue(tile.RoomId, out var b))
+                    bounds[tile.RoomId] = (Math.Min(b.minX, x), Math.Min(b.minY, y),
+                        Math.Max(b.maxX, x), Math.Max(b.maxY, y));
+                else
+                    bounds[tile.RoomId] = (x, y, x, y);
+            }
+
+        foreach (var (id, b) in bounds.OrderBy(kv => kv.Key))
+            dungeon.Rooms.Add(new RoomInfo
+            {
+                Id = id,
+                Min = new Position(b.minX, b.minY),
+                Max = new Position(b.maxX, b.maxY)
+            });
     }
 
     public Dungeon Generate(string dungeonType, int? seed = null)
@@ -57,6 +102,7 @@ public class DungeonGenerator : IDungeonGenerator
         dungeon.WanderingTableId = template.WanderingTableId ?? template.EncounterTableId;
         dungeon.EncounterTableId = template.EncounterTableId;
         TagBossTile(dungeon, template.BossEncounterId);
+        Decorate(dungeon, template.Id, template, effectiveSeed);
         return dungeon;
     }
 
@@ -95,6 +141,8 @@ public class DungeonGenerator : IDungeonGenerator
         }
 
         TagBossTile(dungeon, bossEncounterId);
+
+        Decorate(dungeon, dungeonType, template, effectiveSeed);
 
         // Connectivity is contractually guaranteed by the stitcher; assert it before use so a future
         // regression surfaces loudly rather than shipping an unreachable dungeon.
