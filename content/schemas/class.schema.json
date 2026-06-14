@@ -4,7 +4,7 @@
   "title": "Class Definition",
   "type": "object",
   "required": ["id", "name", "description", "baseStats", "abilities", "levelTable"],
-  "optional": ["availableBranches"],
+  "optional": ["availableBranches", "branches"],
   "properties": {
     "id": { "type": "string", "pattern": "^[a-z_]+$" },
     "name": { "type": "string", "minLength": 1 },
@@ -23,7 +23,7 @@
     "abilities": {
       "type": "array",
       "minItems": 3,
-      "maxItems": 6,
+      "maxItems": 12,
       "items": {
         "type": "object",
         "required": ["id", "name", "cost", "effect", "tags"],
@@ -79,9 +79,9 @@
           "requiresBranch": { "type": "string" },
           "factionGate": {
             "type": "object",
-            "required": ["faction", "threshold"],
+            "required": ["factionId", "threshold"],
             "properties": {
-              "faction": { "type": "string" },
+              "factionId": { "type": "string" },
               "threshold": { "type": "integer" }
             }
           },

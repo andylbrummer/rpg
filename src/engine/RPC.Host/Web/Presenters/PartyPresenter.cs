@@ -82,7 +82,7 @@ public class PartyPresenter
                         .Where(a => a.IsAvailableInRow(c.Row))
                         .Select(a => a.Id)
                         .ToArray() ?? Array.Empty<string>(),
-                    abilities = classDef?.Abilities.Select(a => new { id = a.Id, name = a.Name, branch = a.Branch }).ToArray() ?? Array.Empty<object>(),
+                    classAbilities = classDef?.Abilities.Select(a => new { id = a.Id, name = a.Name, branch = a.Branch }).ToArray() ?? Array.Empty<object>(),
                     tempModifiers = c.TempModifiers.Select(m => new { stat = m.Stat, delta = m.Delta, duration = m.Duration, source = m.Source }).ToArray(),
                     componentInventory = c.ComponentInventory.Select(ci => new { itemId = ci.ItemId, count = ci.Count, maxStack = ci.MaxStack }).ToArray(),
                 };

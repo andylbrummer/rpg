@@ -136,6 +136,152 @@
         "defense",
         "ritual"
       ]
+    },
+    {
+      "id": "hemorrhage_glyph",
+      "name": "Hemorrhage Glyph",
+      "cost": {
+        "type": "ink_vial",
+        "amount": 2
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d8+INT",
+        "range": "short"
+      },
+      "tags": [
+        "arcane",
+        "burst",
+        "ritual"
+      ],
+      "branch": "bloodscribe"
+    },
+    {
+      "id": "aegis_sigil",
+      "name": "Aegis Sigil",
+      "cost": {
+        "type": "ink_vial",
+        "amount": 1
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "maxHp",
+        "value": 8,
+        "duration": 3,
+        "target": "ally_group"
+      },
+      "tags": [
+        "defense",
+        "ritual"
+      ],
+      "branch": "wardwright"
+    },
+    {
+      "id": "blood_nova",
+      "name": "Blood Nova",
+      "cost": {
+        "type": "ink_vial",
+        "amount": 3
+      },
+      "effect": {
+        "type": "damage",
+        "value": "3d8+INT",
+        "range": "short",
+        "extra": "area"
+      },
+      "tags": [
+        "arcane",
+        "burst",
+        "ritual"
+      ],
+      "branch": "hemomancer"
+    },
+    {
+      "id": "forbidden_sigil",
+      "name": "Forbidden Sigil",
+      "cost": {
+        "type": "ink_vial",
+        "amount": 3
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d10+INT",
+        "range": "long"
+      },
+      "tags": [
+        "arcane",
+        "burst",
+        "ritual"
+      ],
+      "branch": "glyphmaster"
+    },
+    {
+      "id": "grand_aegis",
+      "name": "Grand Aegis",
+      "cost": {
+        "type": "ink_vial",
+        "amount": 2
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "maxHp",
+        "value": 12,
+        "duration": 3,
+        "target": "ally_group"
+      },
+      "tags": [
+        "defense",
+        "ritual"
+      ],
+      "branch": "wardlord"
+    },
+    {
+      "id": "binding_circle",
+      "name": "Binding Circle",
+      "cost": {
+        "type": "ink_vial",
+        "amount": 2
+      },
+      "effect": {
+        "type": "debuff",
+        "stat": "speed",
+        "value": -4,
+        "duration": 2,
+        "target": "enemy_group"
+      },
+      "tags": [
+        "defense",
+        "ritual",
+        "debuff"
+      ],
+      "branch": "sigilbinder"
+    }
+  ],
+  "availableBranches": [
+    "bloodscribe",
+    "wardwright"
+  ],
+  "branches": [
+    {
+      "id": "hemomancer",
+      "requiresBranch": "bloodscribe",
+      "factionGate": {
+        "factionId": "inkblood",
+        "threshold": 30
+      },
+      "fallbackBranch": "glyphmaster"
+    },
+    {
+      "id": "glyphmaster",
+      "requiresBranch": "bloodscribe"
+    },
+    {
+      "id": "wardlord",
+      "requiresBranch": "wardwright"
+    },
+    {
+      "id": "sigilbinder",
+      "requiresBranch": "wardwright"
     }
   ],
   "levelTable": [

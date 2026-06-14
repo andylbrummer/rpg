@@ -79,6 +79,143 @@
         "necromantic",
         "buff"
       ]
+    },
+    {
+      "id": "bone_colossus",
+      "name": "Bone Colossus",
+      "cost": {
+        "type": "bone_fragment",
+        "amount": 3
+      },
+      "effect": {
+        "type": "summon",
+        "unit": "bone_colossus",
+        "duration": 3
+      },
+      "tags": [
+        "necromantic",
+        "summon"
+      ],
+      "branch": "bonesmith"
+    },
+    {
+      "id": "blood_tithe",
+      "name": "Blood Tithe",
+      "cost": {
+        "type": "hp",
+        "amount": 4
+      },
+      "effect": {
+        "type": "heal",
+        "value": "1d6+INT",
+        "target": "ally_group"
+      },
+      "tags": [
+        "necromantic",
+        "heal"
+      ],
+      "branch": "tithe_warden"
+    },
+    {
+      "id": "marrow_legion",
+      "name": "Marrow Legion",
+      "cost": {
+        "type": "bone_fragment",
+        "amount": 4
+      },
+      "effect": {
+        "type": "summon",
+        "unit": "bone_legion",
+        "duration": 3
+      },
+      "tags": [
+        "necromantic",
+        "summon"
+      ],
+      "branch": "marrow_lord"
+    },
+    {
+      "id": "grave_pact",
+      "name": "Grave Pact",
+      "cost": {
+        "type": "bone_fragment",
+        "amount": 4
+      },
+      "effect": {
+        "type": "summon",
+        "unit": "grave_colossus",
+        "duration": 4
+      },
+      "tags": [
+        "necromantic",
+        "summon"
+      ],
+      "branch": "gravewright"
+    },
+    {
+      "id": "mass_tithe",
+      "name": "Mass Tithe",
+      "cost": {
+        "type": "hp",
+        "amount": 6
+      },
+      "effect": {
+        "type": "heal",
+        "value": "2d6+INT",
+        "target": "ally_group"
+      },
+      "tags": [
+        "necromantic",
+        "heal"
+      ],
+      "branch": "blood_chancellor"
+    },
+    {
+      "id": "soul_compact",
+      "name": "Soul Compact",
+      "cost": {
+        "type": "hp",
+        "amount": 6
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "power",
+        "value": 4,
+        "duration": 3,
+        "target": "ally_group"
+      },
+      "tags": [
+        "necromantic",
+        "buff"
+      ],
+      "branch": "soul_broker"
+    }
+  ],
+  "availableBranches": [
+    "bonesmith",
+    "tithe_warden"
+  ],
+  "branches": [
+    {
+      "id": "marrow_lord",
+      "requiresBranch": "bonesmith"
+    },
+    {
+      "id": "gravewright",
+      "requiresBranch": "bonesmith",
+      "factionGate": {
+        "factionId": "inkblood",
+        "threshold": 30
+      },
+      "fallbackBranch": "marrow_lord"
+    },
+    {
+      "id": "blood_chancellor",
+      "requiresBranch": "tithe_warden"
+    },
+    {
+      "id": "soul_broker",
+      "requiresBranch": "tithe_warden"
     }
   ],
   "levelTable": [

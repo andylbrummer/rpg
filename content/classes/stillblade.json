@@ -76,6 +76,141 @@
         "anti_magic",
         "dispel"
       ]
+    },
+    {
+      "id": "null_ward",
+      "name": "Null Ward",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "evade",
+        "value": 5,
+        "duration": 2,
+        "target": "ally_group"
+      },
+      "tags": [
+        "anti_magic",
+        "defense"
+      ],
+      "branch": "void_warden"
+    },
+    {
+      "id": "mage_breaker",
+      "name": "Mage Breaker",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d6+PWR",
+        "range": "melee",
+        "extra": "dispel_one_buff"
+      },
+      "tags": [
+        "physical",
+        "anti_magic"
+      ],
+      "branch": "silent_edge"
+    },
+    {
+      "id": "oblivion_wall",
+      "name": "Oblivion Wall",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "evade",
+        "value": 7,
+        "duration": 3,
+        "target": "ally_group"
+      },
+      "tags": [
+        "anti_magic",
+        "defense"
+      ],
+      "branch": "oblivion_guard"
+    },
+    {
+      "id": "total_silence",
+      "name": "Total Silence",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "dispel",
+        "target": "enemy_group",
+        "count": 3
+      },
+      "tags": [
+        "anti_magic",
+        "dispel"
+      ],
+      "branch": "silence_warden"
+    },
+    {
+      "id": "executioner",
+      "name": "Executioner",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "3d6+PWR",
+        "range": "melee"
+      },
+      "tags": [
+        "physical",
+        "slash"
+      ],
+      "branch": "deathless_blade"
+    },
+    {
+      "id": "null_reave",
+      "name": "Null Reave",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d8+PWR",
+        "range": "melee",
+        "extra": "dispel_all_buffs"
+      },
+      "tags": [
+        "physical",
+        "anti_magic"
+      ],
+      "branch": "null_reaver"
+    }
+  ],
+  "availableBranches": [
+    "void_warden",
+    "silent_edge"
+  ],
+  "branches": [
+    {
+      "id": "oblivion_guard",
+      "requiresBranch": "void_warden"
+    },
+    {
+      "id": "silence_warden",
+      "requiresBranch": "void_warden",
+      "factionGate": {
+        "factionId": "stillness",
+        "threshold": 30
+      },
+      "fallbackBranch": "oblivion_guard"
+    },
+    {
+      "id": "deathless_blade",
+      "requiresBranch": "silent_edge"
+    },
+    {
+      "id": "null_reaver",
+      "requiresBranch": "silent_edge"
     }
   ],
   "levelTable": [

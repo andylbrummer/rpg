@@ -117,6 +117,144 @@
       ],
       "requiredRow": "back",
       "rowChangeCost": "action"
+    },
+    {
+      "id": "war_engine",
+      "name": "War Engine",
+      "cost": {
+        "type": "engine_charge",
+        "amount": 2
+      },
+      "effect": {
+        "type": "summon",
+        "unit": "war_engine",
+        "duration": 3
+      },
+      "tags": [
+        "summon",
+        "deployable"
+      ],
+      "branch": "artificer"
+    },
+    {
+      "id": "demolition_charge",
+      "name": "Demolition Charge",
+      "cost": {
+        "type": "engine_charge",
+        "amount": 2
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d6+INT",
+        "range": "short",
+        "extra": "area"
+      },
+      "tags": [
+        "area",
+        "explosive"
+      ],
+      "branch": "sapper"
+    },
+    {
+      "id": "siege_engine",
+      "name": "Siege Engine",
+      "cost": {
+        "type": "engine_charge",
+        "amount": 3
+      },
+      "effect": {
+        "type": "summon",
+        "unit": "siege_engine",
+        "duration": 4
+      },
+      "tags": [
+        "summon",
+        "deployable"
+      ],
+      "branch": "grand_artificer"
+    },
+    {
+      "id": "sentry_swarm",
+      "name": "Sentry Swarm",
+      "cost": {
+        "type": "engine_charge",
+        "amount": 3
+      },
+      "effect": {
+        "type": "summon",
+        "unit": "sentry_swarm",
+        "duration": 3
+      },
+      "tags": [
+        "summon",
+        "deployable"
+      ],
+      "branch": "master_mechanic"
+    },
+    {
+      "id": "fuel_air_bomb",
+      "name": "Fuel-Air Bomb",
+      "cost": {
+        "type": "engine_charge",
+        "amount": 3
+      },
+      "effect": {
+        "type": "damage",
+        "value": "3d6+INT",
+        "range": "short",
+        "extra": "area"
+      },
+      "tags": [
+        "area",
+        "explosive"
+      ],
+      "branch": "demolitionist"
+    },
+    {
+      "id": "chain_lightning",
+      "name": "Chain Lightning",
+      "cost": {
+        "type": "engine_charge",
+        "amount": 3
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d8+INT",
+        "range": "long",
+        "extra": "area"
+      },
+      "tags": [
+        "area",
+        "lightning"
+      ],
+      "branch": "stormwright"
+    }
+  ],
+  "availableBranches": [
+    "artificer",
+    "sapper"
+  ],
+  "branches": [
+    {
+      "id": "grand_artificer",
+      "requiresBranch": "artificer",
+      "factionGate": {
+        "factionId": "bureau",
+        "threshold": 30
+      },
+      "fallbackBranch": "master_mechanic"
+    },
+    {
+      "id": "master_mechanic",
+      "requiresBranch": "artificer"
+    },
+    {
+      "id": "demolitionist",
+      "requiresBranch": "sapper"
+    },
+    {
+      "id": "stormwright",
+      "requiresBranch": "sapper"
     }
   ],
   "levelTable": [

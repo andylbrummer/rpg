@@ -81,6 +81,153 @@
         "heal",
         "emergency"
       ]
+    },
+    {
+      "id": "triage",
+      "name": "Triage",
+      "cost": {
+        "type": "cautery_supply",
+        "amount": 2
+      },
+      "effect": {
+        "type": "heal",
+        "value": "1d6+INT",
+        "target": "ally_group",
+        "remove_status": [
+          "bleed",
+          "poison"
+        ]
+      },
+      "tags": [
+        "heal",
+        "support"
+      ],
+      "branch": "field_surgeon"
+    },
+    {
+      "id": "immolation",
+      "name": "Immolation",
+      "cost": {
+        "type": "cautery_supply",
+        "amount": 2
+      },
+      "effect": {
+        "type": "damage",
+        "value": "1d10+INT",
+        "range": "short",
+        "extra": "bonus_vs_bloom"
+      },
+      "tags": [
+        "fire",
+        "area"
+      ],
+      "branch": "pyrecaller"
+    },
+    {
+      "id": "mass_revival",
+      "name": "Mass Revival",
+      "cost": {
+        "type": "cautery_supply",
+        "amount": 3
+      },
+      "effect": {
+        "type": "heal",
+        "value": "2d8+INT",
+        "target": "ally_group"
+      },
+      "tags": [
+        "heal",
+        "emergency"
+      ],
+      "branch": "chief_surgeon"
+    },
+    {
+      "id": "sterilize",
+      "name": "Sterilize",
+      "cost": {
+        "type": "cautery_supply",
+        "amount": 3
+      },
+      "effect": {
+        "type": "heal",
+        "value": "1d8+INT",
+        "target": "ally_group",
+        "remove_status": [
+          "bleed",
+          "poison",
+          "bloom"
+        ]
+      },
+      "tags": [
+        "heal",
+        "fire"
+      ],
+      "branch": "plaguebreaker"
+    },
+    {
+      "id": "firestorm",
+      "name": "Firestorm",
+      "cost": {
+        "type": "cautery_supply",
+        "amount": 3
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d8+INT",
+        "range": "short",
+        "extra": "area"
+      },
+      "tags": [
+        "fire",
+        "area"
+      ],
+      "branch": "inferno_priest"
+    },
+    {
+      "id": "cremate",
+      "name": "Cremate",
+      "cost": {
+        "type": "cautery_supply",
+        "amount": 3
+      },
+      "effect": {
+        "type": "damage",
+        "value": "3d6+INT",
+        "range": "short",
+        "extra": "bonus_vs_bloom"
+      },
+      "tags": [
+        "fire",
+        "burst"
+      ],
+      "branch": "ashbringer"
+    }
+  ],
+  "availableBranches": [
+    "field_surgeon",
+    "pyrecaller"
+  ],
+  "branches": [
+    {
+      "id": "chief_surgeon",
+      "requiresBranch": "field_surgeon"
+    },
+    {
+      "id": "plaguebreaker",
+      "requiresBranch": "field_surgeon",
+      "factionGate": {
+        "factionId": "bureau",
+        "threshold": 30
+      },
+      "fallbackBranch": "chief_surgeon"
+    },
+    {
+      "id": "inferno_priest",
+      "requiresBranch": "pyrecaller"
+    },
+    {
+      "id": "ashbringer",
+      "requiresBranch": "pyrecaller"
     }
   ],
   "levelTable": [

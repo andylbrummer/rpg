@@ -59,7 +59,7 @@
       "branchChoice", "branchLevel6", "awaitingBranchChoice",
       "availableBranches", "branchWarnings",
       "stats", "equipment", "knownAbilities", "availableAbilities",
-      "abilities", "tempModifiers", "componentInventory"
+      "classAbilities", "tempModifiers", "componentInventory"
     ]
   }
 }

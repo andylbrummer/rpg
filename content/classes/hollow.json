@@ -76,6 +76,144 @@
         "stealth",
         "loot"
       ]
+    },
+    {
+      "id": "exsanguinate",
+      "name": "Exsanguinate",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d8+DEX",
+        "range": "melee",
+        "condition": "target_status_bleed"
+      },
+      "tags": [
+        "physical",
+        "assassination"
+      ],
+      "branch": "cutthroat"
+    },
+    {
+      "id": "vanish",
+      "name": "Vanish",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "evade",
+        "value": 6,
+        "duration": 2,
+        "target": "self"
+      },
+      "tags": [
+        "stealth",
+        "buff"
+      ],
+      "branch": "nightveil"
+    },
+    {
+      "id": "heartseeker",
+      "name": "Heartseeker",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "3d8+DEX",
+        "range": "melee",
+        "condition": "target_status_bleed"
+      },
+      "tags": [
+        "physical",
+        "assassination"
+      ],
+      "branch": "deathdealer"
+    },
+    {
+      "id": "lethal_dose",
+      "name": "Lethal Dose",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d6+DEX",
+        "range": "melee",
+        "extra": "apply_poison"
+      },
+      "tags": [
+        "physical",
+        "poison"
+      ],
+      "branch": "poisoner"
+    },
+    {
+      "id": "shadowstep",
+      "name": "Shadowstep",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "evade",
+        "value": 8,
+        "duration": 2,
+        "target": "self"
+      },
+      "tags": [
+        "stealth",
+        "buff"
+      ],
+      "branch": "phantom"
+    },
+    {
+      "id": "sabotage",
+      "name": "Sabotage",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "debuff",
+        "stat": "accuracy",
+        "value": -5,
+        "duration": 3,
+        "target": "enemy_group"
+      },
+      "tags": [
+        "stealth",
+        "debuff"
+      ],
+      "branch": "spymaster"
+    }
+  ],
+  "availableBranches": [
+    "cutthroat",
+    "nightveil"
+  ],
+  "branches": [
+    {
+      "id": "deathdealer",
+      "requiresBranch": "cutthroat"
+    },
+    {
+      "id": "poisoner",
+      "requiresBranch": "cutthroat"
+    },
+    {
+      "id": "phantom",
+      "requiresBranch": "nightveil"
+    },
+    {
+      "id": "spymaster",
+      "requiresBranch": "nightveil",
+      "factionGate": {
+        "factionId": "convocation",
+        "threshold": 30
+      },
+      "fallbackBranch": "phantom"
     }
   ],
   "levelTable": [

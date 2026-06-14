@@ -34,7 +34,7 @@ public class ContentValidationTests
         Assert.NotEmpty(classDef.Name);
         Assert.NotEmpty(classDef.Description);
         Assert.True(classDef.BaseStats.Constitution > 0);
-        Assert.InRange(classDef.Abilities.Length, 3, 6);
+        Assert.InRange(classDef.Abilities.Length, 3, 12);
         Assert.All(classDef.Abilities, a =>
         {
             Assert.False(string.IsNullOrEmpty(a.Id));
@@ -45,6 +45,34 @@ public class ContentValidationTests
             Assert.Single(classDef.Abilities, x => x.Id == a.Id)); // unique IDs
         Assert.InRange(classDef.LevelTable.Length, 5, 10);
         Assert.Contains(classDef.LevelTable, e => e.Level == 1);
+
+        // Branch integrity: every declared branch must be backed by abilities,
+        // every ability branch tag must reference a declared branch, and level-6
+        // branches must chain to a valid level-3 branch with sound faction gates.
+        var level3 = classDef.AvailableBranches ?? Array.Empty<string>();
+        var level6 = classDef.Branches?.Select(b => b.Id).ToArray() ?? Array.Empty<string>();
+        var declaredBranches = level3.Concat(level6).ToHashSet();
+        var abilityBranches = classDef.Abilities
+            .Where(a => !string.IsNullOrEmpty(a.Branch))
+            .Select(a => a.Branch!)
+            .ToHashSet();
+
+        foreach (var branch in declaredBranches)
+            Assert.Contains(branch, abilityBranches); // every branch grants >=1 ability
+        foreach (var tag in abilityBranches)
+            Assert.Contains(tag, declaredBranches); // no orphan branch-tagged abilities
+
+        foreach (var b in classDef.Branches ?? Array.Empty<BranchDef>())
+        {
+            Assert.Contains(b.RequiresBranch, level3); // level-6 chains from a level-3 branch
+            if (b.FallbackBranch != null)
+                Assert.Contains(b.FallbackBranch, declaredBranches);
+            if (b.FactionGate != null)
+            {
+                Assert.False(string.IsNullOrEmpty(b.FactionGate.FactionId));
+                Assert.True(b.FactionGate.Threshold > 0);
+            }
+        }
     }
 
     public static IEnumerable<object[]> EnemyFiles => Directory
