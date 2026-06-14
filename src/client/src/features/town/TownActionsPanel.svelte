@@ -11,19 +11,23 @@
 
   let { gameState, onEnterDungeon, onSave, onReset, onShowMap }: Props = $props();
 
-  const dungeonMeta: Record<string, { level: number; desc: string }> = {
-    broken_engine: { level: 1, desc: 'Shallow caves infested with goblins.' },
-    sewers: { level: 3, desc: 'Crumbling ruins of a lost civilization.' },
-    crypt: { level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
-    bloom_site: { level: 4, desc: 'A fungal infestation spreading through abandoned machinery.' },
-    boneyard: { level: 2, desc: 'Bone-sorting halls and tithe archives overrun by rogue constructs.' },
-    sealed_vault: { level: 6, desc: 'Imperial wards and dead-language inscriptions guarding sealed horrors.' },
-    settlement_gone_wrong: { level: 3, desc: 'A ruined town overtaken by bloom pockets and hostile survivors.' },
-    ossuary: { level: 4, desc: 'Family vaults and memorial halls where ancestors do not rest quietly.' },
+  const dungeonMeta: Record<string, { name: string; level: number; desc: string }> = {
+    broken_engine: { name: 'Broken Engine', level: 1, desc: 'Shallow caves infested with goblins.' },
+    boneyard: { name: 'The Boneyard', level: 2, desc: 'Bone-sorting halls and tithe archives overrun by rogue constructs.' },
+    sewers: { name: 'Sewer Warrens', level: 3, desc: 'Crumbling ruins of a lost civilization.' },
+    settlement_gone_wrong: { name: 'Settlement Gone Wrong', level: 3, desc: 'A ruined town overtaken by bloom pockets and hostile survivors.' },
+    bloom_site: { name: 'Bloom Site', level: 4, desc: 'A fungal infestation spreading through abandoned machinery.' },
+    ossuary: { name: 'The Ossuary', level: 4, desc: 'Family vaults and memorial halls where ancestors do not rest quietly.' },
+    crypt: { name: 'Crypt of Whispers', level: 5, desc: 'A volcanic lair of a fearsome dragon.' },
+    sealed_vault: { name: 'Sealed Vault', level: 6, desc: 'Imperial wards and dead-language inscriptions guarding sealed horrors.' },
   };
 
+  // Every authored dungeon template is directly enterable from town. (Overworld nodes still
+  // drive travel on the map; this list is the quick-access roster of all playable dungeons.)
   const availableDungeons = $derived(
-    gameState?.overworld?.nodes?.filter(n => n.type === 'dungeon') ?? []
+    Object.entries(dungeonMeta)
+      .map(([id, m]) => ({ id, name: m.name, level: m.level, desc: m.desc }))
+      .sort((a, b) => a.level - b.level)
   );
 
   const hasPendingBranches = $derived(
@@ -43,17 +47,15 @@
 
   <div class="dungeon-list">
     {#each availableDungeons as dungeon}
-      {@const dungeonType = dungeon.dungeonTemplateId ?? dungeon.id}
-      {@const meta = dungeonMeta[dungeonType]}
       <button
         class="dungeon-btn"
         disabled={hasPendingBranches}
-        onclick={() => onEnterDungeon(dungeonType)}
+        onclick={() => onEnterDungeon(dungeon.id)}
       >
         <div class="dungeon-name">{dungeon.name}</div>
         <div class="dungeon-info">
-          <span class="dungeon-level">Lv.{meta?.level ?? '?'}</span>
-          <span class="dungeon-desc">{meta?.desc ?? 'Unknown location.'}</span>
+          <span class="dungeon-level">Lv.{dungeon.level}</span>
+          <span class="dungeon-desc">{dungeon.desc}</span>
         </div>
       </button>
     {:else}
