@@ -1,0 +1,7 @@
+{
+  "id": "default",
+  "entries": [
+    { "itemId": "rat_tail", "weight": 3 },
+    { "itemId": "bone_fragment", "weight": 1 }
+  ]
+}

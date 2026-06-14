@@ -127,6 +127,10 @@ class Program
             {
                 result = ValidateItems(file, json);
             }
+            else if (relativePath.Contains("/loot/") || relativePath.StartsWith("loot/"))
+            {
+                result = ValidateLootTable(file, json, itemIds);
+            }
             else if (relativePath.Contains("/schemes/") || relativePath.StartsWith("schemes/"))
             {
                 result = ValidateScheme(file, json);
@@ -409,6 +413,48 @@ class Program
             return 1;
         }
 
+        return 0;
+    }
+
+    static int ValidateLootTable(string filePath, string json, HashSet<string> itemIds)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+        try
+        {
+            var def = JsonSerializer.Deserialize<DungeonLootTableDef>(json, options);
+            if (def == null || string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (def.Entries == null || def.Entries.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Loot table has no entries");
+                return 1;
+            }
+            foreach (var e in def.Entries)
+            {
+                if (string.IsNullOrWhiteSpace(e.ItemId) || !itemIds.Contains(e.ItemId))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Unknown itemId '{e.ItemId}'");
+                    return 1;
+                }
+                if (e.Weight <= 0)
+                {
+                    Console.WriteLine($"FAIL: {filePath} - itemId '{e.ItemId}' weight must be positive");
+                    return 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
         return 0;
     }
 

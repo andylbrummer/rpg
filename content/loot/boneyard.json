@@ -1,0 +1,7 @@
+{
+  "id": "boneyard",
+  "entries": [
+    { "itemId": "bone_fragment", "weight": 5 },
+    { "itemId": "rat_tail", "weight": 2 }
+  ]
+}
