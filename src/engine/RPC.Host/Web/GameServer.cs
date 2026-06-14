@@ -73,7 +73,8 @@ public class GameServer
             Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
         _segments = LoadSegments(_catalog);
-        _dungeonGenerator = new DungeonGenerator(_segments, _dungeonTemplates, _encounterTables);
+        var lootTables = LoadLootTables(_catalog);
+        _dungeonGenerator = new DungeonGenerator(_segments, _dungeonTemplates, _encounterTables, lootTables);
         _commandHandler = new GameCommandHandler(_gameState, _dungeonGenerator);
         _statePresenter = new StatePresenter(_classRegistry, _itemRegistry);
         _broadcaster = new StateBroadcaster(_registry, _statePresenter, _gameState, _jsonOptions, _cts);
@@ -157,6 +158,19 @@ public class GameServer
         {
             var id = Path.GetFileNameWithoutExtension(file);
             var json = catalog.GetString(file) ?? catalog.GetString($"encounters/{Path.GetFileName(file)}");
+            if (json != null)
+                registry.LoadFromJson(id, json);
+        }
+        return registry;
+    }
+
+    private static DungeonLootTableRegistry LoadLootTables(IContentCatalog catalog)
+    {
+        var registry = new DungeonLootTableRegistry();
+        foreach (var file in catalog.EnumerateFiles("loot", "*.json"))
+        {
+            var id = Path.GetFileNameWithoutExtension(file);
+            var json = catalog.GetString(file) ?? catalog.GetString($"loot/{Path.GetFileName(file)}");
             if (json != null)
                 registry.LoadFromJson(id, json);
         }
