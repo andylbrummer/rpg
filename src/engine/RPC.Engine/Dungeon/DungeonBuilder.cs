@@ -22,50 +22,86 @@ public class DungeonBuilder
 
     public Dungeon Build(string name, int targetRooms = 10, EncounterTableRegistry? encounterTables = null, string? encounterTableId = null)
     {
-        // Simple dungeon generation: place rooms and connect with corridors
         var dungeon = new Dungeon(64, 64, name);
         dungeon.Seed = _seed;
         var placedRooms = new List<PlacedRoom>();
 
-        // Place entrance
+        // Place entrance.
         var entrance = _segments.FirstOrDefault(s => s.Tags.Contains("entrance"))
             ?? _segments.First();
-        var entrancePos = new Position(32, 32);
-        var placedEntrance = PlaceRoom(dungeon, entrance, entrancePos, 0);
+        var placedEntrance = PlaceRoom(dungeon, entrance, new Position(32, 32), 0);
         placedRooms.Add(placedEntrance);
+
+        // Classify the pool so growth doesn't dead-end early. A segment is "branching" if it has
+        // >1 exit (one is consumed by its own connection, so only branching segments keep the
+        // frontier open). "Terminal" segments (chamber/dead-end/boss) cap a passage.
+        var branching = _segments.Where(s => !s.Tags.Contains("entrance") && ExitCount(s) >= 2).ToList();
+        var nonEntranceNonBoss = _segments.Where(s => !s.Tags.Contains("entrance") && !IsBoss(s)).ToList();
+        var anyNonEntrance = _segments.Where(s => !s.Tags.Contains("entrance")).ToList();
+
+        // Frontier of open exits across all placed rooms. An exit leaves the frontier when a room
+        // attaches to it (pruning) — so we never waste attempts re-filling an occupied exit.
+        var frontier = new List<RoomExit>(placedEntrance.Exits);
 
         int roomId = 1;
         int attempts = 0;
+        int cap = Math.Max(40, targetRooms * 20);
 
-        while (placedRooms.Count < targetRooms && attempts < targetRooms * 10)
+        while (placedRooms.Count < targetRooms && frontier.Count > 0 && attempts < cap)
         {
             attempts++;
+            int fi = _random.Next(frontier.Count);
+            var exit = frontier[fi];
 
-            // Pick a random placed room and one of its exits
-            var parentRoom = placedRooms[_random.Next(placedRooms.Count)];
-            if (!parentRoom.Exits.Any()) continue;
+            var segment = ChooseSegment(placedRooms.Count, targetRooms, frontier.Count,
+                branching, nonEntranceNonBoss, anyNonEntrance);
+            if (segment == null) break;
 
-            var exit = parentRoom.Exits[_random.Next(parentRoom.Exits.Count)];
-
-            // Pick a random segment to place
-            var segment = _segments[_random.Next(_segments.Count)];
-
-            // Try to place it adjacent to the exit
             var newRoom = TryPlaceRoom(dungeon, segment, exit.Position, exit.Direction, roomId);
             if (newRoom != null)
             {
                 placedRooms.Add(newRoom);
                 roomId++;
+                frontier.RemoveAt(fi);                 // exit consumed by the new connection
+                frontier.AddRange(newRoom.Exits);      // new room's remaining exits open up
+            }
+            else if (attempts % frontier.Count == 0)
+            {
+                // This exit has resisted placement for a while (blocked by collisions); drop it so
+                // the builder doesn't spin on an unplaceable frontier slot.
+                frontier.RemoveAt(fi);
             }
         }
 
-        // Derive borders for all walkable tiles
         DeriveBorders(dungeon);
-
-        // Tag encounter slots
         TagEncounterSlots(dungeon, placedRooms, encounterTables, encounterTableId);
-
         return dungeon;
+    }
+
+    private static int ExitCount(RoomSegment segment) => segment.Tiles.Count(t => t.IsExit);
+
+    private static bool IsBoss(RoomSegment segment) =>
+        segment.Tags.Any(t => t == "boss" || t.StartsWith("encounter:boss"));
+
+    /// <summary>
+    /// Pick the next segment to place. Keeps the dungeon growing toward the target: when the
+    /// frontier is about to run dry and we still need rooms, force a branching segment; otherwise
+    /// avoid the boss segment until we're near the target so it doesn't cap a passage too early.
+    /// </summary>
+    private RoomSegment? ChooseSegment(int placed, int target, int frontierCount,
+        List<RoomSegment> branching, List<RoomSegment> nonEntranceNonBoss, List<RoomSegment> anyNonEntrance)
+    {
+        bool needGrowth = placed < target - 1 && frontierCount <= 1;
+        if (needGrowth && branching.Count > 0)
+            return branching[_random.Next(branching.Count)];
+
+        if (placed < target - 1 && nonEntranceNonBoss.Count > 0)
+            return nonEntranceNonBoss[_random.Next(nonEntranceNonBoss.Count)];
+
+        if (anyNonEntrance.Count > 0)
+            return anyNonEntrance[_random.Next(anyNonEntrance.Count)];
+
+        return _segments.Count > 0 ? _segments[_random.Next(_segments.Count)] : null;
     }
 
     private PlacedRoom PlaceRoom(Dungeon dungeon, RoomSegment segment, Position position, int roomId)
@@ -130,7 +166,11 @@ public class DungeonBuilder
                 return null;
         }
 
-        return PlaceRoom(dungeon, segment, offset, roomId);
+        var placed = PlaceRoom(dungeon, segment, offset, roomId);
+        // The exit used to connect back to the parent is consumed — it must not stay on the
+        // frontier (the parent room already occupies that adjacent cell).
+        placed.Exits.RemoveAll(e => e.Position == entranceWorldPos);
+        return placed;
     }
 
     private void DeriveBorders(Dungeon dungeon)
