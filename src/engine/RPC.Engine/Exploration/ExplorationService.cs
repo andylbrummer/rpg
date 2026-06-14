@@ -33,6 +33,7 @@ public class ExplorationService
         state.CurrentDungeon = dungeon;
         state.CurrentDungeonType = dungeonType;
         state.ExploredTiles.Clear();
+        state.Exploration.CollectedLoot.Clear();
         state.StepsSinceEncounter = 0;
         state.PendingTaggedEncounterTile = null;
         state.Mode = GameMode.Exploration;

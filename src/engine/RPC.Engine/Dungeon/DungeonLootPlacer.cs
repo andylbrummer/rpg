@@ -55,7 +55,7 @@ public class DungeonLootPlacer
             {
                 var t = dungeon.Tiles[x, y];
                 if (t.RoomId != roomId || t.Type != TileType.Floor) continue;
-                if (t.EncounterId != null) continue; // skip boss-tagged
+                if (t.EncounterId != null) continue; // skip all encounter-tagged tiles (boss + paced encounters)
                 best ??= new Position(x, y);
             }
         return best;
