@@ -2,18 +2,62 @@
   "id": "underway_maintenance",
   "name": "Maintenance Bay",
   "description": "Old rail engineers stored spare parts here. Brass valves, hand tools, and one sealed strongbox the Cartographers never found.",
-  "tags": ["chamber", "underway"],
+  "tags": [
+    "chamber",
+    "underway"
+  ],
   "width": 3,
   "height": 3,
   "tiles": [
-    { "x": 0, "y": 0, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
-    { "x": 1, "y": 0, "type": "Floor" },
-    { "x": 2, "y": 0, "type": "Floor" },
-    { "x": 0, "y": 1, "type": "Floor" },
-    { "x": 1, "y": 1, "type": "Floor" },
-    { "x": 2, "y": 1, "type": "Floor" },
-    { "x": 0, "y": 2, "type": "Floor" },
-    { "x": 1, "y": 2, "type": "Floor" },
-    { "x": 2, "y": 2, "type": "Floor", "east": "SecretDoor" }
+    {
+      "x": 0,
+      "y": 0,
+      "type": "Floor",
+      "south": "None"
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "type": "Floor"
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "type": "Floor",
+      "isExit": true,
+      "exitDirection": "South",
+      "south": "Door"
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "type": "Floor",
+      "east": "SecretDoor"
+    }
   ]
 }

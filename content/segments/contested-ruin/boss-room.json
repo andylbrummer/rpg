@@ -2,34 +2,144 @@
   "id": "ruin_boss_room",
   "name": "The Last Standard",
   "description": "A vaulted ceremonial chamber. Two faction captains lie dead at opposite ends, their banners stuck through one another. Something larger held this ground.",
-  "tags": ["boss", "contested_ruin", "encounter:cr-boss-arbiter"],
+  "tags": [
+    "boss",
+    "contested_ruin",
+    "encounter:cr-boss-arbiter"
+  ],
   "width": 5,
   "height": 5,
   "tiles": [
-    { "x": 1, "y": 1, "type": "Floor" },
-    { "x": 2, "y": 1, "type": "Floor" },
-    { "x": 3, "y": 1, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
-    { "x": 4, "y": 1, "type": "Floor" },
-    { "x": 5, "y": 1, "type": "Floor" },
-    { "x": 1, "y": 2, "type": "Floor" },
-    { "x": 2, "y": 2, "type": "Floor" },
-    { "x": 3, "y": 2, "type": "Floor" },
-    { "x": 4, "y": 2, "type": "Floor" },
-    { "x": 5, "y": 2, "type": "Floor" },
-    { "x": 1, "y": 3, "type": "Floor" },
-    { "x": 2, "y": 3, "type": "Floor" },
-    { "x": 3, "y": 3, "type": "Floor" },
-    { "x": 4, "y": 3, "type": "Floor" },
-    { "x": 5, "y": 3, "type": "Floor" },
-    { "x": 1, "y": 4, "type": "Floor" },
-    { "x": 2, "y": 4, "type": "Floor" },
-    { "x": 3, "y": 4, "type": "Floor" },
-    { "x": 4, "y": 4, "type": "Floor" },
-    { "x": 5, "y": 4, "type": "Floor" },
-    { "x": 1, "y": 5, "type": "Floor", "west": "SecretDoor" },
-    { "x": 2, "y": 5, "type": "Floor" },
-    { "x": 3, "y": 5, "type": "Floor" },
-    { "x": 4, "y": 5, "type": "Floor" },
-    { "x": 5, "y": 5, "type": "Floor", "east": "SecretDoor" }
+    {
+      "x": 1,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "type": "Floor",
+      "south": "None"
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "type": "Floor",
+      "west": "SecretDoor"
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "type": "Floor",
+      "isExit": true,
+      "exitDirection": "South",
+      "south": "Door"
+    },
+    {
+      "x": 4,
+      "y": 5,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "type": "Floor",
+      "east": "SecretDoor"
+    }
   ]
 }
