@@ -28,7 +28,8 @@ public readonly record struct Tile(
     BorderType East = BorderType.None,
     BorderType West = BorderType.None,
     int RoomId = -1,
-    string? EncounterId = null)
+    string? EncounterId = null,
+    string? LootId = null)
 {
     public bool IsWalkable => Type is TileType.Floor or TileType.StairsUp or TileType.StairsDown or TileType.IllusoryFloor;
 
