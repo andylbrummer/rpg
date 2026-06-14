@@ -5,6 +5,10 @@ namespace RPC.Engine.Dungeons;
 
 public class DungeonGenerator : IDungeonGenerator
 {
+    // Default boss encounter id used when a template does not specify one. Shared so the build
+    // paths and the loot classifier identify the same tile and cannot drift.
+    private const string DefaultBossEncounterId = "boss-encounter-1";
+
     private readonly List<RoomSegment> _segments;
     private readonly Dictionary<string, DungeonTemplate> _dungeonTemplates;
     private readonly EncounterTableRegistry? _encounterTables;
@@ -30,7 +34,10 @@ public class DungeonGenerator : IDungeonGenerator
         // the classifier works off Rooms, so derive room bounds from the tile RoomIds first.
         EnsureRooms(dungeon);
 
-        var roles = new DungeonPathClassifier().Classify(dungeon);
+        // Identify the boss by its specific encounter id (same value the build paths tag with), so the
+        // classifier does not latch onto an arbitrary pacer-tagged encounter on the procedural path.
+        var bossId = template?.BossEncounterId ?? DefaultBossEncounterId;
+        var roles = new DungeonPathClassifier().Classify(dungeon, bossId);
         new DungeonLootPlacer().Place(dungeon, roles, table, effectiveSeed);
     }
 
@@ -115,7 +122,7 @@ public class DungeonGenerator : IDungeonGenerator
     {
         var name = template?.Name ?? dungeonType;
         var encounterTableId = template?.EncounterTableId ?? dungeonType;
-        var bossEncounterId = template?.BossEncounterId ?? "boss-encounter-1";
+        var bossEncounterId = template?.BossEncounterId ?? DefaultBossEncounterId;
         var targetRooms = template?.TargetRooms ?? 8;
 
         // Restrict to the template pool when given; otherwise stitch from all available segments.

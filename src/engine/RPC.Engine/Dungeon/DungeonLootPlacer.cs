@@ -37,21 +37,12 @@ public class DungeonLootPlacer
             var tile = LowestFloorTile(dungeon, room.Id);
             if (tile is null) continue;
 
-            int total = table.Entries.Sum(e => e.Weight);
-            if (total <= 0) continue;
-            int roll = rng.Roll(1, total);
-            int cumulative = 0;
-            string itemId = table.Entries[^1].ItemId;
-            foreach (var entry in table.Entries)
-            {
-                cumulative += entry.Weight;
-                if (roll <= cumulative) { itemId = entry.ItemId; break; }
-            }
+            // Single source of truth for the weighted roll; consumes exactly one item roll.
+            var itemId = table.Pick(rng);
+            if (itemId is null) continue;
 
             var p = tile.Value;
-            // Never decorate entrance/boss tiles even if a room somehow contains one.
             var t = dungeon.Tiles[p.X, p.Y];
-            if (t.Type == TileType.StairsUp || t.EncounterId != null) continue;
             dungeon.Tiles[p.X, p.Y] = t with { LootId = itemId };
         }
     }

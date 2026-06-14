@@ -11,13 +11,13 @@ public class DungeonPathClassifier
     private static readonly Direction[] Directions =
         { Direction.North, Direction.East, Direction.South, Direction.West };
 
-    public IReadOnlyDictionary<int, RoomRole> Classify(Dungeon dungeon)
+    public IReadOnlyDictionary<int, RoomRole> Classify(Dungeon dungeon, string? bossEncounterId = null)
     {
         var result = new Dictionary<int, RoomRole>();
         if (dungeon.Rooms.Count == 0) return result;
 
         var entrance = FindEntrance(dungeon);
-        var boss = FindBoss(dungeon);
+        var boss = FindBoss(dungeon, bossEncounterId);
         var criticalTiles = entrance is null || boss is null
             ? new HashSet<Position>()
             : ShortestPath(dungeon, entrance.Value, boss.Value);
@@ -80,12 +80,19 @@ public class DungeonPathClassifier
         return first;
     }
 
-    private static Position? FindBoss(Dungeon dungeon)
+    // When a specific boss encounter id is provided, match exactly that tile (the procedural path
+    // tags many tiles with encounter ids before decoration, so "first encounter tile" would latch
+    // onto an arbitrary near-entrance encounter). When null, fall back to the first encounter tile.
+    private static Position? FindBoss(Dungeon dungeon, string? bossEncounterId)
     {
         for (int x = 0; x < dungeon.Width; x++)
             for (int y = 0; y < dungeon.Height; y++)
-                if (dungeon.Tiles[x, y].EncounterId != null && dungeon.Tiles[x, y].IsWalkable)
+            {
+                var t = dungeon.Tiles[x, y];
+                if (!t.IsWalkable || t.EncounterId == null) continue;
+                if (bossEncounterId == null || t.EncounterId == bossEncounterId)
                     return new Position(x, y);
+            }
         return null;
     }
 
