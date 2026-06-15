@@ -11,31 +11,25 @@
   import { SettingsPanel } from '$features/settings';
   import { AnalyticsDashboard } from '$features/analytics';
   import { TitleScreen } from '$features/title';
-  import { DungeonRenderer } from '$renderer/DungeonRenderer';
-  import { AmbientAudioManager } from '$renderer/AmbientAudio';
-  import { UnaccountedAudioManager } from '$renderer/UnaccountedAudioManager';
+  import { RendererHost } from '$renderer/RendererHost';
   import type { GameState } from '$shared/types/game';
-  import { loadBindings, keyToAction } from '$config/keybindings';
-  import { loadDisplaySettings, type DisplaySettings } from '$config/displaySettings';
+  import { loadBindings } from '$config/keybindings';
+  import type { DisplaySettings } from '$config/displaySettings';
   import { loadAccessibilitySettings, applyAccessibilityToDocument, type AccessibilitySettings } from '$config/accessibilitySettings';
   import { ALL_SYNERGIES } from '$shared/data/synergies';
-  import { playClick, playConfirm, playWarning, playSynergyChime } from '$renderer/UISounds';
+  import { playSynergyChime } from '$renderer/UISounds';
   import { subtitles as sharedSubtitles } from '$renderer/SubtitleSystem';
+  import type { SubtitleEntry } from '$renderer/SubtitleSystem';
   import { GamepadManager } from '$renderer/GamepadManager';
+  import { MovementInputController, resolveKeyToAction } from '$shared/input/movementInput';
+  import { createActionLogFeedback } from '$shared/stores/actionLogFeedback';
 
   let gameContainer: HTMLDivElement | undefined = $state(undefined);
-  let renderer: DungeonRenderer | null = null;
-  const audioManager = new AmbientAudioManager();
-  const unaccountedAudio = new UnaccountedAudioManager(audioManager);
+  let host = $state<RendererHost | null>(null);
   let gameState = $state<GameState | null>(null);
   let serverError = $state<{ code: string; message: string; recoverable: boolean } | null>(null);
   let combatCancelSignal = $state(0);
-  let repToasts = $state<Array<{ id: number; factionId: string; delta: number; source: string }>>([]);
-  let factionNotifications = $state<Array<{ id: number; text: string }>>([]);
-  let lastActionLogTurn = $state(0);
-  let subtitleEntries = $state<Array<{ text: string; duration: number; timestamp: number }>>([]);
-  let nextToastId = 0;
-  let synergyFlashTargetId = $state<string | null>(null);
+  let subtitleEntries = $state<SubtitleEntry[]>([]);
   let showFieldNotes = $state(false);
   let replaySynergyId = $state<string | null>(null);
   let selectedMemberSlot = $state<number | null>(null);
@@ -47,62 +41,18 @@
   const TELEMETRY_CONSENT_KEY = 'rpc_telemetry_consent';
   let keyBindings = $state(loadBindings());
 
-  const DISCOVERY_KEY = 'rpc_discovered_synergies';
-  const REVEALED_KEY = 'rpc_revealed_synergies';
+  // Movement/input buffering is owned by a dedicated controller; sendAction is resolved
+  // lazily so the controller always dispatches through the live, bootstrapped binding.
+  const input = new MovementInputController((action) => sendAction(action));
 
-  function loadSet(key: string): Set<string> {
-    try {
-      const raw = localStorage.getItem(key);
-      return new Set(raw ? JSON.parse(raw) : []);
-    } catch {
-      return new Set();
-    }
-  }
-
-  function saveSet(key: string, ids: Set<string>) {
-    localStorage.setItem(key, JSON.stringify([...ids]));
-  }
-
-  function loadArray(key: string): string[] {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveArray(key: string, ids: string[]) {
-    localStorage.setItem(key, JSON.stringify(ids));
-  }
-
-  let discoveredOrder = $state<string[]>(loadArray(DISCOVERY_KEY));
-  let revealedSynergies = $state<Set<string>>(loadSet(REVEALED_KEY));
-  let pendingReveals = $state<string[]>([]);
+  // Action-log interpretation (reputation toasts, faction notifications, synergy journal)
+  // lives in a self-subscribing feedback store.
+  const feedback = createActionLogFeedback();
+  const { repToasts, factionNotifications, discoveredOrder, revealedSynergies, synergyFlashTargetId } = feedback;
 
   serverErrorStore.subscribe((err) => {
     serverError = err;
   });
-
-  // Input buffer state
-  const INPUT_BUFFER_SIZE = 2;
-  const REPEAT_INITIAL_MS = 300;
-  const REPEAT_INTERVAL_MS = 200;
-  const PENDING_TIMEOUT_MS = 500;
-
-  let inputBuffer: PlayerAction[] = [];
-  let pendingAction: PlayerAction | null = null;
-  let pendingTimer: ReturnType<typeof setTimeout> | null = null;
-  let heldKeys = new Set<string>();
-  let repeatTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-  function clearPending() {
-    if (pendingTimer) {
-      clearTimeout(pendingTimer);
-      pendingTimer = null;
-    }
-    pendingAction = null;
-  }
 
   function requestStats() {
     const client = (window as any).gameClient as GameClient;
@@ -110,94 +60,13 @@
     showStats = true;
   }
 
-  function drainBuffer() {
-    if (pendingAction || inputBuffer.length === 0) return;
-    const action = inputBuffer.shift()!;
-    pendingAction = action;
-    sendAction(action);
-    pendingTimer = setTimeout(() => {
-      pendingAction = null;
-      pendingTimer = null;
-      drainBuffer();
-    }, PENDING_TIMEOUT_MS);
-  }
-
-  function enqueueAction(action: PlayerAction) {
-    if (inputBuffer.length < INPUT_BUFFER_SIZE) {
-      inputBuffer.push(action);
-      drainBuffer();
-    }
-  }
-
-  function startRepeat(key: string, action: PlayerAction) {
-    if (repeatTimers.has(key)) return;
-    const timer = setTimeout(() => {
-      repeatTimers.delete(key);
-      if (heldKeys.has(key)) {
-        enqueueAction(action);
-        const intervalTimer = setInterval(() => {
-          if (!heldKeys.has(key)) {
-            clearInterval(intervalTimer);
-            return;
-          }
-          enqueueAction(action);
-        }, REPEAT_INTERVAL_MS);
-        repeatTimers.set(key, intervalTimer);
-      }
-    }, REPEAT_INITIAL_MS);
-    repeatTimers.set(key, timer);
-  }
-
-  function stopRepeat(key: string) {
-    const timer = repeatTimers.get(key);
-    if (timer) {
-      clearTimeout(timer);
-      clearInterval(timer);
-      repeatTimers.delete(key);
-    }
-    heldKeys.delete(key);
-  }
-
-  function stopAllRepeats() {
-    for (const timer of repeatTimers.values()) {
-      clearTimeout(timer);
-      clearInterval(timer);
-    }
-    repeatTimers.clear();
-    heldKeys.clear();
-  }
-
   function handleCancel() {
-    inputBuffer = [];
-    clearPending();
-    stopAllRepeats();
     combatCancelSignal++;
-    sendAction({ type: 'cancel' });
+    input.cancel();
   }
-
-  // The only player actions reachable via keyboard in the overworld context are movement.
-  // Validating against this set narrows the loosely-typed binding string to a real PlayerAction,
-  // so a mis-bound or unknown action string can never be dispatched through keyboard input.
-  const KEYBOARD_MOVEMENT_ACTIONS = [
-    'move_forward', 'move_back', 'strafe_left', 'strafe_right', 'turn_left', 'turn_right',
-  ] as const;
-  type KeyboardMovementAction = (typeof KEYBOARD_MOVEMENT_ACTIONS)[number];
-
-  function resolveKeyToAction(key: string): PlayerAction | null {
-    // Movement bindings live in the 'overworld' context (exploration + overworld traversal).
-    const action = keyToAction(keyBindings, key, 'overworld');
-    if (action && (KEYBOARD_MOVEMENT_ACTIONS as readonly string[]).includes(action)) {
-      return { type: action as KeyboardMovementAction };
-    }
-    return null;
-  }
-
-  let lastMode: string | null = null;
 
   const unsubGameStore = gameStore.subscribe((s) => {
-    const wasCombat = lastMode === 'Combat';
     const hadState = gameState !== null;
-    lastMode = s?.mode ?? null;
     gameState = s;
 
     // Auto-dismiss title screen on first server state (page refresh mid-game)
@@ -205,88 +74,15 @@
       showTitleScreen = false;
     }
 
-    audioManager.update(s?.dungeonType);
-    unaccountedAudio.update(s);
-    subtitleEntries = unaccountedAudio.subtitles.getActive();
-    clearPending();
-    drainBuffer();
-
-    // Check for new reputation changes in action log
-    const actionLog = s?.actionLog ?? [];
-    const maxTurn = actionLog.length > 0 ? Math.max(...actionLog.map((e: any) => e.turn)) : 0;
-    if (maxTurn > lastActionLogTurn) {
-      const newEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'rep_changed');
-      for (const entry of newEntries) {
-        const toast = {
-          id: nextToastId++,
-          factionId: entry.payload.factionId ?? 'unknown',
-          delta: parseInt(entry.payload.delta ?? '0', 10),
-          source: entry.payload.source ?? '',
-        };
-        repToasts = [...repToasts, toast];
-        setTimeout(() => {
-          repToasts = repToasts.filter((t) => t.id !== toast.id);
-        }, 4000);
-      }
-
-      const newSynergyEntries = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.type === 'synergy_triggered');
-      if (newSynergyEntries.length > 0) {
-        // Audio event: synergy chime, captioned for subtitle/a11y support.
-        playSynergyChime();
-        sharedSubtitles.add('[Synergy chime — abilities combine]', 2500);
-      }
-      for (const entry of newSynergyEntries) {
-        const sid = entry.payload?.synergyId;
-        const tid = entry.payload?.targetId;
-        if (sid && !discoveredOrder.includes(sid)) {
-          discoveredOrder = [...discoveredOrder, sid];
-          saveArray(DISCOVERY_KEY, discoveredOrder);
-        }
-        if (sid && !revealedSynergies.has(sid) && !pendingReveals.includes(sid)) {
-          pendingReveals = [...pendingReveals, sid];
-        }
-        if (tid) {
-          synergyFlashTargetId = tid;
-        }
-      }
-
-      const factionEvents = actionLog.filter((e: any) => e.turn > lastActionLogTurn && e.category === 'faction' && ['resolution', 'executing_collision', 'timeline_modified', 'event_fired'].includes(e.type));
-      for (const entry of factionEvents) {
-        let text = '';
-        if (entry.type === 'resolution') {
-          text = entry.payload?.description ?? 'Faction conflict resolved.';
-        } else if (entry.type === 'executing_collision') {
-          text = `Multiple factions are executing their schemes: ${entry.payload?.factions ?? ''}`;
-        } else if (entry.type === 'timeline_modified') {
-          text = `${entry.payload?.factionId ?? 'A faction'}'s timeline shifts.`;
-        } else if (entry.type === 'event_fired') {
-          text = entry.payload?.eventName ?? 'A campaign event unfolds.';
-        }
-        if (text) {
-          const noteId = nextToastId++;
-          factionNotifications = [...factionNotifications, { id: noteId, text }];
-          setTimeout(() => {
-            factionNotifications = factionNotifications.filter((n) => n.id !== noteId);
-          }, 6000);
-        }
-      }
-
-      lastActionLogTurn = maxTurn;
-    } else if (actionLog.length === 0 && lastActionLogTurn > 0) {
-      // Reset detected — clear turn tracker so future toasts fire
-      lastActionLogTurn = 0;
-    }
-
-    // Reveal field notes entries post-combat
-    if (wasCombat && s?.mode !== 'Combat' && pendingReveals.length > 0) {
-      revealedSynergies = new Set([...revealedSynergies, ...pendingReveals]);
-      saveSet(REVEALED_KEY, revealedSynergies);
-      pendingReveals = [];
-    }
+    // Each settled server state clears the in-flight gate and drains buffered input.
+    input.notifyStateSettled();
   });
 
   $effect(() => {
-    return () => unsubGameStore();
+    return () => {
+      unsubGameStore();
+      feedback.dispose();
+    };
   });
 
   // Apply persisted accessibility settings to the document once on mount.
@@ -294,31 +90,29 @@
     applyAccessibilityToDocument(loadAccessibilitySettings());
   });
 
+  // Renderer + audio lifecycle is isolated in the RendererHost; created once the
+  // container element is bound, then driven by each game-state change.
   $effect(() => {
-    if (gameContainer && !renderer) {
-      renderer = new DungeonRenderer(gameContainer);
-      const d = loadDisplaySettings();
-      renderer.setFov(d.fov);
-      renderer.setResolutionScale(d.resolutionScale);
-      renderer.setReduceMotion(loadAccessibilitySettings().reduceMotion);
+    if (gameContainer && !host) {
+      host = new RendererHost(gameContainer);
+    }
+  });
+
+  $effect(() => {
+    if (host) {
+      host.update(gameState);
+      subtitleEntries = host.subtitleEntries;
     }
   });
 
   function applyDisplaySettings(d: DisplaySettings) {
-    renderer?.setFov(d.fov);
-    renderer?.setResolutionScale(d.resolutionScale);
+    host?.applyDisplaySettings(d);
   }
 
   function applyAccessibilitySettings(a: AccessibilitySettings) {
     applyAccessibilityToDocument(a);
-    renderer?.setReduceMotion(a.reduceMotion);
+    host?.applyAccessibilitySettings(a);
   }
-
-  $effect(() => {
-    if (renderer && gameState) {
-      renderer.updateState(gameState);
-    }
-  });
 
   $effect(() => {
     if (gameState?.campaignEnded) {
@@ -394,22 +188,17 @@
         return;
       }
 
-      const action = resolveKeyToAction(e.key);
+      const action = resolveKeyToAction(keyBindings, e.key);
       if (!action) return;
 
       if (gameState?.mode !== 'Exploration') return;
 
       e.preventDefault();
-
-      if (!heldKeys.has(e.key)) {
-        heldKeys.add(e.key);
-        enqueueAction(action);
-        startRepeat(e.key, action);
-      }
+      input.keyDown(e.key, action);
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      stopRepeat(e.key);
+      input.keyUp(e.key);
     };
 
     const gamepadManager = new GamepadManager((action: PlayerAction) => {
@@ -420,7 +209,7 @@
         || action.type === 'strafe_left' || action.type === 'strafe_right'
         || action.type === 'turn_left' || action.type === 'turn_right';
       if (isMovement) {
-        if (gameState?.mode === 'Exploration') enqueueAction(action);
+        if (gameState?.mode === 'Exploration') input.enqueue(action);
       } else {
         sendAction(action);
       }
@@ -431,7 +220,7 @@
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      stopAllRepeats();
+      input.dispose();
       unsubTest();
       gamepadManager.dispose();
     };
@@ -547,7 +336,7 @@
         <span class="error-message">{serverError.message}</span>
       </div>
     {/if}
-    {#each repToasts as toast (toast.id)}
+    {#each $repToasts as toast (toast.id)}
       <div class="rep-toast" role="status">
         <span class="rep-toast-faction">{toast.factionId}</span>
         <span class="rep-toast-delta" class:positive={toast.delta > 0} class:negative={toast.delta < 0}>
@@ -556,7 +345,7 @@
         <span class="rep-toast-source">({toast.source})</span>
       </div>
     {/each}
-    {#each factionNotifications as note (note.id)}
+    {#each $factionNotifications as note (note.id)}
       <div class="faction-notification" role="status">
         {note.text}
       </div>
@@ -615,7 +404,7 @@
           onMissionAccept={handleMissionAccept}
           onVendorPurchase={handleVendorPurchase}
           onTravel={handleTravel}
-          audioManager={audioManager}
+          audioManager={host?.ambientAudio}
         />
       {/if}
       {#if gameState?.mode === 'Combat'}
@@ -625,7 +414,7 @@
           onCombatAction={handleCombatAction}
           onFlee={handleFlee}
           cancelSignal={combatCancelSignal}
-          synergyFlashTargetId={synergyFlashTargetId}
+          synergyFlashTargetId={$synergyFlashTargetId}
         />
       {/if}
       {#if gameState?.mode === 'Exploration'}
@@ -692,8 +481,8 @@
       {/if}
       {#if showFieldNotes}
         <FieldNotesPanel
-          discoveredOrder={discoveredOrder}
-          revealedIds={revealedSynergies}
+          discoveredOrder={$discoveredOrder}
+          revealedIds={$revealedSynergies}
           onClose={() => showFieldNotes = false}
           onReplay={(id) => { replaySynergyId = id; playSynergyChime(); }}
         />
@@ -702,7 +491,7 @@
         <SettingsPanel
           open={showSettings}
           onClose={() => showSettings = false}
-          onAudioToggle={(enabled) => { audioManager.setEnabled(enabled); unaccountedAudio.setEnabled(enabled); }}
+          onAudioToggle={(enabled) => host?.setAudioEnabled(enabled)}
           onDisplayChange={applyDisplaySettings}
           onAccessibilityChange={applyAccessibilitySettings}
         />
