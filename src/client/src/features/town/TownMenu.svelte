@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { GameState, PartyMember } from '$shared/types/game';
   import type { AmbientAudioManager } from '$renderer/AmbientAudio';
-  import { sendAction } from '$shared/stores/gameStore';
+  import type { UiIntent } from '$shared/actions/uiIntent';
   import { CharacterSheet, PartyBroadsheet } from '$features/party';
   import { OverworldMap } from '$features/overworld';
   import TownActionsPanel from './TownActionsPanel.svelte';
@@ -19,6 +19,7 @@
     onMissionAccept: (id: string) => void;
     onVendorPurchase: (id: string) => void;
     onTravel: (targetId: string) => void;
+    onIntent: (intent: UiIntent) => void;
     audioManager?: AmbientAudioManager;
   }
 
@@ -56,7 +57,7 @@
   }
 
   function chooseBranch(characterId: string, branch: string) {
-    sendAction({ type: 'branch_choose', targetId: characterId, branch });
+    props.onIntent({ kind: 'branchChoose', characterId, branch });
   }
 </script>
 
@@ -113,6 +114,7 @@
             onTavernRecruit={props.onTavernRecruit}
             onMissionAccept={props.onMissionAccept}
             onVendorPurchase={props.onVendorPurchase}
+            onIntent={props.onIntent}
             activeTab="downtime"
           />
         </div>
@@ -141,7 +143,7 @@
           recruits={gameState?.town?.tavernRoster ?? []}
           gold={gameState?.partyGold ?? 0}
           onRecruit={props.onTavernRecruit}
-          onRest={() => sendAction({ type: 'rest' })}
+          onRest={() => props.onIntent({ kind: 'rest' })}
         />
       </div>
     {:else if currentTab === 'missions'}
@@ -151,7 +153,7 @@
           rumors={gameState?.town?.rumors ?? []}
           viewedMissions={gameState?.town?.viewedMissions ?? []}
           onAcceptMission={props.onMissionAccept}
-          onVerifyRumor={(id) => sendAction({ type: 'rumor_verify', targetId: id, source: 'Firsthand' })}
+          onVerifyRumor={(id) => props.onIntent({ kind: 'verifyRumor', rumorId: id })}
         />
       </div>
     {:else}
@@ -162,6 +164,7 @@
             onTavernRecruit={props.onTavernRecruit}
             onMissionAccept={props.onMissionAccept}
             onVendorPurchase={props.onVendorPurchase}
+            onIntent={props.onIntent}
             activeTab={currentTab as 'tavern' | 'missions' | 'market' | 'clerk'}
           />
         </div>
@@ -218,8 +221,8 @@
       member={sheetMember}
       onClose={() => sheetMember = null}
       onSwapRow={props.onSwapRow}
-      onTransferToCache={(itemId, count) => sendAction({ type: 'transfer_to_cache', slot: sheetMember!.slot, targetId: itemId, value: count })}
-      onTransferFromCache={(itemId, count) => sendAction({ type: 'transfer_from_cache', slot: sheetMember!.slot, targetId: itemId, value: count })}
+      onTransferToCache={(itemId, count) => props.onIntent({ kind: 'transferToCache', slot: sheetMember!.slot, itemId, count })}
+      onTransferFromCache={(itemId, count) => props.onIntent({ kind: 'transferFromCache', slot: sheetMember!.slot, itemId, count })}
       expeditionCache={gameState?.expeditionCache ?? []}
     />
   {/if}

@@ -1,16 +1,17 @@
 <script lang="ts">
   import type { GameState, PartyMember } from '$shared/types/game';
-  import { sendAction } from '$shared/stores/gameStore';
+  import type { UiIntent } from '$shared/actions/uiIntent';
 
   interface Props {
     gameState: GameState | null;
     onTavernRecruit: (id: string) => void;
     onMissionAccept: (id: string) => void;
     onVendorPurchase: (id: string) => void;
+    onIntent: (intent: UiIntent) => void;
     activeTab?: 'tavern' | 'missions' | 'market' | 'clerk' | 'downtime';
   }
 
-  let { gameState, onTavernRecruit, onMissionAccept, onVendorPurchase, activeTab = 'tavern' }: Props = $props();
+  let { gameState, onTavernRecruit, onMissionAccept, onVendorPurchase, onIntent, activeTab = 'tavern' }: Props = $props();
 
   const classColors: Record<string, string> = {
     bonewarden: '#8B7355',
@@ -132,7 +133,7 @@
   }
 
   function sendDowntimeAction(memberId: string, action: string) {
-    sendAction({ type: 'downtime_action', targetId: memberId, downtimeAction: action });
+    onIntent({ kind: 'downtime', memberId, action });
   }
 
   function performSelected(memberId: string) {
@@ -280,7 +281,7 @@
         <button
           type="button"
           class="action-btn"
-          onclick={() => sendAction({ type: 'rumor_verify', targetId: rumor.id, source: 'Firsthand' })}
+          onclick={() => onIntent({ kind: 'verifyRumor', rumorId: rumor.id })}
         >
           Verify
         </button>
@@ -369,9 +370,9 @@
         <span class="alliance-desc">has offered an alliance. Their soldiers will assist you in combat, and their vendors will offer a 25% discount.</span>
       </div>
       <div class="alliance-buttons">
-        <button type="button" class="action-btn accept" onclick={() => sendAction({ type: 'wildcard_alliance', targetId: 'accept' })}>Accept</button>
-        <button type="button" class="action-btn refuse" onclick={() => sendAction({ type: 'wildcard_alliance', targetId: 'refuse' })}>Refuse</button>
-        <button type="button" class="action-btn ignore" onclick={() => sendAction({ type: 'wildcard_alliance', targetId: 'ignore' })}>Ignore</button>
+        <button type="button" class="action-btn accept" onclick={() => onIntent({ kind: 'wildcardAlliance', choice: 'accept' })}>Accept</button>
+        <button type="button" class="action-btn refuse" onclick={() => onIntent({ kind: 'wildcardAlliance', choice: 'refuse' })}>Refuse</button>
+        <button type="button" class="action-btn ignore" onclick={() => onIntent({ kind: 'wildcardAlliance', choice: 'ignore' })}>Ignore</button>
       </div>
     </div>
   </div>
@@ -410,7 +411,7 @@
           type="button"
           class="action-btn"
           disabled={partyGold < dead.resurrectionCost || (gameState?.titheTokens ?? 0) < dead.titheTokenCost}
-          onclick={() => sendAction({ type: 'resurrect_character', targetId: dead.id })}
+          onclick={() => onIntent({ kind: 'resurrect', characterId: dead.id })}
         >
           Resurrect ({dead.resurrectionCost}g, {dead.titheTokenCost} TT)
         </button>

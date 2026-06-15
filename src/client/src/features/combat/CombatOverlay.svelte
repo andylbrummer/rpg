@@ -1,18 +1,17 @@
 <script lang="ts">
   import type { CombatState, Combatant } from '$shared/types/game';
-  import { sendAction } from '$shared/stores/gameStore';
+  import type { UiIntent } from '$shared/actions/uiIntent';
   import CombatResultToast from './CombatResultToast.svelte';
 
   interface Props {
     combat: CombatState | null;
     lastResult: { victory: boolean; xpGained: number; levelUps: string[]; roundCount: number } | null;
-    onCombatAction: (action: string, targetId: string) => void;
-    onFlee: () => void;
+    onIntent: (intent: UiIntent) => void;
     cancelSignal?: number;
     synergyFlashTargetId?: string | null;
   }
 
-  let { combat, lastResult, onCombatAction, onFlee, cancelSignal = 0, synergyFlashTargetId = null }: Props = $props();
+  let { combat, lastResult, onIntent, cancelSignal = 0, synergyFlashTargetId = null }: Props = $props();
 
   let flashingTargetId = $state<string | null>(null);
   let processedFlashTarget: string | null = null;
@@ -85,20 +84,21 @@
     }
 
     if (selectedAction === 'UseAbility' && selectedAbilityId) {
-      sendAction({
-        type: 'combat_action',
-        action: {
-          actorId: currentActor.id,
-          type: 'UseAbility',
-          targetId: selectedTargetId || undefined,
-          abilityId: selectedAbilityId,
-        },
+      onIntent({
+        kind: 'combatAbility',
+        actorId: currentActor.id,
+        abilityId: selectedAbilityId,
+        targetId: selectedTargetId || undefined,
       });
       return;
     }
 
-    const targetId = selectedAction === 'Attack' ? selectedTargetId! : '';
-    onCombatAction(selectedAction, targetId);
+    onIntent({
+      kind: 'combatAction',
+      actorId: currentActor.id,
+      action: selectedAction as 'Attack' | 'Defend' | 'Wait' | 'UseItem' | 'Flee',
+      targetId: selectedAction === 'Attack' ? selectedTargetId || undefined : undefined,
+    });
   }
 
   function getCurrentActor(): Combatant | null {
@@ -402,7 +402,7 @@
         </div>
         <div class="action-submit">
           <button class="submit-btn" onclick={submitAction}>Execute</button>
-          <button class="flee-btn" onclick={onFlee}>Flee</button>
+          <button class="flee-btn" onclick={() => onIntent({ kind: 'flee' })}>Flee</button>
         </div>
       {:else}
         <div class="waiting-message">

@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import path from 'path'
@@ -47,6 +48,10 @@ export default defineConfig({
     // ~600 kB. Raise the warning ceiling above it so a genuinely oversized app
     // chunk still trips the warning.
     chunkSizeWarningLimit: 700,
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
   },
   server: {
     hmr: false,

@@ -4,6 +4,7 @@
   import { GameClient } from '$shared/net/GameClient';
   import { TownMenu } from '$features/town';
   import type { PlayerAction } from '$shared/types/game';
+  import { intentToAction, type UiIntent } from '$shared/actions/uiIntent';
   import { CombatOverlay } from '$features/combat';
   import { PartyStatusBar, CharacterSheet } from '$features/party';
   import { ExplorationHUD } from '$features/exploration';
@@ -230,22 +231,11 @@
     sendAction({ type: 'enter_dungeon', dungeonType: type });
   }
 
-  function handleCombatAction(actionType: string, targetId: string) {
-    const combat = gameState?.combat;
-    if (!combat || combat.currentTurnIndex < 0 || combat.currentTurnIndex >= combat.initiativeOrder.length) return;
-    const actorId = combat.initiativeOrder[combat.currentTurnIndex];
-    sendAction({
-      type: 'combat_action',
-      action: {
-        actorId,
-        type: actionType as any,
-        targetId: targetId || undefined,
-      },
-    });
-  }
-
-  function handleFlee() {
-    sendAction({ type: 'flee_combat' });
+  // Single dispatch path: presentation components emit typed UI intents, the
+  // adapter maps them to protocol PlayerActions, and everything flows through
+  // the shared sendAction (pending/error handling lives there).
+  function dispatchIntent(intent: UiIntent) {
+    sendAction(intentToAction(intent));
   }
 
   function handleMoveForward() {
@@ -290,26 +280,26 @@
 
   function handleTransferToCache(itemId: string, count: number) {
     if (selectedMemberSlot !== null) {
-      sendAction({ type: 'transfer_to_cache', slot: selectedMemberSlot, targetId: itemId, value: count });
+      dispatchIntent({ kind: 'transferToCache', slot: selectedMemberSlot, itemId, count });
     }
   }
 
   function handleTransferFromCache(itemId: string, count: number) {
     if (selectedMemberSlot !== null) {
-      sendAction({ type: 'transfer_from_cache', slot: selectedMemberSlot, targetId: itemId, value: count });
+      dispatchIntent({ kind: 'transferFromCache', slot: selectedMemberSlot, itemId, count });
     }
   }
 
   function handleTavernRecruit(id: string) {
-    sendAction({ type: 'tavern_recruit', targetId: id });
+    dispatchIntent({ kind: 'tavernRecruit', recruitId: id });
   }
 
   function handleMissionAccept(id: string) {
-    sendAction({ type: 'mission_accept', targetId: id });
+    dispatchIntent({ kind: 'missionAccept', missionId: id });
   }
 
   function handleVendorPurchase(id: string) {
-    sendAction({ type: 'vendor_purchase', targetId: id });
+    dispatchIntent({ kind: 'vendorPurchase', itemId: id });
   }
 
   function handleTravel(targetId: string) {
@@ -404,6 +394,7 @@
           onMissionAccept={handleMissionAccept}
           onVendorPurchase={handleVendorPurchase}
           onTravel={handleTravel}
+          onIntent={dispatchIntent}
           audioManager={host?.ambientAudio}
         />
       {/if}
@@ -411,8 +402,7 @@
         <CombatOverlay
           combat={gameState.combat ?? null}
           lastResult={gameState.combatResult ?? null}
-          onCombatAction={handleCombatAction}
-          onFlee={handleFlee}
+          onIntent={dispatchIntent}
           cancelSignal={combatCancelSignal}
           synergyFlashTargetId={$synergyFlashTargetId}
         />
