@@ -59,7 +59,12 @@ public class StateBroadcaster
                     await SendEnvelope(client, envelope);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // One client's send failure must not abort the broadcast to the others, but it
+                // should be visible rather than silently swallowed.
+                Console.Error.WriteLine($"[Broadcast] state send to a client failed: {ex.Message}");
+            }
         }
     }
 
@@ -83,7 +88,10 @@ public class StateBroadcaster
                     await SendEnvelope(client, envelope);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Broadcast] content-reload send to a client failed: {ex.Message}");
+            }
         }
     }
 
