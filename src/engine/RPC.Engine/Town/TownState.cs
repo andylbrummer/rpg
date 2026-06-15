@@ -155,6 +155,30 @@ public static class FactionContentLoader
 {
     private static readonly JsonSerializerOptions JsonOptions = ContentJsonOptions.Standard;
 
+    /// <summary>
+    /// Catalog-driven faction load. Used by the host composition root (which picks the pack/loose
+    /// <see cref="IContentCatalog"/>) so the engine never infers a content directory off the
+    /// filesystem on the production path.
+    /// </summary>
+    public static List<FactionContentDef> LoadAll(IContentCatalog catalog)
+    {
+        var defs = new List<FactionContentDef>();
+        foreach (var file in catalog.EnumerateFiles("factions", "*.json"))
+        {
+            var json = catalog.GetString(file) ?? catalog.GetString($"factions/{Path.GetFileName(file)}");
+            if (json == null)
+                continue;
+            var def = JsonSerializer.Deserialize<FactionContentDef>(json, JsonOptions);
+            if (def != null)
+                defs.Add(def);
+        }
+        return defs;
+    }
+
+    /// <summary>
+    /// Loads faction defs from loose content on disk. Used only as a fallback by engine tests that
+    /// call this directly; the host always loads through <see cref="LoadAll(IContentCatalog)"/>.
+    /// </summary>
     public static List<FactionContentDef> LoadAll(string? contentDir = null)
     {
         var dir = contentDir ?? FindContentDir();

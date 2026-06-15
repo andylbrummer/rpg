@@ -61,7 +61,7 @@ internal static class ContentBootstrap
             ItemRegistry: LoadItemRegistry(catalog),
             Synergies: LoadSynergies(catalog),
             DungeonTemplates: LoadDungeonTemplates(catalog),
-            FactionContent: LoadFactionContent(catalog),
+            FactionContent: FactionContentLoader.LoadAll(catalog),
             LootTables: LoadLootTables(catalog),
             Segments: LoadSegments(catalog),
             CampaignContent: CampaignContentRegistry.FromCatalog(catalog));
@@ -198,22 +198,6 @@ internal static class ContentBootstrap
             }
         }
         return registry;
-    }
-
-    private static List<FactionContentDef> LoadFactionContent(IContentCatalog catalog)
-    {
-        var defs = new List<FactionContentDef>();
-        foreach (var file in catalog.EnumerateFiles("factions", "*.json"))
-        {
-            var json = catalog.GetString(file) ?? catalog.GetString($"factions/{Path.GetFileName(file)}");
-            if (json != null)
-            {
-                var def = JsonSerializer.Deserialize<FactionContentDef>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowTrailingCommas = true });
-                if (def != null)
-                    defs.Add(def);
-            }
-        }
-        return defs;
     }
 
     /// <summary>
