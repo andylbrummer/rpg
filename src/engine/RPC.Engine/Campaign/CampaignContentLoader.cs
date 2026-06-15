@@ -41,6 +41,42 @@ public static class CampaignContentLoader
         return defs;
     }
 
+    /// <summary>
+    /// Catalog-driven scheme load. Used by the host composition root (which picks the
+    /// pack/loose <see cref="IContentCatalog"/>) so the engine never infers a content
+    /// directory off the filesystem on the production path.
+    /// </summary>
+    public static List<SchemeDef> LoadSchemes(IContentCatalog catalog)
+    {
+        var defs = new List<SchemeDef>();
+        foreach (var file in catalog.EnumerateFiles("schemes", "*.json"))
+        {
+            var json = catalog.GetString(file) ?? catalog.GetString($"schemes/{Path.GetFileName(file)}");
+            if (json == null)
+                continue;
+            var def = JsonSerializer.Deserialize<SchemeDef>(json, JsonOptions);
+            if (def != null)
+                defs.Add(def);
+        }
+        return defs;
+    }
+
+    /// <summary>Catalog-driven complication load. See <see cref="LoadSchemes(IContentCatalog)"/>.</summary>
+    public static List<ComplicationDef> LoadComplications(IContentCatalog catalog)
+    {
+        var defs = new List<ComplicationDef>();
+        foreach (var file in catalog.EnumerateFiles("complications", "*.json"))
+        {
+            var json = catalog.GetString(file) ?? catalog.GetString($"complications/{Path.GetFileName(file)}");
+            if (json == null)
+                continue;
+            var def = JsonSerializer.Deserialize<ComplicationDef>(json, JsonOptions);
+            if (def != null)
+                defs.Add(def);
+        }
+        return defs;
+    }
+
     public static SchemeDef? GetSchemeById(string id, string? contentDir = null)
     {
         return LoadSchemes(contentDir).FirstOrDefault(s => s.Id == id);

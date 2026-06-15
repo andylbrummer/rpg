@@ -29,7 +29,8 @@ internal sealed record HostContent(
     Dictionary<string, DungeonTemplate> DungeonTemplates,
     List<FactionContentDef> FactionContent,
     DungeonLootTableRegistry LootTables,
-    List<RoomSegment> Segments);
+    List<RoomSegment> Segments,
+    CampaignContentRegistry CampaignContent);
 
 /// <summary>
 /// Locates the content pack and loads every registry the host needs. Keeps the file/JSON
@@ -62,7 +63,8 @@ internal static class ContentBootstrap
             DungeonTemplates: LoadDungeonTemplates(catalog),
             FactionContent: LoadFactionContent(catalog),
             LootTables: LoadLootTables(catalog),
-            Segments: LoadSegments(catalog));
+            Segments: LoadSegments(catalog),
+            CampaignContent: CampaignContentRegistry.FromCatalog(catalog));
     }
 
     private static string? FindRpkPath()

@@ -131,7 +131,7 @@ public class GameState
     /// </summary>
     public string ResolveEpilogue() => _cachedEpilogue ??= EpilogueGenerator.Generate(this);
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null)
     {
         LastUpdate = DateTime.UtcNow;
         _seed = seed ?? DateTime.UtcNow.GetHashCode();
@@ -146,7 +146,7 @@ public class GameState
 
         _combatService = new CombatService(_encounterTables, _classRegistry, _encounterRng, synergies);
         _explorationService = new ExplorationService(_encounterTables, _classRegistry, _encounterRng);
-        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies);
+        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies, campaignContent);
         _campaignService = new CampaignService(_classRegistry);
         _missionService = new MissionService(_classRegistry);
         _eventScheduler = new EventScheduler(_campaignService);

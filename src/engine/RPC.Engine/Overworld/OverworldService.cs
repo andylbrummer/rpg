@@ -11,12 +11,14 @@ public class OverworldService
     private readonly GameRandom _encounterRng;
     private readonly ClassRegistry? _classRegistry;
     private readonly SynergyRegistry? _synergies;
+    private readonly CampaignContentRegistry? _campaignContent;
 
-    public OverworldService(GameRandom encounterRng, ClassRegistry? classRegistry, SynergyRegistry? synergies = null)
+    public OverworldService(GameRandom encounterRng, ClassRegistry? classRegistry, SynergyRegistry? synergies = null, CampaignContentRegistry? campaignContent = null)
     {
         _encounterRng = encounterRng;
         _classRegistry = classRegistry;
         _synergies = synergies;
+        _campaignContent = campaignContent;
     }
 
     public void GenerateOverworld(GameState state, CampaignConfig config)
@@ -28,8 +30,11 @@ public class OverworldService
         Save.MetaProgressionApplicator.Apply(state, state.Meta);
 
         state.CampaignConfig = config;
-        state.CurrentScheme = CampaignContentLoader.GetSchemeById(config.Scheme.ToString());
-        state.CurrentComplication = CampaignContentLoader.GetComplicationById(config.Complication.ToString());
+        // Production injects the campaign content (loaded by the host via IContentCatalog); engine
+        // tests that construct GameState directly fall back to reading loose content from disk.
+        var campaignContent = _campaignContent ?? CampaignContentRegistry.FromDisk();
+        state.CurrentScheme = campaignContent.GetSchemeById(config.Scheme.ToString());
+        state.CurrentComplication = campaignContent.GetComplicationById(config.Complication.ToString());
         state.Overworld.GenerateFromConfig(config, _encounterRng, state.CurrentComplication);
         SyncWorldStateFromOverworld(state);
 
