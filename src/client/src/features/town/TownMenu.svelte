@@ -2,11 +2,10 @@
   import type { GameState, PartyMember } from '$shared/types/game';
   import type { AmbientAudioManager } from '$renderer/AmbientAudio';
   import { sendAction } from '$shared/stores/gameStore';
-  import CharacterSheet from '$features/party/CharacterSheet.svelte';
-  import OverworldMap from '$features/overworld/OverworldMap.svelte';
+  import { CharacterSheet, PartyBroadsheet } from '$features/party';
+  import { OverworldMap } from '$features/overworld';
   import TownActionsPanel from './TownActionsPanel.svelte';
   import TownServicesPanel from './TownServicesPanel.svelte';
-  import PartyBroadsheet from '$features/party/PartyBroadsheet.svelte';
   import TavernHall from './TavernHall.svelte';
   import MessageBoard from './MessageBoard.svelte';
 
