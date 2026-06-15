@@ -107,6 +107,15 @@
             if (m) chooseBranch(m.id, branch);
           }}
         />
+        <div class="town-services">
+          <TownServicesPanel
+            gameState={gameState}
+            onTavernRecruit={props.onTavernRecruit}
+            onMissionAccept={props.onMissionAccept}
+            onVendorPurchase={props.onVendorPurchase}
+            activeTab="downtime"
+          />
+        </div>
       </div>
 
       <TownActionsPanel

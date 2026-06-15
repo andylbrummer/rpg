@@ -230,7 +230,7 @@
           <label class="display-label" for="fov-slider">Field of View</label>
           <input
             id="fov-slider"
-            class="fov-slider"
+            class="slider fov-slider"
             type="range"
             min={FOV_MIN}
             max={FOV_MAX}
@@ -273,7 +273,7 @@
           <label class="display-label" for="colorblind-select">Colorblind</label>
           <select
             id="colorblind-select"
-            class="display-select"
+            class="a11y-select"
             value={a11y.colorblindMode}
             onchange={(e) => setColorblind((e.target as HTMLSelectElement).value as ColorblindMode)}
           >
@@ -287,7 +287,7 @@
           <label class="display-label" for="text-scale">Text Size</label>
           <input
             id="text-scale"
-            class="fov-slider"
+            class="slider"
             type="range"
             min={TEXT_SCALE_MIN}
             max={TEXT_SCALE_MAX}
@@ -295,7 +295,7 @@
             value={a11y.textScale}
             oninput={(e) => setTextScale(Number((e.target as HTMLInputElement).value))}
           />
-          <span class="display-value">{Math.round(a11y.textScale * 100)}%</span>
+          <span class="a11y-value">{Math.round(a11y.textScale * 100)}%</span>
         </div>
 
         <label class="audio-toggle">
@@ -440,11 +440,12 @@
     font-size: 0.85rem;
   }
 
-  .fov-slider {
+  .slider {
     flex: 1 1 auto;
   }
 
-  .display-value {
+  .display-value,
+  .a11y-value {
     flex: 0 0 auto;
     min-width: 2.5rem;
     text-align: right;
@@ -453,6 +454,7 @@
   }
 
   .display-select,
+  .a11y-select,
   .display-btn {
     padding: 0.3rem 0.6rem;
     background: rgba(255, 255, 255, 0.06);

@@ -7,7 +7,7 @@
     onTavernRecruit: (id: string) => void;
     onMissionAccept: (id: string) => void;
     onVendorPurchase: (id: string) => void;
-    activeTab?: 'tavern' | 'missions' | 'market' | 'clerk';
+    activeTab?: 'tavern' | 'missions' | 'market' | 'clerk' | 'downtime';
   }
 
   let { gameState, onTavernRecruit, onMissionAccept, onVendorPurchase, activeTab = 'tavern' }: Props = $props();
@@ -422,7 +422,7 @@
 </div>
 {/if}
 
-{#if activeTab === 'tavern'}
+{#if activeTab === 'downtime'}
 <h2>Downtime</h2>
 <div class="service-list">
   <div class="downtime-header">

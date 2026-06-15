@@ -124,7 +124,7 @@ test.describe('Branch Choice Modal', () => {
     await expect(page.locator('.branch-modal-overlay')).toBeVisible();
 
     // Attempting to click town UI through the overlay should fail
-    const partyCard = page.locator('.character-card').first();
+    const partyCard = page.locator('.rail-row').first();
     await expect(partyCard).toBeVisible();
     await expect(partyCard.click({ timeout: 1000 })).rejects.toThrow();
 
