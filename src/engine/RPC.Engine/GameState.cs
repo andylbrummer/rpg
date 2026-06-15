@@ -18,6 +18,7 @@ public class GameState
     // Feature state aggregates
     public ExplorationState Exploration { get; } = new();
     public CampaignState Campaign { get; } = new();
+    public CombatSessionState CombatSession { get; } = new();
 
     // Exploration forwarding properties
     public Player Player { get => Exploration.Player; set => Exploration.Player = value; }
@@ -50,19 +51,19 @@ public class GameState
     public PartyState Party { get; set; } = new();
     public TownState Town { get; set; } = new();
     public OverworldState Overworld { get; set; } = new();
-    public CombatState? Combat { get; internal set; }
-    public CombatResult? LastCombatResult { get; internal set; }
+    public CombatState? Combat { get => CombatSession.Combat; internal set => CombatSession.Combat = value; }
+    public CombatResult? LastCombatResult { get => CombatSession.LastCombatResult; internal set => CombatSession.LastCombatResult = value; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
     public int PartyGold { get; set; } = 500;
     public int TitheTokens { get; set; } = 0;
     public List<string> PartyInventory { get; set; } = new();
     public int CurrentAct => Overworld.Turns <= 15 ? 1 : Overworld.Turns <= 25 ? 2 : 3;
-    public TravelEncounterState? CurrentTravelEncounter { get; internal set; }
-    public RescueExpeditionState? RescueExpedition { get; set; }
-    public int RolledTravelEncounterCount { get; internal set; }
-    public int ResolvedTravelEncounterCount { get; internal set; }
-    public ParleyOffer? CurrentParley { get; internal set; }
+    public TravelEncounterState? CurrentTravelEncounter { get => CombatSession.CurrentTravelEncounter; internal set => CombatSession.CurrentTravelEncounter = value; }
+    public RescueExpeditionState? RescueExpedition { get => CombatSession.RescueExpedition; set => CombatSession.RescueExpedition = value; }
+    public int RolledTravelEncounterCount { get => CombatSession.RolledTravelEncounterCount; internal set => CombatSession.RolledTravelEncounterCount = value; }
+    public int ResolvedTravelEncounterCount { get => CombatSession.ResolvedTravelEncounterCount; internal set => CombatSession.ResolvedTravelEncounterCount = value; }
+    public ParleyOffer? CurrentParley { get => CombatSession.CurrentParley; internal set => CombatSession.CurrentParley = value; }
     public IReadOnlySet<Guid> DowntimeCompleted => _downtimeCompleted;
     public string? SettingsHash { get; set; }
     public bool IsIronman { get; set; } = false;
