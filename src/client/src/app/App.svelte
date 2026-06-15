@@ -175,10 +175,21 @@
     sendAction({ type: 'cancel' });
   }
 
+  // The only player actions reachable via keyboard in the overworld context are movement.
+  // Validating against this set narrows the loosely-typed binding string to a real PlayerAction,
+  // so a mis-bound or unknown action string can never be dispatched through keyboard input.
+  const KEYBOARD_MOVEMENT_ACTIONS = [
+    'move_forward', 'move_back', 'strafe_left', 'strafe_right', 'turn_left', 'turn_right',
+  ] as const;
+  type KeyboardMovementAction = (typeof KEYBOARD_MOVEMENT_ACTIONS)[number];
+
   function resolveKeyToAction(key: string): PlayerAction | null {
     // Movement bindings live in the 'overworld' context (exploration + overworld traversal).
     const action = keyToAction(keyBindings, key, 'overworld');
-    return action ? ({ type: action } as PlayerAction) : null;
+    if (action && (KEYBOARD_MOVEMENT_ACTIONS as readonly string[]).includes(action)) {
+      return { type: action as KeyboardMovementAction };
+    }
+    return null;
   }
 
   let lastMode: string | null = null;
