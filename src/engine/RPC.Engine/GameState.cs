@@ -19,6 +19,7 @@ public class GameState
     public ExplorationState Exploration { get; } = new();
     public CampaignState Campaign { get; } = new();
     public CombatSessionState CombatSession { get; } = new();
+    public EconomyState Economy { get; } = new();
 
     // Exploration forwarding properties
     public Player Player { get => Exploration.Player; set => Exploration.Player = value; }
@@ -55,9 +56,9 @@ public class GameState
     public CombatResult? LastCombatResult { get => CombatSession.LastCombatResult; internal set => CombatSession.LastCombatResult = value; }
     public List<CombatLogEntry> CombatLog => Combat?.Log ?? new List<CombatLogEntry>();
     public List<ActionLogEntry> ActionLog { get; } = new();
-    public int PartyGold { get; set; } = 500;
-    public int TitheTokens { get; set; } = 0;
-    public List<string> PartyInventory { get; set; } = new();
+    public int PartyGold { get => Economy.Gold; set => Economy.Gold = value; }
+    public int TitheTokens { get => Economy.TitheTokens; set => Economy.TitheTokens = value; }
+    public List<string> PartyInventory { get => Economy.Inventory; set => Economy.Inventory = value; }
     public int CurrentAct => Overworld.Turns <= 15 ? 1 : Overworld.Turns <= 25 ? 2 : 3;
     public TravelEncounterState? CurrentTravelEncounter { get => CombatSession.CurrentTravelEncounter; internal set => CombatSession.CurrentTravelEncounter = value; }
     public RescueExpeditionState? RescueExpedition { get => CombatSession.RescueExpedition; set => CombatSession.RescueExpedition = value; }
