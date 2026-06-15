@@ -18,5 +18,6 @@
   "targetRooms": 10,
   "bossEncounterId": "sgw-d5-bloom-knight",
   "encounterTableId": "settlement_gone_wrong",
-  "wanderingTableId": "settlement_gone_wrong"
+  "wanderingTableId": "settlement_gone_wrong",
+  "segmentDirectory": "segments/settlement-gone-wrong"
 }

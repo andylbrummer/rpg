@@ -22,6 +22,10 @@
   "encounterTableId": "underway",
   "wanderingTableId": "underway",
   "unlockConditions": [
-    { "factionId": "cartography", "minReputation": 10 }
-  ]
+    {
+      "factionId": "cartography",
+      "minReputation": 10
+    }
+  ],
+  "segmentDirectory": "segments/underway"
 }

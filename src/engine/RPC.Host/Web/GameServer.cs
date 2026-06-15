@@ -31,7 +31,8 @@ public class GameServer
 
     private readonly IContentCatalog _catalog;
     private readonly List<RoomSegment> _segments;
-    private readonly FileSystemWatcher? _segmentWatcher;
+    private readonly DungeonContentSet _dungeonContent;
+    private readonly List<FileSystemWatcher> _segmentWatchers = new();
     private readonly SemaphoreSlim _gameStateLock = new(1, 1);
     private readonly HttpRequestRouter _router;
 
@@ -45,6 +46,7 @@ public class GameServer
         var content = ContentBootstrap.Load();
         _catalog = content.Catalog;
         _segments = content.Segments;
+        _dungeonContent = content.DungeonContent;
 
         var factionRepo = new FactionContentRepository(content.FactionContent);
         var rumorRepo = new RumorRepository(_catalog);
@@ -75,7 +77,7 @@ public class GameServer
         }
         if (isDev)
         {
-            _segmentWatcher = StartSegmentWatcher();
+            StartSegmentWatchers();
         }
     }
 
@@ -101,24 +103,34 @@ public class GameServer
         _listener.Stop();
     }
 
-    private FileSystemWatcher? StartSegmentWatcher()
+    /// <summary>
+    /// Watch every content-defined segment directory the dungeon templates declare (not a single
+    /// hard-coded broken-engine path). Each watcher reports the directory that changed so the reload
+    /// can name the affected dungeon templates.
+    /// </summary>
+    private void StartSegmentWatchers()
     {
-        if (_catalog is not FileSystemCatalog fs) return null;
-        var dir = Path.Combine(fs.BaseDirectory, "segments", "broken-engine");
-        if (!Directory.Exists(dir)) return null;
+        if (_catalog is not FileSystemCatalog fs) return;
 
-        var watcher = new FileSystemWatcher(dir, "*.json")
+        foreach (var relativeDir in _dungeonContent.SegmentDirectories)
         {
-            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName
-        };
-        watcher.Changed += (_, _) => ReloadSegments();
-        watcher.Created += (_, _) => ReloadSegments();
-        watcher.Deleted += (_, _) => ReloadSegments();
-        watcher.EnableRaisingEvents = true;
-        return watcher;
+            // relativeDir is content-relative (e.g. "segments/ossuary"); resolve under the catalog base.
+            var dir = Path.Combine(fs.BaseDirectory, relativeDir.Replace('/', Path.DirectorySeparatorChar));
+            if (!Directory.Exists(dir)) continue;
+
+            var watcher = new FileSystemWatcher(dir, "*.json")
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName
+            };
+            watcher.Changed += (_, _) => ReloadSegments(relativeDir);
+            watcher.Created += (_, _) => ReloadSegments(relativeDir);
+            watcher.Deleted += (_, _) => ReloadSegments(relativeDir);
+            watcher.EnableRaisingEvents = true;
+            _segmentWatchers.Add(watcher);
+        }
     }
 
-    private void ReloadSegments()
+    private void ReloadSegments(string changedDirectory)
     {
         try
         {
@@ -136,7 +148,10 @@ public class GameServer
             {
                 _gameStateLock.Release();
             }
-            _ = _broadcaster.BroadcastContentReload();
+            var affected = _dungeonContent.TemplatesForDirectory(changedDirectory)
+                .Select(t => (t.Id, t.Name))
+                .ToList();
+            _ = _broadcaster.BroadcastContentReload(affected);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)

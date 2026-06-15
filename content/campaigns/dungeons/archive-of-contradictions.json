@@ -20,7 +20,14 @@
   "encounterTableId": "ossuary",
   "wanderingTableId": "ossuary",
   "unlockConditions": [
-    { "factionId": "bureau", "minReputation": 50 },
-    { "factionId": "convocation", "minReputation": 50 }
-  ]
+    {
+      "factionId": "bureau",
+      "minReputation": 50
+    },
+    {
+      "factionId": "convocation",
+      "minReputation": 50
+    }
+  ],
+  "segmentDirectory": "segments/ossuary"
 }

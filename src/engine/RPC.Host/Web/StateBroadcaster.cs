@@ -68,9 +68,10 @@ public class StateBroadcaster
         }
     }
 
-    public async Task BroadcastContentReload()
+    public async Task BroadcastContentReload(IReadOnlyList<(string TemplateId, string Name)>? affectedDungeons = null)
     {
         var clients = _registry.Snapshot();
+        var dungeons = affectedDungeons ?? Array.Empty<(string, string)>();
 
         foreach (var client in clients)
         {
@@ -83,7 +84,13 @@ public class StateBroadcaster
                         V = 2,
                         Type = "content.reload",
                         Seq = client.NextServerSeq(),
-                        Payload = new { category = "segments" }
+                        Payload = new
+                        {
+                            category = "segments",
+                            dungeons = dungeons
+                                .Select(d => new { templateId = d.TemplateId, name = d.Name })
+                                .ToArray()
+                        }
                     };
                     await SendEnvelope(client, envelope);
                 }

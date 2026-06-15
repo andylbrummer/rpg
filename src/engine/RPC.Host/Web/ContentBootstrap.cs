@@ -27,6 +27,7 @@ internal sealed record HostContent(
     ItemRegistry ItemRegistry,
     SynergyRegistry Synergies,
     Dictionary<string, DungeonTemplate> DungeonTemplates,
+    DungeonContentSet DungeonContent,
     List<FactionContentDef> FactionContent,
     DungeonLootTableRegistry LootTables,
     List<RoomSegment> Segments,
@@ -53,17 +54,28 @@ internal static class ContentBootstrap
         var contentHash = ReadContentHash(rpkPath);
         LogContentPackInfo(rpkPath, contentHash);
 
+        var encounterTables = LoadEncounterTables(catalog);
+        var dungeonTemplates = LoadDungeonTemplates(catalog);
+        var segments = LoadSegments(catalog);
+
+        // Fail-fast: a content pack that wires a dungeon template to missing segments, an unknown
+        // encounter table, or no display name/watcher path must not start the host with silently
+        // broken dungeons.
+        var dungeonContent = new DungeonContentSet(dungeonTemplates);
+        dungeonContent.Validate(segments, encounterTables);
+
         return new HostContent(
             Catalog: catalog,
             ContentHash: contentHash,
-            EncounterTables: LoadEncounterTables(catalog),
+            EncounterTables: encounterTables,
             ClassRegistry: LoadClassRegistry(catalog),
             ItemRegistry: LoadItemRegistry(catalog),
             Synergies: LoadSynergies(catalog),
-            DungeonTemplates: LoadDungeonTemplates(catalog),
+            DungeonTemplates: dungeonTemplates,
+            DungeonContent: dungeonContent,
             FactionContent: FactionContentLoader.LoadAll(catalog),
             LootTables: LoadLootTables(catalog),
-            Segments: LoadSegments(catalog),
+            Segments: segments,
             CampaignContent: CampaignContentRegistry.FromCatalog(catalog));
     }
 

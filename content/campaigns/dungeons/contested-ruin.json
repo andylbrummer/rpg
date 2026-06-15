@@ -22,7 +22,14 @@
   "encounterTableId": "contested_ruin",
   "wanderingTableId": "contested_ruin",
   "unlockConditions": [
-    { "factionId": "bureau", "minReputation": 0 },
-    { "factionId": "convocation", "minReputation": 0 }
-  ]
+    {
+      "factionId": "bureau",
+      "minReputation": 0
+    },
+    {
+      "factionId": "convocation",
+      "minReputation": 0
+    }
+  ],
+  "segmentDirectory": "segments/contested-ruin"
 }

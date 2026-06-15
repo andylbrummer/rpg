@@ -18,5 +18,6 @@
   "targetRooms": 10,
   "bossEncounterId": "bs-d5-full-mix",
   "encounterTableId": "bloom_site",
-  "wanderingTableId": "bloom_site"
+  "wanderingTableId": "bloom_site",
+  "segmentDirectory": "segments/bloom-site"
 }

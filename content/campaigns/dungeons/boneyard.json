@@ -18,5 +18,6 @@
   "targetRooms": 10,
   "bossEncounterId": "by-d5-bone-lord",
   "encounterTableId": "boneyard",
-  "wanderingTableId": "boneyard"
+  "wanderingTableId": "boneyard",
+  "segmentDirectory": "segments/boneyard"
 }
