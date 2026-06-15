@@ -92,6 +92,8 @@ public class GameState
     private readonly EventScheduler _eventScheduler;
     private readonly FactionInteractionService _factionInteractionService;
     private readonly IReadOnlyDictionary<string, DungeonTemplate> _dungeonTemplates;
+    private readonly FactionContentRepository? _factionContent;
+    private readonly CampaignContentRegistry? _campaignContent;
     public Analytics.AnalyticsTracker Analytics { get; } = new();
 
     /// <summary>
@@ -138,6 +140,8 @@ public class GameState
         _encounterRng = new GameRandom(_seed);
         _encounterTables = encounterTables;
         _classRegistry = classRegistry;
+        _factionContent = factionContent;
+        _campaignContent = campaignContent;
         _townService = new TownService(factionContent, rumors);
         InitializeDefaultParty();
         InitializeTown();
@@ -496,6 +500,18 @@ public class GameState
     /// Exposed so save-load can validate that referenced dungeon template ids resolve.
     /// </summary>
     public IReadOnlyDictionary<string, DungeonTemplate> DungeonTemplates => _dungeonTemplates;
+
+    /// <summary>
+    /// Read-only view of the injected faction content repository (null when none was supplied).
+    /// Exposed so save-load can validate that referenced faction ids resolve against current content.
+    /// </summary>
+    public FactionContentRepository? FactionContent => _factionContent;
+
+    /// <summary>
+    /// Read-only view of the injected campaign content registry (null when none was supplied).
+    /// Exposed so save-load can validate that referenced scheme / complication ids resolve.
+    /// </summary>
+    public CampaignContentRegistry? CampaignContent => _campaignContent;
 
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path, ContentHash);
 

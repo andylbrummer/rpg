@@ -1,13 +1,33 @@
 {
   "status": "active",
   "dartboard": "Personal/rpg",
-  "runner_id": "beagle-3db5e1fb",
+  "runner_id": "beagle-ab2-3871289",
   "runner_email": "claude@anthropic.com",
+  "agent_id": "loop-runner-main",
   "started_at": "2026-05-12T15:36:25-05:00",
   "loop_task_id": "PW0nnjc0Ojca",
-  "current_task": "kCStqiw2UEAm",
+  "current_task": "KeZyg1tFZUGd",
   "completed_tasks": 22,
   "total_tasks": 55,
-  "iteration": 13,
-  "phase": "Phase 3: Engine Refactor"
+  "iteration": 14,
+  "phase": "Phase 3: Engine Refactor",
+  "tasks": [
+    {
+      "task_id": "KeZyg1tFZUGd",
+      "iteration": 14,
+      "status": "completed",
+      "completed_at": "2026-06-15T00:00:00Z",
+      "source_event": "loop-PW0nnjc0Ojca-iter14",
+      "timestamp": "2026-06-15T00:00:00Z",
+      "phase_completed": "phase-9",
+      "failed_phase": null,
+      "files_changed": 4,
+      "tests_added": 7,
+      "plan_adjustments": 0,
+      "completion_summary": "Extended SaveCompatibility.CheckContentReferences to validate faction/scheme/complication ids against injected registries, warning-only; wired FactionContent + CampaignContent through GameState into SaveSystem.Load.",
+      "failure_reason": null,
+      "fix_task_created": false,
+      "fix_task_id": null
+    }
+  ]
 }

@@ -59,9 +59,11 @@ public static class SaveSystem
             }
 
             // Validate referenced content ids against the registries the running build already
-            // carries (classes, dungeon templates). Warnings only — an unresolved reference does
-            // not make the save unloadable, so it is surfaced rather than quarantined.
-            foreach (var warning in SaveCompatibility.CheckContentReferences(data, state.ClassContent, state.DungeonTemplates))
+            // carries (classes, dungeon templates, factions, schemes, complications). Warnings only —
+            // an unresolved reference does not make the save unloadable, so it is surfaced rather
+            // than quarantined.
+            foreach (var warning in SaveCompatibility.CheckContentReferences(
+                data, state.ClassContent, state.DungeonTemplates, state.FactionContent, state.CampaignContent))
             {
                 Console.WriteLine($"[Save] {warning}");
             }

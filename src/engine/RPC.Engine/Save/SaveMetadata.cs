@@ -1,5 +1,7 @@
+using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Dungeons;
+using RPC.Engine.Town;
 
 namespace RPC.Engine.Save;
 
@@ -40,15 +42,16 @@ public static class SaveCompatibility
     /// corresponding references are skipped rather than reported as broken. Warnings never block
     /// loading — an unresolved reference degrades the save but does not make it unloadable.
     ///
-    /// Scope is intentionally limited to the references whose registries <see cref="GameState"/>
-    /// already carries (class ids and dungeon template ids). Broader content-id validation
-    /// (faction / campaign-scheme / complication ids) depends on the content-catalog architecture
-    /// being wired into load and is tracked separately.
+    /// Scope covers the references whose registries <see cref="GameState"/> carries: class ids,
+    /// dungeon template ids, faction ids, campaign-scheme ids, and complication ids. Each registry
+    /// is an independent extension point — supply only the ones the running build has loaded.
     /// </summary>
     public static IReadOnlyList<string> CheckContentReferences(
         SaveData data,
         ClassRegistry? classRegistry,
-        IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates)
+        IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates,
+        FactionContentRepository? factionContent = null,
+        CampaignContentRegistry? campaignContent = null)
     {
         var warnings = new List<string>();
 
@@ -73,7 +76,51 @@ public static class SaveCompatibility
             }
         }
 
+        if (factionContent is { Definitions.Count: > 0 })
+        {
+            var known = new HashSet<string>(factionContent.Definitions.Select(d => d.Id));
+            foreach (var factionId in EnumerateFactionIds(data).Distinct())
+            {
+                if (!known.Contains(factionId))
+                    warnings.Add($"Save references unknown faction id '{factionId}'.");
+            }
+        }
+
+        if (campaignContent is not null && data.CampaignConfig is { } config)
+        {
+            if (!string.IsNullOrEmpty(config.Scheme) && campaignContent.GetSchemeById(config.Scheme) is null)
+                warnings.Add($"Save references unknown campaign scheme id '{config.Scheme}'.");
+
+            if (!string.IsNullOrEmpty(config.Complication) && campaignContent.GetComplicationById(config.Complication) is null)
+                warnings.Add($"Save references unknown complication id '{config.Complication}'.");
+        }
+
         return warnings;
+    }
+
+    private static IEnumerable<string> EnumerateFactionIds(SaveData data)
+    {
+        if (!string.IsNullOrEmpty(data.AccusedFaction))
+            yield return data.AccusedFaction;
+        if (!string.IsNullOrEmpty(data.SuspectedFaction))
+            yield return data.SuspectedFaction;
+
+        foreach (var factionId in data.Reputation.Keys)
+            yield return factionId;
+        foreach (var factionId in data.Evidence.Keys)
+            yield return factionId;
+
+        if (data.CampaignConfig is { } config)
+        {
+            if (!string.IsNullOrEmpty(config.Patron)) yield return config.Patron;
+            if (!string.IsNullOrEmpty(config.Threat)) yield return config.Threat;
+            if (!string.IsNullOrEmpty(config.Mastermind)) yield return config.Mastermind;
+            if (!string.IsNullOrEmpty(config.WildCard)) yield return config.WildCard;
+            if (config.WildcardTrigger is { } trigger && !string.IsNullOrEmpty(trigger.FactionId))
+                yield return trigger.FactionId;
+            foreach (var factionId in config.FactionTimelines.Keys)
+                yield return factionId;
+        }
     }
 
     private static IEnumerable<string> EnumerateClassIds(SaveData data)
