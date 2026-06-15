@@ -20,6 +20,7 @@ public class GameState
     public CampaignState Campaign { get; } = new();
     public CombatSessionState CombatSession { get; } = new();
     public EconomyState Economy { get; } = new();
+    public SessionMetaState SessionMeta { get; } = new();
 
     // Exploration forwarding properties
     public Player Player { get => Exploration.Player; set => Exploration.Player = value; }
@@ -66,9 +67,9 @@ public class GameState
     public int ResolvedTravelEncounterCount { get => CombatSession.ResolvedTravelEncounterCount; internal set => CombatSession.ResolvedTravelEncounterCount = value; }
     public ParleyOffer? CurrentParley { get => CombatSession.CurrentParley; internal set => CombatSession.CurrentParley = value; }
     public IReadOnlySet<Guid> DowntimeCompleted => _downtimeCompleted;
-    public string? SettingsHash { get; set; }
-    public bool IsIronman { get; set; } = false;
-    public string SavePath { get; set; } = SaveSystem.SavePath;
+    public string? SettingsHash { get => SessionMeta.SettingsHash; set => SessionMeta.SettingsHash = value; }
+    public bool IsIronman { get => SessionMeta.IsIronman; set => SessionMeta.IsIronman = value; }
+    public string SavePath { get => SessionMeta.SavePath; set => SessionMeta.SavePath = value; }
 
     public void ClearCombatResult()
     {
@@ -99,13 +100,13 @@ public class GameState
     /// by the host). Disk persistence is opt-in via <see cref="MetaPersistenceEnabled"/> so headless
     /// tests never read or write the shared meta file.
     /// </summary>
-    public Save.MetaProgression Meta { get; set; } = new();
+    public Save.MetaProgression Meta { get => SessionMeta.Meta; set => SessionMeta.Meta = value; }
 
     /// <summary>When true, campaign start loads and campaign end saves <see cref="Meta"/> to disk.</summary>
-    public bool MetaPersistenceEnabled { get; set; }
+    public bool MetaPersistenceEnabled { get => SessionMeta.MetaPersistenceEnabled; set => SessionMeta.MetaPersistenceEnabled = value; }
 
     /// <summary>Override for the meta-save file path; null uses <see cref="Save.MetaProgressionStore.DefaultPath"/>.</summary>
-    public string? MetaPath { get; set; }
+    public string? MetaPath { get => SessionMeta.MetaPath; set => SessionMeta.MetaPath = value; }
 
     /// <summary>Load cross-campaign meta-progression from disk into <see cref="Meta"/>.</summary>
     public void LoadMetaProgression() => Meta = Save.MetaProgressionStore.Load(MetaPath);
