@@ -1,4 +1,19 @@
 {
   "runner": "beagle-ab2-3871289",
+  "claims": {
+    "KeZyg1tFZUGd": {
+      "runner_instance_id": "beagle-ab2-3871289",
+      "runner_email": "claude@anthropic.com",
+      "claimed_at": "2026-06-15T20:53:00Z",
+      "agent_id": "loop-runner-main",
+      "parent_loop_id": "PW0nnjc0Ojca",
+      "purpose": "validate faction/scheme/complication content ids on save load",
+      "source_event": {
+        "loop_id": "PW0nnjc0Ojca",
+        "task_id": "KeZyg1tFZUGd",
+        "conversation_id": null
+      }
+    }
+  },
   "claimed": []
 }
