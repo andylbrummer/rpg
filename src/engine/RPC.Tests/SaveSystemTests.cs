@@ -210,6 +210,48 @@ public class SaveSystemTests : IDisposable
         Assert.Equal(5, gs2.StepsSinceEncounter);
         Assert.True(gs2.TryMoveForward());
     }
+
+    [Fact]
+    public void SaveRestorer_RestoreOverworld_RestoresNodesTurnsAndCurrencyDirectly()
+    {
+        // Exercise a feature restore helper directly against a hand-built SaveData,
+        // without going through the full save/load round-trip.
+        var gs = new GameState(seed: 7);
+        var data = new SaveData
+        {
+            OverworldTurns = 12,
+            OverworldCurrentNodeId = "broken_engine",
+            PartyGold = 250,
+            TitheTokens = 3,
+            OverworldNodes = new[]
+            {
+                new SaveOverworldNode
+                {
+                    Id = "the_reach",
+                    Name = "The Reach",
+                    Type = "Town",
+                    FactionPresence = new[] { "wardens" }
+                },
+                new SaveOverworldNode
+                {
+                    Id = "broken_engine",
+                    Name = "Broken Engine",
+                    Type = "Dungeon",
+                    DungeonTemplateId = "engine_template"
+                }
+            }
+        };
+
+        SaveRestorer.RestoreOverworld(gs, data);
+
+        Assert.Equal(12, gs.Overworld.Turns);
+        Assert.Equal("broken_engine", gs.Overworld.CurrentNodeId);
+        Assert.Equal(250, gs.PartyGold);
+        Assert.Equal(3, gs.TitheTokens);
+        Assert.Equal(2, gs.Overworld.Nodes.Count);
+        Assert.Equal("engine_template", gs.Overworld.Nodes["broken_engine"].DungeonTemplateId);
+        Assert.Contains("wardens", gs.Overworld.Nodes["the_reach"].FactionPresence);
+    }
 }
 
 /// <summary>Test generator that returns a fully-walkable dungeon of fixed dimensions for the
