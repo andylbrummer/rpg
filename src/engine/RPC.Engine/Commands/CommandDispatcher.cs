@@ -5,64 +5,80 @@ namespace RPC.Engine.Commands;
 
 public static class CommandDispatcher
 {
+    // Single source of truth for the action type strings the server accepts.
+    // Each entry maps an action type to the factory that builds its command.
+    // KnownActions is derived from these keys so the accepted-action set and the
+    // dispatch logic can never drift apart. Drift against the protocol schema
+    // fixture (Fixtures/protocol-schema.json) is caught by ProtocolActionSyncTests.
+    private static readonly IReadOnlyDictionary<string, Func<PlayerAction, ICommand>> Factories =
+        new Dictionary<string, Func<PlayerAction, ICommand>>
+        {
+            ["move_forward"] = _ => new MoveForwardCommand(),
+            ["move_back"] = _ => new MoveBackCommand(),
+            ["strafe_left"] = _ => new StrafeLeftCommand(),
+            ["strafe_right"] = _ => new StrafeRightCommand(),
+            ["turn_left"] = _ => new TurnLeftCommand(),
+            ["turn_right"] = _ => new TurnRightCommand(),
+            ["pickup_loot"] = _ => new PickupLootCommand(),
+            ["cancel"] = _ => new CancelCommand(),
+            ["combat_action"] = a => new CombatActionCommand(a.Action ?? throw new ArgumentException("CombatAction required")),
+            ["flee_combat"] = _ => new FleeCombatCommand(),
+            ["enter_combat"] = _ => new TriggerEncounterCommand(),
+            ["enter_dungeon"] = a => new EnterDungeonCommand(a.DungeonType ?? "broken_engine"),
+            ["rest"] = _ => new RestAtInnCommand(),
+            ["return_to_town"] = _ => new ReturnToTownCommand(),
+            ["save_game"] = _ => new SaveGameCommand(),
+            ["reset_game"] = _ => new ResetGameCommand(),
+            ["swap_row"] = a => new SwapRowCommand(a.Slot ?? throw new ArgumentException("Slot required")),
+            ["tavern_recruit"] = a => new RecruitFromTavernCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["mission_accept"] = a => new AcceptMissionCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["vendor_purchase"] = a => new VendorPurchaseCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["wildcard_alliance"] = a => new WildCardAllianceCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["travel"] = a => new TravelCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["resolve_travel_encounter"] = a => new ResolveTravelEncounterCommand(a.TargetId ?? "default"),
+            ["set_reputation"] = a => new SetReputationCommand(
+                a.TargetId ?? throw new ArgumentException("TargetId required"),
+                a.Value ?? throw new ArgumentException("Value required")),
+            ["complete_mission"] = a => new CompleteMissionCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["fail_mission"] = a => new FailMissionCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["abandon_mission"] = a => new AbandonMissionCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["dialogue_choice"] = a => new ApplyDialogueReputationCommand(
+                a.TargetId ?? throw new ArgumentException("TargetId required"),
+                a.Value ?? throw new ArgumentException("Value required")),
+            ["encounter_choice"] = a => new ResolveParleyCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["branch_choose"] = a => new ChooseBranchCommand(
+                Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required")),
+                a.Branch ?? throw new ArgumentException("Branch required")),
+            ["accuse_faction"] = a => new AccuseFactionCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["transfer_to_cache"] = a => new TransferToCacheCommand(
+                a.Slot ?? throw new ArgumentException("Slot required"),
+                a.TargetId ?? throw new ArgumentException("TargetId required"),
+                a.Value ?? throw new ArgumentException("Value required")),
+            ["transfer_from_cache"] = a => new TransferFromCacheCommand(
+                a.Slot ?? throw new ArgumentException("Slot required"),
+                a.TargetId ?? throw new ArgumentException("TargetId required"),
+                a.Value ?? throw new ArgumentException("Value required")),
+            ["downtime_action"] = a => new DowntimeActionCommand(
+                Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required")),
+                Enum.Parse<DowntimeAction>(a.DowntimeAction ?? throw new ArgumentException("DowntimeAction required"), true)),
+            ["resurrect_character"] = a => new ResurrectCharacterCommand(
+                Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required"))),
+            ["rumor_verify"] = a => new VerifyRumorCommand(
+                a.TargetId ?? throw new ArgumentException("TargetId required"),
+                a.Source ?? throw new ArgumentException("Source required")),
+        };
+
+    /// <summary>
+    /// The set of action type strings the server accepts. Server-side source of
+    /// truth for the protocol action contract, derived from the dispatch table.
+    /// </summary>
+    public static IReadOnlySet<string> KnownActions { get; } = Factories.Keys.ToHashSet();
+
     public static ICommand Parse(PlayerAction action)
     {
-        return action.Type.ToLowerInvariant() switch
-        {
-            "move_forward" => new MoveForwardCommand(),
-            "move_back" => new MoveBackCommand(),
-            "strafe_left" => new StrafeLeftCommand(),
-            "strafe_right" => new StrafeRightCommand(),
-            "turn_left" => new TurnLeftCommand(),
-            "turn_right" => new TurnRightCommand(),
-            "pickup_loot" => new PickupLootCommand(),
-            "cancel" => new CancelCommand(),
-            "combat_action" => new CombatActionCommand(action.Action ?? throw new ArgumentException("CombatAction required")),
-            "flee_combat" => new FleeCombatCommand(),
-            "enter_combat" => new TriggerEncounterCommand(),
-            "enter_dungeon" => new EnterDungeonCommand(action.DungeonType ?? "broken_engine"),
-            "rest" => new RestAtInnCommand(),
-            "return_to_town" => new ReturnToTownCommand(),
-            "save_game" => new SaveGameCommand(),
-            "reset_game" => new ResetGameCommand(),
-            "swap_row" => new SwapRowCommand(action.Slot ?? throw new ArgumentException("Slot required")),
-            "tavern_recruit" => new RecruitFromTavernCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "mission_accept" => new AcceptMissionCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "vendor_purchase" => new VendorPurchaseCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "wildcard_alliance" => new WildCardAllianceCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "travel" => new TravelCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "resolve_travel_encounter" => new ResolveTravelEncounterCommand(action.TargetId ?? "default"),
-            "set_reputation" => new SetReputationCommand(
-                action.TargetId ?? throw new ArgumentException("TargetId required"),
-                action.Value ?? throw new ArgumentException("Value required")),
-            "complete_mission" => new CompleteMissionCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "fail_mission" => new FailMissionCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "abandon_mission" => new AbandonMissionCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "dialogue_choice" => new ApplyDialogueReputationCommand(
-                action.TargetId ?? throw new ArgumentException("TargetId required"),
-                action.Value ?? throw new ArgumentException("Value required")),
-            "encounter_choice" => new ResolveParleyCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "branch_choose" => new ChooseBranchCommand(
-                Guid.Parse(action.TargetId ?? throw new ArgumentException("TargetId required")),
-                action.Branch ?? throw new ArgumentException("Branch required")),
-            "accuse_faction" => new AccuseFactionCommand(action.TargetId ?? throw new ArgumentException("TargetId required")),
-            "transfer_to_cache" => new TransferToCacheCommand(
-                action.Slot ?? throw new ArgumentException("Slot required"),
-                action.TargetId ?? throw new ArgumentException("TargetId required"),
-                action.Value ?? throw new ArgumentException("Value required")),
-            "transfer_from_cache" => new TransferFromCacheCommand(
-                action.Slot ?? throw new ArgumentException("Slot required"),
-                action.TargetId ?? throw new ArgumentException("TargetId required"),
-                action.Value ?? throw new ArgumentException("Value required")),
-            "downtime_action" => new DowntimeActionCommand(
-                Guid.Parse(action.TargetId ?? throw new ArgumentException("TargetId required")),
-                Enum.Parse<DowntimeAction>(action.DowntimeAction ?? throw new ArgumentException("DowntimeAction required"), true)),
-            "resurrect_character" => new ResurrectCharacterCommand(
-                Guid.Parse(action.TargetId ?? throw new ArgumentException("TargetId required"))),
-            "rumor_verify" => new VerifyRumorCommand(
-                action.TargetId ?? throw new ArgumentException("TargetId required"),
-                action.Source ?? throw new ArgumentException("Source required")),
-            _ => throw new ArgumentException($"Unknown action type: {action.Type}")
-        };
+        var type = action.Type.ToLowerInvariant();
+        return Factories.TryGetValue(type, out var factory)
+            ? factory(action)
+            : throw new ArgumentException($"Unknown action type: {action.Type}");
     }
 }

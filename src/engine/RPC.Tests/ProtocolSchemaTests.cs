@@ -20,23 +20,10 @@ public class ProtocolSchemaTests
     {
         var schemaActions = _schema["actions"]!.AsObject().Select(x => x.Key).ToHashSet();
 
-        // Every action the dispatcher handles must be in the schema
-        var dispatcherActions = new[]
-        {
-            "move_forward", "move_back", "strafe_left", "strafe_right",
-            "turn_left", "turn_right", "cancel",
-            "combat_action", "flee_combat", "enter_combat",
-            "enter_dungeon", "rest", "return_to_town",
-            "save_game", "reset_game", "swap_row",
-            "tavern_recruit", "mission_accept", "vendor_purchase",
-            "wildcard_alliance", "travel", "resolve_travel_encounter",
-            "set_reputation", "complete_mission", "fail_mission", "abandon_mission",
-            "dialogue_choice", "encounter_choice", "branch_choose", "accuse_faction",
-            "transfer_to_cache", "transfer_from_cache",
-            "downtime_action", "resurrect_character", "rumor_verify"
-        };
-
-        foreach (var action in dispatcherActions)
+        // Every action the dispatcher handles must be in the schema. Derive the
+        // dispatcher action set from CommandDispatcher.KnownActions rather than a
+        // hardcoded list so this test cannot silently drift from the server.
+        foreach (var action in CommandDispatcher.KnownActions)
         {
             Assert.Contains(action, schemaActions);
         }

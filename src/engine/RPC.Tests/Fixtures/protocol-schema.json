@@ -11,6 +11,7 @@
     "strafe_right": { "required": [], "optional": [] },
     "turn_left": { "required": [], "optional": [] },
     "turn_right": { "required": [], "optional": [] },
+    "pickup_loot": { "required": [], "optional": [] },
     "cancel": { "required": [], "optional": [] },
     "combat_action": { "required": ["action"], "optional": [] },
     "flee_combat": { "required": [], "optional": [] },
