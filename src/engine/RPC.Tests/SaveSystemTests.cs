@@ -199,14 +199,7 @@ public class SaveSystemTests : IDisposable
         gs.SaveGame(_testSavePath);
 
         var gs2 = new GameState(seed: 99);
-        var loaded = gs2.LoadGame(_testSavePath, dungeonGenerator: (type, seed) =>
-        {
-            var d = new Dungeon(3, 3, type);
-            for (int x = 0; x < 3; x++)
-                for (int y = 0; y < 3; y++)
-                    d.Tiles[x, y] = new Tile(TileType.Floor);
-            return d;
-        });
+        var loaded = gs2.LoadGame(_testSavePath, dungeonGenerator: new FixedTileDungeonGenerator(3, 3));
 
         Assert.True(loaded);
         Assert.NotNull(gs2.CurrentDungeon);
@@ -217,4 +210,32 @@ public class SaveSystemTests : IDisposable
         Assert.Equal(5, gs2.StepsSinceEncounter);
         Assert.True(gs2.TryMoveForward());
     }
+}
+
+/// <summary>Test generator that returns a fully-walkable dungeon of fixed dimensions for the
+/// requested type, exercising the <see cref="IDungeonGenerator"/> save/load seam.</summary>
+internal sealed class FixedTileDungeonGenerator : IDungeonGenerator
+{
+    private readonly int _width;
+    private readonly int _height;
+
+    public FixedTileDungeonGenerator(int width, int height)
+    {
+        _width = width;
+        _height = height;
+    }
+
+    public DungeonGenerationResult Generate(DungeonGenerationRequest request)
+    {
+        var effectiveSeed = request.Seed ?? 0;
+        var d = new Dungeon(_width, _height, request.DungeonType) { Seed = effectiveSeed };
+        for (int x = 0; x < _width; x++)
+            for (int y = 0; y < _height; y++)
+                d.Tiles[x, y] = new Tile(TileType.Floor);
+        return new DungeonGenerationResult(
+            d, new DungeonGenerationIdentity(request.DungeonType, effectiveSeed, request.ContentHash));
+    }
+
+    public Dungeon Generate(string dungeonType, int? seed = null) =>
+        Generate(new DungeonGenerationRequest(dungeonType, seed)).Dungeon;
 }

@@ -80,7 +80,7 @@ public class GameServer
         _broadcaster = new StateBroadcaster(_registry, _statePresenter, _gameState, _jsonOptions, _cts);
         if (loadSave)
         {
-            _gameState.LoadGame(dungeonGenerator: (string type, int? seed) => _dungeonGenerator.Generate(type, seed));
+            _gameState.LoadGame(dungeonGenerator: _dungeonGenerator);
         }
         if (isDev)
         {

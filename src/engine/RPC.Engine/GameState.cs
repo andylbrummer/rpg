@@ -513,7 +513,7 @@ public class GameState
         FinalDungeonUnlocked = value;
     }
 
-    public bool LoadGame(string? path = null, Func<string, int?, Dungeon>? dungeonGenerator = null) => Save.SaveSystem.Load(this, path, ContentHash, dungeonGenerator);
+    public bool LoadGame(string? path = null, Dungeons.IDungeonGenerator? dungeonGenerator = null) => Save.SaveSystem.Load(this, path, ContentHash, dungeonGenerator);
 
     public bool ChooseBranch(Guid characterId, string branch) => _campaignService.ChooseBranch(this, characterId, branch);
 

@@ -68,12 +68,22 @@ public class DungeonGenerator : IDungeonGenerator
             });
     }
 
-    public Dungeon Generate(string dungeonType, int? seed = null)
+    public DungeonGenerationResult Generate(DungeonGenerationRequest request)
     {
-        var effectiveSeed = seed ?? StableHash(dungeonType);
+        var effectiveSeed = request.Seed ?? StableHash(request.DungeonType);
+        var dungeon = Build(request.DungeonType, effectiveSeed);
+        var identity = new DungeonGenerationIdentity(request.DungeonType, effectiveSeed, request.ContentHash);
+        return new DungeonGenerationResult(dungeon, identity);
+    }
 
+    public Dungeon Generate(string dungeonType, int? seed = null) =>
+        Generate(new DungeonGenerationRequest(dungeonType, seed)).Dungeon;
+
+    private Dungeon Build(string dungeonType, int effectiveSeed)
+    {
         // A hand-authored config means there is a registered template for this dungeon type.
-        if (_dungeonTemplates.TryGetValue(dungeonType, out var template))
+        _dungeonTemplates.TryGetValue(dungeonType, out var template);
+        if (template is not null)
         {
             var authored = BuildFromTemplate(template, effectiveSeed);
             // Validate before use: a hand-authored layout should be fully connected, but if a bad

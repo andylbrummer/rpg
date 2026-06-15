@@ -174,5 +174,12 @@ public class IronmanTests : IDisposable
 
 internal class StubDungeonGenerator : IDungeonGenerator
 {
-    public Dungeon Generate(string dungeonType, int? seed = null) => new Dungeon(10, 10, dungeonType);
+    public DungeonGenerationResult Generate(DungeonGenerationRequest request)
+    {
+        var dungeon = new Dungeon(10, 10, request.DungeonType) { Seed = request.Seed ?? 0 };
+        return new DungeonGenerationResult(
+            dungeon, new DungeonGenerationIdentity(request.DungeonType, request.Seed ?? 0, request.ContentHash));
+    }
+
+    public Dungeon Generate(string dungeonType, int? seed = null) => Generate(new DungeonGenerationRequest(dungeonType, seed)).Dungeon;
 }

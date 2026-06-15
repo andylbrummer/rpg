@@ -70,8 +70,9 @@ public class GameCommandHandler
                 break;
             case EnterDungeonCommand enterDungeonCmd:
                 {
-                    var dungeon = _dungeonGenerator.Generate(enterDungeonCmd.DungeonType);
-                    _gameState.EnterDungeon(dungeon, enterDungeonCmd.DungeonType);
+                    var request = new DungeonGenerationRequest(enterDungeonCmd.DungeonType, ContentHash: _gameState.ContentHash);
+                    var result = _dungeonGenerator.Generate(request);
+                    _gameState.EnterDungeon(result.Dungeon, enterDungeonCmd.DungeonType);
                     stateChanged = true;
                 }
                 break;

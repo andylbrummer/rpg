@@ -29,7 +29,7 @@ public static class SaveSystem
         fileIo.WriteAtomic(json);
     }
 
-    public static bool Load(GameState state, string? path = null, string? expectedContentHash = null, Func<string, int?, Dungeon>? dungeonGenerator = null)
+    public static bool Load(GameState state, string? path = null, string? expectedContentHash = null, Dungeons.IDungeonGenerator? dungeonGenerator = null)
     {
         var fileIo = new SaveFileIO(path);
         if (!fileIo.Exists())
@@ -90,7 +90,13 @@ public static class SaveSystem
                 && state.CurrentDungeon == null
                 && !string.IsNullOrEmpty(state.CurrentDungeonType))
             {
-                state.CurrentDungeon = dungeonGenerator(state.CurrentDungeonType, data.DungeonSeed != 0 ? data.DungeonSeed : null);
+                // Reconstruct the dungeon from its persisted identity (type + effective seed +
+                // content hash) so the same layout is reproduced deterministically on load.
+                var request = new Dungeons.DungeonGenerationRequest(
+                    state.CurrentDungeonType,
+                    data.DungeonSeed != 0 ? data.DungeonSeed : null,
+                    data.ContentHash);
+                state.CurrentDungeon = dungeonGenerator.Generate(request).Dungeon;
             }
 
             return true;

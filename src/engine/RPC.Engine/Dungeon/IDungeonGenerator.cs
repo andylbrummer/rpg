@@ -23,9 +23,17 @@ namespace RPC.Engine.Dungeons;
 public interface IDungeonGenerator
 {
     /// <summary>
-    /// Generate a dungeon of the given <paramref name="dungeonType"/>. Same
-    /// <c>(dungeonType, seed)</c> pair always returns a structurally-equal dungeon
-    /// (see interface remarks).
+    /// Generate a dungeon from an explicit <see cref="DungeonGenerationRequest"/> and return it
+    /// alongside the <see cref="DungeonGenerationIdentity"/> that reproduces it. This is the
+    /// primary generation contract: persisting the returned identity and replaying it through
+    /// this method yields a structurally-equal dungeon (see interface remarks).
+    /// </summary>
+    DungeonGenerationResult Generate(DungeonGenerationRequest request);
+
+    /// <summary>
+    /// Convenience overload for callers that only need the dungeon. Delegates to
+    /// <see cref="Generate(DungeonGenerationRequest)"/>; same <c>(dungeonType, seed)</c> pair
+    /// always returns a structurally-equal dungeon.
     /// </summary>
     /// <param name="dungeonType">Identifier matching a registered template id, or any
     /// string when no template is registered (procedural fallback).</param>
