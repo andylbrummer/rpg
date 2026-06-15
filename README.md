@@ -2,6 +2,8 @@
 
 A first-person party-based dungeon crawler for the browser. Grim fantasy, factional intrigue, procedural narrative.
 
+> **Where does X live?** See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — module index, naming conventions, and a "where do I change X?" search glossary.
+
 ## Technology Stack
 
 | Layer | Choice |

@@ -103,28 +103,88 @@ rg "class Combat\w+Tests" src/engine/RPC.Tests/
 
 ## Module Index (As-Built)
 
+### Engine — `src/engine/RPC.Engine/`
+
 | Module | Folder | Key Types | Responsibility |
 |---|---|---|---|
-| **Combat** | `Combat/` | `CombatEngine`, `CombatState`, `Combatant`, `RangeBands` | Turn resolution, initiative, damage |
-| **Dungeon** | `Dungeon/` | `DungeonBuilder`, `DungeonTemplate`, `RoomSegment` | Procedural assembly |
-| **Character** | `Character/` | `CharacterState`, `ClassRegistry`, `LevelingSystem` | Party members, stats, progression |
-| **Town** | `Town/` | `TownState`, `DowntimeSystem`, `RumorRepository` | Hub logic, vendors, missions |
-| **Overworld** | `Overworld/` | `OverworldState`, `RouteStatusSystem` | Node travel, faction presence |
-| **Campaign** | `Campaign/` | `CampaignConfig`, `EvidenceState`, `HeatState` | Narrative scaffolding |
-| **Save** | `Save/` | `SaveSystem`, `SaveData`, `SaveMigrationPipeline` | Persistence, versioning |
-| **Commands** | `Commands/` | `CommandDispatcher`, `ICommand`, `PlayerAction` | Input parsing |
-| **Content** | `Content/` | `IContentCatalog`, `ItemRegistry`, `FileSystemCatalog` | Asset loading |
-| **Protocol** | `Host/Web/` (temp) | `ProtocolEnvelope`, `GameServer` | Transport, framing |
+| **Combat** | `Combat/` | `CombatEngine`, `CombatState`, `CombatSessionState`, `Combatant`, `RangeBands`, `EncounterTable`, `EnemyDef` | Turn resolution, initiative, damage, encounter rolls |
+| **Dungeon** | `Dungeon/` | `IDungeonGenerator`, `DungeonGenerator`, `DungeonGenerationContracts`, `DungeonBuilder`, `SegmentStitcher`, `DungeonPacer`, `DungeonPathClassifier`, `DungeonLootPlacer`, `DungeonLootTable`, `RoomSegment`, `DungeonTemplate`, `DungeonConnectivityValidator` | Generation contracts + identity, segment assembly, encounter pacing, loot placement |
+| **Character** | `Character/` | `CharacterState`, `ClassRegistry`, `LevelingSystem`, `ClassDef`/`BranchDef` | Party members, stats, level/branch progression |
+| **Party** | `Party/` | `PartyState`, `EconomyState` | Roster, expedition cache, gold/tithe/inventory |
+| **Inventory** | `Inventory/` | `ComponentInventorySystem`, `ComponentStack` | Component stacks, expedition cache transfers |
+| **Exploration** | `Exploration/` | `ExplorationState`, `ExplorationService`, `BoundedTileSet` | Dungeon traversal, explored/collected tiles, encounter triggering |
+| **Town** | `Town/` | `TownState`, `TownService`, `DowntimeSystem`, `MissionService`, `RumorRepository` | Hub logic, vendors, missions, downtime, rumors |
+| **Overworld** | `Overworld/` | `OverworldState`, `OverworldService`, `RouteStatusSystem` | Node graph, route travel, faction presence |
+| **Travel** | `Travel/` | `TravelEncounterState`, travel-encounter resolution | Overworld travel encounters |
+| **Campaign** | `Campaign/` | `CampaignState`, `CampaignService`, `CampaignConfig`, `EvidenceState`, `FactionInteractionService` | Six-roll narrative scaffolding, evidence, accusations |
+| **Reputation** | `Reputation/` | `ReputationState` | Per-faction reputation |
+| **Save** | `Save/` | `SaveSystem`, `SaveBuilder`, `SaveRestorer`, `SaveData.*` (per-feature DTOs), `SaveMetadata`, `Migrations/`, `SessionMetaState`, `MetaProgression` | Persistence: build/restore split, versioned migration, save identity + compat |
+| **Commands** | `Commands/` | `CommandDispatcher` (`KnownActions`), `ICommand`, `PlayerAction`, `GameCommandHandler` | Action-string → command parsing + execution coordination |
+| **Protocol** | `Protocol/` | `ProtocolEnvelope` | Wire envelope/framing contract |
+| **Content** | `Content/` | `IContentCatalog`, `FileSystemCatalog`, `RpkCatalog`, `ItemRegistry` | Content pack + asset loading |
+| **Core / Models** | `Core/`, `Models/` | `GameRandom`, `Position`, `Direction`, `Tile`, `Dungeon` | Cross-cutting primitives + RNG |
+| **Analytics / LLM** | `Analytics/`, `LLM/` | `AnalyticsTracker` | Telemetry; LLM hooks |
 
-### Upcoming Moves (Phase 1.5 Retrofit)
+`GameState` (`GameState.cs`) is the composition root: it owns feature aggregates (`Exploration`, `Campaign`, `Party`, `Economy`, `Town`, `Overworld`, `CombatSession`, `SessionMeta`) and exposes thin delegating facades — not loose fields.
+
+### Host — `src/engine/RPC.Host/Web/`
+
+| Module | Key Types | Responsibility |
+|---|---|---|
+| Composition root | `GameServer` | Build collaborators, wire them, run the HttpListener accept loop |
+| Content bootstrap | `ContentBootstrap` → `HostContent` | Load all registries from the content catalog |
+| HTTP | `HttpRequestRouter` | Routing, static files, debug JSON endpoints |
+| WebSocket | `WebSocketConnectionHandler` | WS accept/hello/receive loop + heartbeat |
+| Protocol | `Protocol/ProtocolMessageHandler` | Envelope parse/validate, action dispatch under the game-state lock |
+| Clients | `ClientRegistry`, `ClientConnection` | Connection tracking + per-client send |
+| Broadcast | `StateBroadcaster`, `StatePresenter`, `Presenters/` | State snapshot projection + push |
+
+### Client — `src/client/src/`
+
+| Area | Folder | Responsibility |
+|---|---|---|
+| Shell | `app/` | `App.svelte` lifecycle, input buffer, store wiring |
+| Features | `features/<area>/` | UI + adapters per gameplay area (combat, exploration, town, overworld, party, settings, field-notes, analytics, title); each has an `index.ts` barrel |
+| Shared | `shared/{net,stores,types,data}/` | `net/` protocol+client (GameClient, testHarness), `stores/` UI state (gameStore), generated `types/protocol.gen.ts` |
+| Renderer | `renderer/` | Three.js dungeon renderer, audio, subtitles |
+| Config | `config/` | Keybindings, display + accessibility settings |
+
+See `src/client/src/README.md` for the client taxonomy + barrel conventions.
+
+---
+
+## Search Glossary — "where do I change X?"
+
+| Gameplay term | Code path |
+|---|---|
+| Dungeon generation / layout | `RPC.Engine/Dungeon/DungeonGenerator.cs` (+ `IDungeonGenerator`, `DungeonGenerationContracts`) |
+| Dungeon segment assembly / stitching | `RPC.Engine/Dungeon/DungeonBuilder.cs`, `SegmentStitcher.cs` |
+| Encounter pacing / difficulty curve | `RPC.Engine/Dungeon/DungeonPacer.cs` |
+| Critical path / room roles | `RPC.Engine/Dungeon/DungeonPathClassifier.cs` |
+| Loot placement / loot tables | `RPC.Engine/Dungeon/DungeonLootPlacer.cs`, `DungeonLootTable.cs`, `content/loot/*.json` |
+| Determinism / seeds | `DungeonGenerator.StableHash`, `GameRandom`, `Dungeon.Seed` |
+| Combat turn resolution | `RPC.Engine/Combat/CombatEngine.cs` |
+| Encounter tables / enemy spawns | `RPC.Engine/Combat/EncounterTable.cs`, `content/encounters/*.json`, `content/enemies/*.json` |
+| Class abilities / branches | `content/classes/*.json`, `RPC.Engine/Character/LevelingSystem.cs` |
+| Overworld routes / travel | `RPC.Engine/Overworld/OverworldState.cs`, `RouteStatusSystem.cs` |
+| Travel encounters | `RPC.Engine/Travel/`, `Overworld/OverworldService.cs` |
+| Town / vendors / missions / rumors | `RPC.Engine/Town/` |
+| Save format / migration | `RPC.Engine/Save/SaveData.*.cs`, `SaveBuilder.cs`, `SaveRestorer.cs`, `Save/Migrations/` |
+| Protocol actions (server) | `RPC.Engine/Commands/CommandDispatcher.cs` (`KnownActions`) |
+| Protocol action types (client) | `tools/protocol-gen/schema.json` → `src/client/src/shared/types/protocol.gen.ts` |
+| State projection to client | `RPC.Host/Web/StatePresenter.cs`, `Presenters/*Presenter.cs` |
+| HTTP / WebSocket transport | `RPC.Host/Web/HttpRequestRouter.cs`, `WebSocketConnectionHandler.cs` |
+| Content loading / registries | `RPC.Host/Web/ContentBootstrap.cs`, `RPC.Engine/Content/` |
+
+## Retrofit Status (Phase 1.5 — complete)
 
 - `ProtocolEnvelope` → `RPC.Engine.Protocol/` ✅
-- `GameServer` transport split → `RPC.Host/Web/{Protocol,ClientRegistry,Broadcaster}` ✅
-- `SaveSystem` DTOs → `RPC.Engine.Save/SaveData.cs` ✅
-- `SaveSystem` restore → `RPC.Engine.Save/SaveRestorer.cs` ✅
-- `DungeonBuilder` contract → `IDungeonGenerator` ✅
-- `GameState` decomposition → feature state aggregates
-- Protocol schema pipeline → `tools/protocol-gen/` ✅
+- `GameServer` transport/protocol/content split → `RPC.Host/Web/{ContentBootstrap,HttpRequestRouter,WebSocketConnectionHandler,Protocol/ProtocolMessageHandler}` ✅ (795 → ~150 lines)
+- `SaveSystem` DTOs → per-feature `Save/SaveData.*.cs`; build side → `SaveBuilder`; restore → `SaveRestorer`; metadata → `SaveMetadata` ✅
+- `DungeonBuilder` → `IDungeonGenerator` + `DungeonGenerationContracts` (request/identity/result), identity-based save/load ✅
+- `GameState` decomposition → feature aggregates (`CombatSessionState`, `EconomyState`, `SessionMeta`, plus existing Exploration/Campaign/Party/Town/Overworld) ✅
+- Protocol schema pipeline + drift check (`ProtocolActionSyncTests`) → `tools/protocol-gen/` ✅
+- Client feature-module barrels + layout doc ✅
 
 ---
 
@@ -162,4 +222,4 @@ C# types in `RPC.Engine.Protocol/` are maintained manually. When the schema chan
 
 ---
 
-*Last updated: 2026-05-16*
+*Last updated: 2026-06-15*
