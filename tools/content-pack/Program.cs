@@ -157,8 +157,11 @@ class Program
             }
             else
             {
-                Console.WriteLine($"WARN: {relativePath} - No validator for this category");
-                continue;
+                // Fail fast: unmatched content must never be emitted into the pack
+                // unvalidated. Adding a new content category requires adding a
+                // validator branch above (or an explicit schemas/-style skip).
+                Console.WriteLine($"FAIL: {relativePath} - No validator for this category; refusing to emit unvalidated content");
+                return 1;
             }
 
             if (result != 0) return result;

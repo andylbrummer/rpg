@@ -1,9 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
+using RPC.Engine.Content;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Models.Dungeons;
+using RPC.Engine.Town;
 
 namespace RPC.Tests;
 
@@ -214,6 +217,135 @@ public class ContentValidationTests
                 Assert.True(allAbilityIds.Add(ability.Id),
                     $"Duplicate ability ID: {ability.Id} in {Path.GetFileName(file)}");
             }
+        }
+    }
+
+    // ---- Exhaustive content-source guard ------------------------------------
+    //
+    // These tests enforce, from disk, that every content/**/*.json file belongs
+    // to a category that has a typed validator and deserializes to its typed
+    // definition. They mirror the category dispatch in tools/content-pack so the
+    // packer can never silently emit an unvalidated category. Adding a new
+    // content directory without wiring a validator here (and in the packer) is a
+    // hard failure, not a silent pass.
+
+    private const string ContentRoot = "../../../../../../content";
+
+    private static readonly JsonSerializerOptions PermissiveOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    // Every category present under content/ must appear here. "schemas" is the
+    // only directory intentionally excluded (JSON Schema definitions, not game
+    // content) and is skipped by CategoryOf returning null.
+    private static readonly HashSet<string> ValidatedCategories = new()
+    {
+        "classes", "enemies", "encounters", "factions", "synergies", "items",
+        "loot", "npcs", "rumors", "schemes", "complications", "segments",
+        "campaigns", "dungeons"
+    };
+
+    private static string? CategoryOf(string relativePath)
+    {
+        var parts = relativePath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2) return null;
+        var category = parts[0];
+        if (category == "schemas") return null; // not game content
+        if (category == "campaigns" && parts.Length > 1 && parts[1] == "dungeons")
+            return "dungeons";
+        return category;
+    }
+
+    private static IEnumerable<string> AllContentFilePaths() => Directory
+        .EnumerateFiles(ContentRoot, "*.json", SearchOption.AllDirectories)
+        .OrderBy(f => f);
+
+    public static IEnumerable<object[]> AllContentFiles => AllContentFilePaths()
+        .Select(f => new object[] { Path.GetRelativePath(ContentRoot, f).Replace('\\', '/') });
+
+    [Fact]
+    public void EveryContentCategory_HasAValidator()
+    {
+        Assert.True(Directory.Exists(ContentRoot), $"Missing content root: {ContentRoot}");
+
+        var orphans = AllContentFilePaths()
+            .Select(f => Path.GetRelativePath(ContentRoot, f).Replace('\\', '/'))
+            .Select(CategoryOf)
+            .Where(c => c != null && !ValidatedCategories.Contains(c!))
+            .Distinct()
+            .ToArray();
+
+        Assert.True(orphans.Length == 0,
+            $"Content categories without a validator (add one to tools/content-pack and ValidatedCategories): {string.Join(", ", orphans)}");
+    }
+
+    [Theory]
+    [MemberData(nameof(AllContentFiles))]
+    public void EveryContentFile_RoutesToValidatorAndDeserializes(string relativePath)
+    {
+        var category = CategoryOf(relativePath);
+        if (category == null) return; // schemas/ — intentionally skipped
+
+        Assert.True(ValidatedCategories.Contains(category),
+            $"No validator for category '{category}' ({relativePath})");
+
+        var json = File.ReadAllText(Path.Combine(ContentRoot, relativePath));
+
+        switch (category)
+        {
+            case "classes":
+                Assert.NotNull(JsonSerializer.Deserialize<ClassDef>(json, PermissiveOptions));
+                break;
+            case "enemies":
+                Assert.NotNull(JsonSerializer.Deserialize<EnemyDef>(json, PermissiveOptions));
+                break;
+            case "encounters":
+            {
+                var tableId = Path.GetFileNameWithoutExtension(relativePath);
+                var registry = new EncounterTableRegistry();
+                registry.LoadFromJson(tableId, json);
+                Assert.NotNull(registry.Get(tableId));
+                break;
+            }
+            case "factions":
+                Assert.NotNull(JsonSerializer.Deserialize<FactionContentDef>(json, PermissiveOptions));
+                break;
+            case "synergies":
+                Assert.NotNull(JsonSerializer.Deserialize<SynergyDef>(json, PermissiveOptions));
+                break;
+            case "items":
+                Assert.NotEmpty(JsonSerializer.Deserialize<ItemDef[]>(json, PermissiveOptions)!);
+                break;
+            case "loot":
+                Assert.NotNull(JsonSerializer.Deserialize<DungeonLootTableDef>(json, PermissiveOptions));
+                break;
+            case "npcs":
+                Assert.NotEmpty(JsonSerializer.Deserialize<NpcDef[]>(json, PermissiveOptions)!);
+                break;
+            case "rumors":
+                Assert.NotEmpty(JsonSerializer.Deserialize<RumorDef[]>(json, PermissiveOptions)!);
+                break;
+            case "schemes":
+                Assert.NotNull(JsonSerializer.Deserialize<SchemeDef>(json, PermissiveOptions));
+                break;
+            case "complications":
+                Assert.NotNull(JsonSerializer.Deserialize<ComplicationDef>(json, PermissiveOptions));
+                break;
+            case "segments":
+                Assert.NotNull(JsonSerializer.Deserialize<RoomSegment>(json, PermissiveOptions));
+                break;
+            case "dungeons":
+                Assert.NotNull(JsonSerializer.Deserialize<DungeonTemplate>(json, PermissiveOptions));
+                break;
+            case "campaigns":
+                Assert.NotNull(JsonSerializer.Deserialize<CampaignConfig>(json, PermissiveOptions));
+                break;
+            default:
+                Assert.Fail($"Unhandled validated category '{category}' for {relativePath}");
+                break;
         }
     }
 }
