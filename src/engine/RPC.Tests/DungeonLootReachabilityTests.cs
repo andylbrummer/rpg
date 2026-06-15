@@ -25,7 +25,7 @@ public class DungeonLootReachabilityTests
 
     private const string ContentRoot = "../../../../../../content";
 
-    // Same directory set the host's GameServer.LoadSegments walks.
+    // Same directory set the host's ContentBootstrap.LoadSegments walks.
     private static readonly string[] SegmentDirs =
     {
         "segments", "segments/broken-engine", "segments/bloom-site", "segments/boneyard",
