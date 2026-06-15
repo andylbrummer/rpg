@@ -485,6 +485,18 @@ public class GameState
 
     public string? ContentHash { get; set; }
 
+    /// <summary>
+    /// Read-only view of the loaded class registry (may be null when none was supplied).
+    /// Exposed so save-load can validate that referenced class ids resolve against current content.
+    /// </summary>
+    public ClassRegistry? ClassContent => _classRegistry;
+
+    /// <summary>
+    /// Read-only view of registered dungeon templates (empty when none were supplied).
+    /// Exposed so save-load can validate that referenced dungeon template ids resolve.
+    /// </summary>
+    public IReadOnlyDictionary<string, DungeonTemplate> DungeonTemplates => _dungeonTemplates;
+
     public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path, ContentHash);
 
     public void ApplyReputationDelta(string factionId, int delta, string source)

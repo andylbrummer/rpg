@@ -2,6 +2,13 @@ using System.Text.Json;
 
 namespace RPC.Engine.Save.Migrations;
 
+/// <summary>
+/// A migration step that only advances the <c>schemaVersion</c> stamp, leaving every other
+/// field untouched. Correct whenever the version transition was purely additive/back-compatible
+/// (new fields with defaults, no rename/remove/restructure): on load, System.Text.Json fills any
+/// absent newer field with its default, so no field rewriting is required. See
+/// <see cref="SaveMigrationPipeline.CreateDefault"/> for why all 3..8 steps use this.
+/// </summary>
 public class IdentityMigration : ISaveMigration
 {
     public int FromVersion { get; }
