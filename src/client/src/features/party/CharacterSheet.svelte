@@ -49,7 +49,16 @@
     const needed = next - current;
     return Math.min(100, Math.max(0, (gained / needed) * 100));
   }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    }
+  }
 </script>
+
+<svelte:window onkeydown={handleKeyDown} />
 
 <div
   class="sheet-backdrop"
@@ -61,8 +70,6 @@
     role="dialog"
     aria-modal="true"
     aria-label="{member.name} — Character Sheet"
-    onkeydown={(e) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}
-    tabindex="-1"
   >
     <button class="close-btn" onclick={onClose} aria-label="Close character sheet">×</button>
 
