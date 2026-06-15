@@ -61,7 +61,20 @@ internal sealed class ProtocolMessageHandler
         if (envelope.Type == "ready")
         {
             client.IsReady = true;
-            await _broadcaster.SendState(client);
+            // Build the snapshot under the state lock: CreateStateMessage reads mutable game-state
+            // collections, so a ready/reconnect arriving mid-action would otherwise observe a torn
+            // snapshot or throw on concurrent enumeration. Publish the immutable snapshot outside.
+            object snapshot;
+            await _gameStateLock.WaitAsync(_cts.Token);
+            try
+            {
+                snapshot = _statePresenter.CreateStateMessage(_gameState);
+            }
+            finally
+            {
+                _gameStateLock.Release();
+            }
+            await _broadcaster.SendState(client, payload: snapshot);
             return;
         }
 
