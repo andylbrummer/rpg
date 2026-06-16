@@ -77,6 +77,14 @@ public class StatePresenter
             epilogue = state.CampaignEnded ? state.ResolveEpilogue() : null,
             factionStates = CampaignPresenter.PresentFactionStates(state),
             worldState = CampaignPresenter.PresentWorldState(state),
+            // Authoritative synergy-journal state from the campaign Journal (part of
+            // the save file). The client reconciles its localStorage journal mirror
+            // against this so discovered synergies survive save/load without relying
+            // solely on the browser.
+            journal = new
+            {
+                discoveredSynergies = state.Journal.DiscoveryOrder.ToArray()
+            },
             // Only the most recent entries are serialized into the snapshot. The stored
             // ActionLog grows for the lifetime of a campaign (cleared on reset), and the
             // host is reused across many e2e runs locally; serializing the full log into

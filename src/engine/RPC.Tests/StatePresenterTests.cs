@@ -238,6 +238,36 @@ public class StatePresenterTests
     }
 
     [Fact]
+    public void CreateStateMessage_Serializes_Journal_Discovered_Synergies()
+    {
+        var state = new GameState();
+        state.LoadGame(Path.GetTempFileName() + ".notfound");
+        state.Journal.Discover("alpha_synergy");
+        state.Journal.Discover("beta_synergy");
+
+        var msg = _presenter.CreateStateMessage(state);
+        var json = JsonSerializer.Serialize(msg);
+        var root = JsonSerializer.Deserialize<JsonElement>(json);
+
+        var discovered = root.GetProperty("journal").GetProperty("discoveredSynergies");
+        var ids = discovered.EnumerateArray().Select(e => e.GetString()).ToArray();
+        Assert.Equal(new[] { "alpha_synergy", "beta_synergy" }, ids);
+    }
+
+    [Fact]
+    public void CreateStateMessage_Serializes_Empty_Journal_By_Default()
+    {
+        var state = new GameState();
+        state.LoadGame(Path.GetTempFileName() + ".notfound");
+
+        var msg = _presenter.CreateStateMessage(state);
+        var json = JsonSerializer.Serialize(msg);
+        var root = JsonSerializer.Deserialize<JsonElement>(json);
+
+        Assert.Empty(root.GetProperty("journal").GetProperty("discoveredSynergies").EnumerateArray());
+    }
+
+    [Fact]
     public void CreateStateMessage_Includes_WorldState()
     {
         var state = new GameState();

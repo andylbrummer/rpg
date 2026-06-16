@@ -242,6 +242,15 @@ export interface ActionLogEntry {
   payload: Record<string, string>;
 }
 
+/**
+ * Authoritative journal state mirrored from the server save (campaign Journal).
+ * Lets the client reconcile its localStorage synergy-journal cache against save
+ * state instead of trusting the browser alone.
+ */
+export interface JournalSnapshot {
+  discoveredSynergies: string[];
+}
+
 export interface HeatState {
   value: number;
   tier: string;
@@ -297,6 +306,7 @@ export interface GameState {
   } | null;
   epilogue?: string | null;
   actionLog?: ActionLogEntry[];
+  journal?: JournalSnapshot;
   wildCardAlliance?: {
     status: string;
     factionId: string | null;
