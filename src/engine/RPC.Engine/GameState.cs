@@ -550,6 +550,10 @@ public class GameState
 
     public bool RecruitFromTavern(string recruitId) => _townService.RecruitFromTavern(this, recruitId);
 
+    public bool SwapActiveBench(int activeSlot, Guid? benchCharacterId) => _townService.SwapActiveBench(this, activeSlot, benchCharacterId);
+
+    public bool DismissCharacter(Guid characterId) => _townService.DismissCharacter(this, characterId);
+
     public ResurrectionResult? ResurrectCharacter(Guid characterId) => _townService.ResurrectCharacter(this, characterId);
 
     public bool AcceptMission(string missionId) => _missionService.AcceptMission(this, missionId);

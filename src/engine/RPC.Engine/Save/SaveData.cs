@@ -31,6 +31,7 @@ public class SaveData
     public SaveComponentStack[] ExpeditionCache { get; set; } = Array.Empty<SaveComponentStack>();
     public string[] CollectedLoot { get; set; } = Array.Empty<string>();
     public SavePartyMember[] DeadCharacters { get; set; } = Array.Empty<SavePartyMember>();
+    public SavePartyMember[] Bench { get; set; } = Array.Empty<SavePartyMember>();
     public SaveJournalState? Journal { get; set; }
     public SaveHeatState? Heat { get; set; }
     public SaveCampaignConfig? CampaignConfig { get; set; }

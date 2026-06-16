@@ -407,8 +407,16 @@ public class CombatService
             var allEnemiesDead = state.Combat.AllEnemiesDead;
             var allPlayersDead = state.Combat.AllPlayersDead;
 
-            // Apply combat results to party
+            // Apply combat results to party.
+            // Bench characters are not combatants, so they intrinsically gain no XP here.
+            // Field promotion: active members whose level is below the active-party average gain
+            // +50% bonus XP so under-levelled members catch up to the rest of the active party.
             var levelUps = new List<string>();
+            var scaledXpReward = state.Combat.XpReward * state.CurrentAct;
+            var activeLevels = state.Party.Members.Where(m => m.Id != Guid.Empty).Select(m => m.Level).ToList();
+            double averageActiveLevel = activeLevels.Count > 0 ? activeLevels.Average() : 0;
+            int XpFor(CharacterState m) =>
+                m.Level < averageActiveLevel ? (int)Math.Round(scaledXpReward * 1.5) : scaledXpReward;
             foreach (var combatant in state.Combat.Combatants.Where(c => c.IsPlayer))
             {
                 var member = state.Party.Members.FirstOrDefault(m => m.Id == combatant.Id);
@@ -421,7 +429,7 @@ public class CombatService
                         bool stabilized = combatant.StatusEffects.Any(s => s.Type == "stabilized");
                         if (stabilized)
                         {
-                            var saved = member with { CurrentHp = 1, Xp = member.Xp + state.Combat.XpReward * state.CurrentAct, TempModifiers = combatant.TempModifiers };
+                            var saved = member with { CurrentHp = 1, Xp = member.Xp + XpFor(member), TempModifiers = combatant.TempModifiers };
                             state.Party.SetMember(index, saved);
                             state.EmitActionLog("combat", "character_stabilized", new Dictionary<string, string>
                             {
@@ -442,8 +450,7 @@ public class CombatService
                         continue;
                     }
 
-                    var scaledXpReward = state.Combat.XpReward * state.CurrentAct;
-                    var newXp = member.Xp + scaledXpReward;
+                    var newXp = member.Xp + XpFor(member);
                     var updated = member with { CurrentHp = combatant.Hp, Xp = newXp, TempModifiers = combatant.TempModifiers };
 
                     // Check for level ups

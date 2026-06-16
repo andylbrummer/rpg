@@ -30,8 +30,8 @@ public class SaveMigrationTests : IDisposable
     [Fact]
     public void Pipeline_CanMigrate_SupportedVersions()
     {
-        var pipeline = SaveMigrationPipeline.CreateDefault(8);
-        for (int v = 3; v <= 8; v++)
+        var pipeline = SaveMigrationPipeline.CreateDefault(9);
+        for (int v = 3; v <= 9; v++)
         {
             Assert.True(pipeline.CanMigrate(v), $"Should be able to migrate from v{v}");
         }
@@ -40,11 +40,11 @@ public class SaveMigrationTests : IDisposable
     [Fact]
     public void Pipeline_CannotMigrate_UnsupportedVersions()
     {
-        var pipeline = SaveMigrationPipeline.CreateDefault(8);
+        var pipeline = SaveMigrationPipeline.CreateDefault(9);
         Assert.False(pipeline.CanMigrate(1));
         Assert.False(pipeline.CanMigrate(2));
         Assert.False(pipeline.CanMigrate(99));
-        Assert.False(pipeline.CanMigrate(9));
+        Assert.False(pipeline.CanMigrate(10));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class SaveMigrationTests : IDisposable
 
         var json = File.ReadAllText(_goldenPath);
         using var doc = JsonDocument.Parse(json);
-        Assert.Equal(8, doc.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(SaveBuilder.CurrentSchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("abc123", doc.RootElement.GetProperty("contentHash").GetString());
 
         var gs2 = new GameState(seed: 99, factionContent: factionRepo);

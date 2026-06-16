@@ -6,7 +6,7 @@ using RPC.Engine.Save;
 namespace RPC.Tests;
 
 /// <summary>
-/// Golden-save fixtures for every supported schema version (3..8). Each fixture is a save
+/// Golden-save fixtures for every supported schema version (3..9). Each fixture is a save
 /// authored at that version; the tests assert it migrates to the current schema and restores a
 /// coherent <see cref="GameState"/>. This is the regression guard against a future schema change
 /// silently breaking older saves — when a breaking change lands, the matching fixture fails here.
@@ -14,7 +14,7 @@ namespace RPC.Tests;
 public class SaveGoldenFixtureTests : IDisposable
 {
     private const int OldestSupportedVersion = 3;
-    private const int CurrentVersion = 8;
+    private const int CurrentVersion = 9;
 
     private readonly string _workPath;
 
@@ -100,5 +100,19 @@ public class SaveGoldenFixtureTests : IDisposable
         Assert.True(gs.LoadGame(_workPath));
 
         Assert.True(gs.IsIronman);
+    }
+
+    [Fact]
+    public void GoldenFixture_V9_RestoresBenchedCharacter()
+    {
+        File.Copy(FixturePath(9), _workPath, overwrite: true);
+
+        var gs = new GameState(seed: 1);
+        Assert.True(gs.LoadGame(_workPath));
+
+        var benched = Assert.Single(gs.Party.Bench);
+        Assert.Equal("Mira", benched.Name);
+        Assert.Equal("stillblade", benched.ClassId);
+        Assert.Equal(2, benched.Level);
     }
 }

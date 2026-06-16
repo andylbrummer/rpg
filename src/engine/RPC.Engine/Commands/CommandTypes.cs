@@ -26,6 +26,8 @@ public record RestAtInnCommand : ICommand;
 public record ReturnToTownCommand : ICommand;
 public record SwapRowCommand(int Slot) : ICommand;
 public record RecruitFromTavernCommand(string RecruitId) : ICommand;
+public record SwapActiveBenchCommand(int ActiveSlot, Guid? BenchCharacterId) : ICommand;
+public record DismissCharacterCommand(Guid CharacterId) : ICommand;
 public record VendorPurchaseCommand(string ItemId) : ICommand;
 public record DowntimeActionCommand(Guid CharacterId, DowntimeAction Action) : ICommand;
 public record ResurrectCharacterCommand(Guid CharacterId) : ICommand;

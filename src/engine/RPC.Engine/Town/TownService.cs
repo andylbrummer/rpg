@@ -174,6 +174,9 @@ public class TownService
         var recruit = state.Town.TavernRoster.FirstOrDefault(r => r.Id == recruitId);
         if (recruit == null) return false;
 
+        // Roster cap (active + bench): recruiting at cap is rejected and requires a dismissal first.
+        if (state.Party.RosterCount >= PartyState.MaxRosterSize) return false;
+
         var emptySlot = Array.IndexOf(state.Party.Members, default);
         if (emptySlot < 0) return false;
 
@@ -191,6 +194,43 @@ public class TownService
             { "characterName", character.Name },
             { "classId", character.ClassId },
             { "level", character.Level.ToString() }
+        });
+        state.LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    /// <summary>
+    /// Town-only active&lt;-&gt;bench swap. Rejected outside town (Menu mode), e.g. mid-combat.
+    /// Delegates the roster bookkeeping to <see cref="PartyState.SwapActiveBench"/>.
+    /// </summary>
+    public bool SwapActiveBench(GameState state, int activeSlot, Guid? benchCharacterId)
+    {
+        if (state.Mode != GameMode.Menu) return false;
+
+        if (!state.Party.SwapActiveBench(activeSlot, benchCharacterId)) return false;
+
+        state.EmitActionLog("roster", "active_bench_swapped", new Dictionary<string, string>
+        {
+            { "activeSlot", activeSlot.ToString() },
+            { "benchCharacterId", (benchCharacterId ?? Guid.Empty).ToString() }
+        });
+        state.LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    /// <summary>
+    /// Town-only dismissal: removes a character from the roster (active or bench), freeing a roster
+    /// slot. The character is not added to the dead list. Rejected outside town (Menu mode).
+    /// </summary>
+    public bool DismissCharacter(GameState state, Guid characterId)
+    {
+        if (state.Mode != GameMode.Menu) return false;
+
+        if (!state.Party.DismissCharacter(characterId)) return false;
+
+        state.EmitActionLog("roster", "character_dismissed", new Dictionary<string, string>
+        {
+            { "characterId", characterId.ToString() }
         });
         state.LastUpdate = DateTime.UtcNow;
         return true;

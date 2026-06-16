@@ -78,6 +78,17 @@ export type PlayerAction =
 
     }
   | {
+      type: "swap_active_bench";
+      slot: number;
+      targetId?: string;
+
+    }
+  | {
+      type: "dismiss_character";
+      targetId: string;
+
+    }
+  | {
       type: "mission_accept";
       targetId: string;
 

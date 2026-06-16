@@ -42,6 +42,8 @@ public class ProtocolSchemaTests
                 "combat_action" => new PlayerAction { Type = actionType, Action = new CombatAction(Guid.Empty, ActionType.UseAbility, Guid.Empty, "test", null) },
                 "enter_dungeon" => new PlayerAction { Type = actionType, DungeonType = "test" },
                 "swap_row" => new PlayerAction { Type = actionType, Slot = 0 },
+                "swap_active_bench" => new PlayerAction { Type = actionType, Slot = 0, TargetId = Guid.Empty.ToString() },
+                "dismiss_character" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString() },
                 "set_reputation" => new PlayerAction { Type = actionType, TargetId = "bureau", Value = 0 },
                 "dialogue_choice" => new PlayerAction { Type = actionType, TargetId = "bureau", Value = 0 },
                 "branch_choose" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString(), Branch = "test" },

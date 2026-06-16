@@ -255,6 +255,22 @@ public static class SaveRestorer
                     deadInventory));
             }
         }
+        state.Party.Bench.Clear();
+        if (data.Bench != null)
+        {
+            foreach (var b in data.Bench)
+            {
+                var benchInventory = b.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();
+                state.Party.Bench.Add(new CharacterState(
+                    b.Id, b.Name, b.ClassId,
+                    Math.Max(1, b.Level), Math.Max(0, b.Xp),
+                    b.BaseStats, Math.Max(0, b.CurrentHp), b.Equipment,
+                    b.KnownAbilities, Math.Clamp(b.Row, 0, 1),
+                    b.BranchChoice, b.BranchLevel6,
+                    b.TempModifiers, b.ResurrectionAttempts, b.BranchAdvancementLocked,
+                    benchInventory));
+            }
+        }
         state.SetAccusedFaction(data.AccusedFaction);
         state.SetMastermindAdvantage(data.MastermindAdvantage);
         state.SetFinalDungeonUnlocked(data.FinalDungeonUnlocked);

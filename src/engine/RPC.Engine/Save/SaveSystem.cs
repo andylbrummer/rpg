@@ -40,7 +40,7 @@ public static class SaveSystem
                 ? svProp.GetInt32()
                 : 0;
 
-            var pipeline = SaveMigrationPipeline.CreateDefault(8);
+            var pipeline = SaveMigrationPipeline.CreateDefault(SaveBuilder.CurrentSchemaVersion);
             if (!pipeline.CanMigrate(schemaVersion))
             {
                 var quarantinePath = fileIo.Quarantine($"unsupported schema version {schemaVersion}");

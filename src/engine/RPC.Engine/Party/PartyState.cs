@@ -10,6 +10,12 @@ public class PartyState
     public ComponentStack[] ExpeditionCache { get; set; } = Array.Empty<ComponentStack>();
     public const int MaxExpeditionCacheSlots = 12;
 
+    /// <summary>Maximum total roster size (active + bench). Recruiting past this requires a dismissal.</summary>
+    public const int MaxRosterSize = 12;
+
+    /// <summary>Living active members plus benched members. Dead characters are not counted.</summary>
+    public int RosterCount => Members.Count(c => c.Id != Guid.Empty) + Bench.Count;
+
     public IEnumerable<CharacterState> FrontRow => Members.Take(3).Where(c => c.IsAlive);
     public IEnumerable<CharacterState> BackRow => Members.Skip(3).Where(c => c.IsAlive);
     public IEnumerable<CharacterState> Active => Members.Where(c => c.IsAlive);
@@ -40,6 +46,69 @@ public class PartyState
 
         Members[slot] = b;
         Members[partnerSlot] = a;
+    }
+
+    /// <summary>
+    /// Move a benched character into an active slot, sending the active occupant (if any) to the
+    /// bench. When <paramref name="benchCharacterId"/> is null/empty this is a bench-out: the active
+    /// occupant moves to the bench and the slot is emptied, which is rejected if it would leave the
+    /// active party with no living members. Pure roster bookkeeping — town/combat gating lives in the
+    /// caller. Returns false on any validation failure.
+    /// </summary>
+    public bool SwapActiveBench(int activeSlot, Guid? benchCharacterId)
+    {
+        if (activeSlot is < 0 or > 5)
+            return false;
+
+        var active = Members[activeSlot];
+
+        if (benchCharacterId is { } id && id != Guid.Empty)
+        {
+            var benchIdx = Bench.FindIndex(c => c.Id == id);
+            if (benchIdx < 0)
+                return false;
+
+            var benchChar = Bench[benchIdx];
+            Members[activeSlot] = benchChar with { Row = activeSlot < 3 ? 0 : 1 };
+            Bench.RemoveAt(benchIdx);
+            if (active.Id != Guid.Empty)
+                Bench.Add(active);
+            return true;
+        }
+
+        // Bench-out only: move the active occupant to the bench, leaving the slot empty.
+        if (active.Id == Guid.Empty)
+            return false;
+        if (Members.Count(c => c.Id != Guid.Empty) <= 1)
+            return false;
+
+        Members[activeSlot] = default;
+        Bench.Add(active);
+        return true;
+    }
+
+    /// <summary>
+    /// Remove a character from the roster entirely (active or bench) — not the dead list. Refuses to
+    /// dismiss the last living active member. Returns false if the id is not on the active roster or
+    /// bench. Pure bookkeeping; town gating lives in the caller.
+    /// </summary>
+    public bool DismissCharacter(Guid characterId)
+    {
+        var benchIdx = Bench.FindIndex(c => c.Id == characterId);
+        if (benchIdx >= 0)
+        {
+            Bench.RemoveAt(benchIdx);
+            return true;
+        }
+
+        var activeSlot = Array.FindIndex(Members, m => m.Id == characterId);
+        if (activeSlot < 0)
+            return false;
+        if (Members.Count(c => c.Id != Guid.Empty) <= 1)
+            return false;
+
+        Members[activeSlot] = default;
+        return true;
     }
 
     public void RebalanceDead()

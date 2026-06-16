@@ -23,6 +23,8 @@
     "reset_game": { "required": [], "optional": [] },
     "swap_row": { "required": ["slot"], "optional": [] },
     "tavern_recruit": { "required": ["targetId"], "optional": [] },
+    "swap_active_bench": { "required": ["slot"], "optional": ["targetId"] },
+    "dismiss_character": { "required": ["targetId"], "optional": [] },
     "mission_accept": { "required": ["targetId"], "optional": [] },
     "vendor_purchase": { "required": ["targetId"], "optional": [] },
     "wildcard_alliance": { "required": ["targetId"], "optional": [] },

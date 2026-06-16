@@ -27,6 +27,8 @@ export type UiIntent =
   | { kind: 'transferToCache'; slot: number; itemId: string; count: number }
   | { kind: 'transferFromCache'; slot: number; itemId: string; count: number }
   | { kind: 'tavernRecruit'; recruitId: string }
+  | { kind: 'swapActiveBench'; activeSlot: number; benchCharacterId?: string }
+  | { kind: 'dismissCharacter'; characterId: string }
   | { kind: 'missionAccept'; missionId: string }
   | { kind: 'vendorPurchase'; itemId: string }
   | { kind: 'equipItem'; characterId: string; itemId: string; slot: string }
@@ -83,6 +85,14 @@ export function intentToAction(intent: UiIntent): PlayerAction {
       };
     case 'tavernRecruit':
       return { type: 'tavern_recruit', targetId: intent.recruitId };
+    case 'swapActiveBench':
+      return {
+        type: 'swap_active_bench',
+        slot: intent.activeSlot,
+        targetId: intent.benchCharacterId,
+      };
+    case 'dismissCharacter':
+      return { type: 'dismiss_character', targetId: intent.characterId };
     case 'missionAccept':
       return { type: 'mission_accept', targetId: intent.missionId };
     case 'vendorPurchase':

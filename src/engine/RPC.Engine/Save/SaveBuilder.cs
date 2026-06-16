@@ -12,7 +12,7 @@ namespace RPC.Engine.Save;
 public static class SaveBuilder
 {
     /// <summary>Current save schema version produced by the builder.</summary>
-    public const int CurrentSchemaVersion = 8;
+    public const int CurrentSchemaVersion = 9;
 
     public static SaveData Build(GameState state)
     {
@@ -36,6 +36,7 @@ public static class SaveBuilder
             ExpeditionCache = BuildExpeditionCache(state),
             CollectedLoot = state.Exploration.CollectedLoot.ToArray(),
             DeadCharacters = BuildDeadCharacters(state),
+            Bench = BuildBench(state),
             OverworldTurns = state.Overworld.Turns,
             OverworldCurrentNodeId = state.Overworld.CurrentNodeId,
             CampaignEnded = state.CampaignEnded,
@@ -177,6 +178,27 @@ public static class SaveBuilder
 
     public static SaveComponentStack[] BuildExpeditionCache(GameState state) =>
         state.Party.ExpeditionCache.Select(BuildComponentStack).ToArray();
+
+    public static SavePartyMember[] BuildBench(GameState state) =>
+        state.Party.Bench.Select(b => new SavePartyMember
+        {
+            Id = b.Id,
+            Name = b.Name,
+            ClassId = b.ClassId,
+            Level = b.Level,
+            Xp = b.Xp,
+            BaseStats = b.BaseStats,
+            CurrentHp = b.CurrentHp,
+            Equipment = b.Equipment,
+            KnownAbilities = b.KnownAbilities,
+            Row = b.Row,
+            BranchChoice = b.BranchChoice,
+            BranchLevel6 = b.BranchLevel6,
+            TempModifiers = b.TempModifiers,
+            ResurrectionAttempts = b.ResurrectionAttempts,
+            BranchAdvancementLocked = b.BranchAdvancementLocked,
+            ComponentInventory = b.ComponentInventory.Select(BuildComponentStack).ToArray()
+        }).ToArray();
 
     public static SavePartyMember[] BuildDeadCharacters(GameState state) =>
         state.Party.DeadCharacters.Select(d => new SavePartyMember

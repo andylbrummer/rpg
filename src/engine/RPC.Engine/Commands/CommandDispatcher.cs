@@ -31,6 +31,11 @@ public static class CommandDispatcher
             ["reset_game"] = _ => new ResetGameCommand(),
             ["swap_row"] = a => new SwapRowCommand(a.Slot ?? throw new ArgumentException("Slot required")),
             ["tavern_recruit"] = a => new RecruitFromTavernCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["swap_active_bench"] = a => new SwapActiveBenchCommand(
+                a.Slot ?? throw new ArgumentException("Slot required"),
+                string.IsNullOrEmpty(a.TargetId) ? null : Guid.Parse(a.TargetId)),
+            ["dismiss_character"] = a => new DismissCharacterCommand(
+                Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required"))),
             ["mission_accept"] = a => new AcceptMissionCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
             ["vendor_purchase"] = a => new VendorPurchaseCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
             ["wildcard_alliance"] = a => new WildCardAllianceCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),

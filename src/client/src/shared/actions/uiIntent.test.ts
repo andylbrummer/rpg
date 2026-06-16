@@ -132,4 +132,29 @@ describe('intentToAction', () => {
       targetId: 'sword',
     });
   });
+
+  it('maps a swapActiveBench intent to swap_active_bench', () => {
+    expect(
+      intentToAction({ kind: 'swapActiveBench', activeSlot: 2, benchCharacterId: 'c-9' }),
+    ).toEqual({
+      type: 'swap_active_bench',
+      slot: 2,
+      targetId: 'c-9',
+    });
+  });
+
+  it('maps a swapActiveBench bench-out intent (no bench character) to swap_active_bench', () => {
+    expect(intentToAction({ kind: 'swapActiveBench', activeSlot: 3 })).toEqual({
+      type: 'swap_active_bench',
+      slot: 3,
+      targetId: undefined,
+    });
+  });
+
+  it('maps a dismissCharacter intent to dismiss_character', () => {
+    expect(intentToAction({ kind: 'dismissCharacter', characterId: 'c-1' })).toEqual({
+      type: 'dismiss_character',
+      targetId: 'c-1',
+    });
+  });
 });

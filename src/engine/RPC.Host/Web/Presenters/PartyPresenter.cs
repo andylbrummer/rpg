@@ -1,6 +1,7 @@
 using RPC.Engine;
 using RPC.Engine.Character;
 using RPC.Engine.Content;
+using RPC.Engine.Party;
 
 namespace RPC.Host.Web.Presenters;
 
@@ -88,6 +89,39 @@ public class PartyPresenter
                 };
             }).ToArray();
     }
+
+    public object PresentBench(GameState state)
+    {
+        return state.Party.Bench.Select(c =>
+        {
+            var effective = c.GetEffectiveStats(_itemRegistry);
+            var classDef = _classRegistry.Get(c.ClassId);
+            return new
+            {
+                id = c.Id.ToString(),
+                name = c.Name,
+                classId = c.ClassId,
+                className = classDef?.Name ?? c.ClassId,
+                color = ClassColors.GetValueOrDefault(c.ClassId, "#888888"),
+                level = c.Level,
+                xp = c.Xp,
+                hp = c.CurrentHp,
+                maxHp = effective.MaxHp,
+                alive = c.IsAlive,
+                branchChoice = c.BranchChoice,
+            };
+        }).ToArray();
+    }
+
+    /// <summary>Roster capacity summary so the UI can gate recruit/dismiss without re-deriving caps.</summary>
+    public object PresentRosterInfo(GameState state) => new
+    {
+        activeCount = state.Party.Members.Count(c => c.Id != Guid.Empty),
+        benchCount = state.Party.Bench.Count,
+        rosterCount = state.Party.RosterCount,
+        maxRosterSize = PartyState.MaxRosterSize,
+        atCap = state.Party.RosterCount >= PartyState.MaxRosterSize,
+    };
 
     public object PresentDeadCharacters(GameState state)
     {

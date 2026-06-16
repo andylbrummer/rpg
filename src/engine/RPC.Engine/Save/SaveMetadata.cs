@@ -135,5 +135,10 @@ public static class SaveCompatibility
             if (!string.IsNullOrEmpty(dead.ClassId))
                 yield return dead.ClassId;
         }
+        foreach (var benched in data.Bench ?? Array.Empty<SavePartyMember>())
+        {
+            if (!string.IsNullOrEmpty(benched.ClassId))
+                yield return benched.ClassId;
+        }
     }
 }

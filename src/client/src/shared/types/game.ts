@@ -274,6 +274,28 @@ export interface DeadCharacter {
   titheTokenCost: number;
 }
 
+export interface BenchMember {
+  id: string;
+  name: string;
+  classId: string;
+  className: string;
+  color: string;
+  level: number;
+  xp: number;
+  hp: number;
+  maxHp: number;
+  alive: boolean;
+  branchChoice?: string | null;
+}
+
+export interface RosterInfo {
+  activeCount: number;
+  benchCount: number;
+  rosterCount: number;
+  maxRosterSize: number;
+  atCap: boolean;
+}
+
 export interface GameState {
   type: 'state';
   mode: 'Menu' | 'Exploration' | 'Combat' | 'Dialog';
@@ -296,6 +318,8 @@ export interface GameState {
   expeditionCache?: ComponentStack[];
   downtimeCompleted?: string[];
   deadCharacters?: DeadCharacter[];
+  bench?: BenchMember[];
+  rosterInfo?: RosterInfo;
   titheTokens?: number;
   campaignEnded?: boolean;
   isFragileState?: boolean;

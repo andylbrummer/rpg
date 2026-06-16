@@ -65,6 +65,8 @@ public class StatePresenter
             downtimeCompleted = state.DowntimeCompleted.Select(id => id.ToString()).ToArray(),
             wildCardAlliance = CampaignPresenter.PresentWildCardAlliance(state),
             deadCharacters = _partyPresenter.PresentDeadCharacters(state),
+            bench = _partyPresenter.PresentBench(state),
+            rosterInfo = _partyPresenter.PresentRosterInfo(state),
             titheTokens = state.TitheTokens,
             campaignEnded = state.CampaignEnded,
             isFragileState = state.IsFragileState,

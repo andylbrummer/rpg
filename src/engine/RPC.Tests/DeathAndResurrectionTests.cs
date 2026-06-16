@@ -299,14 +299,14 @@ public class DeathAndResurrectionTests
     }
 
     [Fact]
-    public void SaveSchemaVersion_IsEight()
+    public void SaveSchemaVersion_IsCurrent()
     {
         var gs = new GameState(seed: 1);
         var path = Path.Combine(Path.GetTempPath(), $"test_save_schema_{Guid.NewGuid()}.json");
         SaveSystem.Save(gs, path);
 
         var json = File.ReadAllText(path);
-        Assert.Contains("\"schemaVersion\": 8", json);
+        Assert.Contains($"\"schemaVersion\": {SaveBuilder.CurrentSchemaVersion}", json);
 
         File.Delete(path);
     }

@@ -195,6 +195,23 @@
         {
           "type": "object",
           "properties": {
+            "type": { "type": "string", "const": "swap_active_bench" },
+            "slot": { "type": "integer" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "slot"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "dismiss_character" },
+            "targetId": { "type": "string" }
+          },
+          "required": ["type", "targetId"]
+        },
+        {
+          "type": "object",
+          "properties": {
             "type": { "type": "string", "const": "mission_accept" },
             "targetId": { "type": "string" }
           },

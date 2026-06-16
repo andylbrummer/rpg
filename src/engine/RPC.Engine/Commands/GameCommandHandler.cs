@@ -119,6 +119,12 @@ public class GameCommandHandler
             case RecruitFromTavernCommand recruitCmd:
                 stateChanged = _gameState.RecruitFromTavern(recruitCmd.RecruitId);
                 break;
+            case SwapActiveBenchCommand swapBenchCmd:
+                stateChanged = _gameState.SwapActiveBench(swapBenchCmd.ActiveSlot, swapBenchCmd.BenchCharacterId);
+                break;
+            case DismissCharacterCommand dismissCmd:
+                stateChanged = _gameState.DismissCharacter(dismissCmd.CharacterId);
+                break;
             case AcceptMissionCommand acceptCmd:
                 stateChanged = _gameState.AcceptMission(acceptCmd.MissionId);
                 break;
