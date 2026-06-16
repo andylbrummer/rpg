@@ -65,6 +65,7 @@ public class StatePresenter
             partyGold = state.PartyGold,
             partyInventory = state.PartyInventory.ToArray(),
             expeditionCache = state.Party.ExpeditionCache.Select(c => Presenters.ItemStackPresenter.Present(c, _itemRegistry)).ToArray(),
+            townStorage = state.Party.TownStorage.Select(c => Presenters.ItemStackPresenter.Present(c, _itemRegistry)).ToArray(),
             downtimeCompleted = state.DowntimeCompleted.Select(id => id.ToString()).ToArray(),
             wildCardAlliance = CampaignPresenter.PresentWildCardAlliance(state),
             deadCharacters = _partyPresenter.PresentDeadCharacters(state),

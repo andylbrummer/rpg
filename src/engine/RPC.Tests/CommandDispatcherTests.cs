@@ -220,6 +220,26 @@ public class CommandDispatcherTests
     }
 
     [Fact]
+    public void Parse_TransferToTownStorage_ReturnsTransferToTownStorageCommand()
+    {
+        var action = new PlayerAction { Type = "transfer_to_town_storage", Slot = 2, TargetId = "item_9", Value = 7 };
+        var cmd = Assert.IsType<TransferToTownStorageCommand>(CommandDispatcher.Parse(action));
+        Assert.Equal(2, cmd.Slot);
+        Assert.Equal("item_9", cmd.ItemId);
+        Assert.Equal(7, cmd.Count);
+    }
+
+    [Fact]
+    public void Parse_TransferFromTownStorage_ReturnsTransferFromTownStorageCommand()
+    {
+        var action = new PlayerAction { Type = "transfer_from_town_storage", Slot = 2, TargetId = "item_9", Value = 7 };
+        var cmd = Assert.IsType<TransferFromTownStorageCommand>(CommandDispatcher.Parse(action));
+        Assert.Equal(2, cmd.Slot);
+        Assert.Equal("item_9", cmd.ItemId);
+        Assert.Equal(7, cmd.Count);
+    }
+
+    [Fact]
     public void Parse_DowntimeAction_ReturnsDowntimeActionCommand()
     {
         var guid = Guid.NewGuid();

@@ -48,7 +48,9 @@ public class ProtocolSchemaTests
                 "set_reputation" => new PlayerAction { Type = actionType, TargetId = "bureau", Value = 0 },
                 "dialogue_choice" => new PlayerAction { Type = actionType, TargetId = "bureau", Value = 0 },
                 "branch_choose" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString(), Branch = "test" },
-                "transfer_to_cache" or "transfer_from_cache" => new PlayerAction { Type = actionType, Slot = 0, TargetId = "item", Value = 1 },
+                "transfer_to_cache" or "transfer_from_cache"
+                    or "transfer_to_town_storage" or "transfer_from_town_storage"
+                    => new PlayerAction { Type = actionType, Slot = 0, TargetId = "item", Value = 1 },
                 "downtime_action" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString(), DowntimeAction = "Rest" },
                 "resurrect_character" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString() },
                 "equip_item" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString(), ItemId = "rusty_sword", EquipSlot = "mainHand" },

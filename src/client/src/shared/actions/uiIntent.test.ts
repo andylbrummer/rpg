@@ -132,6 +132,18 @@ describe('intentToAction', () => {
     ).toEqual({ type: 'transfer_from_cache', slot: 2, targetId: 'potion', value: 1 });
   });
 
+  it('maps a transfer-to-town-storage intent to transfer_to_town_storage', () => {
+    expect(
+      intentToAction({ kind: 'transferToTownStorage', slot: 1, itemId: 'bone_shard', count: 9 })
+    ).toEqual({ type: 'transfer_to_town_storage', slot: 1, targetId: 'bone_shard', value: 9 });
+  });
+
+  it('maps a transfer-from-town-storage intent to transfer_from_town_storage', () => {
+    expect(
+      intentToAction({ kind: 'transferFromTownStorage', slot: 1, itemId: 'bone_shard', count: 2 })
+    ).toEqual({ type: 'transfer_from_town_storage', slot: 1, targetId: 'bone_shard', value: 2 });
+  });
+
   it('maps a tavern recruit intent to tavern_recruit', () => {
     expect(intentToAction({ kind: 'tavernRecruit', recruitId: 'r-1' })).toEqual({
       type: 'tavern_recruit',

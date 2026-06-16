@@ -200,6 +200,18 @@ public class GameCommandHandler
                 ComponentInventorySystem.TransferFromExpeditionCache(_gameState.Party, fromCacheCmd.Slot, fromCacheCmd.ItemId, fromCacheCmd.Count);
                 stateChanged = true;
                 break;
+            case TransferToTownStorageCommand toStorageCmd:
+                if (_gameState.Mode != GameMode.Menu)
+                    throw new InvalidOperationException("Town storage is only accessible in town.");
+                ComponentInventorySystem.TransferToTownStorage(_gameState.Party, toStorageCmd.Slot, toStorageCmd.ItemId, toStorageCmd.Count);
+                stateChanged = true;
+                break;
+            case TransferFromTownStorageCommand fromStorageCmd:
+                if (_gameState.Mode != GameMode.Menu)
+                    throw new InvalidOperationException("Town storage is only accessible in town.");
+                ComponentInventorySystem.TransferFromTownStorage(_gameState.Party, fromStorageCmd.Slot, fromStorageCmd.ItemId, fromStorageCmd.Count);
+                stateChanged = true;
+                break;
             case DowntimeActionCommand downtimeCmd:
                 {
                     var result = _gameState.PerformDowntimeAction(downtimeCmd.CharacterId, downtimeCmd.Action);

@@ -192,6 +192,66 @@ public class ComponentInventoryTests
     }
 
     [Fact]
+    public void TransferToTownStorage_AcceptsMoreStacksThanAnyCappedStore()
+    {
+        var party = new PartyState();
+        // 1500 of one item needs 16 stacks at the 99 default cap — more than the 12-slot
+        // expedition cache or 8-slot bag could ever hold. Town storage must accept all of it.
+        var member = NewMember(new[] { new ComponentStack("bone_shard", 99) });
+        party.SetMember(0, member);
+        party.TownStorage = Enumerable.Range(0, 15)
+            .Select(_ => new ComponentStack("bone_shard", 99))
+            .ToArray();
+
+        ComponentInventorySystem.TransferToTownStorage(party, 0, "bone_shard", 99);
+
+        var total = ComponentInventorySystem.GetComponentCount(party.TownStorage, "bone_shard");
+        Assert.Equal(99 * 16, total);
+        Assert.Equal(16, party.TownStorage.Length);
+        Assert.True(party.TownStorage.Length > PartyState.MaxExpeditionCacheSlots);
+        Assert.Empty(party.Members[0].ComponentInventory);
+    }
+
+    [Fact]
+    public void TransferFromTownStorage_RespectsEightSlotBagCap()
+    {
+        var party = new PartyState();
+        // Bag already holds 8 distinct full stacks (the max bag slots).
+        var fullBag = new[]
+        {
+            new ComponentStack("a", 99), new ComponentStack("b", 99),
+            new ComponentStack("c", 99), new ComponentStack("d", 99),
+            new ComponentStack("e", 99), new ComponentStack("f", 99),
+            new ComponentStack("g", 99), new ComponentStack("h", 99),
+        };
+        party.SetMember(0, NewMember(fullBag));
+        party.TownStorage = new[] { new ComponentStack("new_item", 5) };
+
+        // No free slot in the 8-slot bag for a new item id.
+        Assert.Throws<InvalidOperationException>(() =>
+            ComponentInventorySystem.TransferFromTownStorage(party, 0, "new_item", 5));
+    }
+
+    [Fact]
+    public void TransferToTownStorage_MergesIntoExistingStack()
+    {
+        var party = new PartyState();
+        party.TownStorage = new[] { new ComponentStack("bone_shard", 40) };
+        party.SetMember(0, NewMember(new[] { new ComponentStack("bone_shard", 10) }));
+
+        ComponentInventorySystem.TransferToTownStorage(party, 0, "bone_shard", 10);
+
+        Assert.Single(party.TownStorage);
+        Assert.Equal(50, party.TownStorage[0].Count);
+    }
+
+    private static CharacterState NewMember(ComponentStack[] inventory) => new(
+        Guid.NewGuid(), "Test", "bonewarden", 1, 0,
+        new BaseStats(4, 3, 5, 4, 4), 17, Equipment.Empty,
+        Array.Empty<string>(), 0, null, null, null, 0, false,
+        inventory);
+
+    [Fact]
     public void TryFallbackCast_Bonewarden_WithEnoughHp()
     {
         var character = new CharacterState(
@@ -283,6 +343,28 @@ public class ComponentInventoryTests
         Assert.Single(loaded.Party.ExpeditionCache);
         Assert.Equal("cinder", loaded.Party.ExpeditionCache[0].ItemId);
         Assert.Equal(20, loaded.Party.ExpeditionCache[0].Count);
+    }
+
+    [Fact]
+    public void SaveLoad_PreservesTownStorage()
+    {
+        var state = new GameState(seed: 42);
+        state.Party.TownStorage = new[]
+        {
+            new ComponentStack("bone_shard", 250),
+            new ComponentStack("blood_vial", 40),
+        };
+
+        using var tempDir = new TempDirectory();
+        var path = Path.Combine(tempDir.Path, "save.json");
+        SaveSystem.Save(state, path);
+
+        var loaded = new GameState(seed: 42);
+        Assert.True(SaveSystem.Load(loaded, path));
+
+        Assert.Equal(2, loaded.Party.TownStorage.Length);
+        Assert.Equal(250, ComponentInventorySystem.GetComponentCount(loaded.Party.TownStorage, "bone_shard"));
+        Assert.Equal(40, ComponentInventorySystem.GetComponentCount(loaded.Party.TownStorage, "blood_vial"));
     }
 
     private class TempDirectory : IDisposable

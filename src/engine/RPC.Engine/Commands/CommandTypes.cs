@@ -59,6 +59,8 @@ public record AbandonMissionCommand(string MissionId) : ICommand;
 // Inventory
 public record TransferToCacheCommand(int Slot, string ItemId, int Count) : ICommand;
 public record TransferFromCacheCommand(int Slot, string ItemId, int Count) : ICommand;
+public record TransferToTownStorageCommand(int Slot, string ItemId, int Count) : ICommand;
+public record TransferFromTownStorageCommand(int Slot, string ItemId, int Count) : ICommand;
 public record EquipItemCommand(Guid CharacterId, string ItemId, string Slot) : ICommand;
 public record UnequipItemCommand(Guid CharacterId, string Slot) : ICommand;
 

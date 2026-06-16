@@ -246,6 +246,7 @@ public static class SaveRestorer
         state.PartyInventory = data.PartyInventory?.ToList() ?? new List<string>();
 
         state.Party.ExpeditionCache = data.ExpeditionCache?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack, c.DungeonTurnsAlive, c.Stabilized)).ToArray() ?? Array.Empty<ComponentStack>();
+        state.Party.TownStorage = data.TownStorage?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack, c.DungeonTurnsAlive, c.Stabilized)).ToArray() ?? Array.Empty<ComponentStack>();
         state.Party.DeadCharacters.Clear();
         if (data.DeadCharacters != null)
         {

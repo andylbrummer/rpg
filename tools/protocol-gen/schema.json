@@ -701,6 +701,54 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "transfer_to_town_storage"
+            },
+            "slot": {
+              "type": "integer"
+            },
+            "targetId": {
+              "type": "string"
+            },
+            "value": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "slot",
+            "targetId",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "transfer_from_town_storage"
+            },
+            "slot": {
+              "type": "integer"
+            },
+            "targetId": {
+              "type": "string"
+            },
+            "value": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "slot",
+            "targetId",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "downtime_action"
             },
             "targetId": {

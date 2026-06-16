@@ -16,6 +16,10 @@
 
   const members = $derived<PartyMember[]>(gameState?.party ?? []);
   const cache = $derived<ComponentStack[]>(gameState?.expeditionCache ?? []);
+  const townStorage = $derived<ComponentStack[]>(gameState?.townStorage ?? []);
+
+  /** Town storage is only accessible while in town (Menu mode). */
+  const inTown = $derived(gameState?.mode === 'Menu');
 
   let selectedSlot = $state<number | null>(null);
   let moveQty = $state<MoveQty>('one');
@@ -59,6 +63,26 @@
     if (!selected) return;
     onIntent({
       kind: 'transferFromCache',
+      slot: selected.slot,
+      itemId: stack.itemId,
+      count: moveAmount(stack),
+    });
+  }
+
+  function toStorage(stack: ComponentStack) {
+    if (!selected) return;
+    onIntent({
+      kind: 'transferToTownStorage',
+      slot: selected.slot,
+      itemId: stack.itemId,
+      count: moveAmount(stack),
+    });
+  }
+
+  function fromStorage(stack: ComponentStack) {
+    if (!selected) return;
+    onIntent({
+      kind: 'transferFromTownStorage',
       slot: selected.slot,
       itemId: stack.itemId,
       count: moveAmount(stack),
@@ -154,6 +178,9 @@
                   <button type="button" class="inv-equip-btn" onclick={() => equip(stack)}>Equip</button>
                 {/if}
                 <button type="button" class="inv-to-cache-btn" onclick={() => toCache(stack)}>→ Cache</button>
+                {#if inTown}
+                  <button type="button" class="inv-to-storage-btn" onclick={() => toStorage(stack)}>→ Storage</button>
+                {/if}
               </div>
             </div>
           {/each}
@@ -203,6 +230,34 @@
           {/each}
         </div>
       </section>
+
+      <!-- Town storage (unlimited, town-only) -->
+      {#if inTown}
+        <section class="inv-panel inv-storage" aria-label="Town storage">
+          <header class="inv-panel-head">
+            <h3>Town Storage</h3>
+            <span class="inv-fill">{townStorage.length} stacks</span>
+          </header>
+          <div class="inv-grid">
+            {#each townStorage as stack (stack.itemId)}
+              <div class="inv-stack">
+                <div class="inv-stack-info">
+                  <span class="inv-stack-name" style="color: {stockColor(stack.count)}">{displayName(stack)}</span>
+                  <span class="inv-stack-count" style="color: {stockColor(stack.count)}">{stack.count}/{stack.maxStack}</span>
+                </div>
+                <div class="inv-stack-actions">
+                  <button type="button" class="inv-from-storage-btn" onclick={() => fromStorage(stack)} disabled={!selected}>
+                    → {selected?.name ?? 'Bag'}
+                  </button>
+                </div>
+              </div>
+            {/each}
+            {#if townStorage.length === 0}
+              <div class="inv-stack inv-stack-empty" aria-label="Empty town storage"><span>Empty</span></div>
+            {/if}
+          </div>
+        </section>
+      {/if}
     </div>
   {/if}
 </div>
@@ -306,6 +361,10 @@
 
   .inv-cache {
     border-color: #446;
+  }
+
+  .inv-storage {
+    border-color: #464;
   }
 
   .inv-panel-head {

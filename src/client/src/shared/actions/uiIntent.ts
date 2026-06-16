@@ -29,6 +29,8 @@ export type UiIntent =
   | { kind: 'branchChoose'; characterId: string; branch: string }
   | { kind: 'transferToCache'; slot: number; itemId: string; count: number }
   | { kind: 'transferFromCache'; slot: number; itemId: string; count: number }
+  | { kind: 'transferToTownStorage'; slot: number; itemId: string; count: number }
+  | { kind: 'transferFromTownStorage'; slot: number; itemId: string; count: number }
   | { kind: 'tavernRecruit'; recruitId: string }
   | { kind: 'swapActiveBench'; activeSlot: number; benchCharacterId?: string }
   | { kind: 'dismissCharacter'; characterId: string }
@@ -96,6 +98,20 @@ export function intentToAction(intent: UiIntent): PlayerAction {
     case 'transferFromCache':
       return {
         type: 'transfer_from_cache',
+        slot: intent.slot,
+        targetId: intent.itemId,
+        value: intent.count,
+      };
+    case 'transferToTownStorage':
+      return {
+        type: 'transfer_to_town_storage',
+        slot: intent.slot,
+        targetId: intent.itemId,
+        value: intent.count,
+      };
+    case 'transferFromTownStorage':
+      return {
+        type: 'transfer_from_town_storage',
         slot: intent.slot,
         targetId: intent.itemId,
         value: intent.count,

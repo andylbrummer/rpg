@@ -74,6 +74,14 @@ public static class CommandDispatcher
                 a.Slot ?? throw new ArgumentException("Slot required"),
                 a.TargetId ?? throw new ArgumentException("TargetId required"),
                 a.Value ?? throw new ArgumentException("Value required")),
+            ["transfer_to_town_storage"] = a => new TransferToTownStorageCommand(
+                a.Slot ?? throw new ArgumentException("Slot required"),
+                a.TargetId ?? throw new ArgumentException("TargetId required"),
+                a.Value ?? throw new ArgumentException("Value required")),
+            ["transfer_from_town_storage"] = a => new TransferFromTownStorageCommand(
+                a.Slot ?? throw new ArgumentException("Slot required"),
+                a.TargetId ?? throw new ArgumentException("TargetId required"),
+                a.Value ?? throw new ArgumentException("Value required")),
             ["downtime_action"] = a => new DowntimeActionCommand(
                 Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required")),
                 Enum.Parse<DowntimeAction>(a.DowntimeAction ?? throw new ArgumentException("DowntimeAction required"), true)),

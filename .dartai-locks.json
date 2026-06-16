@@ -1,15 +1,5 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claims": {
-    "Q7WtouurAmSg": {
-      "runner_instance_id": "beagle-ab2-3871289",
-      "runner_email": "claude@anthropic.com",
-      "claimed_at": "2026-06-16T00:18:00Z",
-      "agent_id": "loop-runner-main",
-      "parent_loop_id": null,
-      "purpose": "town storage unlimited inventory + transfer",
-      "source_event": {"loop_id": "PW0nnjc0Ojca", "task_id": "Q7WtouurAmSg", "conversation_id": null}
-    }
-  },
+  "claims": {},
   "claimed": []
 }

@@ -187,6 +187,54 @@ test.describe('Inventory UI (character bags + expedition cache)', () => {
     });
   });
 
+  test('renders the town storage grid with its stacks while in town', async ({ page }) => {
+    await loadTown(page);
+    await setState(page, inventoryState({
+      party: [member(0, MEMBER_A, { componentInventory: [stack('Bloom Dust', 5)] })],
+      expeditionCache: [],
+      townStorage: [stack('Bone Shard', 250), stack('Blood Vial', 40)],
+    }));
+    await openInventory(page);
+
+    const storage = page.locator('.inv-storage');
+    await expect(storage).toBeVisible();
+    await expect(storage.locator('.inv-stack:not(.inv-stack-empty)')).toHaveCount(2);
+    await expect(storage).toContainText('Bone Shard');
+    await expect(storage.locator('.inv-fill')).toContainText('2 stacks');
+  });
+
+  test('moving a stack to town storage emits transfer_to_town_storage for the selected slot', async ({ page }) => {
+    await loadTown(page);
+    await installActionCapture(page);
+    await setState(page, inventoryState({
+      party: [member(2, MEMBER_A, { componentInventory: [stack('Bloom Dust', 5)] })],
+      expeditionCache: [],
+      townStorage: [],
+    }));
+    await openInventory(page);
+
+    await page.locator('.inv-bag .inv-to-storage-btn').first().click();
+
+    const actions = await getCaptured(page);
+    expect(actions).toContainEqual({ type: 'transfer_to_town_storage', slot: 2, targetId: 'Bloom Dust', value: 1 });
+  });
+
+  test('moving from town storage emits transfer_from_town_storage to the selected member', async ({ page }) => {
+    await loadTown(page);
+    await installActionCapture(page);
+    await setState(page, inventoryState({
+      party: [member(0, MEMBER_A, { componentInventory: [] })],
+      expeditionCache: [],
+      townStorage: [stack('Bone Shard', 250)],
+    }));
+    await openInventory(page);
+
+    await page.locator('.inv-storage .inv-from-storage-btn').first().click();
+
+    const actions = await getCaptured(page);
+    expect(actions).toContainEqual({ type: 'transfer_from_town_storage', slot: 0, targetId: 'Bone Shard', value: 1 });
+  });
+
   test('switching member tab shows that member bag and routes transfers to their slot', async ({ page }) => {
     await loadTown(page);
     await installActionCapture(page);

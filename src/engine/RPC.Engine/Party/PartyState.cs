@@ -10,6 +10,14 @@ public class PartyState
     public ComponentStack[] ExpeditionCache { get; set; } = Array.Empty<ComponentStack>();
     public const int MaxExpeditionCacheSlots = 12;
 
+    /// <summary>
+    /// Town-only unlimited component store. Unlike the expedition cache (12 slots) and a
+    /// character bag (8 slots), town storage has no slot cap — it is the long-term stash the
+    /// party leaves behind in town. Access is gated to town (<see cref="GameMode.Menu"/>) by
+    /// the command handler.
+    /// </summary>
+    public ComponentStack[] TownStorage { get; set; } = Array.Empty<ComponentStack>();
+
     /// <summary>Maximum total roster size (active + bench). Recruiting past this requires a dismissal.</summary>
     public const int MaxRosterSize = 12;
 

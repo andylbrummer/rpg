@@ -162,6 +162,51 @@ public static class ComponentInventorySystem
         return party;
     }
 
+    /// <summary>Unlimited slot count for town storage (no cap).</summary>
+    public const int UnlimitedTownStorageSlots = int.MaxValue;
+
+    public static PartyState TransferToTownStorage(PartyState party, int memberIndex, string itemId, int count)
+    {
+        if (memberIndex < 0 || memberIndex >= 6)
+            throw new ArgumentOutOfRangeException(nameof(memberIndex));
+
+        var member = party.Members[memberIndex];
+        if (member.Id == Guid.Empty)
+            throw new InvalidOperationException("No character in slot.");
+
+        var (newInventory, newStorage) = TransferComponent(
+            member.ComponentInventory,
+            party.TownStorage,
+            itemId,
+            count,
+            UnlimitedTownStorageSlots);
+
+        party.SetMember(memberIndex, member with { ComponentInventory = newInventory });
+        party.TownStorage = newStorage;
+        return party;
+    }
+
+    public static PartyState TransferFromTownStorage(PartyState party, int memberIndex, string itemId, int count)
+    {
+        if (memberIndex < 0 || memberIndex >= 6)
+            throw new ArgumentOutOfRangeException(nameof(memberIndex));
+
+        var member = party.Members[memberIndex];
+        if (member.Id == Guid.Empty)
+            throw new InvalidOperationException("No character in slot.");
+
+        var (newStorage, newInventory) = TransferComponent(
+            party.TownStorage,
+            member.ComponentInventory,
+            itemId,
+            count,
+            CharacterState.MaxComponentSlots);
+
+        party.SetMember(memberIndex, member with { ComponentInventory = newInventory });
+        party.TownStorage = newStorage;
+        return party;
+    }
+
     /// <summary>
     /// Fallback casting: Bonewarden can pay ability cost with HP at 2× rate.
     /// Returns (success, hpCost, message).

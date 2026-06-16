@@ -222,6 +222,22 @@
       ],
       "optional": []
     },
+    "transfer_to_town_storage": {
+      "required": [
+        "slot",
+        "targetId",
+        "value"
+      ],
+      "optional": []
+    },
+    "transfer_from_town_storage": {
+      "required": [
+        "slot",
+        "targetId",
+        "value"
+      ],
+      "optional": []
+    },
     "downtime_action": {
       "required": [
         "targetId",

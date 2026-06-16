@@ -348,6 +348,7 @@ export interface GameState {
   partyGold?: number;
   partyInventory?: string[];
   expeditionCache?: ComponentStack[];
+  townStorage?: ComponentStack[];
   downtimeCompleted?: string[];
   deadCharacters?: DeadCharacter[];
   bench?: BenchMember[];

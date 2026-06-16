@@ -185,6 +185,20 @@ export type PlayerAction =
 
     }
   | {
+      type: "transfer_to_town_storage";
+      slot: number;
+      targetId: string;
+      value: number;
+
+    }
+  | {
+      type: "transfer_from_town_storage";
+      slot: number;
+      targetId: string;
+      value: number;
+
+    }
+  | {
       type: "downtime_action";
       targetId: string;
       downtimeAction: string;

@@ -32,6 +32,7 @@ public class SaveData
     public int? TitheOutstandingSinceTurn { get; set; }
     public string[] PartyInventory { get; set; } = Array.Empty<string>();
     public SaveComponentStack[] ExpeditionCache { get; set; } = Array.Empty<SaveComponentStack>();
+    public SaveComponentStack[] TownStorage { get; set; } = Array.Empty<SaveComponentStack>();
     public string[] CollectedLoot { get; set; } = Array.Empty<string>();
     public SavePartyMember[] DeadCharacters { get; set; } = Array.Empty<SavePartyMember>();
     public SavePartyMember[] Bench { get; set; } = Array.Empty<SavePartyMember>();
