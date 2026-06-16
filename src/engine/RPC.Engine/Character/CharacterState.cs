@@ -9,7 +9,12 @@ public readonly record struct TempStatModifier(string Stat, int Delta, int Durat
 
 public readonly record struct MemoryCost(string Stat, int Amount, int Duration);
 
-public readonly record struct ComponentStack(string ItemId, int Count, int MaxStack = 99)
+public readonly record struct ComponentStack(
+    string ItemId,
+    int Count,
+    int MaxStack = 99,
+    int DungeonTurnsAlive = 0,
+    bool Stabilized = false)
 {
     public int RemainingSpace => MaxStack - Count;
     public bool IsFull => Count >= MaxStack;

@@ -55,6 +55,17 @@
     "stackSize": 15
   },
   {
+    "id": "bloom_sample",
+    "name": "Bloom Sample",
+    "description": "A living cutting of Hollow flora. Decays into inert matter if carried too long through a dungeon unless stabilized.",
+    "type": "component",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNiIgZmlsbD0iIzdjZiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 6,
+    "stackSize": 15
+  },
+  {
     "id": "bloom_dust",
     "name": "Bloom Dust",
     "description": "Fine spore powder from bloom creatures. Causes mild hallucinations if inhaled.",

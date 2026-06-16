@@ -14,7 +14,7 @@ namespace RPC.Tests;
 public class SaveGoldenFixtureTests : IDisposable
 {
     private const int OldestSupportedVersion = 3;
-    private const int CurrentVersion = 10;
+    private const int CurrentVersion = 11;
 
     private readonly string _workPath;
 
@@ -128,5 +128,25 @@ public class SaveGoldenFixtureTests : IDisposable
         Assert.True(gs.Tithe.HasDebt);
         Assert.Equal(1, gs.Tithe.OutstandingSinceTurn);
         Assert.Contains(1, gs.Tithe.BilledMilestones);
+    }
+
+    [Fact]
+    public void GoldenFixture_V11_RestoresBloomSampleDecayCounters()
+    {
+        File.Copy(FixturePath(11), _workPath, overwrite: true);
+
+        var gs = new GameState(seed: 1);
+        Assert.True(gs.LoadGame(_workPath));
+
+        var samples = gs.Party.Members[0].ComponentInventory
+            .Where(s => s.ItemId == "bloom_sample")
+            .OrderByDescending(s => s.DungeonTurnsAlive)
+            .ToArray();
+
+        Assert.Equal(2, samples.Length);
+        Assert.Equal(6, samples[0].DungeonTurnsAlive);
+        Assert.False(samples[0].Stabilized);
+        Assert.Equal(3, samples[1].DungeonTurnsAlive);
+        Assert.True(samples[1].Stabilized);
     }
 }

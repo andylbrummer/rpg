@@ -19,7 +19,7 @@ public static class SaveRestorer
                 var xp = Math.Max(0, s.Xp);
                 var hp = Math.Max(0, s.CurrentHp);
                 var row = Math.Clamp(s.Row, 0, 1);
-                var componentInventory = s.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();
+                var componentInventory = s.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack, c.DungeonTurnsAlive, c.Stabilized)).ToArray() ?? Array.Empty<ComponentStack>();
                 state.Party.SetMember(i, new CharacterState(
                     s.Id, s.Name, s.ClassId, level, xp,
                     s.BaseStats, hp, s.Equipment,
@@ -241,13 +241,13 @@ public static class SaveRestorer
         state.Tithe.OutstandingSinceTurn = data.TitheOutstandingSinceTurn;
         state.PartyInventory = data.PartyInventory?.ToList() ?? new List<string>();
 
-        state.Party.ExpeditionCache = data.ExpeditionCache?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();
+        state.Party.ExpeditionCache = data.ExpeditionCache?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack, c.DungeonTurnsAlive, c.Stabilized)).ToArray() ?? Array.Empty<ComponentStack>();
         state.Party.DeadCharacters.Clear();
         if (data.DeadCharacters != null)
         {
             foreach (var d in data.DeadCharacters)
             {
-                var deadInventory = d.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();
+                var deadInventory = d.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack, c.DungeonTurnsAlive, c.Stabilized)).ToArray() ?? Array.Empty<ComponentStack>();
                 state.Party.DeadCharacters.Add(new CharacterState(
                     d.Id, d.Name, d.ClassId,
                     Math.Max(1, d.Level), Math.Max(0, d.Xp),
@@ -263,7 +263,7 @@ public static class SaveRestorer
         {
             foreach (var b in data.Bench)
             {
-                var benchInventory = b.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();
+                var benchInventory = b.ComponentInventory?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack, c.DungeonTurnsAlive, c.Stabilized)).ToArray() ?? Array.Empty<ComponentStack>();
                 state.Party.Bench.Add(new CharacterState(
                     b.Id, b.Name, b.ClassId,
                     Math.Max(1, b.Level), Math.Max(0, b.Xp),

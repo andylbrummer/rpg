@@ -27,4 +27,6 @@ public class SaveComponentStack
     public string ItemId { get; set; } = "";
     public int Count { get; set; }
     public int MaxStack { get; set; } = 99;
+    public int DungeonTurnsAlive { get; set; } = 0;
+    public bool Stabilized { get; set; } = false;
 }

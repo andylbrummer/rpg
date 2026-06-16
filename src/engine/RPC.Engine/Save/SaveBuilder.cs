@@ -12,7 +12,7 @@ namespace RPC.Engine.Save;
 public static class SaveBuilder
 {
     /// <summary>Current save schema version produced by the builder.</summary>
-    public const int CurrentSchemaVersion = 10;
+    public const int CurrentSchemaVersion = 11;
 
     public static SaveData Build(GameState state)
     {
@@ -291,7 +291,9 @@ public static class SaveBuilder
     {
         ItemId = c.ItemId,
         Count = c.Count,
-        MaxStack = c.MaxStack
+        MaxStack = c.MaxStack,
+        DungeonTurnsAlive = c.DungeonTurnsAlive,
+        Stabilized = c.Stabilized
     };
 
     private static SaveVendorItem BuildVendorItem(VendorItem v) => new()

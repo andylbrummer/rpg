@@ -112,6 +112,9 @@ public class ExplorationService
             state.LastUpdate = DateTime.UtcNow;
             state.StepsSinceEncounter++;
 
+            // A step inside a dungeon node is one in-dungeon turn: age carried bloom samples.
+            Inventory.BloomDecaySystem.TickDungeonTurn(state);
+
             var tile = state.CurrentDungeon.GetTile(newPos);
             if (!string.IsNullOrEmpty(tile.EncounterId))
             {
