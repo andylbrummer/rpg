@@ -301,6 +301,70 @@ public class StatePresenterTests
     }
 
     [Fact]
+    public void CreateStateMessage_ComponentInventory_Includes_ItemMetadata_And_EquipSlot()
+    {
+        var state = new GameState();
+        state.LoadGame();
+        _itemRegistry.Register(new ItemDef("iron_sword", "Iron Sword", "A blade.", "weapon", "mainHand", "", null, 50));
+
+        var member = state.Party.Members[0];
+        state.Party.SetMember(0, member with
+        {
+            ComponentInventory = RPC.Engine.Inventory.ComponentInventorySystem.AddComponent(
+                member.ComponentInventory, "iron_sword", 1, CharacterState.MaxComponentSlots),
+        });
+
+        var msg = _presenter.CreateStateMessage(state);
+        var root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(msg));
+        var inv = root.GetProperty("party")[0].GetProperty("componentInventory");
+        var stack = inv.EnumerateArray().First(s => s.GetProperty("itemId").GetString() == "iron_sword");
+
+        Assert.Equal("Iron Sword", stack.GetProperty("name").GetString());
+        Assert.Equal("weapon", stack.GetProperty("type").GetString());
+        Assert.Equal("mainHand", stack.GetProperty("equipSlot").GetString());
+    }
+
+    [Fact]
+    public void CreateStateMessage_ExpeditionCache_Includes_ItemMetadata_And_NullEquipSlot_For_Components()
+    {
+        var state = new GameState();
+        state.LoadGame();
+        _itemRegistry.Register(new ItemDef("bloom_dust", "Bloom Dust", "Crafting stock.", "component", null, "", null, 5));
+        RPC.Engine.Inventory.ComponentInventorySystem.AddToExpeditionCache(state.Party, "bloom_dust", 3);
+
+        var msg = _presenter.CreateStateMessage(state);
+        var root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(msg));
+        var cache = root.GetProperty("expeditionCache");
+        var stack = cache.EnumerateArray().First(s => s.GetProperty("itemId").GetString() == "bloom_dust");
+
+        Assert.Equal("Bloom Dust", stack.GetProperty("name").GetString());
+        Assert.Equal("component", stack.GetProperty("type").GetString());
+        Assert.Equal(JsonValueKind.Null, stack.GetProperty("equipSlot").ValueKind);
+    }
+
+    [Fact]
+    public void CreateStateMessage_UnknownItem_Falls_Back_To_ItemId_Name()
+    {
+        var state = new GameState();
+        state.LoadGame();
+
+        var member = state.Party.Members[0];
+        state.Party.SetMember(0, member with
+        {
+            ComponentInventory = RPC.Engine.Inventory.ComponentInventorySystem.AddComponent(
+                member.ComponentInventory, "mystery_widget", 1, CharacterState.MaxComponentSlots),
+        });
+
+        var msg = _presenter.CreateStateMessage(state);
+        var root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(msg));
+        var inv = root.GetProperty("party")[0].GetProperty("componentInventory");
+        var stack = inv.EnumerateArray().First(s => s.GetProperty("itemId").GetString() == "mystery_widget");
+
+        Assert.Equal("mystery_widget", stack.GetProperty("name").GetString());
+        Assert.Equal(JsonValueKind.Null, stack.GetProperty("equipSlot").ValueKind);
+    }
+
+    [Fact]
     public void CreateStateMessage_Has_No_Side_Effects()
     {
         var state = new GameState();

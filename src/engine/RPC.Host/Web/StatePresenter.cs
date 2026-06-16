@@ -18,11 +18,13 @@ public class StatePresenter
 
     private readonly PartyPresenter _partyPresenter;
     private readonly CombatPresenter _combatPresenter;
+    private readonly ItemRegistry _itemRegistry;
 
     public StatePresenter(ClassRegistry classRegistry, ItemRegistry itemRegistry)
     {
         _partyPresenter = new PartyPresenter(classRegistry, itemRegistry);
         _combatPresenter = new CombatPresenter(classRegistry);
+        _itemRegistry = itemRegistry;
     }
 
     public object CreateStateMessage(GameState state)
@@ -62,7 +64,7 @@ public class StatePresenter
             evidence = CampaignPresenter.PresentEvidence(state),
             partyGold = state.PartyGold,
             partyInventory = state.PartyInventory.ToArray(),
-            expeditionCache = state.Party.ExpeditionCache.Select(c => new { itemId = c.ItemId, count = c.Count, maxStack = c.MaxStack }).ToArray(),
+            expeditionCache = state.Party.ExpeditionCache.Select(c => Presenters.ItemStackPresenter.Present(c, _itemRegistry)).ToArray(),
             downtimeCompleted = state.DowntimeCompleted.Select(id => id.ToString()).ToArray(),
             wildCardAlliance = CampaignPresenter.PresentWildCardAlliance(state),
             deadCharacters = _partyPresenter.PresentDeadCharacters(state),

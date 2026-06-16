@@ -9,6 +9,7 @@
   import TavernHall from './TavernHall.svelte';
   import MessageBoard from './MessageBoard.svelte';
   import RosterScreen from './RosterScreen.svelte';
+  import InventoryScreen from './InventoryScreen.svelte';
 
   interface Props {
     gameState: GameState | null;
@@ -29,11 +30,12 @@
 
   let sheetMember = $state<PartyMember | null>(null);
   let showMap = $state(false);
-  let currentTab = $state<'party' | 'roster' | 'tavern' | 'missions' | 'market' | 'dungeons' | 'clerk'>('party');
+  let currentTab = $state<'party' | 'roster' | 'inventory' | 'tavern' | 'missions' | 'market' | 'dungeons' | 'clerk'>('party');
 
   const tabs = [
     { id: 'party' as const, label: 'Party', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
     { id: 'roster' as const, label: 'Roster', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+    { id: 'inventory' as const, label: 'Inventory', icon: 'M20 7h-3V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H4a1 1 0 0 0-1 1v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zM9 5h6v2H9V5z' },
     { id: 'tavern' as const, label: 'Tavern', icon: 'M7 2h10v4H7zM5 6h14v2H5zm-2 4h18v10H3zm4 2v6m10-6v6' },
     { id: 'missions' as const, label: 'Missions', icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8m8 4H8' },
     { id: 'market' as const, label: 'Market', icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.4.4-.6 1-.3 1.5.3.5.8.8 1.4.8h12.4' },
@@ -142,6 +144,10 @@
     {:else if currentTab === 'roster'}
       <div class="tab-panel">
         <RosterScreen gameState={gameState} onIntent={props.onIntent} />
+      </div>
+    {:else if currentTab === 'inventory'}
+      <div class="tab-panel">
+        <InventoryScreen gameState={gameState} onIntent={props.onIntent} />
       </div>
     {:else if currentTab === 'tavern'}
       <div class="tab-panel">

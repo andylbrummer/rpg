@@ -56,6 +56,12 @@ export interface ComponentStack {
   itemId: string;
   count: number;
   maxStack: number;
+  /** Display name from the item registry; falls back to itemId for unknown items. */
+  name?: string;
+  /** Item category: weapon, armor, accessory, consumable, component. */
+  type?: string;
+  /** Resolved equipment slot the item fits (mainHand/offHand/armor/accessory1), or null when not equippable. */
+  equipSlot?: string | null;
 }
 
 export interface PartyMember {

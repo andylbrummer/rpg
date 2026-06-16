@@ -85,7 +85,7 @@ public class PartyPresenter
                         .ToArray() ?? Array.Empty<string>(),
                     classAbilities = classDef?.Abilities.Select(a => new { id = a.Id, name = a.Name, branch = a.Branch }).ToArray() ?? Array.Empty<object>(),
                     tempModifiers = c.TempModifiers.Select(m => new { stat = m.Stat, delta = m.Delta, duration = m.Duration, source = m.Source }).ToArray(),
-                    componentInventory = c.ComponentInventory.Select(ci => new { itemId = ci.ItemId, count = ci.Count, maxStack = ci.MaxStack }).ToArray(),
+                    componentInventory = c.ComponentInventory.Select(ci => ItemStackPresenter.Present(ci, _itemRegistry)).ToArray(),
                 };
             }).ToArray();
     }

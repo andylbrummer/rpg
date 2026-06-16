@@ -26,6 +26,22 @@ public readonly record struct EquipResult(bool Success, string? Error, Character
 /// </summary>
 public static class EquipmentSystem
 {
+    /// <summary>
+    /// Resolve the canonical equipment slot an item fits, or null when the item is not
+    /// equippable. Mirrors <see cref="SlotAcceptsItem"/> (the authoritative check used during
+    /// equip) by returning the first accepting slot, so accessories resolve to "accessory1".
+    /// Intended for UI affordances — equip itself re-validates server-side.
+    /// </summary>
+    public static string? ResolveSlot(ItemDef item)
+    {
+        if (item is null) return null;
+        foreach (var slot in Equipment.SlotNames)
+        {
+            if (SlotAcceptsItem(slot, item)) return slot;
+        }
+        return null;
+    }
+
     /// <summary>True if an item of the given definition may occupy the named equipment slot.</summary>
     public static bool SlotAcceptsItem(string slot, ItemDef item) => slot.ToLowerInvariant() switch
     {
