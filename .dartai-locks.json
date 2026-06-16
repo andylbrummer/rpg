@@ -1,5 +1,15 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claims": {},
+  "claims": {
+    "dW2dGEI8NdhA": {
+      "runner_instance_id": "beagle-ab2-3871289",
+      "runner_email": "claude@anthropic.com",
+      "claimed_at": "2026-06-16T00:00:00Z",
+      "agent_id": "loop-runner-main",
+      "parent_loop_id": null,
+      "purpose": "inventory UI (bags + expedition cache + town storage)",
+      "source_event": {"loop_id": "PW0nnjc0Ojca", "task_id": "dW2dGEI8NdhA", "conversation_id": null}
+    }
+  },
   "claimed": []
 }
