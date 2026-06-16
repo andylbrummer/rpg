@@ -43,20 +43,13 @@
       : 'item'
   );
 
-  // Cartographer-detected secrets the player can act on are those on the tile
-  // they currently occupy or an orthogonally adjacent tile (the wall is then
-  // within reach). Each maps to a Break control that emits breakWall{id}.
-  const reachableSecrets = $derived(
-    (gameState?.detectedSecrets ?? []).filter(s => {
-      const px = gameState?.player?.x;
-      const py = gameState?.player?.y;
-      if (px == null || py == null) return false;
-      const dist = Math.abs(s.x - px) + Math.abs(s.y - py);
-      return dist <= 1;
-    })
-  );
+  // Break controls are driven by the presenter's discovered-and-intact breakable-wall list,
+  // NOT by detectedSecrets (the unrevealed "?" search set, which BreakWall always rejects).
+  // BreakWall has no server distance check and discovery already required Chebyshev <= 1, so
+  // these are not re-filtered by distance — every genuinely-breakable wall is offered.
+  const breakableWalls = $derived(gameState?.breakableWalls ?? []);
 
-  function secretLabel(wall?: string | null): string {
+  function wallLabel(wall?: string | null): string {
     return wall ? `Break wall (${wall})` : 'Break wall';
   }
 </script>
@@ -82,12 +75,14 @@
       <button class="hud-btn search-btn" onclick={() => onIntent({ kind: 'searchSecrets' })}>
         Search
       </button>
-      {#each reachableSecrets as secret (secret.id)}
+      {#each breakableWalls as wall (wall.id)}
         <button
           class="hud-btn break-btn"
-          onclick={() => onIntent({ kind: 'breakWall', targetId: secret.id })}
+          data-testid="break-wall-btn"
+          data-secret-id={wall.id}
+          onclick={() => onIntent({ kind: 'breakWall', targetId: wall.id })}
         >
-          {secretLabel(secret.wall)}
+          {wallLabel(wall.wall)}
         </button>
       {/each}
     </div>

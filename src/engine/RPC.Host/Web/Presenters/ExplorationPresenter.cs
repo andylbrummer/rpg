@@ -9,7 +9,8 @@ public record ExplorationViewModel(
     List<object> Explored,
     bool HasDungeon,
     string? DungeonType,
-    List<object> DetectedSecrets);
+    List<object> DetectedSecrets,
+    List<object> BreakableWalls);
 
 public static class ExplorationPresenter
 {
@@ -18,6 +19,7 @@ public static class ExplorationPresenter
         var tiles = new List<object>();
         var explored = new List<object>();
         var detectedSecrets = new List<object>();
+        var breakableWalls = new List<object>();
         var collected = state.Exploration.CollectedLoot;
 
         if (state.CurrentDungeon != null)
@@ -54,6 +56,24 @@ public static class ExplorationPresenter
                 if (!state.Journal.IsDetected(secret.Id) || state.Journal.IsDiscovered(secret.Id)) continue;
                 detectedSecrets.Add(new { id = secret.Id, x = sx, y = sy, wall = secret.Wall });
             }
+
+            // Discovered, still-intact breakable walls: these are exactly the walls the engine will
+            // accept a break action for (ExplorationService.BreakWall requires IsDiscovered). Disjoint
+            // from detectedSecrets (the "?" search set) by JournalState's detected/discovered split.
+            // A wall whose border has already been opened (None) — or is no longer breakable material —
+            // drops out so the Break affordance disappears once the wall is breached.
+            foreach (var secret in state.Secrets.All)
+            {
+                if (secret.Type != "breakable_wall") continue;
+                if (secret.X is not int sx || secret.Y is not int sy) continue;
+                if (!state.Journal.IsDiscovered(secret.Id)) continue;
+                if (!Enum.TryParse<Direction>(secret.Wall, ignoreCase: true, out var dir)) continue;
+
+                var border = state.CurrentDungeon.GetTile(new Position(sx, sy)).GetBorder(dir);
+                if (border is not (BorderType.BreakableWall or BorderType.CrackedWall)) continue;
+
+                breakableWalls.Add(new { id = secret.Id, x = sx, y = sy, wall = secret.Wall });
+            }
         }
 
         return new ExplorationViewModel(
@@ -67,7 +87,8 @@ public static class ExplorationPresenter
             explored,
             state.CurrentDungeon != null,
             state.CurrentDungeonType,
-            detectedSecrets);
+            detectedSecrets,
+            breakableWalls);
     }
 
     private static object SerializeTile(int x, int y, Tile tile, HashSet<string> collected)

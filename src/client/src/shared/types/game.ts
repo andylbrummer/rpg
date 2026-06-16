@@ -19,6 +19,16 @@ export interface DetectedSecret {
   wall?: string | null;
 }
 
+// A discovered, still-intact breakable wall the engine will accept a break action for.
+// Disjoint from DetectedSecret (the unrevealed "?" search set): a wall appears here only
+// once its type is discovered, and drops out the moment its border is broken open.
+export interface BreakableWall {
+  id: string;
+  x: number;
+  y: number;
+  wall?: string | null;
+}
+
 export interface Tile {
   x: number;
   y: number;
@@ -336,6 +346,7 @@ export interface GameState {
   hasDungeon: boolean;
   dungeonType?: string;
   detectedSecrets?: DetectedSecret[];
+  breakableWalls?: BreakableWall[];
   party: PartyMember[];
   combat?: CombatState;
   combatResult?: CombatResult;
