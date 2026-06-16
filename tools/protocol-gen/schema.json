@@ -344,6 +344,25 @@
             "source": { "type": "string" }
           },
           "required": ["type", "targetId", "source"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "equip_item" },
+            "targetId": { "type": "string" },
+            "itemId": { "type": "string" },
+            "equipSlot": { "type": "string" }
+          },
+          "required": ["type", "targetId", "itemId", "equipSlot"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "const": "unequip_item" },
+            "targetId": { "type": "string" },
+            "equipSlot": { "type": "string" }
+          },
+          "required": ["type", "targetId", "equipSlot"]
         }
       ]
     }

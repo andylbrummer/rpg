@@ -1,15 +1,5 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claims": {
-    "k5ZNKOUa9bdf": {
-      "runner_instance_id": "beagle-ab2-3871289",
-      "runner_email": "claude@anthropic.com",
-      "claimed_at": "2026-06-15T21:50:00Z",
-      "agent_id": "loop-runner-main",
-      "parent_loop_id": null,
-      "purpose": "equip/unequip API + restrictions",
-      "source_event": {"loop_id": "PW0nnjc0Ojca", "task_id": "k5ZNKOUa9bdf", "conversation_id": null}
-    }
-  },
+  "claims": {},
   "claimed": []
 }

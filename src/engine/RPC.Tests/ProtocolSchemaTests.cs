@@ -48,6 +48,8 @@ public class ProtocolSchemaTests
                 "transfer_to_cache" or "transfer_from_cache" => new PlayerAction { Type = actionType, Slot = 0, TargetId = "item", Value = 1 },
                 "downtime_action" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString(), DowntimeAction = "Rest" },
                 "resurrect_character" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString() },
+                "equip_item" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString(), ItemId = "rusty_sword", EquipSlot = "mainHand" },
+                "unequip_item" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString(), EquipSlot = "mainHand" },
                 "rumor_verify" => new PlayerAction { Type = actionType, TargetId = "test", Source = "InkbloodScribe" },
                 _ => new PlayerAction { Type = actionType, TargetId = "test" }
             };

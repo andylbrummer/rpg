@@ -175,6 +175,19 @@ export type PlayerAction =
       targetId: string;
       source: string;
 
+    }
+  | {
+      type: "equip_item";
+      targetId: string;
+      itemId: string;
+      equipSlot: string;
+
+    }
+  | {
+      type: "unequip_item";
+      targetId: string;
+      equipSlot: string;
+
     };
 
 /**

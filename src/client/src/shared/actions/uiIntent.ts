@@ -28,7 +28,9 @@ export type UiIntent =
   | { kind: 'transferFromCache'; slot: number; itemId: string; count: number }
   | { kind: 'tavernRecruit'; recruitId: string }
   | { kind: 'missionAccept'; missionId: string }
-  | { kind: 'vendorPurchase'; itemId: string };
+  | { kind: 'vendorPurchase'; itemId: string }
+  | { kind: 'equipItem'; characterId: string; itemId: string; slot: string }
+  | { kind: 'unequipItem'; characterId: string; slot: string };
 
 /**
  * Pure mapping from a typed UI intent to the protocol `PlayerAction`.
@@ -85,5 +87,14 @@ export function intentToAction(intent: UiIntent): PlayerAction {
       return { type: 'mission_accept', targetId: intent.missionId };
     case 'vendorPurchase':
       return { type: 'vendor_purchase', targetId: intent.itemId };
+    case 'equipItem':
+      return {
+        type: 'equip_item',
+        targetId: intent.characterId,
+        itemId: intent.itemId,
+        equipSlot: intent.slot,
+      };
+    case 'unequipItem':
+      return { type: 'unequip_item', targetId: intent.characterId, equipSlot: intent.slot };
   }
 }

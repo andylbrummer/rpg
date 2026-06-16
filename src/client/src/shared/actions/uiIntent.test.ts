@@ -50,6 +50,18 @@ describe('intentToAction', () => {
     expect(intentToAction({ kind: 'flee' })).toEqual({ type: 'flee_combat' });
   });
 
+  it('maps an equipItem intent to equip_item', () => {
+    expect(
+      intentToAction({ kind: 'equipItem', characterId: 'hero-1', itemId: 'rusty_sword', slot: 'mainHand' })
+    ).toEqual({ type: 'equip_item', targetId: 'hero-1', itemId: 'rusty_sword', equipSlot: 'mainHand' });
+  });
+
+  it('maps an unequipItem intent to unequip_item', () => {
+    expect(
+      intentToAction({ kind: 'unequipItem', characterId: 'hero-1', slot: 'mainHand' })
+    ).toEqual({ type: 'unequip_item', targetId: 'hero-1', equipSlot: 'mainHand' });
+  });
+
   it('maps a downtime intent to downtime_action', () => {
     expect(
       intentToAction({ kind: 'downtime', memberId: 'hero-3', action: 'train' })

@@ -1,6 +1,7 @@
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
 using RPC.Engine.Commands;
+using RPC.Engine.Content;
 using RPC.Engine.Dungeons;
 using RPC.Engine.Inventory;
 using RPC.Engine.Models.Dungeons;
@@ -14,11 +15,13 @@ public class GameCommandHandler
 {
     private readonly GameState _gameState;
     private readonly IDungeonGenerator _dungeonGenerator;
+    private readonly ItemRegistry? _itemRegistry;
 
-    public GameCommandHandler(GameState gameState, IDungeonGenerator dungeonGenerator)
+    public GameCommandHandler(GameState gameState, IDungeonGenerator dungeonGenerator, ItemRegistry? itemRegistry = null)
     {
         _gameState = gameState;
         _dungeonGenerator = dungeonGenerator;
+        _itemRegistry = itemRegistry;
     }
 
     public CommandResult Execute(ICommand cmd)
@@ -191,6 +194,12 @@ public class GameCommandHandler
                     stateChanged = result != null && result.Success;
                 }
                 break;
+            case EquipItemCommand equipCmd:
+                stateChanged = TryEquip(equipCmd);
+                break;
+            case UnequipItemCommand unequipCmd:
+                stateChanged = TryUnequip(unequipCmd);
+                break;
             case VerifyRumorCommand verifyCmd:
                 {
                     if (Enum.TryParse<RumorVerificationSource>(verifyCmd.Source, true, out var source))
@@ -210,5 +219,44 @@ public class GameCommandHandler
         }
 
         return new CommandResult(stateChanged, clearCombatResult);
+    }
+
+    private bool TryEquip(EquipItemCommand cmd)
+    {
+        var index = Array.FindIndex(_gameState.Party.Members, m => m.Id == cmd.CharacterId);
+        if (index < 0) return false;
+
+        var result = EquipmentSystem.Equip(_gameState.Party.Members[index], cmd.ItemId, cmd.Slot, _itemRegistry);
+        if (!result.Success) return false;
+
+        _gameState.Party.SetMember(index, result.Character);
+        _gameState.EmitActionLog("inventory", "item_equipped", new Dictionary<string, string>
+        {
+            { "characterId", cmd.CharacterId.ToString() },
+            { "itemId", cmd.ItemId },
+            { "slot", cmd.Slot }
+        });
+        return true;
+    }
+
+    private bool TryUnequip(UnequipItemCommand cmd)
+    {
+        var index = Array.FindIndex(_gameState.Party.Members, m => m.Id == cmd.CharacterId);
+        if (index < 0) return false;
+
+        if (!Equipment.IsValidSlot(cmd.Slot)) return false;
+
+        var equippedItem = _gameState.Party.Members[index].Equipment.GetSlot(cmd.Slot);
+        var result = EquipmentSystem.Unequip(_gameState.Party.Members[index], cmd.Slot);
+        if (!result.Success) return false;
+
+        _gameState.Party.SetMember(index, result.Character);
+        _gameState.EmitActionLog("inventory", "item_unequipped", new Dictionary<string, string>
+        {
+            { "characterId", cmd.CharacterId.ToString() },
+            { "itemId", equippedItem ?? "" },
+            { "slot", cmd.Slot }
+        });
+        return true;
     }
 }

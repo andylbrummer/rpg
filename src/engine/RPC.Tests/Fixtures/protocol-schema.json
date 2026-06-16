@@ -40,6 +40,8 @@
     "transfer_from_cache": { "required": ["slot", "targetId", "value"], "optional": [] },
     "downtime_action": { "required": ["targetId", "downtimeAction"], "optional": [] },
     "resurrect_character": { "required": ["targetId"], "optional": [] },
+    "equip_item": { "required": ["targetId", "itemId", "equipSlot"], "optional": [] },
+    "unequip_item": { "required": ["targetId", "equipSlot"], "optional": [] },
     "rumor_verify": { "required": ["targetId", "source"], "optional": [] }
   },
   "stateShape": {

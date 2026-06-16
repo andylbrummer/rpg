@@ -13,4 +13,6 @@ public class PlayerAction
     public string? Branch { get; set; }
     public string? DowntimeAction { get; set; }
     public string? Source { get; set; }
+    public string? ItemId { get; set; }
+    public string? EquipSlot { get; set; }
 }

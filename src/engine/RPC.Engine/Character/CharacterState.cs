@@ -106,6 +106,32 @@ public readonly record struct Equipment(
 {
     public static Equipment Empty => new(null, null, null, null, null);
 
+    /// <summary>Canonical equipment slot names accepted by the equip/unequip protocol.</summary>
+    public static readonly string[] SlotNames = { "mainHand", "offHand", "armor", "accessory1", "accessory2" };
+
+    public static bool IsValidSlot(string slot) =>
+        SlotNames.Any(s => string.Equals(s, slot, StringComparison.OrdinalIgnoreCase));
+
+    public string? GetSlot(string slot) => slot.ToLowerInvariant() switch
+    {
+        "mainhand" => MainHand,
+        "offhand" => OffHand,
+        "armor" => Armor,
+        "accessory1" => Accessory1,
+        "accessory2" => Accessory2,
+        _ => throw new ArgumentException($"Unknown equipment slot: {slot}", nameof(slot)),
+    };
+
+    public Equipment WithSlot(string slot, string? value) => slot.ToLowerInvariant() switch
+    {
+        "mainhand" => this with { MainHand = value },
+        "offhand" => this with { OffHand = value },
+        "armor" => this with { Armor = value },
+        "accessory1" => this with { Accessory1 = value },
+        "accessory2" => this with { Accessory2 = value },
+        _ => throw new ArgumentException($"Unknown equipment slot: {slot}", nameof(slot)),
+    };
+
     public BaseStats StatBonus(ItemRegistry? items = null)
     {
         if (items is null) return new BaseStats(0, 0, 0, 0, 0);
