@@ -1,10 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-
-async function loadTown(page: Page) {
-  await page.goto('/app');
-  await page.waitForFunction(() => Boolean((window as any).gameStore?.__testSetState));
-  await expect(page.locator('.town-menu')).toBeVisible({ timeout: 10000 });
-}
+import { test, expect } from '@playwright/test';
+import { loadTown } from './townHarness';
 
 test.describe('Branch Choice Modal', () => {
   test('modal appears when character awaits branch choice', async ({ page }) => {

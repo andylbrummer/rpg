@@ -156,7 +156,9 @@ test.describe('Map and Combat Outcome QA', () => {
     await page.evaluate(() => {
       (window as any).gameStore.sendAction({ type: 'enter_combat' });
     });
-    await waitForState(page, (state: any) => state?.mode === 'Combat' && state?.combat?.phase === 'Turn');
+    // Real backend combat setup can exceed the 10s default on a cold encounter;
+    // use the same 20s budget the other backend state waits in this file rely on.
+    await waitForState(page, (state: any) => state?.mode === 'Combat' && state?.combat?.phase === 'Turn', 20000);
     await expect(page.locator('.combat-overlay')).toBeVisible();
 
     const deadline = Date.now() + 45000;

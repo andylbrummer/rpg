@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { loadTown } from './townHarness';
 
 const MEMBER_ID = '22222222-2222-2222-2222-222222222222';
 
@@ -52,12 +53,6 @@ function baseState(extra: Record<string, unknown>) {
     actionLog: [],
     ...extra,
   };
-}
-
-async function loadTown(page: Page) {
-  await page.goto('/app');
-  await page.waitForFunction(() => Boolean((window as any).gameStore?.__testSetState));
-  await expect(page.locator('.town-menu')).toBeVisible({ timeout: 10000 });
 }
 
 test.describe('Downtime action UI', () => {
