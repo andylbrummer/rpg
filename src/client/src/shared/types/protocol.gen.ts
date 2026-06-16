@@ -44,6 +44,11 @@ export type PlayerAction =
 
     }
   | {
+      type: "use_consumable";
+      action: CombatAction;
+
+    }
+  | {
       type: "flee_combat";
 
     }

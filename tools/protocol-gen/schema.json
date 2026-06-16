@@ -250,6 +250,22 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "use_consumable"
+            },
+            "action": {
+              "$ref": "#/definitions/CombatAction"
+            }
+          },
+          "required": [
+            "type",
+            "action"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "flee_combat"
             }
           },

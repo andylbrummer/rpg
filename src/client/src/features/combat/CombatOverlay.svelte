@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CombatState, Combatant } from '$shared/types/game';
+  import type { CombatState, Combatant, PartyMember } from '$shared/types/game';
   import type { UiIntent } from '$shared/actions/uiIntent';
   import CombatResultToast from './CombatResultToast.svelte';
 
@@ -9,9 +9,10 @@
     onIntent: (intent: UiIntent) => void;
     cancelSignal?: number;
     synergyFlashTargetId?: string | null;
+    party?: PartyMember[];
   }
 
-  let { combat, lastResult, onIntent, cancelSignal = 0, synergyFlashTargetId = null }: Props = $props();
+  let { combat, lastResult, onIntent, cancelSignal = 0, synergyFlashTargetId = null, party = [] }: Props = $props();
 
   let flashingTargetId = $state<string | null>(null);
   let processedFlashTarget: string | null = null;
@@ -31,6 +32,7 @@
   let selectedTargetId = $state<string | null>(null);
   let selectedAction = $state('Attack');
   let selectedAbilityId = $state<string | null>(null);
+  let selectedConsumableId = $state<string | null>(null);
   let showResult = $state(false);
   let validationFlash = $state(false);
 
@@ -78,7 +80,14 @@
       flashValidation();
       return;
     }
-    if ((selectedAction === 'Attack' || selectedAction === 'UseAbility') && !selectedTargetId) {
+    if (selectedAction === 'UseItem' && !selectedConsumableId) {
+      flashValidation();
+      return;
+    }
+    if (
+      (selectedAction === 'Attack' || selectedAction === 'UseAbility' || selectedAction === 'UseItem') &&
+      !selectedTargetId
+    ) {
       flashValidation();
       return;
     }
@@ -88,6 +97,16 @@
         kind: 'combatAbility',
         actorId: currentActor.id,
         abilityId: selectedAbilityId,
+        targetId: selectedTargetId || undefined,
+      });
+      return;
+    }
+
+    if (selectedAction === 'UseItem' && selectedConsumableId) {
+      onIntent({
+        kind: 'useConsumable',
+        actorId: currentActor.id,
+        itemId: selectedConsumableId,
         targetId: selectedTargetId || undefined,
       });
       return;
@@ -150,6 +169,15 @@
     })) ?? [];
   }
 
+  function getConsumables(): { id: string; name: string; count: number }[] {
+    const actor = getCurrentActor();
+    if (!actor || !actor.isPlayer) return [];
+    const member = party.find(m => m.id === actor.id);
+    return (member?.componentInventory ?? [])
+      .filter(s => s.type === 'consumable' && s.count > 0)
+      .map(s => ({ id: s.itemId, name: s.name ?? s.itemId, count: s.count }));
+  }
+
   function targetSide(target: string | undefined): 'ally' | 'enemy' | 'self' {
     if (!target) return 'enemy';
     if (target === 'self') return 'self';
@@ -162,6 +190,8 @@
     const actor = getCurrentActor();
     if (!actor) return false;
     if (selectedAction === 'Attack') return !c.isPlayer && c.alive;
+    // Consumables may heal/buff allies or damage enemies; allow any living combatant as the target.
+    if (selectedAction === 'UseItem') return selectedConsumableId !== null && c.alive;
     if (selectedAction !== 'UseAbility' || !selectedAbilityId) return false;
     const ability = getCurrentAbilities().find(a => a.id === selectedAbilityId);
     if (!ability) return false;
@@ -178,11 +208,17 @@
   function selectAction(action: string) {
     selectedAction = action;
     selectedAbilityId = null;
+    selectedConsumableId = null;
     selectedTargetId = null;
   }
 
   function selectAbility(abilityId: string) {
     selectedAbilityId = abilityId;
+    selectedTargetId = null;
+  }
+
+  function selectConsumable(itemId: string) {
+    selectedConsumableId = itemId;
     selectedTargetId = null;
   }
 
@@ -387,6 +423,23 @@
             {/each}
           </div>
         {/if}
+        {#if selectedAction === 'UseItem'}
+          <div class="consumable-select" data-testid="consumable-select">
+            {#each getConsumables() as item (item.id)}
+              <button
+                class="consumable-btn"
+                class:selected={selectedConsumableId === item.id}
+                data-testid="consumable-btn"
+                data-item-id={item.id}
+                onclick={() => selectConsumable(item.id)}
+              >
+                {item.name} ×{item.count}
+              </button>
+            {:else}
+              <span class="no-consumables">No consumables</span>
+            {/each}
+          </div>
+        {/if}
         <div class="target-hint" class:validation-flash={validationFlash}>
           {#if selectedAction === 'Attack'}
             Click an enemy to select target
@@ -395,6 +448,12 @@
               Click a highlighted enemy to target
             {:else}
               Select an ability
+            {/if}
+          {:else if selectedAction === 'UseItem'}
+            {#if selectedConsumableId}
+              Click a highlighted ally or enemy to target
+            {:else}
+              Select a consumable
             {/if}
           {:else}
             {getActionName(selectedAction)} selected

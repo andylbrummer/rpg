@@ -70,5 +70,29 @@
     "value": 20,
     "effect": { "type": "cure_status", "value": "stun", "target": "ally" },
     "stackSize": 3
+  },
+  {
+    "id": "firebomb",
+    "name": "Firebomb",
+    "description": "A clay flask of volatile pitch that bursts into flame on impact.",
+    "type": "consumable",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgZmlsbD0iI2ZmM2QwMCIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 30,
+    "effect": { "type": "damage", "value": "2d6+2", "target": "enemy" },
+    "stackSize": 3
+  },
+  {
+    "id": "battle_tonic",
+    "name": "Battle Tonic",
+    "description": "A bracing draught that hardens resolve for the fight ahead.",
+    "type": "consumable",
+    "slot": null,
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgZmlsbD0iI2I4ODYwYiIvPjwvc3ZnPg==",
+    "statBonus": null,
+    "value": 40,
+    "effect": { "type": "buff", "value": "fortified:3:2", "target": "ally" },
+    "stackSize": 3
   }
 ]

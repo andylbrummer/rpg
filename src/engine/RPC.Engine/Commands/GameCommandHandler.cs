@@ -68,6 +68,9 @@ public class GameCommandHandler
                 if (_gameState.LastCombatResult != null)
                     clearCombatResult = true;
                 break;
+            case UseConsumableCommand useCmd:
+                stateChanged = UseConsumable(useCmd);
+                break;
             case FleeCombatCommand:
                 _gameState.FleeCombat();
                 stateChanged = true;
@@ -237,6 +240,56 @@ public class GameCommandHandler
         }
 
         return new CommandResult(stateChanged, clearCombatResult);
+    }
+
+    private bool UseConsumable(UseConsumableCommand cmd)
+    {
+        if (_gameState.Combat == null || _gameState.Mode != GameMode.Combat)
+            throw new InvalidOperationException("Cannot use a consumable outside of combat.");
+        if (_itemRegistry == null)
+            throw new InvalidOperationException("Item registry is unavailable; cannot resolve consumable.");
+
+        var item = _itemRegistry.Get(cmd.ItemId)
+            ?? throw new InvalidOperationException($"Unknown item: {cmd.ItemId}");
+        if (item.Type != "consumable")
+            throw new InvalidOperationException($"Item {cmd.ItemId} is not a consumable.");
+
+        var memberIndex = Array.FindIndex(_gameState.Party.Members, m => m.Id == cmd.ActorId);
+        if (memberIndex < 0)
+            throw new InvalidOperationException($"Actor {cmd.ActorId} is not an active party member.");
+
+        var member = _gameState.Party.Members[memberIndex];
+        if (!ComponentInventorySystem.HasComponent(member.ComponentInventory, cmd.ItemId, 1))
+            throw new InvalidOperationException($"Actor does not hold consumable {cmd.ItemId}.");
+
+        var combat = _gameState.Combat;
+        var actorIdx = Array.FindIndex(combat.Combatants, c => c.Id == cmd.ActorId);
+        if (actorIdx < 0)
+            throw new InvalidOperationException($"Actor {cmd.ActorId} is not a combatant.");
+
+        var targetId = cmd.TargetId ?? cmd.ActorId; // default: use on self
+        var targetIdx = Array.FindIndex(combat.Combatants, c => c.Id == targetId);
+        if (targetIdx < 0)
+            throw new InvalidOperationException($"Target {targetId} is not a combatant.");
+
+        var (newTarget, logMessage) = ConsumableSystem.ApplyEffect(
+            item, combat.Combatants[actorIdx], combat.Combatants[targetIdx], _gameState._encounterRng);
+
+        var newCombatants = combat.Combatants.ToArray();
+        newCombatants[targetIdx] = newTarget;
+        var newLog = new List<CombatLogEntry>(combat.Log) { new(cmd.ActorId, logMessage, combat.Round) };
+        _gameState.Combat = combat with { Combatants = newCombatants, Log = newLog };
+
+        var newInventory = ComponentInventorySystem.RemoveComponent(member.ComponentInventory, cmd.ItemId, 1);
+        _gameState.Party.SetMember(memberIndex, member with { ComponentInventory = newInventory });
+
+        _gameState.EmitActionLog("combat", "consumable_used", new Dictionary<string, string>
+        {
+            { "actorId", cmd.ActorId.ToString() },
+            { "itemId", cmd.ItemId },
+            { "targetId", targetId.ToString() }
+        });
+        return true;
     }
 
     private bool TryEquip(EquipItemCommand cmd)

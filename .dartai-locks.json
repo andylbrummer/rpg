@@ -1,15 +1,5 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claims": {
-    "av0AvEAlIjNU": {
-      "runner_instance_id": "beagle-ab2-3871289",
-      "runner_email": "claude@anthropic.com",
-      "claimed_at": "2026-06-16T00:08:00Z",
-      "agent_id": "loop-runner-main",
-      "parent_loop_id": null,
-      "purpose": "use consumable item in combat",
-      "source_event": {"loop_id": "PW0nnjc0Ojca", "task_id": "av0AvEAlIjNU", "conversation_id": null}
-    }
-  },
+  "claims": {},
   "claimed": []
 }

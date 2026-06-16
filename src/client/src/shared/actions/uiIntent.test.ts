@@ -46,6 +46,22 @@ describe('intentToAction', () => {
     });
   });
 
+  it('maps a useConsumable intent to use_consumable with a UseItem CombatAction', () => {
+    expect(
+      intentToAction({ kind: 'useConsumable', actorId: 'hero-1', itemId: 'small_salve', targetId: 'hero-2' })
+    ).toEqual({
+      type: 'use_consumable',
+      action: { actorId: 'hero-1', type: 'UseItem', targetId: 'hero-2', itemId: 'small_salve' },
+    });
+  });
+
+  it('omits targetId for a self-targeted useConsumable', () => {
+    expect(intentToAction({ kind: 'useConsumable', actorId: 'hero-1', itemId: 'small_salve' })).toEqual({
+      type: 'use_consumable',
+      action: { actorId: 'hero-1', type: 'UseItem', targetId: undefined, itemId: 'small_salve' },
+    });
+  });
+
   it('maps a flee intent to flee_combat', () => {
     expect(intentToAction({ kind: 'flee' })).toEqual({ type: 'flee_combat' });
   });

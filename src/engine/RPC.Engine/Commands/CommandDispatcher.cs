@@ -24,6 +24,14 @@ public static class CommandDispatcher
             ["break_wall"] = a => new BreakWallCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
             ["cancel"] = _ => new CancelCommand(),
             ["combat_action"] = a => new CombatActionCommand(a.Action ?? throw new ArgumentException("CombatAction required")),
+            ["use_consumable"] = a =>
+            {
+                var act = a.Action ?? throw new ArgumentException("CombatAction required");
+                return new UseConsumableCommand(
+                    act.ActorId,
+                    act.ItemId ?? throw new ArgumentException("ItemId required"),
+                    act.TargetId);
+            },
             ["flee_combat"] = _ => new FleeCombatCommand(),
             ["enter_combat"] = _ => new TriggerEncounterCommand(),
             ["enter_dungeon"] = a => new EnterDungeonCommand(a.DungeonType ?? "broken_engine"),

@@ -17,6 +17,7 @@ export type UiIntent =
       action: 'Attack' | 'Defend' | 'Wait' | 'UseItem' | 'Flee';
       targetId?: string;
     }
+  | { kind: 'useConsumable'; actorId: string; itemId: string; targetId?: string }
   | { kind: 'flee' }
   | { kind: 'downtime'; memberId: string; action: string }
   | { kind: 'wildcardAlliance'; choice: 'accept' | 'refuse' | 'ignore' }
@@ -56,6 +57,16 @@ export function intentToAction(intent: UiIntent): PlayerAction {
       return {
         type: 'combat_action',
         action: { actorId: intent.actorId, type: intent.action, targetId: intent.targetId },
+      };
+    case 'useConsumable':
+      return {
+        type: 'use_consumable',
+        action: {
+          actorId: intent.actorId,
+          type: 'UseItem',
+          targetId: intent.targetId,
+          itemId: intent.itemId,
+        },
       };
     case 'flee':
       return { type: 'flee_combat' };

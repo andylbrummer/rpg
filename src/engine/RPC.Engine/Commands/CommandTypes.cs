@@ -16,6 +16,7 @@ public record BreakWallCommand(string SecretId) : ICommand;
 
 // Combat
 public record CombatActionCommand(CombatAction Action) : ICommand;
+public record UseConsumableCommand(Guid ActorId, string ItemId, Guid? TargetId) : ICommand;
 public record FleeCombatCommand : ICommand;
 public record TriggerEncounterCommand : ICommand;
 public record ResolveParleyCommand(string Choice) : ICommand;

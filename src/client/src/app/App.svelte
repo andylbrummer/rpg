@@ -405,6 +405,7 @@
           onIntent={dispatchIntent}
           cancelSignal={combatCancelSignal}
           synergyFlashTargetId={$synergyFlashTargetId}
+          party={gameState.party ?? []}
         />
       {/if}
       {#if gameState?.mode === 'Exploration'}

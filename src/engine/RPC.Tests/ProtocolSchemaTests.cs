@@ -40,6 +40,7 @@ public class ProtocolSchemaTests
             var required = actionType switch
             {
                 "combat_action" => new PlayerAction { Type = actionType, Action = new CombatAction(Guid.Empty, ActionType.UseAbility, Guid.Empty, "test", null) },
+                "use_consumable" => new PlayerAction { Type = actionType, Action = new CombatAction(Guid.Empty, ActionType.UseItem, Guid.Empty, null, "salve") },
                 "enter_dungeon" => new PlayerAction { Type = actionType, DungeonType = "test" },
                 "swap_row" => new PlayerAction { Type = actionType, Slot = 0 },
                 "swap_active_bench" => new PlayerAction { Type = actionType, Slot = 0, TargetId = Guid.Empty.ToString() },
