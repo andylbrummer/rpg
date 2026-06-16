@@ -58,7 +58,11 @@ public static class LevelingSystem
         var current = character;
         while (CanLevelUp(current))
         {
-            current = ApplyLevelUp(current, classDef);
+            var next = ApplyLevelUp(current, classDef);
+            // No level-table entry for the next level: ApplyLevelUp returns the character unchanged.
+            // Stop rather than spin forever (CanLevelUp would stay true on the unchanged level).
+            if (next.Level == current.Level) break;
+            current = next;
         }
         return current;
     }

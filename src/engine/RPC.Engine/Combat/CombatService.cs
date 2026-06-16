@@ -439,6 +439,12 @@ public class CombatService
 
         state.Combat = CombatEngine.Tick(state.Combat, action, rng, _classRegistry, emitter, _synergies);
 
+        // Combat→dungeon bridge: an area/AoE damage ability resolving in the encounter reveals any
+        // breakable wall adjacent to the party's dungeon tile (the AoE origin), matching the
+        // explicit-search reveal. Combat is range-band based, so the encounter's tile is used.
+        if (IsAreaDamageAbility(state, action))
+            Exploration.ExplorationService.RevealBreakableWallsFromAreaDamage(state);
+
         // Auto-resolve AI turns
         state.Combat = CombatEngine.AutoResolveToPlayerTurn(state.Combat, rng, _classRegistry, emitter, _synergies);
 
@@ -563,6 +569,22 @@ public class CombatService
 
         state.LastUpdate = DateTime.UtcNow;
         return true;
+    }
+
+    /// <summary>
+    /// True when the submitted action is a player ability that deals area damage — a damage-type
+    /// effect carrying the content-driven <c>area</c> tag. These are the abilities whose blast
+    /// reaches the dungeon walls around the encounter, so they can shatter an adjacent breakable wall.
+    /// </summary>
+    private bool IsAreaDamageAbility(GameState state, CombatAction action)
+    {
+        if (action.Type != ActionType.UseAbility || action.AbilityId is null) return false;
+        var member = state.Party.Members.FirstOrDefault(m => m.Id == action.ActorId);
+        if (member.Id == Guid.Empty || _classRegistry?.Get(member.ClassId) is not { } classDef) return false;
+        var ability = classDef.Abilities.FirstOrDefault(a => a.Id == action.AbilityId);
+        return ability is not null
+            && ability.Effect.Type == "damage"
+            && ability.Tags.Contains("area");
     }
 
     public void FleeCombat(GameState state)

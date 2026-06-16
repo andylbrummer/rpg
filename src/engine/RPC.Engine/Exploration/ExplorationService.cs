@@ -245,6 +245,40 @@ public class ExplorationService
         return true;
     }
 
+    /// <summary>
+    /// Combat→dungeon bridge: an area/AoE damage ability resolving in combat reveals any breakable
+    /// wall adjacent (<c>Chebyshev &lt;= 1</c>) to the party's current dungeon tile, fully discovering
+    /// it with trigger <c>area_damage</c> and flipping its border <c>BreakableWall -&gt; CrackedWall</c>
+    /// on both sides — the same end-state as an explicit <see cref="SearchForSecrets"/>. Combat is
+    /// range-band based and combatants carry no tile coordinates, so the encounter's dungeon tile
+    /// (the party position) is used as the AoE origin. Returns the secret ids newly discovered.
+    /// No-op outside a dungeon. Reuses the <see cref="RevealCrackedWall"/> border-flip helper shared
+    /// with the explicit-search path.
+    /// </summary>
+    public static IReadOnlyList<string> RevealBreakableWallsFromAreaDamage(GameState state)
+    {
+        if (state.CurrentDungeon == null) return Array.Empty<string>();
+
+        var party = state.Player.Position;
+        var found = new List<string>();
+        foreach (var secret in state.Secrets.All)
+        {
+            if (secret.Type != "breakable_wall") continue;
+            if (secret.X is not int sx || secret.Y is not int sy) continue;
+            if (state.Journal.IsDiscovered(secret.Id)) continue;
+            if (party.ChebyshevDistance(new Position(sx, sy)) > 1) continue;
+
+            if (state.DiscoverSecret(secret.Type, secret.Id, "area_damage"))
+            {
+                found.Add(secret.Id);
+                RevealCrackedWall(state, secret);
+            }
+        }
+        if (found.Count > 0)
+            state.LastUpdate = DateTime.UtcNow;
+        return found;
+    }
+
     private static void RevealCrackedWall(GameState state, Dungeons.SecretDef secret)
     {
         if (secret.Type != "breakable_wall") return;
