@@ -33,6 +33,10 @@ public class CampaignState
     // Lore documents the party has already read (drives document-triggered secret discovery)
     public HashSet<string> ReadDocuments { get; set; } = new();
 
+    // The party's family name (bloodline). Set at campaign start from campaign content; gates
+    // bloodline-locked secret discovery. Persisted (save schema v12+).
+    public string FamilyName { get; set; } = "";
+
     public void Reset()
     {
         WorldState.Reset();
@@ -51,6 +55,7 @@ public class CampaignState
         UnlockedDungeons.Clear();
         BetrayalPath = false;
         ReadDocuments.Clear();
+        FamilyName = "";
         FiredEvents.Clear();
         AnnouncedFactionStates.Clear();
     }

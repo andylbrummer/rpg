@@ -38,5 +38,6 @@
   "wildcardTrigger": {
     "factionId": "inkblood",
     "turnThreshold": 12
-  }
+  },
+  "familyName": "Thornwick"
 }

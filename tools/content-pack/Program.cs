@@ -123,6 +123,10 @@ class Program
             {
                 result = ValidateArchive(file, json);
             }
+            else if (relativePath.Contains("/secrets/") || relativePath.StartsWith("secrets/"))
+            {
+                result = ValidateSecret(file, json);
+            }
             else if (relativePath.Contains("/campaigns/dungeons/") || relativePath.StartsWith("campaigns/dungeons/"))
             {
                 result = ValidateDungeonTemplate(file, json, segmentIds, encounterIds);
@@ -558,6 +562,42 @@ class Program
             if (string.IsNullOrWhiteSpace(def.FactionId))
             {
                 Console.WriteLine($"FAIL: {filePath} - Missing factionId");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateSecret(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<RPC.Engine.Dungeons.SecretDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Type))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing type");
                 return 1;
             }
         }

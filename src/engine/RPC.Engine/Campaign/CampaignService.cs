@@ -257,6 +257,25 @@ public class CampaignService
         if (state.Journal.IsDiscovered(secretId)) return false; // already found — idempotent
 
         secretType ??= "unknown";
+
+        // Bloodline gate: a secret carrying a BloodlineRequirement is only discoverable by a party
+        // whose family name matches (case-insensitive). A mismatch refuses discovery and logs the
+        // lock rather than the discovery.
+        var def = state.Secrets.Get(secretId);
+        if (!string.IsNullOrEmpty(def?.BloodlineRequirement)
+            && !string.Equals(def.BloodlineRequirement, state.Campaign.FamilyName, StringComparison.OrdinalIgnoreCase))
+        {
+            state.EmitActionLog("dungeon", "secret_bloodline_locked", new Dictionary<string, string>
+            {
+                { "secretType", secretType },
+                { "secretId", secretId },
+                { "requiredBloodline", def.BloodlineRequirement! },
+                { "trigger", trigger }
+            });
+            state.LastUpdate = DateTime.UtcNow;
+            return false;
+        }
+
         state.Journal.Discover(secretId);
         state.Analytics.RecordSecretDiscovered(secretId);
         state.EmitActionLog("dungeon", "secret_discovered", new Dictionary<string, string>

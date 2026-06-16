@@ -62,6 +62,20 @@ public class SaveSystemTests : IDisposable
     }
 
     [Fact]
+    public void SaveSystem_RoundTrip_PreservesFamilyName()
+    {
+        var gs = new GameState(seed: 42);
+        gs.EnterDungeon(new Dungeon(3, 3, "test"), "test");
+        gs.Campaign.FamilyName = "Thornwick";
+
+        gs.SaveGame(_testSavePath);
+
+        var gs2 = new GameState(seed: 99);
+        Assert.True(gs2.LoadGame(_testSavePath));
+        Assert.Equal("Thornwick", gs2.Campaign.FamilyName);
+    }
+
+    [Fact]
     public void SaveSystem_NoSave_ReturnsFalse()
     {
         var gs = new GameState(seed: 42);

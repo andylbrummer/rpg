@@ -14,7 +14,7 @@ namespace RPC.Tests;
 public class SaveGoldenFixtureTests : IDisposable
 {
     private const int OldestSupportedVersion = 3;
-    private const int CurrentVersion = 11;
+    private const int CurrentVersion = 12;
 
     private readonly string _workPath;
 
@@ -148,5 +148,16 @@ public class SaveGoldenFixtureTests : IDisposable
         Assert.False(samples[0].Stabilized);
         Assert.Equal(3, samples[1].DungeonTurnsAlive);
         Assert.True(samples[1].Stabilized);
+    }
+
+    [Fact]
+    public void GoldenFixture_V12_RestoresFamilyName()
+    {
+        File.Copy(FixturePath(12), _workPath, overwrite: true);
+
+        var gs = new GameState(seed: 1);
+        Assert.True(gs.LoadGame(_workPath));
+
+        Assert.Equal("Thornwick", gs.Campaign.FamilyName);
     }
 }

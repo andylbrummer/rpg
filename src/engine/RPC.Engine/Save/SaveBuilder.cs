@@ -12,7 +12,7 @@ namespace RPC.Engine.Save;
 public static class SaveBuilder
 {
     /// <summary>Current save schema version produced by the builder.</summary>
-    public const int CurrentSchemaVersion = 11;
+    public const int CurrentSchemaVersion = 12;
 
     public static SaveData Build(GameState state)
     {
@@ -62,7 +62,8 @@ public static class SaveBuilder
             FactionTimelineModifiers = new Dictionary<string, int>(state.Campaign.FactionTimelineModifiers),
             FiredEvents = state.Campaign.FiredEvents.ToArray(),
             UnlockedDungeons = state.Campaign.UnlockedDungeons.ToArray(),
-            BetrayalPath = state.Campaign.BetrayalPath
+            BetrayalPath = state.Campaign.BetrayalPath,
+            FamilyName = state.Campaign.FamilyName
         };
     }
 

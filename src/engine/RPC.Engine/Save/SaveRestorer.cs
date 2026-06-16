@@ -157,6 +157,10 @@ public static class SaveRestorer
 
     public static void RestoreCampaignConfig(GameState state, SaveData data)
     {
+        // Family name is campaign state independent of the (optional) campaign config block, so it
+        // restores even for saves without a config.
+        state.Campaign.FamilyName = data.FamilyName ?? "";
+
         if (data.CampaignConfig == null) return;
 
         if (!Enum.TryParse<SchemeType>(data.CampaignConfig.Scheme, out var scheme))

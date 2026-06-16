@@ -245,7 +245,7 @@ public class ContentValidationTests
     {
         "classes", "enemies", "encounters", "factions", "synergies", "items",
         "loot", "npcs", "rumors", "schemes", "complications", "segments",
-        "campaigns", "dungeons", "archives"
+        "campaigns", "dungeons", "archives", "secrets"
     };
 
     private static string? CategoryOf(string relativePath)
@@ -349,6 +349,14 @@ public class ContentValidationTests
                 Assert.NotNull(archive);
                 Assert.False(string.IsNullOrEmpty(archive!.Id));
                 Assert.False(string.IsNullOrEmpty(archive.FactionId));
+                break;
+            }
+            case "secrets":
+            {
+                var secret = JsonSerializer.Deserialize<RPC.Engine.Dungeons.SecretDef>(json, PermissiveOptions);
+                Assert.NotNull(secret);
+                Assert.False(string.IsNullOrEmpty(secret!.Id));
+                Assert.False(string.IsNullOrEmpty(secret.Type));
                 break;
             }
             default:

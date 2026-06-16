@@ -42,6 +42,10 @@ public class CampaignConfig
     public Dictionary<string, string> NpcCasting { get; set; } = new();
     public WildcardTrigger? WildcardTrigger { get; set; }
 
+    // The party's bloodline/family name for this campaign. Content-driven (authored on the campaign
+    // config); copied onto CampaignState at campaign start and gates bloodline-locked secrets.
+    public string FamilyName { get; set; } = "";
+
     public static readonly string[] FactionPool =
     [
         "bureau", "convocation", "cartography", "stillness", "inkblood"

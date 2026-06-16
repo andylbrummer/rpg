@@ -6,12 +6,15 @@ namespace RPC.Engine.Dungeons;
 /// <summary>
 /// A hidden location/feature the party can uncover. <see cref="DocLinkId"/> ties the secret to a
 /// lore document — reading that document passively reveals the secret (the puzzle path).
+/// <see cref="BloodlineRequirement"/>, when set, gates discovery behind the party's family name:
+/// only a party whose <c>CampaignState.FamilyName</c> matches (case-insensitive) may uncover it.
 /// </summary>
 public record SecretDef(
     string Id,
     string Type,
     string? DocLinkId = null,
-    string? Hint = null);
+    string? Hint = null,
+    string? BloodlineRequirement = null);
 
 /// <summary>
 /// Per-run registry of secret definitions, indexed by id and by the document that hints at them.

@@ -30,6 +30,8 @@ public class OverworldService
         Save.MetaProgressionApplicator.Apply(state, state.Meta);
 
         state.CampaignConfig = config;
+        // Content-driven party bloodline: gates bloodline-locked secret discovery for this run.
+        state.Campaign.FamilyName = config.FamilyName ?? "";
         // Production injects the campaign content (loaded by the host via IContentCatalog); engine
         // tests that construct GameState directly fall back to reading loose content from disk.
         var campaignContent = _campaignContent ?? CampaignContentRegistry.FromDisk();

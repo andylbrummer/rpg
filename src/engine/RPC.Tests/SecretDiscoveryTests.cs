@@ -126,4 +126,73 @@ public class SecretDiscoveryTests
         Assert.Contains("s1", registry.SecretsForDocument("doc-map"));
         Assert.Empty(registry.SecretsForDocument("doc-other"));
     }
+
+    // ---- Bloodline-gated secrets (T59c) ----
+
+    [Fact]
+    public void DiscoverSecret_BloodlineLocked_RefusesWhenFamilyNameMismatches()
+    {
+        var gs = new GameState(seed: 1);
+        gs.Campaign.FamilyName = "Ashford";
+        gs.Secrets.Register(new SecretDef("crypt-vault", "sealed_vault", BloodlineRequirement: "Thornwick"));
+
+        var discovered = gs.DiscoverSecret("sealed_vault", "crypt-vault");
+
+        Assert.False(discovered);
+        Assert.False(gs.Journal.IsDiscovered("crypt-vault"));
+        Assert.DoesNotContain(gs.ActionLog, e => e.Type == "secret_discovered");
+        var locked = gs.ActionLog.First(e => e.Type == "secret_bloodline_locked");
+        Assert.Equal("crypt-vault", locked.Payload["secretId"]);
+        Assert.Equal("Thornwick", locked.Payload["requiredBloodline"]);
+    }
+
+    [Fact]
+    public void DiscoverSecret_BloodlineLocked_AllowsWhenFamilyNameMatchesCaseInsensitive()
+    {
+        var gs = new GameState(seed: 1);
+        gs.Campaign.FamilyName = "thornwick";
+        gs.Secrets.Register(new SecretDef("crypt-vault", "sealed_vault", BloodlineRequirement: "Thornwick"));
+
+        var discovered = gs.DiscoverSecret("sealed_vault", "crypt-vault");
+
+        Assert.True(discovered);
+        Assert.True(gs.Journal.IsDiscovered("crypt-vault"));
+        Assert.Contains(gs.ActionLog, e => e.Type == "secret_discovered" && e.Payload["secretId"] == "crypt-vault");
+        Assert.DoesNotContain(gs.ActionLog, e => e.Type == "secret_bloodline_locked");
+    }
+
+    [Fact]
+    public void DiscoverSecret_NoBloodlineRequirement_DiscoversRegardlessOfFamilyName()
+    {
+        var gs = new GameState(seed: 1);
+        gs.Campaign.FamilyName = "Ashford";
+        gs.Secrets.Register(new SecretDef("open-secret", "breakable_wall"));
+
+        Assert.True(gs.DiscoverSecret("breakable_wall", "open-secret"));
+    }
+
+    [Fact]
+    public void ReadDocument_BloodlineLockedSecret_NotRevealedOnMismatch()
+    {
+        var gs = new GameState(seed: 1);
+        gs.Campaign.FamilyName = "Ashford";
+        gs.Secrets.Register(new SecretDef("crypt-vault", "sealed_vault", "doc-ledger", BloodlineRequirement: "Thornwick"));
+
+        var discovered = gs.ReadDocument("doc-ledger");
+
+        Assert.Empty(discovered);
+        Assert.False(gs.Journal.IsDiscovered("crypt-vault"));
+        Assert.Contains(gs.ActionLog, e => e.Type == "secret_bloodline_locked");
+    }
+
+    [Fact]
+    public void SecretRegistry_LoadFromJson_ParsesBloodlineRequirement()
+    {
+        var registry = new SecretRegistry();
+        registry.LoadFromJson("{\"id\":\"s1\",\"type\":\"sealed_vault\",\"bloodlineRequirement\":\"Thornwick\"}");
+
+        var secret = registry.Get("s1");
+        Assert.NotNull(secret);
+        Assert.Equal("Thornwick", secret!.BloodlineRequirement);
+    }
 }

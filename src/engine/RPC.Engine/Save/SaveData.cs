@@ -52,6 +52,7 @@ public class SaveData
     public string[] FiredEvents { get; set; } = Array.Empty<string>();
     public string[] UnlockedDungeons { get; set; } = Array.Empty<string>();
     public bool BetrayalPath { get; set; } = false;
+    public string FamilyName { get; set; } = "";
 }
 
 public class SavePlayer
