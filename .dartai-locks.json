@@ -1,15 +1,5 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claims": {
-    "0AQ5XFrxXw8C": {
-      "runner_instance_id": "beagle-ab2-3871289",
-      "runner_email": "claude@anthropic.com",
-      "claimed_at": "2026-06-15T21:25:00Z",
-      "agent_id": "loop-runner-main",
-      "parent_loop_id": null,
-      "purpose": "investigate dotnet host resource degradation under e2e reuse + gitignore test-results",
-      "source_event": {"loop_id": "PW0nnjc0Ojca", "task_id": "0AQ5XFrxXw8C", "conversation_id": null}
-    }
-  },
+  "claims": {},
   "claimed": []
 }

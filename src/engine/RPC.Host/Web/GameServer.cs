@@ -83,6 +83,14 @@ public class GameServer
 
     public int Port { get; private set; }
 
+    /// <summary>
+    /// Number of live WebSocket client connections currently registered. Exposed as a
+    /// server-side leak signal: after every client disconnects this MUST return to its
+    /// baseline (0). A monotonically growing value across connect/disconnect cycles is a
+    /// connection/session leak. Asserted by the session-leak stress test.
+    /// </summary>
+    public int ClientCount => _registry.Count;
+
     public void Start()
     {
         _listener.Start();

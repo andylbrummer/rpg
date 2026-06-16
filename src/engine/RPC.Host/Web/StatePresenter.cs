@@ -8,6 +8,14 @@ namespace RPC.Host.Web;
 
 public class StatePresenter
 {
+    /// <summary>
+    /// Maximum number of trailing ActionLog entries serialized into a single state snapshot.
+    /// Bounds per-frame payload + serialization cost regardless of how long the (reused) host
+    /// has been accumulating history. The client only reads entries newer than the last turn
+    /// it observed, so a recent-tail window of this size is more than sufficient.
+    /// </summary>
+    private const int SnapshotActionLogLimit = 200;
+
     private readonly PartyPresenter _partyPresenter;
     private readonly CombatPresenter _combatPresenter;
 
@@ -69,14 +77,22 @@ public class StatePresenter
             epilogue = state.CampaignEnded ? state.ResolveEpilogue() : null,
             factionStates = CampaignPresenter.PresentFactionStates(state),
             worldState = CampaignPresenter.PresentWorldState(state),
-            actionLog = state.ActionLog.Select(e => new
-            {
-                turn = e.Turn,
-                act = e.Act,
-                category = e.Category,
-                type = e.Type,
-                payload = e.Payload
-            }).ToArray()
+            // Only the most recent entries are serialized into the snapshot. The stored
+            // ActionLog grows for the lifetime of a campaign (cleared on reset), and the
+            // host is reused across many e2e runs locally; serializing the full log into
+            // every state frame made each snapshot O(total-commands) and ballooned per-test
+            // time as the host accumulated history. The client only consumes entries newer
+            // than the last turn it saw, so a recent-tail window is sufficient.
+            actionLog = state.ActionLog
+                .Skip(Math.Max(0, state.ActionLog.Count - SnapshotActionLogLimit))
+                .Select(e => new
+                {
+                    turn = e.Turn,
+                    act = e.Act,
+                    category = e.Category,
+                    type = e.Type,
+                    payload = e.Payload
+                }).ToArray()
         };
     }
 }

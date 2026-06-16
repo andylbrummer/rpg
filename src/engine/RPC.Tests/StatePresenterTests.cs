@@ -206,6 +206,38 @@ public class StatePresenterTests
     }
 
     [Fact]
+    public void CreateStateMessage_ActionLog_Is_Capped_To_Recent_Tail()
+    {
+        var state = new GameState();
+        state.LoadGame();
+
+        // The reused local host accumulates ActionLog history across many e2e runs; the full
+        // log is otherwise serialized into every state frame, making each snapshot grow without
+        // bound. Populate well past the cap and assert the snapshot only carries a recent tail.
+        const int total = 600;
+        var entries = Enumerable.Range(1, total)
+            .Select(i => new ActionLogEntry(i, 1, "test", "stress_event", new Dictionary<string, string> { { "i", i.ToString() } }))
+            .ToList();
+        state.RestoreActionLog(entries);
+
+        var msg = _presenter.CreateStateMessage(state);
+        var json = JsonSerializer.Serialize(msg);
+        var root = JsonSerializer.Deserialize<JsonElement>(json);
+        var actionLog = root.GetProperty("actionLog");
+
+        Assert.Equal(JsonValueKind.Array, actionLog.ValueKind);
+        var length = actionLog.GetArrayLength();
+        Assert.True(length <= 200, $"Snapshot actionLog was {length} entries; expected <= 200 (recent-tail cap)");
+        Assert.Equal(200, length);
+
+        // It must be the most-recent tail (highest turns), not the oldest entries.
+        var first = actionLog[0].GetProperty("turn").GetInt32();
+        var last = actionLog[length - 1].GetProperty("turn").GetInt32();
+        Assert.Equal(total - 200 + 1, first);
+        Assert.Equal(total, last);
+    }
+
+    [Fact]
     public void CreateStateMessage_Includes_WorldState()
     {
         var state = new GameState();
