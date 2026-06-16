@@ -27,6 +27,9 @@ public class SaveData
     public bool FinalDungeonUnlocked { get; set; } = false;
     public int PartyGold { get; set; } = 500;
     public int TitheTokens { get; set; } = 0;
+    public int TitheDebt { get; set; } = 0;
+    public int[] TitheBilledMilestones { get; set; } = Array.Empty<int>();
+    public int? TitheOutstandingSinceTurn { get; set; }
     public string[] PartyInventory { get; set; } = Array.Empty<string>();
     public SaveComponentStack[] ExpeditionCache { get; set; } = Array.Empty<SaveComponentStack>();
     public string[] CollectedLoot { get; set; } = Array.Empty<string>();

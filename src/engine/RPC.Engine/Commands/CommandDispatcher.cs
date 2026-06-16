@@ -68,6 +68,7 @@ public static class CommandDispatcher
                 Enum.Parse<DowntimeAction>(a.DowntimeAction ?? throw new ArgumentException("DowntimeAction required"), true)),
             ["resurrect_character"] = a => new ResurrectCharacterCommand(
                 Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required"))),
+            ["pay_tithe"] = _ => new PayTitheCommand(),
             ["equip_item"] = a => new EquipItemCommand(
                 Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required")),
                 a.ItemId ?? throw new ArgumentException("ItemId required"),

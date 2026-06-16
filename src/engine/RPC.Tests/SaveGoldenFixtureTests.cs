@@ -14,7 +14,7 @@ namespace RPC.Tests;
 public class SaveGoldenFixtureTests : IDisposable
 {
     private const int OldestSupportedVersion = 3;
-    private const int CurrentVersion = 9;
+    private const int CurrentVersion = 10;
 
     private readonly string _workPath;
 
@@ -114,5 +114,19 @@ public class SaveGoldenFixtureTests : IDisposable
         Assert.Equal("Mira", benched.Name);
         Assert.Equal("stillblade", benched.ClassId);
         Assert.Equal(2, benched.Level);
+    }
+
+    [Fact]
+    public void GoldenFixture_V10_RestoresTitheDebt()
+    {
+        File.Copy(FixturePath(10), _workPath, overwrite: true);
+
+        var gs = new GameState(seed: 1);
+        Assert.True(gs.LoadGame(_workPath));
+
+        Assert.Equal(2, gs.Tithe.Debt);
+        Assert.True(gs.Tithe.HasDebt);
+        Assert.Equal(1, gs.Tithe.OutstandingSinceTurn);
+        Assert.Contains(1, gs.Tithe.BilledMilestones);
     }
 }

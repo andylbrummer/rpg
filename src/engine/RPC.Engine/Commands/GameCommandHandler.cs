@@ -200,6 +200,9 @@ public class GameCommandHandler
                     stateChanged = result != null && result.Success;
                 }
                 break;
+            case PayTitheCommand:
+                stateChanged = _gameState.PayTithe();
+                break;
             case EquipItemCommand equipCmd:
                 stateChanged = TryEquip(equipCmd);
                 break;

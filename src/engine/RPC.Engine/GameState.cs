@@ -20,6 +20,7 @@ public class GameState
     public CampaignState Campaign { get; } = new();
     public CombatSessionState CombatSession { get; } = new();
     public EconomyState Economy { get; } = new();
+    public TitheState Tithe { get; } = new();
     public SessionMetaState SessionMeta { get; } = new();
 
     // Exploration forwarding properties
@@ -345,6 +346,9 @@ public class GameState
         _cachedEpilogue = null;
         PartyGold = 500;
         TitheTokens = 0;
+        Tithe.Debt = 0;
+        Tithe.OutstandingSinceTurn = null;
+        Tithe.BilledMilestones.Clear();
         PartyInventory.Clear();
         Party.DeadCharacters.Clear();
         InitializeDefaultParty();
@@ -398,6 +402,7 @@ public class GameState
                 { "townId", Overworld.CurrentNodeId }
             });
             _downtimeCompleted.Clear();
+            CheckTitheOnTownEntry();
         }
     }
 
@@ -573,6 +578,15 @@ public class GameState
     }
 
     public bool PurchaseVendorItem(string itemId) => _townService.PurchaseVendorItem(this, itemId);
+
+    /// <summary>
+    /// Bill any reached-but-unbilled tithe milestones (turns 1/15/25). Called on town entry.
+    /// See <see cref="TownService.CheckTitheOnTownEntry"/>.
+    /// </summary>
+    public void CheckTitheOnTownEntry() => _townService.CheckTitheOnTownEntry(this);
+
+    /// <summary>Pay the outstanding tithe at the Bone Clerk. See <see cref="TownService.PayTithe"/>.</summary>
+    public bool PayTithe() => _townService.PayTithe(this);
 
     public bool VerifyRumor(string rumorId, RumorVerificationSource source) => _townService.VerifyRumor(this, rumorId, source);
 

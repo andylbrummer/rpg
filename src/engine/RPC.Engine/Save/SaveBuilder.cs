@@ -12,7 +12,7 @@ namespace RPC.Engine.Save;
 public static class SaveBuilder
 {
     /// <summary>Current save schema version produced by the builder.</summary>
-    public const int CurrentSchemaVersion = 9;
+    public const int CurrentSchemaVersion = 10;
 
     public static SaveData Build(GameState state)
     {
@@ -32,6 +32,9 @@ public static class SaveBuilder
             Settings = state.SettingsHash,
             PartyGold = state.PartyGold,
             TitheTokens = state.TitheTokens,
+            TitheDebt = state.Tithe.Debt,
+            TitheBilledMilestones = state.Tithe.BilledMilestones.ToArray(),
+            TitheOutstandingSinceTurn = state.Tithe.OutstandingSinceTurn,
             PartyInventory = state.PartyInventory.ToArray(),
             ExpeditionCache = BuildExpeditionCache(state),
             CollectedLoot = state.Exploration.CollectedLoot.ToArray(),

@@ -68,6 +68,18 @@ public class StatePresenter
             bench = _partyPresenter.PresentBench(state),
             rosterInfo = _partyPresenter.PresentRosterInfo(state),
             titheTokens = state.TitheTokens,
+            tithe = new
+            {
+                debt = state.Tithe.Debt,
+                due = state.Tithe.HasDebt,
+                contactsRefuse = state.Tithe.ContactsRefuse,
+                componentCostMultiplier = state.Tithe.ComponentCostMultiplier,
+                outstandingSinceTurn = state.Tithe.OutstandingSinceTurn,
+                late = state.Tithe.OutstandingSinceTurn.HasValue && state.Overworld.Turns > state.Tithe.OutstandingSinceTurn.Value,
+                goldSurcharge = (state.Tithe.OutstandingSinceTurn.HasValue && state.Overworld.Turns > state.Tithe.OutstandingSinceTurn.Value)
+                    ? (int)System.Math.Ceiling(state.Tithe.Debt * RPC.Engine.Town.TownService.TitheGoldValuePerToken * RPC.Engine.Town.TownService.TitheLateGoldSurchargeRate)
+                    : 0
+            },
             campaignEnded = state.CampaignEnded,
             isFragileState = state.IsFragileState,
             rescueExpedition = state.RescueExpedition != null ? new

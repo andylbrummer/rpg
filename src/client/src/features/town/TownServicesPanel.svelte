@@ -85,6 +85,11 @@
   const town = $derived(gameState?.town);
   const reputation = $derived(gameState?.reputation ?? {});
   const partyGold = $derived(gameState?.partyGold ?? 0);
+  const tithe = $derived(gameState?.tithe);
+  const titheTokens = $derived(gameState?.titheTokens ?? 0);
+  const canPayTithe = $derived(
+    !!tithe?.due && titheTokens >= tithe.debt && partyGold >= tithe.goldSurcharge,
+  );
   const partyMembers = $derived(gameState?.party ?? []);
   const partyInventory = $derived(gameState?.partyInventory ?? []);
   const downtimeCompleted = $derived(gameState?.downtimeCompleted ?? []);
@@ -394,6 +399,28 @@
     <span class="tithe-tokens">Tithe Tokens: {gameState?.titheTokens ?? 0}</span>
     <span class="clerk-desc">The Bone Clerk can return the dead to life, for a price.</span>
   </div>
+  {#if tithe?.due}
+    <div class="service-item tithe-prompt" data-testid="tithe-prompt">
+      <div class="tithe-info">
+        <span class="tithe-due-title">Tithe Due — Ossuary Compact</span>
+        <span class="tithe-due-detail">
+          Owe {tithe.debt} Tithe Token{tithe.debt === 1 ? '' : 's'}{#if tithe.late} + {tithe.goldSurcharge}g late surcharge{/if}.
+        </span>
+        <span class="tithe-due-penalty">
+          Unpaid: Compact contacts refuse interaction and component costs rise 50%.
+        </span>
+      </div>
+      <button
+        type="button"
+        class="action-btn"
+        data-testid="pay-tithe-btn"
+        disabled={!canPayTithe}
+        onclick={() => onIntent({ kind: 'payTithe' })}
+      >
+        Pay Tithe ({tithe.debt} TT{#if tithe.late}, {tithe.goldSurcharge}g{/if})
+      </button>
+    </div>
+  {/if}
   {#each gameState?.deadCharacters || [] as dead (dead.id)}
     <div class="service-item dead-character-row">
       <div class="dead-char-info">

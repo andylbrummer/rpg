@@ -88,6 +88,106 @@ public class TownService
         state.CheckWildCardTrigger();
         RefreshExclusiveRecruits(state);
         GenerateRumors(state);
+        CheckTitheOnTownEntry(state);
+    }
+
+    // --- Tithe obligations (Ossuary Compact / "inkblood" faction) -----------------------------
+    // Design: docs/design/05-characters-and-classes.md "Tithe Obligations".
+
+    /// <summary>The faction tithe is owed to (the Ossuary Compact, internally the inkblood faction).</summary>
+    public const string TitheFactionId = "inkblood";
+
+    /// <summary>Campaign-act milestones (overworld turns) at which a tithe falls due.</summary>
+    public static readonly int[] TitheMilestones = { 1, 15, 25 };
+
+    /// <summary>Ossuary Compact reputation lost per unpaid tithe token when a milestone goes unpaid.</summary>
+    public const int TitheRepPenaltyPerToken = 10;
+
+    /// <summary>Late-payment gold surcharge rate (25%) applied when paying after the milestone turn.</summary>
+    public const double TitheLateGoldSurchargeRate = 0.25;
+
+    /// <summary>
+    /// Nominal gold value of a tithe token, used solely as the base for the late-payment gold
+    /// surcharge. Tithe itself is paid in tokens; this constant only scales the 25% late penalty.
+    /// Exposed as a named constant so the designer can tune the late-payment cost.
+    /// </summary>
+    public const int TitheGoldValuePerToken = 100;
+
+    /// <summary>Tithe cost for an active party of the given size: one token per three members, rounded up.</summary>
+    public static int TitheCostForPartySize(int activePartySize) =>
+        (int)Math.Ceiling(activePartySize / 3.0);
+
+    /// <summary>
+    /// Bill any tithe milestones (turns 1/15/25) the party has reached but not yet been billed for.
+    /// Each newly due milestone adds ceil(activePartySize/3) tokens to the outstanding debt and
+    /// applies the Compact non-payment penalty (-10 reputation per unpaid token). Ongoing penalties
+    /// (+50% component/vendor cost, contacts refuse) follow from <see cref="TitheState.HasDebt"/>
+    /// and lift when <see cref="PayTithe"/> clears the debt.
+    /// </summary>
+    public void CheckTitheOnTownEntry(GameState state)
+    {
+        var turn = state.Overworld.Turns;
+        foreach (var milestone in TitheMilestones)
+        {
+            if (turn < milestone) continue;
+            if (state.Tithe.BilledMilestones.Contains(milestone)) continue;
+
+            var activeSize = state.Party.Active.Count();
+            state.Tithe.BilledMilestones.Add(milestone);
+
+            var cost = TitheCostForPartySize(activeSize);
+            if (cost <= 0) continue; // an empty party owes nothing
+
+            state.Tithe.Debt += cost;
+            state.Tithe.OutstandingSinceTurn ??= milestone;
+
+            // Non-payment consequence: Compact reputation drops -10 per unpaid token.
+            state.ApplyReputationDelta(TitheFactionId, -TitheRepPenaltyPerToken * cost, "tithe_unpaid");
+
+            state.EmitActionLog("town", "tithe_due", new Dictionary<string, string>
+            {
+                { "milestone", milestone.ToString() },
+                { "cost", cost.ToString() },
+                { "activePartySize", activeSize.ToString() },
+                { "debt", state.Tithe.Debt.ToString() }
+            });
+        }
+        state.LastUpdate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Pay the outstanding tithe at the Bone Clerk. Clears the full token debt; if paid after the
+    /// milestone turn it falls due, a 25% gold surcharge applies on the token value. Returns false
+    /// when there is no debt or the party cannot cover the tokens (and any gold surcharge). On
+    /// success the ongoing tithe penalties lift because the debt is cleared.
+    /// </summary>
+    public bool PayTithe(GameState state)
+    {
+        var tithe = state.Tithe;
+        if (!tithe.HasDebt) return false;
+
+        var tokensOwed = tithe.Debt;
+        var late = tithe.OutstandingSinceTurn.HasValue && state.Overworld.Turns > tithe.OutstandingSinceTurn.Value;
+        var goldSurcharge = late
+            ? (int)Math.Ceiling(tokensOwed * TitheGoldValuePerToken * TitheLateGoldSurchargeRate)
+            : 0;
+
+        if (state.TitheTokens < tokensOwed) return false;
+        if (state.PartyGold < goldSurcharge) return false;
+
+        state.TitheTokens -= tokensOwed;
+        state.PartyGold -= goldSurcharge;
+        tithe.Debt = 0;
+        tithe.OutstandingSinceTurn = null;
+
+        state.EmitActionLog("town", "tithe_paid", new Dictionary<string, string>
+        {
+            { "tokensPaid", tokensOwed.ToString() },
+            { "goldSurcharge", goldSurcharge.ToString() },
+            { "late", late.ToString().ToLowerInvariant() }
+        });
+        state.LastUpdate = DateTime.UtcNow;
+        return true;
     }
 
     /// <summary>
@@ -299,7 +399,7 @@ public class TownService
         var genericItem = state.Town.VendorStock.FirstOrDefault(v => v.ItemId == itemId);
         if (genericItem != null)
         {
-            var price = ApplyHeatPrice(state, ApplyAllianceDiscount(state, genericItem.Price));
+            var price = ApplyTithePenalty(state, ApplyHeatPrice(state, ApplyAllianceDiscount(state, genericItem.Price)));
             return CompletePurchase(state, itemId, price, state.Town.VendorStock, null);
         }
 
@@ -309,7 +409,7 @@ public class TownService
             if (item != null)
             {
                 if (state.Reputation[vendor.FactionId] < vendor.Threshold) continue;
-                var price = ApplyHeatPrice(state, ApplyAllianceDiscount(state, item.Price));
+                var price = ApplyTithePenalty(state, ApplyHeatPrice(state, ApplyAllianceDiscount(state, item.Price)));
                 return CompletePurchase(state, itemId, price, vendor.Stock, vendor.FactionId);
             }
         }
@@ -327,6 +427,16 @@ public class TownService
     {
         if (!state.Heat.HasPricePenalty) return price;
         return (int)(price * 1.25);
+    }
+
+    /// <summary>
+    /// While the party owes tithe the Compact restricts fragment supply, raising component/vendor
+    /// cost by 50%. Composed after heat/alliance adjustments in <see cref="PurchaseVendorItem"/>.
+    /// </summary>
+    private static int ApplyTithePenalty(GameState state, int price)
+    {
+        if (!state.Tithe.HasDebt) return price;
+        return (int)Math.Ceiling(price * state.Tithe.ComponentCostMultiplier);
     }
 
     private static bool CompletePurchase(GameState state, string itemId, int price, List<VendorItem> stock, string? factionId)

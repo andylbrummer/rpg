@@ -20,6 +20,7 @@ public class CommandDispatcherTests
     [InlineData("return_to_town", typeof(ReturnToTownCommand))]
     [InlineData("save_game", typeof(SaveGameCommand))]
     [InlineData("reset_game", typeof(ResetGameCommand))]
+    [InlineData("pay_tithe", typeof(PayTitheCommand))]
     public void Parse_SimpleActions_ReturnsCorrectType(string actionType, Type expectedType)
     {
         var action = new PlayerAction { Type = actionType };

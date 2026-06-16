@@ -256,6 +256,23 @@ export interface HeatState {
   tier: string;
 }
 
+export interface TitheState {
+  /** Outstanding unpaid tithe tokens owed to the Ossuary Compact. */
+  debt: number;
+  /** True while the party owes tithe (the Bone Clerk auto-prompts). */
+  due: boolean;
+  /** True while Compact contacts refuse interaction. */
+  contactsRefuse: boolean;
+  /** Component/vendor cost multiplier while in debt (1.5) or 1.0 when clear. */
+  componentCostMultiplier: number;
+  /** Earliest unpaid milestone turn, or null when there is no debt. */
+  outstandingSinceTurn: number | null;
+  /** True when paying now incurs the late gold surcharge. */
+  late: boolean;
+  /** Gold surcharge that would be charged on payment right now. */
+  goldSurcharge: number;
+}
+
 export interface EvidenceState {
   suspectedFaction?: string;
   canConfront: boolean;
@@ -321,6 +338,7 @@ export interface GameState {
   bench?: BenchMember[];
   rosterInfo?: RosterInfo;
   titheTokens?: number;
+  tithe?: TitheState;
   campaignEnded?: boolean;
   isFragileState?: boolean;
   rescueExpedition?: {

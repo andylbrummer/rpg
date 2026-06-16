@@ -236,6 +236,9 @@ public static class SaveRestorer
         state.CampaignEnded = data.CampaignEnded;
         state.PartyGold = data.PartyGold;
         state.TitheTokens = data.TitheTokens;
+        state.Tithe.Debt = data.TitheDebt;
+        state.Tithe.BilledMilestones = data.TitheBilledMilestones?.ToList() ?? new List<int>();
+        state.Tithe.OutstandingSinceTurn = data.TitheOutstandingSinceTurn;
         state.PartyInventory = data.PartyInventory?.ToList() ?? new List<string>();
 
         state.Party.ExpeditionCache = data.ExpeditionCache?.Select(c => new ComponentStack(c.ItemId, c.Count, c.MaxStack)).ToArray() ?? Array.Empty<ComponentStack>();

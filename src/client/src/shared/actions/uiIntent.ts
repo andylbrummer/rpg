@@ -21,6 +21,7 @@ export type UiIntent =
   | { kind: 'downtime'; memberId: string; action: string }
   | { kind: 'wildcardAlliance'; choice: 'accept' | 'refuse' | 'ignore' }
   | { kind: 'resurrect'; characterId: string }
+  | { kind: 'payTithe' }
   | { kind: 'verifyRumor'; rumorId: string }
   | { kind: 'rest' }
   | { kind: 'branchChoose'; characterId: string; branch: string }
@@ -63,6 +64,8 @@ export function intentToAction(intent: UiIntent): PlayerAction {
       return { type: 'wildcard_alliance', targetId: intent.choice };
     case 'resurrect':
       return { type: 'resurrect_character', targetId: intent.characterId };
+    case 'payTithe':
+      return { type: 'pay_tithe' };
     case 'verifyRumor':
       return { type: 'rumor_verify', targetId: intent.rumorId, source: 'Firsthand' };
     case 'rest':

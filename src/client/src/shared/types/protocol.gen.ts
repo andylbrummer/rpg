@@ -199,6 +199,10 @@ export type PlayerAction =
       targetId: string;
       equipSlot: string;
 
+    }
+  | {
+      type: "pay_tithe";
+
     };
 
 /**

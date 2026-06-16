@@ -36,10 +36,13 @@ public class ActionLogTests : IDisposable
 
         gs.ReturnToTown();
 
-        Assert.Equal(2, gs.ActionLog.Count);
-        Assert.Equal("dungeon", gs.ActionLog[1].Category);
-        Assert.Equal("dungeon_completed", gs.ActionLog[1].Type);
-        Assert.Equal("broken_engine", gs.ActionLog[1].Payload["dungeonType"]);
+        // Returning to town at turn 1 also bills the first tithe (a separate, non-dungeon event),
+        // so assert on the dungeon-category events specifically rather than the total log size.
+        var dungeonEvents = gs.ActionLog.Where(e => e.Category == "dungeon").ToList();
+        Assert.Equal(2, dungeonEvents.Count);
+        Assert.Equal("dungeon_entered", dungeonEvents[0].Type);
+        Assert.Equal("dungeon_completed", dungeonEvents[1].Type);
+        Assert.Equal("broken_engine", dungeonEvents[1].Payload["dungeonType"]);
     }
 
     [Fact]
@@ -127,7 +130,7 @@ public class ActionLogTests : IDisposable
             Assert.Equal(gs.ActionLog[i].Act, gs2.ActionLog[i].Act);
             Assert.Equal(gs.ActionLog[i].Category, gs2.ActionLog[i].Category);
             Assert.Equal(gs.ActionLog[i].Type, gs2.ActionLog[i].Type);
-            Assert.Equal(gs.ActionLog[i].Payload["dungeonType"], gs2.ActionLog[i].Payload["dungeonType"]);
+            Assert.Equal(gs.ActionLog[i].Payload, gs2.ActionLog[i].Payload);
         }
     }
 

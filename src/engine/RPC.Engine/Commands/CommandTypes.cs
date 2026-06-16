@@ -31,6 +31,7 @@ public record DismissCharacterCommand(Guid CharacterId) : ICommand;
 public record VendorPurchaseCommand(string ItemId) : ICommand;
 public record DowntimeActionCommand(Guid CharacterId, DowntimeAction Action) : ICommand;
 public record ResurrectCharacterCommand(Guid CharacterId) : ICommand;
+public record PayTitheCommand : ICommand;
 public record VerifyRumorCommand(string RumorId, string Source) : ICommand;
 
 // Overworld & Travel

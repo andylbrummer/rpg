@@ -82,6 +82,10 @@ describe('intentToAction', () => {
     });
   });
 
+  it('maps a payTithe intent to pay_tithe', () => {
+    expect(intentToAction({ kind: 'payTithe' })).toEqual({ type: 'pay_tithe' });
+  });
+
   it('maps a verify rumor intent to rumor_verify with Firsthand source', () => {
     expect(intentToAction({ kind: 'verifyRumor', rumorId: 'rumor-9' })).toEqual({
       type: 'rumor_verify',
