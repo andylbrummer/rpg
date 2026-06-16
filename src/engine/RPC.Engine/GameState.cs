@@ -237,6 +237,13 @@ public class GameState
     public void TurnLeft() => _explorationService.TurnLeft(this);
     public void TurnRight() => _explorationService.TurnRight(this);
 
+    /// <summary>Explicit search: fully reveal positioned secrets in the party's immediate
+    /// surroundings. Returns the secret ids newly discovered.</summary>
+    public IReadOnlyList<string> SearchForSecrets() => _explorationService.SearchForSecrets(this);
+
+    /// <summary>Break a discovered breakable wall, opening it and spending one in-dungeon turn.</summary>
+    public bool BreakWall(string secretId) => _explorationService.BreakWall(this, secretId);
+
     /// <summary>
     /// Pick up loot on the player's current tile into the expedition cache. No-op (returns false)
     /// if there is no loot, it was already collected, or the cache is full.
@@ -440,6 +447,8 @@ public class GameState
     }
 
     public bool DiscoverSecret(string? secretType, string secretId, string trigger = "manual") => _campaignService.DiscoverSecret(this, secretType, secretId, trigger);
+
+    public bool DetectSecret(string secretId, string trigger = "manual") => _campaignService.DetectSecret(this, secretId, trigger);
 
     /// <summary>Read a Family Archive, granting its faction intel once. Null if unknown or already read.</summary>
     public Campaign.ArchiveReadResult? ReadArchive(string archiveId) => _campaignService.ReadArchive(this, archiveId);

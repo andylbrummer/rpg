@@ -8,13 +8,23 @@ namespace RPC.Engine.Dungeons;
 /// lore document — reading that document passively reveals the secret (the puzzle path).
 /// <see cref="BloodlineRequirement"/>, when set, gates discovery behind the party's family name:
 /// only a party whose <c>CampaignState.FamilyName</c> matches (case-insensitive) may uncover it.
+/// <para>
+/// Spatial fields (<see cref="X"/>, <see cref="Y"/>, <see cref="Wall"/>) place a secret on a
+/// dungeon tile. <see cref="Wall"/> names the border direction ("North"/"South"/"East"/"West")
+/// carrying a <c>BorderType.BreakableWall</c>. These drive the Cartographer 2-tile auto-detection,
+/// explicit-search reveal, and the break action. They are content-supplied and rebuilt from the
+/// registry on every load, so they are not persisted in the save.
+/// </para>
 /// </summary>
 public record SecretDef(
     string Id,
     string Type,
     string? DocLinkId = null,
     string? Hint = null,
-    string? BloodlineRequirement = null);
+    string? BloodlineRequirement = null,
+    int? X = null,
+    int? Y = null,
+    string? Wall = null);
 
 /// <summary>
 /// Per-run registry of secret definitions, indexed by id and by the document that hints at them.

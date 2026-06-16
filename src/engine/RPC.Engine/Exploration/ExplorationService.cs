@@ -115,6 +115,9 @@ public class ExplorationService
             // A step inside a dungeon node is one in-dungeon turn: age carried bloom samples.
             Inventory.BloomDecaySystem.TickDungeonTurn(state);
 
+            // End-of-movement: the Inkblood Cartographer senses nearby secrets onto the automap.
+            AutoDetectSecrets(state);
+
             var tile = state.CurrentDungeon.GetTile(newPos);
             if (!string.IsNullOrEmpty(tile.EncounterId))
             {
@@ -143,6 +146,131 @@ public class ExplorationService
             return true;
         }
         return false;
+    }
+
+    // ---- Breakable walls + Cartographer detection (T51b) ----
+
+    private const string CartographerClassId = "inkblood";
+
+    /// <summary>True when the party fields an Inkblood — whose Cartographer discipline grants the
+    /// passive 2-tile secret-sensing. The Cartographer is an Inkblood role, not a separate class.</summary>
+    private bool HasCartographer(GameState state)
+    {
+        foreach (var member in state.Party.Members)
+        {
+            if (member.Id == Guid.Empty) continue;
+            if (string.Equals(member.ClassId, CartographerClassId, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Inkblood Cartographer passive: at the end of each movement, sense every positioned secret
+    /// within <c>Chebyshev &lt;= 2</c> of the party and mark it detected (automap "?"). Detection
+    /// reveals existence, not type — explicit search promotes it to a full discovery.
+    /// </summary>
+    public void AutoDetectSecrets(GameState state)
+    {
+        if (state.CurrentDungeon == null) return;
+        if (!HasCartographer(state)) return;
+
+        var party = state.Player.Position;
+        foreach (var secret in state.Secrets.All)
+        {
+            if (secret.X is not int sx || secret.Y is not int sy) continue;
+            if (state.Journal.IsDiscovered(secret.Id) || state.Journal.IsDetected(secret.Id)) continue;
+            if (party.ChebyshevDistance(new Position(sx, sy)) <= 2)
+                state.DetectSecret(secret.Id, "cartographer");
+        }
+    }
+
+    /// <summary>
+    /// Explicit search of the party's immediate surroundings (<c>Chebyshev &lt;= 1</c>): fully
+    /// reveals the type of any positioned secret there. A revealed breakable wall switches from
+    /// hidden <c>BreakableWall</c> material to visible <c>CrackedWall</c>. Returns the secret ids
+    /// newly discovered by this search.
+    /// </summary>
+    public IReadOnlyList<string> SearchForSecrets(GameState state)
+    {
+        if (state.CurrentDungeon == null) return Array.Empty<string>();
+
+        var party = state.Player.Position;
+        var found = new List<string>();
+        foreach (var secret in state.Secrets.All)
+        {
+            if (secret.X is not int sx || secret.Y is not int sy) continue;
+            if (state.Journal.IsDiscovered(secret.Id)) continue;
+            if (party.ChebyshevDistance(new Position(sx, sy)) > 1) continue;
+
+            if (state.DiscoverSecret(secret.Type, secret.Id, "search"))
+            {
+                found.Add(secret.Id);
+                RevealCrackedWall(state, secret);
+            }
+        }
+        if (found.Count > 0)
+            state.LastUpdate = DateTime.UtcNow;
+        return found;
+    }
+
+    /// <summary>
+    /// Break a discovered breakable wall: open its border on both adjacent tiles and spend one
+    /// in-dungeon turn (aging carried bloom samples via the shared dungeon-turn tick). The secret
+    /// must be a fully-discovered <c>breakable_wall</c> carrying a tile position. Returns true when
+    /// the wall was opened.
+    /// </summary>
+    public bool BreakWall(GameState state, string secretId)
+    {
+        if (state.CurrentDungeon == null) return false;
+        var secret = state.Secrets.Get(secretId);
+        if (secret is null || secret.Type != "breakable_wall") return false;
+        if (!state.Journal.IsDiscovered(secretId)) return false; // must know its type before breaking
+        if (secret.X is not int sx || secret.Y is not int sy) return false;
+        if (!TryParseWall(secret.Wall, out var dir)) return false;
+
+        SetBorderBothSides(state.CurrentDungeon, new Position(sx, sy), dir, BorderType.None);
+
+        // One break = one in-dungeon turn (ages carried bloom samples).
+        Inventory.BloomDecaySystem.TickDungeonTurn(state);
+
+        state.EmitActionLog("dungeon", "wall_broken", new Dictionary<string, string>
+        {
+            { "secretId", secretId },
+            { "x", sx.ToString() },
+            { "y", sy.ToString() },
+            { "wall", dir.ToString() }
+        });
+        state.LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    private static void RevealCrackedWall(GameState state, Dungeons.SecretDef secret)
+    {
+        if (secret.Type != "breakable_wall") return;
+        if (state.CurrentDungeon == null) return;
+        if (secret.X is not int sx || secret.Y is not int sy) return;
+        if (!TryParseWall(secret.Wall, out var dir)) return;
+
+        var pos = new Position(sx, sy);
+        if (state.CurrentDungeon.GetTile(pos).GetBorder(dir) == BorderType.BreakableWall)
+            SetBorderBothSides(state.CurrentDungeon, pos, dir, BorderType.CrackedWall);
+    }
+
+    private static void SetBorderBothSides(Dungeon dungeon, Position pos, Direction dir, BorderType border)
+    {
+        if (dungeon.IsValidPosition(pos))
+            dungeon.Tiles[pos.X, pos.Y] = dungeon.Tiles[pos.X, pos.Y].WithBorder(dir, border);
+
+        var neighbour = pos.Move(dir);
+        if (dungeon.IsValidPosition(neighbour))
+            dungeon.Tiles[neighbour.X, neighbour.Y] = dungeon.Tiles[neighbour.X, neighbour.Y].WithBorder(dir.Opposite(), border);
+    }
+
+    private static bool TryParseWall(string? wall, out Direction dir)
+    {
+        dir = Direction.North;
+        return !string.IsNullOrEmpty(wall) && Enum.TryParse(wall, ignoreCase: true, out dir);
     }
 
     public void TurnLeft(GameState state)

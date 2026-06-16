@@ -289,6 +289,31 @@ public class CampaignService
     }
 
     /// <summary>
+    /// Mark a secret as detected-but-unrevealed: the party senses something is there (an automap
+    /// "?") without yet knowing its nature. Idempotent, and a no-op once the secret is fully
+    /// discovered. Detection senses physical presence, so it ignores the bloodline gate — a
+    /// bloodline-locked secret can still be sensed, just not opened. Returns true when this call
+    /// newly detected the secret.
+    /// </summary>
+    public bool DetectSecret(GameState state, string secretId, string trigger = "manual")
+    {
+        if (string.IsNullOrEmpty(secretId)) return false;
+        if (state.Journal.IsDiscovered(secretId)) return false; // already fully known
+        if (state.Journal.IsDetected(secretId)) return false;   // already sensed — idempotent
+
+        var def = state.Secrets.Get(secretId);
+        state.Journal.Detect(secretId);
+        state.EmitActionLog("dungeon", "secret_detected", new Dictionary<string, string>
+        {
+            { "secretId", secretId },
+            { "secretType", def?.Type ?? "unknown" },
+            { "trigger", trigger }
+        });
+        state.LastUpdate = DateTime.UtcNow;
+        return true;
+    }
+
+    /// <summary>
     /// Mark a lore document as read and passively reveal every still-hidden secret it hints at.
     /// Idempotent per document. Returns the secret ids newly discovered by this read.
     /// </summary>

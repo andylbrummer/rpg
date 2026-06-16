@@ -43,6 +43,16 @@
       "required": [],
       "optional": []
     },
+    "search_secrets": {
+      "required": [],
+      "optional": []
+    },
+    "break_wall": {
+      "required": [
+        "targetId"
+      ],
+      "optional": []
+    },
     "cancel": {
       "required": [],
       "optional": []

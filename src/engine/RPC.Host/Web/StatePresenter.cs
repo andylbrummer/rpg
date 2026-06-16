@@ -44,6 +44,7 @@ public class StatePresenter
             explored = exploration.Explored,
             hasDungeon = exploration.HasDungeon,
             dungeonType = exploration.DungeonType,
+            detectedSecrets = exploration.DetectedSecrets,
             party,
             combat,
             combatResult,

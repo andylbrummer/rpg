@@ -8,7 +8,8 @@ public record ExplorationViewModel(
     List<object> Tiles,
     List<object> Explored,
     bool HasDungeon,
-    string? DungeonType);
+    string? DungeonType,
+    List<object> DetectedSecrets);
 
 public static class ExplorationPresenter
 {
@@ -16,6 +17,7 @@ public static class ExplorationPresenter
     {
         var tiles = new List<object>();
         var explored = new List<object>();
+        var detectedSecrets = new List<object>();
         var collected = state.Exploration.CollectedLoot;
 
         if (state.CurrentDungeon != null)
@@ -44,6 +46,14 @@ public static class ExplorationPresenter
                 var tile = state.CurrentDungeon.Tiles[x, y];
                 explored.Add(SerializeTile(x, y, tile, collected));
             }
+
+            // Cartographer-detected-but-unrevealed secrets: the client automap marks these "?".
+            foreach (var secret in state.Secrets.All)
+            {
+                if (secret.X is not int sx || secret.Y is not int sy) continue;
+                if (!state.Journal.IsDetected(secret.Id) || state.Journal.IsDiscovered(secret.Id)) continue;
+                detectedSecrets.Add(new { id = secret.Id, x = sx, y = sy, wall = secret.Wall });
+            }
         }
 
         return new ExplorationViewModel(
@@ -56,7 +66,8 @@ public static class ExplorationPresenter
             tiles,
             explored,
             state.CurrentDungeon != null,
-            state.CurrentDungeonType);
+            state.CurrentDungeonType,
+            detectedSecrets);
     }
 
     private static object SerializeTile(int x, int y, Tile tile, HashSet<string> collected)

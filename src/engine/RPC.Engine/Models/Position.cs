@@ -11,6 +11,12 @@ public readonly record struct Position(int X, int Y)
         _ => this
     };
 
+    /// <summary>Chebyshev (king-move) distance: <c>max(|dx|, |dy|)</c>. The natural radius for a
+    /// square sensing box on a grid — used by the Cartographer 2-tile detection passive, matching
+    /// the square reveal box of <c>ExplorationService.ExploreAroundPlayer</c>.</summary>
+    public int ChebyshevDistance(Position other)
+        => Math.Max(Math.Abs(other.X - X), Math.Abs(other.Y - Y));
+
     public Direction DirectionTo(Position other)
     {
         var dx = other.X - X;

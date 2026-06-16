@@ -1,15 +1,5 @@
 {
   "runner": "beagle-ab2-3871289",
-  "claims": {
-    "SWf96jrHYTRv": {
-      "runner_instance_id": "beagle-ab2-3871289",
-      "runner_email": "claude@anthropic.com",
-      "claimed_at": "2026-06-15T22:40:00Z",
-      "agent_id": "loop-runner-main",
-      "parent_loop_id": null,
-      "purpose": "T51b breakable walls + Cartographer detection",
-      "source_event": {"loop_id": "PW0nnjc0Ojca", "task_id": "SWf96jrHYTRv", "conversation_id": null}
-    }
-  },
+  "claims": {},
   "claimed": []
 }

@@ -64,6 +64,15 @@ export type PlayerAction =
 
     }
   | {
+      type: "search_secrets";
+
+    }
+  | {
+      type: "break_wall";
+      targetId: string;
+
+    }
+  | {
       type: "reset_game";
 
     }

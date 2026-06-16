@@ -54,6 +54,12 @@ public class GameCommandHandler
             case PickupLootCommand:
                 stateChanged = _gameState.TryPickupLoot();
                 break;
+            case SearchSecretsCommand:
+                stateChanged = _gameState.SearchForSecrets().Count > 0;
+                break;
+            case BreakWallCommand breakCmd:
+                stateChanged = _gameState.BreakWall(breakCmd.SecretId);
+                break;
             case CancelCommand:
                 stateChanged = true;
                 break;

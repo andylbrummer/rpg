@@ -17,6 +17,9 @@ public enum BorderType
     Door,
     SecretDoor,
     BreakableWall,
+    // A breakable wall whose secret has been revealed (explicit search / area damage): shows
+    // cracked-wall material. Still impassable until a break action opens it.
+    CrackedWall,
     // A wall hiding a compartment — impassable like a wall until its secret is opened.
     ConcealedCompartment
 }
@@ -86,7 +89,7 @@ public class Dungeon
         if (!tile.IsWalkable) return false;
 
         var border = tile.GetBorder(dir);
-        if (border is BorderType.Wall or BorderType.SecretDoor or BorderType.BreakableWall or BorderType.ConcealedCompartment)
+        if (border is BorderType.Wall or BorderType.SecretDoor or BorderType.BreakableWall or BorderType.CrackedWall or BorderType.ConcealedCompartment)
             return false;
 
         var to = from.Move(dir);

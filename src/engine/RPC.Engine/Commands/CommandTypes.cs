@@ -11,6 +11,8 @@ public record StrafeRightCommand : ICommand;
 public record TurnLeftCommand : ICommand;
 public record TurnRightCommand : ICommand;
 public record PickupLootCommand : ICommand;
+public record SearchSecretsCommand : ICommand;
+public record BreakWallCommand(string SecretId) : ICommand;
 
 // Combat
 public record CombatActionCommand(CombatAction Action) : ICommand;

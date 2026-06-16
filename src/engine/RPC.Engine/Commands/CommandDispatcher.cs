@@ -20,6 +20,8 @@ public static class CommandDispatcher
             ["turn_left"] = _ => new TurnLeftCommand(),
             ["turn_right"] = _ => new TurnRightCommand(),
             ["pickup_loot"] = _ => new PickupLootCommand(),
+            ["search_secrets"] = _ => new SearchSecretsCommand(),
+            ["break_wall"] = a => new BreakWallCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
             ["cancel"] = _ => new CancelCommand(),
             ["combat_action"] = a => new CombatActionCommand(a.Action ?? throw new ArgumentException("CombatAction required")),
             ["flee_combat"] = _ => new FleeCombatCommand(),

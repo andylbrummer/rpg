@@ -310,6 +310,34 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "search_secrets"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "break_wall"
+            },
+            "targetId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "targetId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "reset_game"
             }
           },

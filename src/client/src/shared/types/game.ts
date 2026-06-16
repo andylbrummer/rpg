@@ -9,7 +9,15 @@ export interface Player {
   facing: 'North' | 'East' | 'South' | 'West';
 }
 
-export type BorderType = 'None' | 'Wall' | 'Door' | 'SecretDoor' | 'BreakableWall' | 'ConcealedCompartment';
+export type BorderType = 'None' | 'Wall' | 'Door' | 'SecretDoor' | 'BreakableWall' | 'CrackedWall' | 'ConcealedCompartment';
+
+/** A Cartographer-detected-but-unrevealed secret — the automap marks its tile with a "?". */
+export interface DetectedSecret {
+  id: string;
+  x: number;
+  y: number;
+  wall?: string | null;
+}
 
 export interface Tile {
   x: number;
@@ -321,6 +329,7 @@ export interface GameState {
   explored: Tile[];
   hasDungeon: boolean;
   dungeonType?: string;
+  detectedSecrets?: DetectedSecret[];
   party: PartyMember[];
   combat?: CombatState;
   combatResult?: CombatResult;
