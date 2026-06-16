@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { GameState, Tile } from '$shared/types/game';
+import type { Tile, RenderModel, RenderCombat, RenderPlayer } from './RenderModel';
 import { getTheme, type DungeonTheme } from './DungeonTheme';
 import { BloomCluster, BloomParticleSystem, BloomHazardOverlay } from './BloomEffects';
 import { getCreatureMaterials, type CreatureMaterialSet } from './CreatureMaterials';
@@ -16,7 +16,7 @@ export class DungeonRenderer {
   private tileSize = 2;
   private wallHeight = 3;
   private wallThickness = 0.15;
-  private currentState: GameState | null = null;
+  private currentState: RenderModel | null = null;
   private isDisposed = false;
   private torchLight: THREE.PointLight;
   private ambientLight: THREE.AmbientLight;
@@ -309,10 +309,10 @@ export class DungeonRenderer {
     return texture;
   }
 
-  updateState(state: GameState): void {
-    this.currentState = state;
+  updateState(model: RenderModel): void {
+    this.currentState = model;
 
-    const dungeonType = state.dungeonType;
+    const dungeonType = model.dungeonType;
     if (dungeonType !== this.currentDungeonType) {
       this.currentDungeonType = dungeonType;
       this.currentTheme = getTheme(dungeonType);
@@ -320,11 +320,11 @@ export class DungeonRenderer {
       this.setupAmbientParticles(dungeonType);
     }
 
-    if (state.hasDungeon) {
-      this.renderTiles(state.tiles);
-      this.updateCamera(state.player);
-      this.updateTorch(state.player);
-      this.updateCreatures(state);
+    if (model.hasDungeon) {
+      this.renderTiles(model.tiles);
+      this.updateCamera(model.player);
+      this.updateTorch(model.player);
+      this.updateCreatures(model.combat, model.player);
     } else {
       this.renderDefaultScene();
     }
@@ -460,16 +460,16 @@ export class DungeonRenderer {
     this.nextBloomMutation = 0;
   }
 
-  private updateCreatures(state: GameState): void {
-    if (state.mode !== 'Combat' || !state.combat) {
+  private updateCreatures(combat: RenderCombat | null, player: RenderPlayer): void {
+    if (!combat) {
       this.clearCreatures();
       return;
     }
     const mats = getCreatureMaterials(this.currentDungeonType ?? '', this.currentTheme);
-    const enemies = state.combat.combatants.filter(c => !c.isPlayer && c.alive);
+    const enemies = combat.combatants.filter(c => !c.isPlayer && c.alive);
     const alive = new Set(enemies.map(c => c.id));
     // Detect unaccounted attacks for wrong-speed animation
-    this.detectUnaccountedAttacks(state);
+    this.detectUnaccountedAttacks(combat);
 
     for (const [id, mesh] of this.creatureMeshes) {
       if (!alive.has(id)) {
@@ -495,9 +495,9 @@ export class DungeonRenderer {
         }
       }
     }
-    const px = state.player.x * this.tileSize;
-    const pz = state.player.y * this.tileSize;
-    const rad = this.facingToRadians(state.player.facing);
+    const px = player.x * this.tileSize;
+    const pz = player.y * this.tileSize;
+    const rad = this.facingToRadians(player.facing);
     const fx = Math.sin(rad);
     const fz = -Math.cos(rad);
     const rx = Math.cos(rad);
@@ -686,9 +686,7 @@ export class DungeonRenderer {
     }
   }
 
-  private detectUnaccountedAttacks(state: GameState): void {
-    const combat = state.combat;
-    if (!combat) return;
+  private detectUnaccountedAttacks(combat: RenderCombat): void {
     if (combat.log.length <= this.lastCombatLogLength) {
       this.lastCombatLogLength = combat.log.length;
       return;

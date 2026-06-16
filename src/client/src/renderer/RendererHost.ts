@@ -1,4 +1,5 @@
 import { DungeonRenderer } from '$renderer/DungeonRenderer';
+import { toRenderModel } from '$renderer/RenderModel';
 import { AmbientAudioManager } from '$renderer/AmbientAudio';
 import { UnaccountedAudioManager } from '$renderer/UnaccountedAudioManager';
 import type { SubtitleEntry } from '$renderer/SubtitleSystem';
@@ -29,7 +30,7 @@ export class RendererHost {
   /** Push the latest game state to the renderer and audio managers, refreshing subtitles. */
   update(state: GameState | null) {
     if (state) {
-      this.renderer.updateState(state);
+      this.renderer.updateState(toRenderModel(state));
     }
     this.audioManager.update(state?.dungeonType);
     this.unaccountedAudio.update(state);
