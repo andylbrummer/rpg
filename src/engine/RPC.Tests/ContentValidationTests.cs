@@ -245,7 +245,7 @@ public class ContentValidationTests
     {
         "classes", "enemies", "encounters", "factions", "synergies", "items",
         "loot", "npcs", "rumors", "schemes", "complications", "segments",
-        "campaigns", "dungeons"
+        "campaigns", "dungeons", "archives"
     };
 
     private static string? CategoryOf(string relativePath)
@@ -343,6 +343,14 @@ public class ContentValidationTests
             case "campaigns":
                 Assert.NotNull(JsonSerializer.Deserialize<CampaignConfig>(json, PermissiveOptions));
                 break;
+            case "archives":
+            {
+                var archive = JsonSerializer.Deserialize<RPC.Engine.Campaign.FamilyArchiveDef>(json, PermissiveOptions);
+                Assert.NotNull(archive);
+                Assert.False(string.IsNullOrEmpty(archive!.Id));
+                Assert.False(string.IsNullOrEmpty(archive.FactionId));
+                break;
+            }
             default:
                 Assert.Fail($"Unhandled validated category '{category}' for {relativePath}");
                 break;

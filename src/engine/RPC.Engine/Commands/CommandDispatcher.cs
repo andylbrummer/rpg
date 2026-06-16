@@ -55,6 +55,7 @@ public static class CommandDispatcher
                 Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required")),
                 a.Branch ?? throw new ArgumentException("Branch required")),
             ["accuse_faction"] = a => new AccuseFactionCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["read_archive"] = a => new ReadArchiveCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
             ["transfer_to_cache"] = a => new TransferToCacheCommand(
                 a.Slot ?? throw new ArgumentException("Slot required"),
                 a.TargetId ?? throw new ArgumentException("TargetId required"),

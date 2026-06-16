@@ -37,6 +37,15 @@
         { "enemyId": "bone_archer", "count": 3, "rowOverride": 1 }
       ],
       "xpReward": 38
+    },
+    {
+      "id": "tithe_construct",
+      "weight": 8,
+      "factionId": "inkblood",
+      "enemies": [
+        { "enemyId": "tithe_construct_guardian", "count": 1, "rowOverride": 0 }
+      ],
+      "xpReward": 30
     }
   ]
 }

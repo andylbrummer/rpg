@@ -120,6 +120,9 @@ public class GameState
     /// <summary>Secret definitions for the current run, indexed for document-triggered discovery.</summary>
     public SecretRegistry Secrets { get; } = new();
 
+    /// <summary>Family Archive definitions for the current run, read for faction intel.</summary>
+    public Campaign.ArchiveRegistry Archives { get; } = new();
+
     // Cached campaign epilogue for the current run — generated once (LLM or template) and reused
     // across state snapshots so a slow/failed LLM call doesn't regenerate on every frame.
     private string? _cachedEpilogue;
@@ -343,6 +346,7 @@ public class GameState
         Overworld = new OverworldState();
         Campaign.Reset();
         Secrets.Clear();
+        Archives.Clear();
         _cachedEpilogue = null;
         PartyGold = 500;
         TitheTokens = 0;
@@ -436,6 +440,9 @@ public class GameState
     }
 
     public bool DiscoverSecret(string? secretType, string secretId, string trigger = "manual") => _campaignService.DiscoverSecret(this, secretType, secretId, trigger);
+
+    /// <summary>Read a Family Archive, granting its faction intel once. Null if unknown or already read.</summary>
+    public Campaign.ArchiveReadResult? ReadArchive(string archiveId) => _campaignService.ReadArchive(this, archiveId);
 
     public IReadOnlyList<string> ReadDocument(string documentId) => _campaignService.ReadDocument(this, documentId);
 

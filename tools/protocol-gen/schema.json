@@ -593,6 +593,22 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "read_archive"
+            },
+            "targetId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "targetId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "transfer_to_cache"
             },
             "slot": {

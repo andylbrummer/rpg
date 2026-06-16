@@ -119,6 +119,10 @@ class Program
             {
                 result = ValidateFaction(file, json);
             }
+            else if (relativePath.Contains("/archives/") || relativePath.StartsWith("archives/"))
+            {
+                result = ValidateArchive(file, json);
+            }
             else if (relativePath.Contains("/campaigns/dungeons/") || relativePath.StartsWith("campaigns/dungeons/"))
             {
                 result = ValidateDungeonTemplate(file, json, segmentIds, encounterIds);
@@ -518,6 +522,42 @@ class Program
             if (string.IsNullOrWhiteSpace(def.Name))
             {
                 Console.WriteLine($"FAIL: {filePath} - Missing name");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateArchive(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<RPC.Engine.Campaign.FamilyArchiveDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.FactionId))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing factionId");
                 return 1;
             }
         }

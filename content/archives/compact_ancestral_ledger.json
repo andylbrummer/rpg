@@ -1,0 +1,9 @@
+{
+  "id": "compact_ancestral_ledger",
+  "factionId": "inkblood",
+  "name": "Ancestral Ledger",
+  "description": "A Compact bone-bound ledger tallying ancestral debts and the bloodlines that owe them. Reading it reveals names the Ossuary Compact would rather keep buried.",
+  "repReward": 8,
+  "evidenceReward": 2,
+  "journalEntryId": "lore_compact_ancestral_ledger"
+}

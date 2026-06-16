@@ -1,0 +1,19 @@
+{
+  "id": "tithe_construct_guardian",
+  "name": "Tithe-Construct Guardian",
+  "description": "A lattice of bound bone and ledger-iron that tallies the ancestral debts owed to the Compact.",
+  "stats": {
+    "str": 6,
+    "dex": 3,
+    "con": 7,
+    "int": 3,
+    "wil": 6
+  },
+  "hpBase": 22,
+  "speed": 4,
+  "ai": "defensive",
+  "abilities": ["bone_arrow", "skull_crack"],
+  "lootTable": [
+    { "itemId": "bone_fragment", "chance": 0.8 }
+  ]
+}

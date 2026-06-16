@@ -42,6 +42,7 @@ public record ResolveTravelEncounterCommand(string Choice) : ICommand;
 public record SetReputationCommand(string FactionId, int Value) : ICommand;
 public record ApplyDialogueReputationCommand(string FactionId, int Delta) : ICommand;
 public record AccuseFactionCommand(string FactionId) : ICommand;
+public record ReadArchiveCommand(string ArchiveId) : ICommand;
 public record ChooseBranchCommand(Guid CharacterId, string Branch) : ICommand;
 public record WildCardAllianceCommand(string Choice) : ICommand;
 public record ChooseBetrayalCommand : ICommand;

@@ -244,6 +244,12 @@
     "pay_tithe": {
       "required": [],
       "optional": []
+    },
+    "read_archive": {
+      "required": [
+        "targetId"
+      ],
+      "optional": []
     }
   },
   "stateShape": {

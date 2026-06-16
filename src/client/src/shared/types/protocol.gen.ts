@@ -152,6 +152,11 @@ export type PlayerAction =
 
     }
   | {
+      type: "read_archive";
+      targetId: string;
+
+    }
+  | {
       type: "transfer_to_cache";
       slot: number;
       targetId: string;

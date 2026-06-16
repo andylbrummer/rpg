@@ -298,6 +298,40 @@ public class CampaignService
         return discovered;
     }
 
+    /// <summary>
+    /// Read a Family Archive: grant its faction intel (reputation, evidence, journal entry) on the
+    /// first read. Idempotent per archive — shares the campaign's document-read tracking set so an
+    /// archive grants its intel exactly once. Returns the granted result, or null if the archive is
+    /// unknown or already read.
+    /// </summary>
+    public ArchiveReadResult? ReadArchive(GameState state, string archiveId)
+    {
+        if (string.IsNullOrEmpty(archiveId)) return null;
+        var archive = state.Archives.Get(archiveId);
+        if (archive is null) return null;
+        if (!state.Campaign.ReadDocuments.Add(archiveId))
+            return null; // already read — idempotent
+
+        if (archive.RepReward != 0)
+            ApplyReputationDelta(state, archive.FactionId, archive.RepReward, "family_archive");
+        if (archive.EvidenceReward > 0)
+            AddEvidence(state, archive.FactionId, "family_archive", archive.EvidenceReward);
+        if (!string.IsNullOrEmpty(archive.JournalEntryId))
+            state.Journal.Discover(archive.JournalEntryId);
+
+        state.Analytics.RecordDocumentRead(archiveId);
+        state.EmitActionLog("dungeon", "archive_read", new Dictionary<string, string>
+        {
+            { "archiveId", archiveId },
+            { "factionId", archive.FactionId },
+            { "repReward", archive.RepReward.ToString() },
+            { "evidenceReward", archive.EvidenceReward.ToString() },
+            { "journalEntry", archive.JournalEntryId ?? "" }
+        });
+        state.LastUpdate = DateTime.UtcNow;
+        return new ArchiveReadResult(archiveId, archive.FactionId, archive.RepReward, archive.EvidenceReward, archive.JournalEntryId);
+    }
+
     // ---- Settlement fate system ----
     // Settlements progress from Contested to a terminal fate (Saved/Lost/Abandoned) either by
     // explicit player choice or by a campaign roll driven by Heat + faction pressure. Terminal

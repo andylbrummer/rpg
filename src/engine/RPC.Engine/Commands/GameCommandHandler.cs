@@ -180,6 +180,9 @@ public class GameCommandHandler
             case AccuseFactionCommand accuseCmd:
                 stateChanged = _gameState.AccuseFaction(accuseCmd.FactionId);
                 break;
+            case ReadArchiveCommand archiveCmd:
+                stateChanged = _gameState.ReadArchive(archiveCmd.ArchiveId) != null;
+                break;
             case TransferToCacheCommand toCacheCmd:
                 ComponentInventorySystem.TransferToExpeditionCache(_gameState.Party, toCacheCmd.Slot, toCacheCmd.ItemId, toCacheCmd.Count);
                 stateChanged = true;

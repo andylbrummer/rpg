@@ -54,6 +54,11 @@ public class CombatService
             if (rep >= 25 && (factionId == "bureau" || factionId == "convocation"))
                 options.Add("Diplomatic");
             if (hasAshmouth) options.Add("Negotiate");
+            // Ancestral Bargaining (Compact signature mechanic): a Bonewarden can settle a
+            // tithe-construct's claim with the Compact (inkblood) at standing >= 25 instead of fighting.
+            if (factionId == "inkblood" && rep >= 25
+                && state.Party.Members.Any(m => m.ClassId == "bonewarden" && m.IsAlive))
+                options.Add("AncestralBargain");
             options.Add("Fight");
 
             if (options.Count > 1) // More than just "Fight"
@@ -160,6 +165,9 @@ public class CombatService
             case "negotiate":
                 return ResolveAshmouthNegotiation(state);
 
+            case "ancestralbargain":
+                return ResolveAncestralBargain(state, factionId);
+
             case "escalate":
                 ApplyReputationDelta(state, factionId, -5);
                 state.EmitActionLog("combat", "encounter_escalated", new Dictionary<string, string>
@@ -215,6 +223,38 @@ public class CombatService
             { "factionId", factionId },
             { "outcome", outcomeType },
             { "repDelta", $"{(repDelta >= 0 ? "+" : "")}{repDelta}" }
+        });
+        ClosePeacefulEncounter(state);
+        return true;
+    }
+
+    /// <summary>
+    /// Compact signature resolution: a Bonewarden settles a tithe-construct's claim by paying the
+    /// ancestral tithe — a fixed Compact (inkblood) reputation cost — and the encounter ends without
+    /// combat. Requires a living Bonewarden and Compact standing >= 25; if a client sends the choice
+    /// without meeting those conditions the engine degrades to a plain parley rather than granting it.
+    /// </summary>
+    private bool ResolveAncestralBargain(GameState state, string factionId)
+    {
+        var eligible = factionId == "inkblood"
+            && state.Reputation[factionId] >= 25
+            && state.Party.Members.Any(m => m.ClassId == "bonewarden" && m.IsAlive);
+
+        if (!eligible)
+        {
+            // Safe degrade: behave like a plain parley.
+            ApplyReputationDelta(state, factionId, +2);
+            ClosePeacefulEncounter(state);
+            return true;
+        }
+
+        const int titheCost = 5;
+        ApplyReputationDelta(state, factionId, -titheCost);
+        state.EmitActionLog("combat", "ancestral_bargain_struck", new Dictionary<string, string>
+        {
+            { "encounterId", state.CurrentEncounterId ?? "unknown" },
+            { "factionId", factionId },
+            { "repDelta", $"-{titheCost}" }
         });
         ClosePeacefulEncounter(state);
         return true;
