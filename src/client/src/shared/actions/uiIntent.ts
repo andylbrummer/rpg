@@ -37,7 +37,9 @@ export type UiIntent =
   | { kind: 'missionAccept'; missionId: string }
   | { kind: 'vendorPurchase'; itemId: string }
   | { kind: 'equipItem'; characterId: string; itemId: string; slot: string }
-  | { kind: 'unequipItem'; characterId: string; slot: string };
+  | { kind: 'unequipItem'; characterId: string; slot: string }
+  | { kind: 'searchSecrets' }
+  | { kind: 'breakWall'; targetId: string };
 
 /**
  * Pure mapping from a typed UI intent to the protocol `PlayerAction`.
@@ -139,5 +141,9 @@ export function intentToAction(intent: UiIntent): PlayerAction {
       };
     case 'unequipItem':
       return { type: 'unequip_item', targetId: intent.characterId, equipSlot: intent.slot };
+    case 'searchSecrets':
+      return { type: 'search_secrets' };
+    case 'breakWall':
+      return { type: 'break_wall', targetId: intent.targetId };
   }
 }

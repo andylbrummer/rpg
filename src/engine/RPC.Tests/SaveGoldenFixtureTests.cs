@@ -6,7 +6,7 @@ using RPC.Engine.Save;
 namespace RPC.Tests;
 
 /// <summary>
-/// Golden-save fixtures for every supported schema version (3..9). Each fixture is a save
+/// Golden-save fixtures for every supported schema version (3..13). Each fixture is a save
 /// authored at that version; the tests assert it migrates to the current schema and restores a
 /// coherent <see cref="GameState"/>. This is the regression guard against a future schema change
 /// silently breaking older saves — when a breaking change lands, the matching fixture fails here.

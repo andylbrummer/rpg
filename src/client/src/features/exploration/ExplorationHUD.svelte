@@ -1,6 +1,7 @@
 <script lang="ts">
   import AutoMap from './AutoMap.svelte';
   import type { GameState } from '$shared/types/game';
+  import type { UiIntent } from '$shared/actions/uiIntent';
 
   interface Props {
     gameState: GameState | null;
@@ -11,6 +12,7 @@
     onRest: () => void;
     onSave: () => void;
     onPickup: () => void;
+    onIntent: (intent: UiIntent) => void;
   }
 
   let {
@@ -21,7 +23,8 @@
     onReturnToTown,
     onRest,
     onSave,
-    onPickup
+    onPickup,
+    onIntent
   }: Props = $props();
 
   const currentTile = $derived(
@@ -39,6 +42,23 @@
           .join(' ')
       : 'item'
   );
+
+  // Cartographer-detected secrets the player can act on are those on the tile
+  // they currently occupy or an orthogonally adjacent tile (the wall is then
+  // within reach). Each maps to a Break control that emits breakWall{id}.
+  const reachableSecrets = $derived(
+    (gameState?.detectedSecrets ?? []).filter(s => {
+      const px = gameState?.player?.x;
+      const py = gameState?.player?.y;
+      if (px == null || py == null) return false;
+      const dist = Math.abs(s.x - px) + Math.abs(s.y - py);
+      return dist <= 1;
+    })
+  );
+
+  function secretLabel(wall?: string | null): string {
+    return wall ? `Break wall (${wall})` : 'Break wall';
+  }
 </script>
 
 <div class="exploration-hud">
@@ -59,6 +79,17 @@
           Take {currentLootName}
         </button>
       {/if}
+      <button class="hud-btn search-btn" onclick={() => onIntent({ kind: 'searchSecrets' })}>
+        Search
+      </button>
+      {#each reachableSecrets as secret (secret.id)}
+        <button
+          class="hud-btn break-btn"
+          onclick={() => onIntent({ kind: 'breakWall', targetId: secret.id })}
+        >
+          {secretLabel(secret.wall)}
+        </button>
+      {/each}
     </div>
 
     <div class="hud-right">
@@ -165,6 +196,8 @@
   .rest-btn { border-color: #446644; color: #88cc88; }
   .save-btn { border-color: #444466; color: #8888cc; }
   .take-btn { border-color: #d4a84b; color: #ffcc44; }
+  .search-btn { border-color: #4488cc; color: #88bbee; }
+  .break-btn { border-color: #aa6644; color: #dd9966; }
 
   .movement-bar {
     flex: 0 0 auto;

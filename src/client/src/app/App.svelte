@@ -418,6 +418,7 @@
           onRest={handleRest}
           onSave={handleSave}
           onPickup={handlePickup}
+          onIntent={dispatchIntent}
         />
       {/if}
       {#if gameState?.travelEncounter && gameState?.mode === 'Menu'}
