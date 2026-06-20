@@ -16,7 +16,7 @@
 </script>
 
 <div class="party-bar">
-  {#each party as member (member.name)}
+  {#each party as member (member.slot)}
     <div class="party-member" onclick={() => onOpenInventory(member.slot)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && onOpenInventory(member.slot)}>
       <div class="member-portrait" style="background-color: {member.color}">
         {#if member.componentInventory.length > 0}
