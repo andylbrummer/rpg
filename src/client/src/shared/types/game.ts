@@ -167,6 +167,7 @@ export interface FactionVendor {
   name: string;
   threshold: number;
   stock: VendorItem[];
+  greeting?: string;
 }
 
 export interface TavernRecruit {
@@ -182,6 +183,7 @@ export interface TavernRecruit {
     willpower: number;
   };
   cost: number;
+  dialogue?: string;
 }
 
 export interface FactionContact {
@@ -214,6 +216,7 @@ export interface TownState {
   currentTownId: string;
   availableMissions: MissionOffer[];
   vendorStock: VendorItem[];
+  vendorGreeting?: string;
   factionVendors: FactionVendor[];
   factionContacts: FactionContact[];
   tavernRoster: TavernRecruit[];
