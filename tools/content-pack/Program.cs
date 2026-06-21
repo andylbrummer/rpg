@@ -151,6 +151,10 @@ class Program
             {
                 result = ValidateRumors(file, json);
             }
+            else if (relativePath.Contains("/dialogue/") || relativePath.StartsWith("dialogue/"))
+            {
+                result = ValidateDialogue(file, json);
+            }
             else if (relativePath.Contains("/npcs/") || relativePath.StartsWith("npcs/"))
             {
                 result = ValidateNpcs(file, json);
@@ -842,6 +846,49 @@ class Program
                 if (string.IsNullOrWhiteSpace(rumor.Text))
                 {
                     Console.WriteLine($"FAIL: {filePath} - Rumor '{rumor.Id}' missing text");
+                    return 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static int ValidateDialogue(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var defs = JsonSerializer.Deserialize<DialogueDef[]>(json, options);
+            if (defs == null || defs.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Expected non-empty array of dialogue defs");
+                return 1;
+            }
+            foreach (var def in defs)
+            {
+                if (string.IsNullOrWhiteSpace(def.Speaker))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Dialogue entry missing speaker");
+                    return 1;
+                }
+                if (string.IsNullOrWhiteSpace(def.Kind))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Dialogue entry for '{def.Speaker}' missing kind");
+                    return 1;
+                }
+                if (def.Tiers == null || def.Tiers.Count == 0)
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Dialogue entry for '{def.Speaker}/{def.Kind}' has empty tiers map");
                     return 1;
                 }
             }
