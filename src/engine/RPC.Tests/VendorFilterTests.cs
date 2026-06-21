@@ -146,14 +146,14 @@ public class VendorFilterTests
     {
         var gs = new GameState(seed: 1);
         gs.PartyGold = 50;
-        gs.Town.VendorStock.Add(new VendorItem("small_salve", "Small Salve", 15, 3));
+        var initialCount = gs.Town.VendorStock.Count;
 
         var result = gs.PurchaseVendorItem("small_salve");
 
         Assert.True(result);
         Assert.Equal(35, gs.PartyGold);
         Assert.Contains("small_salve", gs.PartyInventory);
-        Assert.Empty(gs.Town.VendorStock);
+        Assert.Equal(initialCount - 1, gs.Town.VendorStock.Count);
     }
 
     [Fact]

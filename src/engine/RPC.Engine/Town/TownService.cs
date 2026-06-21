@@ -20,6 +20,24 @@ public class TownService
     public List<MissionOffer> GenerateMissions() => _factionContent?.GenerateMissions() ?? new List<MissionOffer>();
     public List<FactionVendor> GenerateVendors() => _factionContent?.GenerateVendors() ?? new List<FactionVendor>();
 
+    /// <summary>
+    /// Starter generic vendor stock available to every new game regardless of faction reputation.
+    /// Item ids match content/items/*.json; prices are the canonical buy prices for the open market.
+    /// </summary>
+    public List<VendorItem> GenerateVendorStock() => new()
+    {
+        new VendorItem("small_salve", "Small Salve", 15, 5),
+        new VendorItem("healing_draft", "Healing Draft", 40, 3),
+        new VendorItem("antitoxin", "Antitoxin", 25, 3),
+        new VendorItem("steadying_drink", "Steadying Drink", 20, 3),
+        new VendorItem("firebomb", "Firebomb", 35, 2),
+        new VendorItem("rusty_sword", "Rusty Sword", 30, 1),
+        new VendorItem("leather_cap", "Leather Cap", 25, 1),
+        new VendorItem("cloth_vest", "Cloth Vest", 30, 1),
+        new VendorItem("wooden_buckler", "Wooden Buckler", 28, 1),
+        new VendorItem("scrap_metal", "Scrap Metal", 8, 10),
+    };
+
     public List<TownRumor> GenerateRumorsForVisit(GameRandom rng, int count) => _rumors?.GenerateForVisit(rng, count) ?? new List<TownRumor>();
 
     public bool VerifyRumor(TownRumor rumor, RumorVerificationSource source, GameRandom rng) =>

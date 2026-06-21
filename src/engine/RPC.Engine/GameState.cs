@@ -209,6 +209,10 @@ public class GameState
         {
             Town.FactionVendors = _townService.GenerateVendors();
         }
+        if (Town.VendorStock.Count == 0)
+        {
+            Town.VendorStock = _townService.GenerateVendorStock();
+        }
         if (string.IsNullOrEmpty(Town.CurrentTownId))
         {
             Town.CurrentTownId = "the_reach";

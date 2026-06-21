@@ -75,7 +75,7 @@ public class TownStateTests : IDisposable
         Assert.Equal("the_reach", gs.Town.CurrentTownId);
         Assert.Equal(6, gs.Town.TavernRoster.Count);
         Assert.True(gs.Town.AvailableMissions.Count >= 4, "Town should initialize with at least 4 available missions");
-        Assert.Empty(gs.Town.VendorStock);
+        Assert.NotEmpty(gs.Town.VendorStock);
         Assert.True(gs.Town.FactionContacts.Count >= 2, "Town should initialize with at least 2 faction contacts");
     }
 
@@ -120,7 +120,7 @@ public class TownStateTests : IDisposable
         Assert.True(loaded);
 
         Assert.Equal(gs.Town.AvailableMissions.Count, gs2.Town.AvailableMissions.Count);
-        Assert.Empty(gs2.Town.VendorStock);
+        Assert.Equal(gs.Town.VendorStock.Count, gs2.Town.VendorStock.Count);
         Assert.Equal(gs.Town.FactionContacts.Count, gs2.Town.FactionContacts.Count);
     }
 
@@ -186,11 +186,13 @@ public class TownStateTests : IDisposable
     public void PurchaseVendorItem_RemovesFromStock()
     {
         var gs = MakeGameState(1);
+        var initialCount = gs.Town.VendorStock.Count;
         gs.Town.VendorStock.Add(new VendorItem("i1", "Potion", 10, 3));
 
         var result = gs.PurchaseVendorItem("i1");
         Assert.True(result);
-        Assert.Empty(gs.Town.VendorStock);
+        Assert.Equal(initialCount, gs.Town.VendorStock.Count);
+        Assert.DoesNotContain(gs.Town.VendorStock, v => v.ItemId == "i1");
     }
 
     [Fact]
