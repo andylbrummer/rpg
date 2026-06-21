@@ -155,6 +155,14 @@
       }
     }
   }
+
+  function itemImg(itemId: string): string { return `/items/${itemId}.png`; }
+  function vendorImg(factionId: string): string { return `/vendors/${factionId}.png`; }
+  // Hide a broken generated image so the CSS fallback layer shows instead.
+  function hideBroken(e: Event) {
+    const el = e.currentTarget as HTMLImageElement;
+    el.style.display = 'none';
+  }
 </script>
 
 {#if activeTab === 'tavern'}
@@ -206,23 +214,36 @@
 {/if}
 
 {#if activeTab === 'market'}
-<h2>Vendor</h2>
-<div class="service-list">
-  {#each town?.vendorStock || [] as item (item.itemId)}
-    <div class="service-item">
-      <div class="item-name">{item.name}</div>
-      <div class="item-price">{item.price}g (x{item.quantity})</div>
-      <button
-        type="button"
-        class="action-btn"
-        onclick={() => onVendorPurchase(item.itemId)}
-      >
-        Buy
-      </button>
+<div class="market-header">
+  <h2>Market</h2>
+  <span class="gold-pill">{partyGold}g</span>
+</div>
+
+<div class="shop-card">
+  <div class="shop-keeper">
+    <div class="keeper-portrait">
+      <img src={vendorImg('generic')} alt="" onerror={hideBroken} />
+      <div class="keeper-fallback" style="background:#5a5a6a"></div>
     </div>
-  {:else}
-    <div class="empty-state">No items in stock.</div>
-  {/each}
+    <div class="keeper-info">
+      <span class="keeper-name">Open Market</span>
+      <span class="keeper-greeting">{town?.vendorGreeting ?? ''}</span>
+    </div>
+  </div>
+  <div class="item-grid">
+    {#each town?.vendorStock || [] as item (item.itemId)}
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src={itemImg(item.itemId)} alt="" onerror={hideBroken} />
+        </div>
+        <div class="item-card-name">{item.name}</div>
+        <div class="item-card-price">{item.price}g ×{item.quantity}</div>
+        <button type="button" class="action-btn buy-btn" onclick={() => onVendorPurchase(item.itemId)}>Buy</button>
+      </div>
+    {:else}
+      <div class="empty-state">No items in stock.</div>
+    {/each}
+  </div>
 </div>
 
 {#each town?.factionVendors || [] as vendor (vendor.factionId)}
@@ -230,41 +251,41 @@
   {@const isVisible = rep > -25}
   {@const isUnlocked = rep >= vendor.threshold}
   {#if isVisible}
-    <h2 class:locked-heading={!isUnlocked}>{vendor.name}</h2>
-    <div class="service-list">
-      {#each vendor.stock as item (item.itemId)}
-        <div class="service-item" class:locked-item={!isUnlocked}>
-          <div class="item-name">{item.name}</div>
-          <div class="item-price">{item.price}g (x{item.quantity})</div>
-          {#if isUnlocked}
-            <button
-              type="button"
-              class="action-btn"
-              onclick={() => onVendorPurchase(item.itemId)}
-            >
-              Buy
-            </button>
-          {:else}
+    <div class="shop-card" class:locked-shop={!isUnlocked}>
+      <div class="shop-keeper">
+        <div class="keeper-portrait">
+          <img src={vendorImg(vendor.factionId)} alt="" onerror={hideBroken} />
+          <div class="keeper-fallback" style="background:{factionColors[vendor.factionId] || '#888'}"></div>
+        </div>
+        <div class="keeper-info">
+          <span class="keeper-name" style="color:{factionColors[vendor.factionId] || '#ccc'}">{vendor.name}</span>
+          <span class="keeper-greeting">{vendor.greeting ?? ''}</span>
+          {#if !isUnlocked}
             <span class="lock-text">Requires {vendor.threshold} {vendor.factionId} reputation</span>
           {/if}
         </div>
-      {:else}
-        <div class="empty-state">No items in stock.</div>
-      {/each}
+      </div>
+      <div class="item-grid">
+        {#each vendor.stock as item (item.itemId)}
+          <div class="item-card" class:locked-item={!isUnlocked}>
+            <div class="item-thumb">
+              <img src={itemImg(item.itemId)} alt="" onerror={hideBroken} />
+            </div>
+            <div class="item-card-name">{item.name}</div>
+            <div class="item-card-price">{item.price}g ×{item.quantity}</div>
+            {#if isUnlocked}
+              <button type="button" class="action-btn buy-btn" onclick={() => onVendorPurchase(item.itemId)}>Buy</button>
+            {:else}
+              <span class="lock-badge">Locked</span>
+            {/if}
+          </div>
+        {:else}
+          <div class="empty-state">No items in stock.</div>
+        {/each}
+      </div>
     </div>
   {/if}
 {/each}
-
-{#if partyInventory.length > 0}
-  <h2>Inventory</h2>
-  <div class="service-list">
-    {#each partyInventory as itemId}
-      <div class="service-item">
-        <div class="item-name">{itemId}</div>
-      </div>
-    {/each}
-  </div>
-{/if}
 {/if}
 
 {#if activeTab === 'tavern'}
@@ -1093,4 +1114,29 @@
     color: #888;
     font-size: clamp(0.65rem, 1.2vw, 0.8rem);
   }
+
+  .market-header { display:flex; justify-content:space-between; align-items:center; }
+  .gold-pill { color:#d4a84b; font-weight:bold; font-size:clamp(0.7rem,1.4vw,0.85rem); }
+  .shop-card { display:flex; flex-direction:column; gap:0.5rem; padding:0.6rem;
+    background:rgba(255,255,255,0.03); border:0.0625em solid #333; border-radius:0.4rem; margin-bottom:0.6rem; }
+  .shop-card.locked-shop { opacity:0.7; }
+  .shop-keeper { display:flex; gap:0.6rem; align-items:center; }
+  .keeper-portrait { position:relative; width:clamp(2.5rem,7vw,3.5rem); height:clamp(2.5rem,7vw,3.5rem);
+    border-radius:0.4rem; overflow:hidden; border:0.125em solid #555; flex-shrink:0; }
+  .keeper-portrait img { position:relative; z-index:1; width:100%; height:100%; object-fit:cover; }
+  .keeper-fallback { position:absolute; inset:0; z-index:0; }
+  .keeper-info { display:flex; flex-direction:column; gap:0.1rem; min-width:0; }
+  .keeper-name { font-weight:bold; font-size:clamp(0.75rem,1.5vw,0.9rem); color:#eee; }
+  .keeper-greeting { font-style:italic; color:#aaa; font-size:clamp(0.6rem,1.2vw,0.72rem); }
+  .item-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(6.5rem,1fr)); gap:0.4rem; }
+  .item-card { display:flex; flex-direction:column; align-items:center; gap:0.2rem; padding:0.4rem;
+    background:rgba(0,0,0,0.25); border:0.0625em solid #383838; border-radius:0.3rem; text-align:center; }
+  .item-card.locked-item { opacity:0.6; }
+  .item-thumb { width:clamp(2.5rem,6vw,3.25rem); height:clamp(2.5rem,6vw,3.25rem);
+    display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); border-radius:0.25rem; overflow:hidden; }
+  .item-thumb img { width:100%; height:100%; object-fit:cover; }
+  .item-card-name { font-size:clamp(0.58rem,1.1vw,0.7rem); color:#ddd; font-weight:bold; line-height:1.1; }
+  .item-card-price { font-size:clamp(0.55rem,1vw,0.65rem); color:#d4a84b; }
+  .buy-btn { width:100%; }
+  .lock-badge { font-size:clamp(0.5rem,1vw,0.6rem); color:#c44; font-style:italic; }
 </style>
