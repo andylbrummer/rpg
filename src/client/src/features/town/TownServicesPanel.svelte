@@ -158,6 +158,7 @@
 
   function itemImg(itemId: string): string { return `/items/${itemId}.png`; }
   function vendorImg(factionId: string): string { return `/vendors/${factionId}.png`; }
+  function tavernImg(classId: string): string { return `/tavern/${classId}.png`; }
   // Hide a broken generated image so the CSS fallback layer shows instead.
   function hideBroken(e: Event) {
     const el = e.currentTarget as HTMLImageElement;
@@ -169,22 +170,25 @@
 <h2>Tavern</h2>
 <div class="service-list">
   {#each town?.tavernRoster || [] as recruit (recruit.id)}
-    <div class="service-item">
-      <div class="recruit-header">
-        <span class="recruit-name">{recruit.name}</span>
-        <span class="recruit-class" style="color: {classColors[recruit.classId] || '#888'}">
-          {recruit.classId}
-        </span>
-        <span class="recruit-level">Lv.{recruit.level}</span>
+    <div class="recruit-card">
+      <div class="recruit-portrait">
+        <img src={tavernImg(recruit.classId)} alt="" onerror={hideBroken} />
+        <div class="keeper-fallback" style="background:{classColors[recruit.classId] || '#5a5a6a'}"></div>
       </div>
-      <div class="recruit-cost">{recruit.cost}g</div>
-      <button
-        type="button"
-        class="action-btn"
-        onclick={() => onTavernRecruit(recruit.id)}
-      >
-        Recruit
-      </button>
+      <div class="recruit-body">
+        <div class="recruit-header">
+          <span class="recruit-name">{recruit.name}</span>
+          <span class="recruit-class" style="color: {classColors[recruit.classId] || '#888'}">{recruit.classId}</span>
+          <span class="recruit-level">Lv.{recruit.level}</span>
+        </div>
+        {#if recruit.dialogue}
+          <span class="recruit-line">&ldquo;{recruit.dialogue}&rdquo;</span>
+        {/if}
+        <div class="recruit-foot">
+          <span class="recruit-cost">{recruit.cost}g</span>
+          <button type="button" class="action-btn" onclick={() => onTavernRecruit(recruit.id)}>Recruit</button>
+        </div>
+      </div>
     </div>
   {:else}
     <div class="empty-state">No recruits available.</div>
@@ -586,16 +590,14 @@
     color: #d4a84b;
   }
 
-  .recruit-cost,
-  .item-price {
+  .recruit-cost {
     color: #d4a84b;
     font-weight: bold;
     min-width: 3rem;
     text-align: right;
   }
 
-  .mission-title,
-  .item-name {
+  .mission-title {
     color: #eee;
     font-weight: bold;
     flex: 1 1 auto;
@@ -677,11 +679,6 @@
     font-style: italic;
     text-align: center;
     font-size: clamp(0.65rem, 1.3vw, 0.75rem);
-  }
-
-  .locked-heading {
-    color: #666;
-    font-style: italic;
   }
 
   .locked-item {
@@ -1139,4 +1136,13 @@
   .item-card-price { font-size:clamp(0.55rem,1vw,0.65rem); color:#d4a84b; }
   .buy-btn { width:100%; }
   .lock-badge { font-size:clamp(0.5rem,1vw,0.6rem); color:#c44; font-style:italic; }
+
+  .recruit-card { display:flex; gap:0.6rem; padding:0.5rem; background:rgba(255,255,255,0.03);
+    border:0.0625em solid #333; border-radius:0.4rem; }
+  .recruit-portrait { position:relative; width:clamp(2.75rem,7vw,3.75rem); height:clamp(2.75rem,7vw,3.75rem);
+    border-radius:0.4rem; overflow:hidden; border:0.125em solid #555; flex-shrink:0; }
+  .recruit-portrait img { position:relative; z-index:1; width:100%; height:100%; object-fit:cover; }
+  .recruit-body { display:flex; flex-direction:column; gap:0.2rem; flex:1 1 auto; min-width:0; }
+  .recruit-line { font-style:italic; color:#aaa; font-size:clamp(0.6rem,1.2vw,0.7rem); }
+  .recruit-foot { display:flex; justify-content:space-between; align-items:center; margin-top:auto; }
 </style>
