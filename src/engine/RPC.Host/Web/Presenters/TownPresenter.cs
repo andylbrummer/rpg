@@ -9,6 +9,7 @@ public static class TownPresenter
         return new
         {
             currentTownId = state.Town.CurrentTownId,
+            vendorGreeting = state.VendorGreeting("generic"),
             availableMissions = state.Town.AvailableMissions.Select(m => new
             {
                 id = m.Id,
@@ -31,6 +32,7 @@ public static class TownPresenter
                 factionId = fv.FactionId,
                 name = fv.Name,
                 threshold = fv.Threshold,
+                greeting = state.VendorGreeting(fv.FactionId),
                 stock = fv.Stock.Select(v => new
                 {
                     itemId = v.ItemId,
@@ -61,7 +63,8 @@ public static class TownPresenter
                     intelligence = r.BaseStats.Intelligence,
                     willpower = r.BaseStats.Willpower
                 },
-                cost = r.Cost
+                cost = r.Cost,
+                dialogue = state.RecruitDialogue(r.ClassId)
             }).ToArray(),
             viewedMissions = state.Town.ViewedMissions.ToArray(),
             questLog = state.Town.QuestLog.Select(q => new

@@ -95,6 +95,7 @@ public class GameState
     private readonly IReadOnlyDictionary<string, DungeonTemplate> _dungeonTemplates;
     private readonly FactionContentRepository? _factionContent;
     private readonly CampaignContentRegistry? _campaignContent;
+    private readonly DialogueRepository? _dialogue;
     public Analytics.AnalyticsTracker Analytics { get; } = new();
 
     /// <summary>
@@ -137,7 +138,7 @@ public class GameState
     /// </summary>
     public string ResolveEpilogue() => _cachedEpilogue ??= EpilogueGenerator.Generate(this);
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null, DialogueRepository? dialogue = null)
     {
         LastUpdate = DateTime.UtcNow;
         _seed = seed ?? DateTime.UtcNow.GetHashCode();
@@ -146,6 +147,7 @@ public class GameState
         _classRegistry = classRegistry;
         _factionContent = factionContent;
         _campaignContent = campaignContent;
+        _dialogue = dialogue;
         _townService = new TownService(factionContent, rumors);
         InitializeDefaultParty();
         InitializeTown();
@@ -723,4 +725,12 @@ public class GameState
             catch { }
         }
     }
+
+    /// <summary>Greeting line for a vendor speaker (factionId or "generic"), tiered by reputation.</summary>
+    public string VendorGreeting(string speaker)
+        => _dialogue?.GetLine("vendor", speaker, speaker == "generic" ? 0 : Reputation[speaker]) ?? "...";
+
+    /// <summary>Flavor line for a tavern recruit, keyed by class id.</summary>
+    public string RecruitDialogue(string classId)
+        => _dialogue?.GetLine("recruit", classId, 0) ?? "...";
 }
