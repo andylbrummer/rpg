@@ -54,9 +54,16 @@ public static class TavernRecruitGenerator
 {
     private static readonly string[] Names = new[]
     {
-        "Roran", "Elara", "Thorne", "Mira", "Kael", "Sera",
-        "Vex", "Juno", "Darius", "Lyra", "Bran", "Nyx"
+        "Roran", "Elara", "Thorne", "Mira", "Kael", "Sera", "Vex", "Juno",
+        "Darius", "Lyra", "Bran", "Nyx", "Corvin", "Ashe", "Dremmel", "Sable",
+        "Halvard", "Wren", "Ottoline", "Greel", "Maddox", "Isolde", "Garrick", "Pell",
+        "Verity", "Tobin", "Calla", "Rhys", "Mordecai", "Fenna", "Os", "Sylvie",
+        "Crane", "Dagny", "Lucan", "Briar", "Edda", "Voss", "Marrow", "Quill",
+        "Hesper", "Tace"
     };
+
+    /// <summary>Read-only view of the recruit name pool, for tests and tooling.</summary>
+    public static IReadOnlyList<string> NamePool => Names;
 
     private static readonly string[] Classes = new[]
     {
