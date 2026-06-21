@@ -1,0 +1,11 @@
+[
+  { "speaker": "bonewarden", "kind": "recruit", "tiers": { "neutral": "The dead still have work in them. So do I." } },
+  { "speaker": "stillblade", "kind": "recruit", "tiers": { "neutral": "I cut once. I do not miss." } },
+  { "speaker": "cauterist", "kind": "recruit", "tiers": { "neutral": "I can close a wound or open one. Your coin decides." } },
+  { "speaker": "hollow", "kind": "recruit", "tiers": { "neutral": "There's nothing left in me to lose. Useful, that." } },
+  { "speaker": "fieldwright", "kind": "recruit", "tiers": { "neutral": "Give me a wall and an hour. I'll give you a fortress." } },
+  { "speaker": "inkblood", "kind": "recruit", "tiers": { "neutral": "Every name has a price written beside it. I read well." } },
+  { "speaker": "marcher", "kind": "recruit", "tiers": { "neutral": "I've walked worse roads than yours. Lead on." } },
+  { "speaker": "ashmouth", "kind": "recruit", "tiers": { "neutral": "Everything burns eventually. I just keep the schedule." } },
+  { "speaker": "generic", "kind": "recruit", "tiers": { "neutral": "I'm for hire. Are you buying?" } }
+]

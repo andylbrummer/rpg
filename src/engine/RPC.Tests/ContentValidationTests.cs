@@ -245,7 +245,7 @@ public class ContentValidationTests
     {
         "classes", "enemies", "encounters", "factions", "synergies", "items",
         "loot", "npcs", "rumors", "schemes", "complications", "segments",
-        "campaigns", "dungeons", "archives", "secrets"
+        "campaigns", "dungeons", "archives", "secrets", "dialogue"
     };
 
     private static string? CategoryOf(string relativePath)
@@ -359,6 +359,9 @@ public class ContentValidationTests
                 Assert.False(string.IsNullOrEmpty(secret.Type));
                 break;
             }
+            case "dialogue":
+                Assert.NotEmpty(JsonSerializer.Deserialize<DialogueDef[]>(json, PermissiveOptions)!);
+                break;
             default:
                 Assert.Fail($"Unhandled validated category '{category}' for {relativePath}");
                 break;
