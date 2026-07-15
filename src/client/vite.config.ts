@@ -54,6 +54,7 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
   },
   server: {
+    port: 8378,
     hmr: false,
     host: true,
     proxy: {

@@ -36,6 +36,7 @@ playwright/.cache/
 # Generated content packs / assets (build artifacts; sources only in repo)
 build/
 *.rpk
+worktrees
 
 # Coverage / profiling
 coverage/
