@@ -33,6 +33,11 @@ test.describe('Reputation consequences', () => {
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'convocation', value: -25 });
     await page.waitForTimeout(500);
 
+    await page.locator('.town-nav-btn').filter({ hasText: 'Market' }).click();
+    // Sanity-check that the market actually rendered, otherwise the absence assertion below
+    // would pass on any tab that simply has no vendors on it.
+    await expect(page.locator('.town-services h2')).not.toHaveCount(0);
+
     const convocationHeading = page.locator('.town-services h2:has-text("Convocation Arcanist")');
     await expect(convocationHeading).toHaveCount(0);
   });
@@ -46,6 +51,7 @@ test.describe('Reputation consequences', () => {
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'convocation', value: -25 });
     await page.waitForTimeout(500);
 
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const convocationContact = contactSection.locator('.contact-card').filter({ hasText: 'Seer Maren' });
 
@@ -68,6 +74,7 @@ test.describe('Reputation consequences', () => {
     await sendWsAction(page, serverUrl, { type: 'mission_accept', targetId: 'mission-bureau-1' });
     await page.waitForTimeout(600);
 
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const bureauContact = contactSection.locator('.contact-card').filter({ hasText: 'Agent Voss' });
     const bureauRepBefore = await bureauContact.locator('.rep-value').first().textContent();

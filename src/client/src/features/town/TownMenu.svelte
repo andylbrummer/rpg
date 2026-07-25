@@ -157,6 +157,24 @@
           onRecruit={props.onTavernRecruit}
           onRest={() => props.onIntent({ kind: 'rest' })}
         />
+        <!--
+          Faction contacts belong to the tavern, which is the tab that used to render them.
+          The broadsheet rework replaced this tab's panel with TavernHall and left the contacts
+          section stranded: the server still sends town.factionContacts, and
+          TownServicesPanel still renders them under activeTab="tavern", but no tab reached
+          that branch any more, so contact reputation, attitude dialogue and contact-offered
+          missions were unreachable in the app.
+        -->
+        <div class="town-services">
+          <TownServicesPanel
+            gameState={gameState}
+            onTavernRecruit={props.onTavernRecruit}
+            onMissionAccept={props.onMissionAccept}
+            onVendorPurchase={props.onVendorPurchase}
+            onIntent={props.onIntent}
+            activeTab="tavern"
+          />
+        </div>
       </div>
     {:else if currentTab === 'missions'}
       <div class="tab-panel">
