@@ -37,7 +37,7 @@ export async function waitForGameState(page: Page, predicate: (state: any) => bo
  */
 const DEFAULT_PARTY_ORDER = ['Kael', 'Sera', 'Mira', 'Vex', 'Nyx', 'Orin'];
 
-export async function resetGame(page: Page, serverUrl: string): Promise<any> {
+export async function resetGame(page: Page, serverUrl: string, timeout = 60000): Promise<any> {
   await sendWsAction(page, serverUrl, { type: 'reset_game' });
   return waitForGameState(page, (state: any) =>
     state?.mode === 'Menu' &&
@@ -50,7 +50,9 @@ export async function resetGame(page: Page, serverUrl: string): Promise<any> {
     // produce, this returned the previous test's snapshot. Rows alone are not that marker:
     // swapping two members exchanges their slots too, so the layout stays self-consistent.
     state?.party?.every((member: any, i: number) => member.name === DEFAULT_PARTY_ORDER[i]),
-    20000);
+    // Generous for the same reason as enterDungeon: it returns as soon as the reset lands, and
+    // the 1920x1080 renderer tests starve the page badly enough to exceed a 20s ceiling.
+    timeout);
 }
 
 /**
@@ -61,16 +63,21 @@ export async function resetGame(page: Page, serverUrl: string): Promise<any> {
  * were sending the second action while the game was still in Menu, where it is rejected — the
  * combat overlay then never appeared and the test failed on an assertion far from the cause.
  * Wait for the transition the action was supposed to cause instead of guessing at a duration.
+ *
+ * The ceiling is generous because it costs nothing when things are quick — the wait returns as
+ * soon as the predicate holds. It needs to be: the tests that force a 1920x1080 viewport run a
+ * software-rendered WebGL scene behind the overlay, which starves the page enough that observing
+ * the new state took longer than 30s.
  */
-export async function enterDungeon(page: Page, serverUrl: string, dungeonType = 'broken_engine'): Promise<any> {
+export async function enterDungeon(page: Page, serverUrl: string, dungeonType = 'broken_engine', timeout = 60000): Promise<any> {
   await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType });
-  return waitForGameState(page, (state: any) => state?.mode === 'Exploration' && state?.hasDungeon === true, 30000);
+  return waitForGameState(page, (state: any) => state?.mode === 'Exploration' && state?.hasDungeon === true, timeout);
 }
 
 /** Triggers combat and waits until the engine reports it, for the same reason as enterDungeon. */
-export async function enterCombat(page: Page, serverUrl: string): Promise<any> {
+export async function enterCombat(page: Page, serverUrl: string, timeout = 60000): Promise<any> {
   await sendWsAction(page, serverUrl, { type: 'enter_combat' });
-  return waitForGameState(page, (state: any) => state?.mode === 'Combat' && !!state?.combat, 30000);
+  return waitForGameState(page, (state: any) => state?.mode === 'Combat' && !!state?.combat, timeout);
 }
 
 export async function resolveCombatByAttacking(page: Page, serverUrl: string, maxActions = 80): Promise<void> {

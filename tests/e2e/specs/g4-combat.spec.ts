@@ -181,6 +181,11 @@ test.describe('G4: Combat', () => {
 
   test.describe('CombatViewportTests', () => {
     test('fits 1920x1080 without horizontal scroll', async ({ page, serverUrl }) => {
+      // Forcing a large viewport while the WebGL renderer runs behind the overlay is
+      // expensive in headless Chromium — measured at roughly double the wall-clock of the
+      // same test at 1280x720, which put it up against the default 60s budget. The size is
+      // the point of the test, so buy time rather than shrink it.
+      test.slow();
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
@@ -205,6 +210,11 @@ test.describe('G4: Combat', () => {
 
   test.describe('InitiativeBarTests', () => {
     test('12-slot initiative bar is readable without scroll', async ({ page, serverUrl }) => {
+      // Forcing a large viewport while the WebGL renderer runs behind the overlay is
+      // expensive in headless Chromium — measured at roughly double the wall-clock of the
+      // same test at 1280x720, which put it up against the default 60s budget. The size is
+      // the point of the test, so buy time rather than shrink it.
+      test.slow();
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
@@ -264,6 +274,11 @@ test.describe('G4: Combat', () => {
 
   test.describe('VisualOverlapTests', () => {
     test('no overlap at max encounter', async ({ page, serverUrl }) => {
+      // Forcing a large viewport while the WebGL renderer runs behind the overlay is
+      // expensive in headless Chromium — measured at roughly double the wall-clock of the
+      // same test at 1280x720, which put it up against the default 60s budget. The size is
+      // the point of the test, so buy time rather than shrink it.
+      test.slow();
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
