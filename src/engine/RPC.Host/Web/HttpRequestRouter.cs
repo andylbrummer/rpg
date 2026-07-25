@@ -14,7 +14,6 @@ namespace RPC.Host.Web;
 /// </summary>
 internal sealed class HttpRequestRouter
 {
-    private readonly int _port;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly GameState _gameState;
     private readonly SemaphoreSlim _gameStateLock;
@@ -22,14 +21,12 @@ internal sealed class HttpRequestRouter
     private readonly WebSocketConnectionHandler _webSocketHandler;
 
     public HttpRequestRouter(
-        int port,
         JsonSerializerOptions jsonOptions,
         GameState gameState,
         SemaphoreSlim gameStateLock,
         CancellationTokenSource cts,
         WebSocketConnectionHandler webSocketHandler)
     {
-        _port = port;
         _jsonOptions = jsonOptions;
         _gameState = gameState;
         _gameStateLock = gameStateLock;
@@ -134,23 +131,9 @@ internal sealed class HttpRequestRouter
             _ => "application/octet-stream"
         };
 
-        if (extension == ".html")
-        {
-            var content = await File.ReadAllTextAsync(filePath);
-            content = content.Replace(
-                "</head>",
-                $"<script>window.SERVER_PORT = {_port};</script></head>"
-            );
-            var bytes = Encoding.UTF8.GetBytes(content);
-            context.Response.ContentLength64 = bytes.Length;
-            await context.Response.OutputStream.WriteAsync(bytes);
-        }
-        else
-        {
-            var bytes = await File.ReadAllBytesAsync(filePath);
-            context.Response.ContentLength64 = bytes.Length;
-            await context.Response.OutputStream.WriteAsync(bytes);
-        }
+        var bytes = await File.ReadAllBytesAsync(filePath);
+        context.Response.ContentLength64 = bytes.Length;
+        await context.Response.OutputStream.WriteAsync(bytes);
 
         context.Response.Close();
     }

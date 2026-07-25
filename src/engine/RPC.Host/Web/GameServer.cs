@@ -71,7 +71,7 @@ public class GameServer
 
         var protocolHandler = new ProtocolMessageHandler(_broadcaster, jsonOptions, _gameState, _gameStateLock, commandHandler, statePresenter, _cts);
         var webSocketHandler = new WebSocketConnectionHandler(_registry, _broadcaster, protocolHandler, _cts);
-        _router = new HttpRequestRouter(Port, jsonOptions, _gameState, _gameStateLock, _cts, webSocketHandler);
+        _router = new HttpRequestRouter(jsonOptions, _gameState, _gameStateLock, _cts, webSocketHandler);
 
         if (loadSave)
         {
