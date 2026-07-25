@@ -6,8 +6,7 @@ test.describe('Faction vendors in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: -25 });
     await page.waitForTimeout(500);
 
@@ -19,8 +18,7 @@ test.describe('Faction vendors in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 24 });
     await page.waitForTimeout(500);
 
@@ -103,8 +101,7 @@ test.describe('Faction vendors in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'convocation', value: 25 });
     await page.waitForTimeout(500);
 

@@ -1,13 +1,12 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { resetGame, sendWsAction } from './helpers';
 
 test.describe('Reputation consequences', () => {
   test('completing side mission shows toast with faction, delta, and source', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 30 });
     await page.waitForTimeout(500);
 
@@ -28,8 +27,7 @@ test.describe('Reputation consequences', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'convocation', value: -25 });
     await page.waitForTimeout(500);
 
@@ -46,8 +44,7 @@ test.describe('Reputation consequences', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'convocation', value: -25 });
     await page.waitForTimeout(500);
 
@@ -65,8 +62,7 @@ test.describe('Reputation consequences', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 30 });
     await page.waitForTimeout(500);
 
