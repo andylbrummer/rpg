@@ -31,13 +31,25 @@ export async function waitForGameState(page: Page, predicate: (state: any) => bo
   throw new Error(`Timed out waiting for game state after ${timeout}ms`);
 }
 
+/**
+ * Party the engine builds in InitializeDefaultParty, in slot order. Used as the marker that a
+ * reset has actually landed.
+ */
+const DEFAULT_PARTY_ORDER = ['Kael', 'Sera', 'Mira', 'Vex', 'Nyx', 'Orin'];
+
 export async function resetGame(page: Page, serverUrl: string): Promise<any> {
   await sendWsAction(page, serverUrl, { type: 'reset_game' });
   return waitForGameState(page, (state: any) =>
     state?.mode === 'Menu' &&
     state?.overworld?.turns === 0 &&
     state?.hasDungeon === false &&
-    state?.party?.every((member: any) => member.level === 1),
+    state?.party?.every((member: any) => member.level === 1) &&
+    // Wait for the party to be back in its default slot order. Every other clause is already
+    // true of the state from *before* the reset — a preceding test that left the game in town
+    // at level 1 satisfies all of them — so without a marker that only a completed reset can
+    // produce, this returned the previous test's snapshot. Rows alone are not that marker:
+    // swapping two members exchanges their slots too, so the layout stays self-consistent.
+    state?.party?.every((member: any, i: number) => member.name === DEFAULT_PARTY_ORDER[i]),
     20000);
 }
 

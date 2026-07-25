@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { resetGame, sendWsAction } from './helpers';
+import { resetGame, sendWsAction, waitForGameState } from './helpers';
 
 function makeMockCombat(partyCount: number, enemyCount: number) {
   const combatants = [
@@ -76,21 +76,38 @@ test.describe('G4: Combat', () => {
     await expect(page.locator('text=Return to Town')).toBeVisible({ timeout: 10000 });
   });
 
-  test.describe('FormationDragDropTests', () => {
-    test('dragging char from front to back updates formation', async ({ page, serverUrl }) => {
+  test.describe('FormationRankTests', () => {
+    // The party screen replaced its drag-and-drop formation grid with the broadsheet's
+    // "Swap rank" control. The behaviour under test is unchanged — moving a member between
+    // the front and back rank — so this drives the current control and asserts on the
+    // server-side row, which is what the combat renderer and targeting rules actually read.
+    test('swapping rank moves a party member between front and back', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
-      await resetGame(page, serverUrl);
-      await expect(page.locator('.formation-grid')).toBeVisible();
+      const before = await resetGame(page, serverUrl);
 
-      const frontCard = page.locator('.formation-row.front-row .formation-card').first();
-      const backRow = page.locator('.formation-row.back-row');
+      await page.locator('.town-nav-btn').filter({ hasText: 'Party' }).click();
 
-      await frontCard.dragTo(backRow);
-      await page.waitForTimeout(400);
+      const frontMember = before.party.find((m: any) => m.row === 0);
+      expect(frontMember).toBeTruthy();
 
-      // After swap, the dragged character should appear in the back row
-      const backNames = await backRow.locator('.formation-name').allTextContents();
-      expect(backNames.length).toBeGreaterThan(0);
+      await page.locator(`#roster-${frontMember.slot}`).click();
+      await expect(page.locator('.rank-badge')).toContainText('Front Rank');
+
+      await page.locator('button.swap').filter({ hasText: 'Swap rank' }).click();
+
+      // SwapRows exchanges the occupants of the two slots, so the character moves to the
+      // partner slot as well as changing rank — track it by id, not by slot.
+      const after = await waitForGameState(
+        page,
+        (state: any) => state?.party?.find((m: any) => m.id === frontMember.id)?.row === 1,
+        10000
+      );
+
+      const moved = after.party.find((m: any) => m.id === frontMember.id);
+      expect(moved.slot).not.toBe(frontMember.slot);
+
+      await page.locator(`#roster-${moved.slot}`).click();
+      await expect(page.locator('.rank-badge')).toContainText('Back Rank');
     });
   });
 
