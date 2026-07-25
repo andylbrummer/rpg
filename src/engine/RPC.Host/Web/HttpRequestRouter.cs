@@ -9,7 +9,7 @@ namespace RPC.Host.Web;
 /// <summary>
 /// Routes inbound HttpListener requests: WebSocket upgrades go to the
 /// <see cref="WebSocketConnectionHandler"/>, static client files are served from the build
-/// output, and the debug JSON endpoints (status, dungeon, action-log) are answered here.
+/// output, and the debug JSON endpoints (status, action-log) are answered here.
 /// Extracted from <see cref="GameServer"/> as the HTTP transport seam.
 /// </summary>
 internal sealed class HttpRequestRouter
@@ -55,15 +55,11 @@ internal sealed class HttpRequestRouter
         {
             await HandleStatus(context);
         }
-        else if (path == "/api/dungeon")
-        {
-            await HandleDungeon(context);
-        }
         else if (path == "/api/action-log")
         {
             await HandleActionLog(context);
         }
-        else if (path.StartsWith("/app") || path.StartsWith("/assets") || path == "/vite.svg" || path == "/favicon.svg")
+        else if (path == "/app" || path.StartsWith("/app/") || path.StartsWith("/assets/") || path == "/vite.svg" || path == "/favicon.svg")
         {
             await HandleStaticFile(context, path);
         }
@@ -74,9 +70,16 @@ internal sealed class HttpRequestRouter
         }
     }
 
+    /// <summary>
+    /// Root the static file server is confined to, resolved once. Every served path must
+    /// canonicalize to somewhere beneath this directory.
+    /// </summary>
+    private static readonly string ClientDir =
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "client", "dist"));
+
     private async Task HandleStaticFile(HttpListenerContext context, string path)
     {
-        var clientDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "client", "dist");
+        var clientDir = ClientDir;
 
         string relativePath;
         if (path == "/app" || path == "/app/")
@@ -96,10 +99,9 @@ internal sealed class HttpRequestRouter
         var filePath = Path.Combine(clientDir, relativePath);
 
         // Append the separator so a sibling like "dist-evil" can't prefix-match "dist".
-        var fullClientDir = Path.GetFullPath(clientDir);
-        var clientDirPrefix = fullClientDir.EndsWith(Path.DirectorySeparatorChar)
-            ? fullClientDir
-            : fullClientDir + Path.DirectorySeparatorChar;
+        var clientDirPrefix = clientDir.EndsWith(Path.DirectorySeparatorChar)
+            ? clientDir
+            : clientDir + Path.DirectorySeparatorChar;
         var fullFilePath = Path.GetFullPath(filePath);
         if (!fullFilePath.StartsWith(clientDirPrefix, StringComparison.Ordinal))
         {
@@ -157,34 +159,6 @@ internal sealed class HttpRequestRouter
     {
         var response = new { status = "ok", timestamp = DateTime.UtcNow };
         var json = JsonSerializer.Serialize(response, _jsonOptions);
-        var bytes = Encoding.UTF8.GetBytes(json);
-
-        context.Response.ContentType = "application/json";
-        context.Response.ContentLength64 = bytes.Length;
-        await context.Response.OutputStream.WriteAsync(bytes);
-        context.Response.Close();
-    }
-
-    private async Task HandleDungeon(HttpListenerContext context)
-    {
-        var segment = new
-        {
-            id = "test_room",
-            name = "Test Chamber",
-            width = 3,
-            height = 3,
-            tiles = new[]
-            {
-                new { x = 0, y = 0, type = "floor", north = "wall", south = "none", east = "none", west = "wall" },
-                new { x = 1, y = 0, type = "floor", north = "wall", south = "none", east = "none", west = "none" },
-                new { x = 2, y = 0, type = "floor", north = "wall", south = "none", east = "wall", west = "none" },
-                new { x = 0, y = 1, type = "floor", north = "none", south = "wall", east = "none", west = "wall" },
-                new { x = 1, y = 1, type = "floor", north = "none", south = "wall", east = "none", west = "none" },
-                new { x = 2, y = 1, type = "floor", north = "none", south = "wall", east = "wall", west = "none" },
-            }
-        };
-
-        var json = JsonSerializer.Serialize(segment, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
 
         context.Response.ContentType = "application/json";
