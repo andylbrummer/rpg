@@ -168,8 +168,12 @@ test.describe('Synergy Feedback', () => {
     // The discovered synergy should now be revealed
     await expect(page.locator('.field-note-entry .field-note-names', { hasText: 'silence_strike + smoke_bomb' })).toBeVisible();
 
-    // Undiscovered synergies should still show ???
-    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(17);
+    // Undiscovered synergies should still show ???. The total comes from synergy content and
+    // moves whenever content is added, so derive it rather than pinning today's count: what
+    // this test owns is that exactly the one discovered entry is revealed.
+    const total = await page.locator('.field-note-entry').count();
+    expect(total).toBeGreaterThan(1);
+    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(total - 1);
   });
 
   test('replay modal opens and shows animation', async ({ page, serverUrl }) => {

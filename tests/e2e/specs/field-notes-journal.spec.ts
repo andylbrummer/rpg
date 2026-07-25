@@ -98,9 +98,20 @@ test.describe('Field Notes Journal', () => {
 
     await page.locator('.field-notes-toggle').click();
 
-    await expect(page.locator('.field-notes-count')).toHaveText('1/18 discovered');
+    // The total is derived from synergy content, so it moves whenever content is added.
+    // Assert the relationship the screen is actually responsible for — exactly one entry
+    // discovered and every other one masked — instead of pinning today's content count.
+    const countText = await page.locator('.field-notes-count').textContent();
+    const match = countText?.match(/^(\d+)\/(\d+) discovered$/);
+    expect(match, `unexpected count format: ${countText}`).not.toBeNull();
+
+    const discovered = Number(match![1]);
+    const total = Number(match![2]);
+    expect(discovered).toBe(1);
+    expect(total).toBeGreaterThan(1);
+
     await expect(page.locator('.field-note-entry .field-note-names', { hasText: 'silence_strike + smoke_bomb' })).toBeVisible();
-    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(17);
+    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(total - 1);
   });
 
   test('Replay button opens modal', async ({ page, serverUrl }) => {
