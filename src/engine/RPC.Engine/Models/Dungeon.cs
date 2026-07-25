@@ -55,11 +55,42 @@ public readonly record struct Tile(
     };
 }
 
+/// <summary>
+/// The mutable tile plane of a <see cref="Dungeon"/>. Wrapping the raw <c>Tile[,]</c> exists so
+/// that every write bumps <see cref="Version"/>: presenters cache derived views of the map
+/// (notably the explored-tile automap payload) and key them on this counter, and a write that
+/// slipped past the counter would serve a stale map. Because the setter is the only way to
+/// write, that cannot happen by omission at a call site.
+/// </summary>
+public sealed class TileGrid
+{
+    private readonly Tile[,] _tiles;
+    private int _version;
+
+    public TileGrid(int width, int height)
+    {
+        _tiles = new Tile[width, height];
+    }
+
+    /// <summary>Incremented on every tile write. Cheap staleness key for derived views.</summary>
+    public int Version => _version;
+
+    public Tile this[int x, int y]
+    {
+        get => _tiles[x, y];
+        set
+        {
+            _tiles[x, y] = value;
+            _version++;
+        }
+    }
+}
+
 public class Dungeon
 {
     public int Width { get; }
     public int Height { get; }
-    public Tile[,] Tiles { get; }
+    public TileGrid Tiles { get; }
     public string Name { get; }
     public string? WanderingTableId { get; set; }
     public string? EncounterTableId { get; set; }
@@ -71,7 +102,7 @@ public class Dungeon
         Width = width;
         Height = height;
         Name = name;
-        Tiles = new Tile[width, height];
+        Tiles = new TileGrid(width, height);
 
         // Initialize with empty tiles
         for (int x = 0; x < width; x++)

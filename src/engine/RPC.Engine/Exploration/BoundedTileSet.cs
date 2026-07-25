@@ -13,7 +13,16 @@ public class BoundedTileSet
         _max = max;
     }
 
+    private int _version;
+
     public int Count => _set.Count;
+
+    /// <summary>
+    /// Incremented on every change to the set. Count alone is not a sound staleness key for
+    /// derived views: the eviction path removes one key as it adds another, leaving Count
+    /// unchanged while the contents differ.
+    /// </summary>
+    public int Version => _version;
 
     public bool Add(string key)
     {
@@ -25,6 +34,7 @@ public class BoundedTileSet
         }
         _set.Add(key);
         _order.Enqueue(key);
+        _version++;
         return true;
     }
 
@@ -32,6 +42,7 @@ public class BoundedTileSet
     {
         _set.Clear();
         _order.Clear();
+        _version++;
     }
 
     public bool Contains(string key) => _set.Contains(key);
