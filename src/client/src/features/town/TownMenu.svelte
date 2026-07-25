@@ -424,7 +424,13 @@
   .town-nav-beam {
     display: flex;
     gap: 0.5rem;
-    justify-content: center;
+    /*
+      "safe" centring: centre while the tabs fit, but fall back to start-alignment once they
+      overflow. Plain `center` pushes the overflow out past both edges of this scroll container,
+      and content past the start edge cannot be scrolled back to — on a narrow window the first
+      tabs became unreachable.
+    */
+    justify-content: safe center;
     padding: 0.5rem 0.75rem;
     background: linear-gradient(180deg, rgba(60, 45, 30, 0.6) 0%, rgba(40, 30, 20, 0.8) 100%);
     border: 1px solid rgba(120, 90, 60, 0.3);

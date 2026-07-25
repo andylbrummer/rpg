@@ -561,7 +561,14 @@
 
   .game {
     display: grid;
-    grid-template: 1fr / 1fr;
+    /*
+      minmax(0, 1fr) rather than 1fr. A bare 1fr is minmax(auto, 1fr), and the auto minimum is
+      the track's min-content — so a wide child grows the track past the container instead of
+      being made to fit. That is what pinned the app to a ~1000px floor on a narrow window: the
+      grid track stayed at content width while the element itself was viewport width, and the
+      overflow:hidden here quietly clipped the difference.
+    */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -582,7 +589,9 @@
   .ui-layer {
     z-index: 1;
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    /* Single implicit column: keep it from being sized by its widest child (see .game). */
+    grid-template-columns: minmax(0, 1fr);
     pointer-events: none;
     width: 100%;
     height: 100%;
@@ -597,6 +606,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* Title plus five status/menu controls do not fit one row on a narrow window; wrapping
+       keeps them all reachable instead of pushing the document wider than the viewport. */
+    flex-wrap: wrap;
+    gap: 0.5rem;
     padding: clamp(0.375rem, 1.5vh, 0.75rem) clamp(0.5rem, 2vw, 1rem);
     background: rgba(0, 0, 0, 0.8);
     border-bottom: 0.0625em solid #333;
@@ -611,6 +624,7 @@
 
   .game-info {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
   }
@@ -669,7 +683,7 @@
 
   .viewport {
     display: grid;
-    grid-template: 1fr / 1fr;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     min-height: 0;
     overflow: hidden;
   }
@@ -678,6 +692,14 @@
     grid-row: 1 / -1;
     grid-column: 1 / -1;
     min-height: 0;
+    /*
+      Grid items default to min-width:auto, so a screen wider than the viewport could not
+      shrink and instead stretched the whole document — the town screen forced ~1000px and its
+      own overflow:hidden then clipped it, taking the tab strip and the actions rail off-screen
+      with no way to reach them. The min-height counterpart was already here; the width axis
+      was missing.
+    */
+    min-width: 0;
   }
 
   .bottom-bar {
