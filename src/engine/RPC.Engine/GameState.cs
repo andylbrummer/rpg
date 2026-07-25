@@ -424,13 +424,22 @@ public class GameState
     /// </summary>
     public Action<string>? ActionLogSizeWarningSink { get; set; }
 
+    /// <summary>Campaign action-log size that trips the one-shot dev warning.</summary>
+    public const int ActionLogSizeWarningThreshold = 1000;
+
     internal void EmitActionLog(string category, string type, Dictionary<string, string> payload)
     {
         _actionLogTurn++;
         ActionLog.Add(new ActionLogEntry(_actionLogTurn, CurrentAct, category, type, new Dictionary<string, string>(payload)));
-        if (ActionLog.Count >= 1000)
+
+        // Warn on the crossing only. The previous >= test fired on every subsequent emit, so a
+        // long campaign printed this thousands of times — from inside the command path, under the
+        // game-state lock. The log itself is not a leak: it is cleared on campaign reset, and it
+        // is load-bearing until then (campaign end counts deaths and completed dungeons out of
+        // it), so it is deliberately not rotated.
+        if (ActionLog.Count == ActionLogSizeWarningThreshold)
         {
-            var warning = $"[DEV] ActionLog size warning: {ActionLog.Count} events. Consider log rotation.";
+            var warning = $"[DEV] ActionLog size warning: {ActionLog.Count} events in this campaign.";
             if (ActionLogSizeWarningSink != null)
                 ActionLogSizeWarningSink(warning);
             else

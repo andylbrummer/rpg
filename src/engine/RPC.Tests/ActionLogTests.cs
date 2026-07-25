@@ -428,4 +428,24 @@ public class ActionLogTests : IDisposable
         Assert.Contains("ActionLog size warning", output);
         Assert.Contains("1000", output);
     }
+
+    /// <summary>
+    /// The warning marks the threshold being crossed, so it belongs once per campaign. Testing
+    /// only that it appears let it fire on every emit past the cap — thousands of stderr lines
+    /// written from inside the command path while the game-state lock is held.
+    /// </summary>
+    [Fact]
+    public void ActionLog_SizeCapWarning_Is_Emitted_Once_Not_Per_Event()
+    {
+        var gs = new GameState(seed: 42);
+        var warnings = new List<string>();
+        gs.ActionLogSizeWarningSink = warnings.Add;
+
+        for (int i = 0; i < GameState.ActionLogSizeWarningThreshold + 500; i++)
+        {
+            gs.DiscoverSecret("breakable_wall", $"secret-{i}");
+        }
+
+        Assert.Single(warnings);
+    }
 }
