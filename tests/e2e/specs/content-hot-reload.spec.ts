@@ -92,17 +92,20 @@ test.describe('Content Hot Reload', () => {
       // Touch a segment JSON file to trigger file watcher
       const segmentPath = resolve(__dirname, '../../../content/segments/broken-engine/entrance.json');
       const original = readFileSync(segmentPath, 'utf-8');
-      writeFileSync(segmentPath, original + '\n');
 
-      // Restore original content after a brief delay
-      setTimeout(() => {
+      try {
+        writeFileSync(segmentPath, original + '\n');
+
+        const result = await reloadPromise;
+        const msg = JSON.parse(result);
+        expect(msg.type).toBe('content.reload');
+        expect(msg.payload.category).toBe('segments');
+      } finally {
+        // Restore synchronously rather than from an unawaited timer: the timer raced test
+        // teardown and usually lost, so every run left another blank line appended to a
+        // tracked content file and the repo dirty.
         writeFileSync(segmentPath, original);
-      }, 1000);
-
-      const result = await reloadPromise;
-      const msg = JSON.parse(result);
-      expect(msg.type).toBe('content.reload');
-      expect(msg.payload.category).toBe('segments');
+      }
     } finally {
       proc.kill();
     }
