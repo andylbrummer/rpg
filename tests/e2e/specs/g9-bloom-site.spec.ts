@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { enterDungeon, resetGame, sendWsAction } from './helpers';
 
 function makeBloomCombat(partyCount: number, enemyCount: number) {
   const combatants = [
@@ -44,14 +44,16 @@ function makeBloomCombat(partyCount: number, enemyCount: number) {
 test.describe('G9: Bloom Site', () => {
   test('bloom site dungeon loads with correct theme', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'bloom-site' });
+    await resetGame(page, serverUrl);
+    await enterDungeon(page, serverUrl, 'bloom-site');
 
     await expect(page.locator('.dungeon-badge')).toContainText('bloom-site');
   });
 
   test('bloom creatures render with fungal materials', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'bloom-site' });
+    await resetGame(page, serverUrl);
+    await enterDungeon(page, serverUrl, 'bloom-site');
 
     const combat = makeBloomCombat(1, 2);
     await page.evaluate((c: any) => {
@@ -103,7 +105,8 @@ test.describe('G9: Bloom Site', () => {
 
   test('bloom site dungeon type is set in game state', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'bloom-site' });
+    await resetGame(page, serverUrl);
+    await enterDungeon(page, serverUrl, 'bloom-site');
     await page.waitForTimeout(600);
 
     const dungeonType = await page.evaluate(() => {

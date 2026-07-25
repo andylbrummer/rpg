@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { resetGame, sendWsAction, waitForGameState } from './helpers';
+import { enterCombat, enterDungeon, resetGame, sendWsAction, waitForGameState } from './helpers';
 
 function makeMockCombat(partyCount: number, enemyCount: number) {
   const combatants = [
@@ -61,16 +61,16 @@ test.describe('G4: Combat', () => {
   test('combat state has combatants after trigger', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await resetGame(page, serverUrl);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-    await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+    await enterDungeon(page, serverUrl, 'broken_engine');
+    await enterCombat(page, serverUrl);
     await expect(page.locator('.combat-overlay')).toBeVisible();
   });
 
   test('flee combat returns to exploration', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await resetGame(page, serverUrl);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-    await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+    await enterDungeon(page, serverUrl, 'broken_engine');
+    await enterCombat(page, serverUrl);
     await expect(page.locator('.combat-overlay')).toBeVisible();
     await sendWsAction(page, serverUrl, { type: 'flee_combat' });
     await expect(page.locator('text=Return to Town')).toBeVisible({ timeout: 10000 });
@@ -115,8 +115,8 @@ test.describe('G4: Combat', () => {
     test('combat renderer shows front and back rows', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       const partyFront = page.locator('.party-side .row-band.front-band');
@@ -135,8 +135,8 @@ test.describe('G4: Combat', () => {
     test('melee ability highlights only front-row enemies', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       // Wait for a player turn (action buttons visible)
@@ -184,8 +184,8 @@ test.describe('G4: Combat', () => {
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       const combat = makeMockCombat(6, 3);
@@ -208,8 +208,8 @@ test.describe('G4: Combat', () => {
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       const combat = makeMockCombat(6, 6);
@@ -267,8 +267,8 @@ test.describe('G4: Combat', () => {
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       const combat = makeMockCombat(6, 9);

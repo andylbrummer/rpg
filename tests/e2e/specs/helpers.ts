@@ -53,6 +53,26 @@ export async function resetGame(page: Page, serverUrl: string): Promise<any> {
     20000);
 }
 
+/**
+ * Enters a dungeon and waits until the game is actually in it.
+ *
+ * sendWsAction only sleeps a fixed 600ms, which is not enough: generating a dungeon measured
+ * 1.4-2.4s on a warm server. Tests that fired enter_dungeon and immediately fired enter_combat
+ * were sending the second action while the game was still in Menu, where it is rejected — the
+ * combat overlay then never appeared and the test failed on an assertion far from the cause.
+ * Wait for the transition the action was supposed to cause instead of guessing at a duration.
+ */
+export async function enterDungeon(page: Page, serverUrl: string, dungeonType = 'broken_engine'): Promise<any> {
+  await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType });
+  return waitForGameState(page, (state: any) => state?.mode === 'Exploration' && state?.hasDungeon === true, 30000);
+}
+
+/** Triggers combat and waits until the engine reports it, for the same reason as enterDungeon. */
+export async function enterCombat(page: Page, serverUrl: string): Promise<any> {
+  await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+  return waitForGameState(page, (state: any) => state?.mode === 'Combat' && !!state?.combat, 30000);
+}
+
 export async function resolveCombatByAttacking(page: Page, serverUrl: string, maxActions = 80): Promise<void> {
   await expect(page.locator('.combat-overlay')).toBeVisible({ timeout: 10000 });
 

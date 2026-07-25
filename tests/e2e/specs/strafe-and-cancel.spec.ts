@@ -1,10 +1,11 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { enterCombat, enterDungeon, resetGame, sendWsAction } from './helpers';
 
 test.describe('Strafe and Cancel', () => {
   test('strafe actions accepted by server', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
+    await resetGame(page, serverUrl);
+    await enterDungeon(page, serverUrl, 'broken_engine');
 
     const errors: string[] = [];
     page.on('console', (msg) => {
@@ -21,7 +22,8 @@ test.describe('Strafe and Cancel', () => {
 
   test('key rebind: A/D strafe, Q/E turn, no protocol errors', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
+    await resetGame(page, serverUrl);
+    await enterDungeon(page, serverUrl, 'broken_engine');
 
     const errors: string[] = [];
     page.on('console', (msg) => {
@@ -44,8 +46,9 @@ test.describe('Strafe and Cancel', () => {
 
   test('escape during combat targeting cancels targeting', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-    await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+    await resetGame(page, serverUrl);
+    await enterDungeon(page, serverUrl, 'broken_engine');
+    await enterCombat(page, serverUrl);
     await expect(page.locator('.combat-overlay')).toBeVisible();
 
     // Wait for player turn and select an enemy target

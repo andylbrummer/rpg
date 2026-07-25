@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { resetGame, sendWsAction } from './helpers';
+import { enterCombat, enterDungeon, resetGame, sendWsAction } from './helpers';
 
 test.describe('G5: Game Loop', () => {
   test('initial state shows town menu', async ({ page, serverUrl }) => {
@@ -15,7 +15,7 @@ test.describe('G5: Game Loop', () => {
   test('can enter a dungeon from town', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await resetGame(page, serverUrl);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
+    await enterDungeon(page, serverUrl, 'broken_engine');
     await expect(page.locator('text=Return to Town')).toBeVisible();
   });
 
@@ -23,8 +23,8 @@ test.describe('G5: Game Loop', () => {
     await page.goto(`${serverUrl}/app`);
     await resetGame(page, serverUrl);
     // Enter combat once so the loop has exercised the dungeon -> combat -> town path.
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-    await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+    await enterDungeon(page, serverUrl, 'broken_engine');
+    await enterCombat(page, serverUrl);
     // Leave combat through the current protocol before returning to town.
     for (let i = 0; i < 5; i++) {
       const combatVisible = await page.locator('.combat-overlay').isVisible().catch(() => false);
