@@ -112,7 +112,12 @@
             if (m) chooseBranch(m.id, branch);
           }}
         />
-        <div class="town-services">
+        <!-- Scrollable region: focusable so it can be reached and scrolled by keyboard even
+             when it holds no focusable children of its own (an empty market, say). axe
+             reports scrollable-region-focusable without the tabindex; Svelte's rule only
+             considers the role, not the scrolling, so the two disagree here. -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div class="town-services" role="region" aria-label="Town services" tabindex="0">
           <TownServicesPanel
             gameState={gameState}
             onTavernRecruit={props.onTavernRecruit}
@@ -165,7 +170,12 @@
           that branch any more, so contact reputation, attitude dialogue and contact-offered
           missions were unreachable in the app.
         -->
-        <div class="town-services">
+        <!-- Scrollable region: focusable so it can be reached and scrolled by keyboard even
+             when it holds no focusable children of its own (an empty market, say). axe
+             reports scrollable-region-focusable without the tabindex; Svelte's rule only
+             considers the role, not the scrolling, so the two disagree here. -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div class="town-services" role="region" aria-label="Town services" tabindex="0">
           <TownServicesPanel
             gameState={gameState}
             onTavernRecruit={props.onTavernRecruit}
@@ -191,7 +201,12 @@
           live in TownServicesPanel under activeTab="missions", which no tab reached after the
           rework.
         -->
-        <div class="town-services">
+        <!-- Scrollable region: focusable so it can be reached and scrolled by keyboard even
+             when it holds no focusable children of its own (an empty market, say). axe
+             reports scrollable-region-focusable without the tabindex; Svelte's rule only
+             considers the role, not the scrolling, so the two disagree here. -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div class="town-services" role="region" aria-label="Town services" tabindex="0">
           <TownServicesPanel
             gameState={gameState}
             onTavernRecruit={props.onTavernRecruit}
@@ -204,7 +219,12 @@
       </div>
     {:else}
       <div class="tab-panel">
-        <div class="town-services">
+        <!-- Scrollable region: focusable so it can be reached and scrolled by keyboard even
+             when it holds no focusable children of its own (an empty market, say). axe
+             reports scrollable-region-focusable without the tabindex; Svelte's rule only
+             considers the role, not the scrolling, so the two disagree here. -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div class="town-services" role="region" aria-label="Town services" tabindex="0">
           <TownServicesPanel
             gameState={gameState}
             onTavernRecruit={props.onTavernRecruit}
@@ -483,12 +503,21 @@
     text-transform: uppercase;
   }
 
+  /*
+    Row, not column. The Party tab renders TownActionsPanel as a sibling of .tab-panel, and that
+    panel is a side rail by design — flex: 0 0 auto with a clamped 14-18rem width. Stacked in a
+    column it could not shrink, its dungeon list is taller than the viewport, so the whole
+    overflow fell on .tab-panel: the panel collapsed to ~26px and the party broadsheet rendered
+    underneath the actions list instead of beside it, leaving the default town screen unusable.
+  */
   .town-body {
     position: relative;
     z-index: 1;
     flex: 1 1 auto;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.75rem;
     min-height: 0;
     overflow: hidden;
   }
@@ -496,6 +525,10 @@
   .tab-panel {
     position: relative;
     z-index: 1;
+    /* Take the space the side rail does not claim; min-width:0 lets it shrink below its
+       content's intrinsic width instead of forcing horizontal overflow. */
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -506,6 +539,18 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 0.5rem;
     backdrop-filter: blur(4px);
+  }
+
+  /*
+    Below this width the side rail and the main panel cannot both be useful on one row: the rail
+    floors at 14rem, which would leave the broadsheet a sliver. Stack them instead — and note the
+    rail must become shrinkable in that direction (see TownActionsPanel), or it reproduces the
+    very crush this layout exists to avoid.
+  */
+  @media (max-width: 60rem) {
+    .town-body {
+      flex-direction: column;
+    }
   }
 
   .town-services {
