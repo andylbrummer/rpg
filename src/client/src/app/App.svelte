@@ -349,7 +349,9 @@
     {/if}
     {#if gameState?.mode !== 'Combat' && !showTitleScreen}
       <header class="top-bar">
-        <div class="game-title">The Reach</div>
+        <!-- The app's only top-level heading; a div left the page with no h1 for a screen
+             reader or outline to anchor on. -->
+        <h1 class="game-title">The Reach</h1>
         <div class="game-info">
           <span class="mode-badge">{gameState?.mode || 'Menu'}</span>
           {#if gameState?.hasDungeon}
@@ -601,6 +603,7 @@
   }
 
   .game-title {
+    margin: 0;
     font-size: clamp(1rem, 2.5vw, 1.5rem);
     font-weight: bold;
     color: #d4a84b;

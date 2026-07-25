@@ -478,8 +478,14 @@
         {:else}
           <div class="downtime-picker">
             <div class="downtime-controls">
+              <!--
+                One of these rows exists per party member, so a bare "Select action" label would
+                be ambiguous to a screen reader. Naming the member makes each control's purpose
+                unambiguous out of context, which is how a screen reader encounters it.
+              -->
               <select
                 class="downtime-select"
+                aria-label={`Downtime action for ${member.name}`}
                 value={selected ?? ''}
                 onchange={(e) => { selectedAction[member.id] = (e.target as HTMLSelectElement).value; }}
               >
@@ -491,6 +497,7 @@
               <button
                 type="button"
                 class="action-btn downtime-perform"
+                aria-label={`Perform downtime action for ${member.name}`}
                 disabled={!selected}
                 onclick={() => performSelected(member.id)}
               >
