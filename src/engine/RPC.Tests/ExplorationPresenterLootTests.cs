@@ -17,11 +17,12 @@ public class ExplorationPresenterLootTests
         gs.CurrentDungeon = d;
         gs.Player.Position = new Position(2, 2);
 
-        var json = JsonSerializer.Serialize(ExplorationPresenter.Present(gs));
+        var presenter = new ExplorationPresenter();
+        var json = JsonSerializer.Serialize(presenter.Present(gs));
         Assert.Contains("\"hasLoot\":true", json);
 
         gs.Exploration.CollectedLoot.Add("2,2");
-        var json2 = JsonSerializer.Serialize(ExplorationPresenter.Present(gs));
+        var json2 = JsonSerializer.Serialize(presenter.Present(gs));
         Assert.Contains("\"hasLoot\":false", json2);
     }
 }

@@ -150,14 +150,15 @@ public class SecretDetectionTests
         gs.Secrets.Register(new SecretDef("crack", "breakable_wall", X: 3, Y: 2, Wall: "North"));
         Assert.True(gs.DetectSecret("crack", "cartographer"));
 
-        var detected = JsonSerializer.Serialize(ExplorationPresenter.Present(gs).DetectedSecrets);
+        var presenter = new ExplorationPresenter();
+        var detected = JsonSerializer.Serialize(presenter.Present(gs).DetectedSecrets);
         Assert.Contains("\"id\":\"crack\"", detected);
         Assert.Contains("\"x\":3", detected);
         Assert.Contains("\"y\":2", detected);
 
         // Once discovered, it drops out of the detected list (type now known, no "?").
         gs.DiscoverSecret("breakable_wall", "crack", "search");
-        var afterDiscovery = JsonSerializer.Serialize(ExplorationPresenter.Present(gs).DetectedSecrets);
+        var afterDiscovery = JsonSerializer.Serialize(presenter.Present(gs).DetectedSecrets);
         Assert.DoesNotContain("crack", afterDiscovery);
     }
 }
