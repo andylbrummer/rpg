@@ -2,11 +2,11 @@ import type { GameState, PlayerAction, ProtocolEnvelope, ErrorPayload, Analytics
 
 export class GameClient {
   private ws: WebSocket | null = null;
-  private serverPort: number;
   private reconnectAttempts = 0;
   // Retry indefinitely with capped backoff: a dev backend restart (or any transient
   // drop) should auto-heal without a manual page reload. Backoff is capped at 30s.
   private reconnectClosed = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private nextSeq = 1;
   private isReady = false;
   private actionQueue: PlayerAction[] = [];
@@ -17,13 +17,16 @@ export class GameClient {
   private onAnalyticsCallback: ((data: AnalyticsData) => void) | null = null;
 
 
-  constructor(serverPort?: number) {
-    this.serverPort = serverPort || (window as any).SERVER_PORT || 19421;
-  }
-
   connect(): void {
     const wsUrl = `ws://${window.location.host}/ws`;
     this.reconnectClosed = false;
+    this.clearReconnectTimer();
+
+    // Tear down any previous socket first. Connecting over a live one used to abandon it still
+    // open, with its handlers attached: it leaked the connection, and whenever that orphan
+    // eventually closed its onclose started a second, independent retry chain alongside this
+    // one.
+    this.teardownSocket();
 
     try {
       this.ws = new WebSocket(wsUrl);
@@ -115,8 +118,9 @@ export class GameClient {
     }
   }
 
-  private sendEnvelope(type: string, payload: Record<string, unknown>): void {
-    if (this.ws?.readyState !== WebSocket.OPEN) return;
+  /** Returns false when the socket was not in a state to accept the message. */
+  private sendEnvelope(type: string, payload: Record<string, unknown>): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
 
     const envelope: ProtocolEnvelope = {
       v: 2,
@@ -126,6 +130,7 @@ export class GameClient {
     };
 
     this.ws.send(JSON.stringify(envelope));
+    return true;
   }
 
   private attemptReconnect(): void {
@@ -134,29 +139,68 @@ export class GameClient {
     // Exponential backoff capped at 30s; keep retrying forever so a backend
     // restart recovers on its own instead of bricking the session.
     const delay = Math.min(Math.pow(2, Math.min(this.reconnectAttempts, 5)) * 1000, 30000);
-    setTimeout(() => this.connect(), delay);
+    this.clearReconnectTimer();
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      // Re-check: disconnect() may have been called while this backoff was pending, and
+      // connect() clears the closed flag, so without this the reconnect would resurrect a
+      // session the caller deliberately ended.
+      if (this.reconnectClosed) return;
+      this.connect();
+    }, delay);
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  /**
+   * Detaches this socket's handlers before closing it, so its onclose cannot drive reconnect
+   * logic for a connection we have already replaced or abandoned.
+   */
+  private teardownSocket(): void {
+    const socket = this.ws;
+    if (!socket) return;
+
+    socket.onopen = null;
+    socket.onmessage = null;
+    socket.onclose = null;
+    socket.onerror = null;
+    this.ws = null;
+
+    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+      socket.close();
+    }
   }
 
   disconnect(): void {
     this.reconnectClosed = true;
-    this.ws?.close();
-    this.ws = null;
+    this.clearReconnectTimer();
+    this.isReady = false;
+    this.actionQueue = [];
+    this.teardownSocket();
   }
 
   sendAction(action: PlayerAction): void {
-    if (this.isReady) {
-      this.sendEnvelope('action', action as unknown as Record<string, unknown>);
-    } else {
+    // Queue rather than drop when the send does not land: isReady can still be true for the
+    // moment between the socket closing and onclose running, and an action silently lost
+    // there is an input the player made that the game never sees.
+    if (!this.isReady || !this.sendEnvelope('action', action as unknown as Record<string, unknown>)) {
       this.actionQueue.push(action);
     }
   }
 
   private flushActionQueue(): void {
     while (this.actionQueue.length > 0) {
-      const action = this.actionQueue.shift();
-      if (action) {
-        this.sendEnvelope('action', action as unknown as Record<string, unknown>);
+      const action = this.actionQueue[0];
+      if (!this.sendEnvelope('action', action as unknown as Record<string, unknown>)) {
+        // Socket went away mid-flush. Leave the rest queued, in order, for the next flush.
+        return;
       }
+      this.actionQueue.shift();
     }
   }
 
