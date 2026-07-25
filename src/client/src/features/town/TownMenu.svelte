@@ -185,6 +185,22 @@
           onAcceptMission={props.onMissionAccept}
           onVerifyRumor={(id) => props.onIntent({ kind: 'verifyRumor', rumorId: id })}
         />
+        <!--
+          Same stranding as the tavern's faction contacts: MessageBoard covers the missions on
+          offer, but the Quest Log (missions already accepted) and the Wild Card Alliance panel
+          live in TownServicesPanel under activeTab="missions", which no tab reached after the
+          rework.
+        -->
+        <div class="town-services">
+          <TownServicesPanel
+            gameState={gameState}
+            onTavernRecruit={props.onTavernRecruit}
+            onMissionAccept={props.onMissionAccept}
+            onVendorPurchase={props.onVendorPurchase}
+            onIntent={props.onIntent}
+            activeTab="missions"
+          />
+        </div>
       </div>
     {:else}
       <div class="tab-panel">
