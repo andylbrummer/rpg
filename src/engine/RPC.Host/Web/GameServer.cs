@@ -35,6 +35,8 @@ public class GameServer
     private readonly List<FileSystemWatcher> _segmentWatchers = new();
     private readonly SemaphoreSlim _gameStateLock = new(1, 1);
     private readonly HttpRequestRouter _router;
+    private Task? _acceptLoop;
+    private int _stopped;
 
     public GameServer(int port = 8080, bool isDev = false, bool loadSave = true)
     {
@@ -94,21 +96,99 @@ public class GameServer
     public void Start()
     {
         _listener.Start();
-
-        Task.Run(async () =>
-        {
-            while (!_cts.Token.IsCancellationRequested)
-            {
-                var context = await _listener.GetContextAsync();
-                _ = Task.Run(() => _router.HandleRequest(context));
-            }
-        });
+        _acceptLoop = Task.Run(AcceptLoop);
     }
 
+    /// <summary>
+    /// Accepts requests until shutdown. Stop() disposes the listener out from under
+    /// GetContextAsync, so the terminal exceptions are expected control flow rather than faults;
+    /// any other accept failure is reported and the loop ends rather than leaving the task
+    /// faulted and unobserved.
+    /// </summary>
+    private async Task AcceptLoop()
+    {
+        while (!_cts.Token.IsCancellationRequested)
+        {
+            HttpListenerContext context;
+            try
+            {
+                context = await _listener.GetContextAsync();
+            }
+            catch (HttpListenerException) { break; }
+            catch (ObjectDisposedException) { break; }
+            catch (InvalidOperationException) { break; }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Server] Accept loop stopped: {ex.Message}");
+                break;
+            }
+
+            _ = Task.Run(() => DispatchRequest(context));
+        }
+    }
+
+    /// <summary>
+    /// Runs one request to completion. A client that disconnects mid-response makes the write
+    /// throw; containing it here keeps a dropped connection from surfacing as an unobserved
+    /// task exception and taking the process down under ThrowUnobservedTaskExceptions.
+    /// </summary>
+    private async Task DispatchRequest(HttpListenerContext context)
+    {
+        try
+        {
+            await _router.HandleRequest(context);
+        }
+        catch (HttpListenerException) { }
+        catch (ObjectDisposedException) { }
+        catch (IOException) { }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Server] Request {context.Request.Url?.AbsolutePath} failed: {ex}");
+            TryFailRequest(context);
+        }
+    }
+
+    private static void TryFailRequest(HttpListenerContext context)
+    {
+        try
+        {
+            context.Response.StatusCode = 500;
+            context.Response.Close();
+        }
+        catch (Exception) { /* response already committed or the peer is gone */ }
+    }
+
+    /// <summary>
+    /// Shuts the server down and releases everything it owns. Repeated Start/Stop cycles happen
+    /// once per integration test, so leaking watchers or listener handles here compounds across
+    /// a suite run.
+    /// </summary>
     public void Stop()
     {
+        if (Interlocked.Exchange(ref _stopped, 1) == 1) return;
+
         _cts.Cancel();
+
+        foreach (var watcher in _segmentWatchers)
+        {
+            watcher.EnableRaisingEvents = false;
+            watcher.Dispose();
+        }
+        _segmentWatchers.Clear();
+
         _listener.Stop();
+        _listener.Close();
+
+        try
+        {
+            _acceptLoop?.Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (AggregateException) { /* accept loop already ended on the disposed listener */ }
+        _acceptLoop = null;
+        // _cts is deliberately not disposed: in-flight WebSocket and broadcast tasks still read
+        // its Token as they unwind, and disposing it would turn an orderly shutdown into a
+        // shower of ObjectDisposedExceptions on those threads.
     }
 
     /// <summary>

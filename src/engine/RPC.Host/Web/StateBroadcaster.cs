@@ -37,68 +37,71 @@ public class StateBroadcaster
         await SendEnvelope(client, envelope);
     }
 
-    public async Task BroadcastState(ClientConnection? excludeClient = null, object? payload = null)
+    public Task BroadcastState(ClientConnection? excludeClient = null, object? payload = null)
     {
         var state = payload ?? _presenter.CreateStateMessage(_gameState);
-        var clients = _registry.Snapshot();
 
-        foreach (var client in clients)
-        {
-            if (client == excludeClient) continue;
-            try
+        return BroadcastEach(
+            "state",
+            client => client != excludeClient && client.IsReady,
+            client => new ProtocolEnvelope
             {
-                if (client.Socket.State == WebSocketState.Open && client.IsReady)
-                {
-                    var envelope = new ProtocolEnvelope
-                    {
-                        V = 2,
-                        Type = "state",
-                        Seq = client.NextServerSeq(),
-                        Payload = state
-                    };
-                    await SendEnvelope(client, envelope);
-                }
-            }
-            catch (Exception ex)
-            {
-                // One client's send failure must not abort the broadcast to the others, but it
-                // should be visible rather than silently swallowed.
-                Console.Error.WriteLine($"[Broadcast] state send to a client failed: {ex.Message}");
-            }
-        }
+                V = 2,
+                Type = "state",
+                Seq = client.NextServerSeq(),
+                Payload = state
+            });
     }
 
-    public async Task BroadcastContentReload(IReadOnlyList<(string TemplateId, string Name)>? affectedDungeons = null)
+    public Task BroadcastContentReload(IReadOnlyList<(string TemplateId, string Name)>? affectedDungeons = null)
     {
-        var clients = _registry.Snapshot();
-        var dungeons = affectedDungeons ?? Array.Empty<(string, string)>();
+        var dungeons = (affectedDungeons ?? Array.Empty<(string, string)>())
+            .Select(d => new { templateId = d.TemplateId, name = d.Name })
+            .ToArray();
 
-        foreach (var client in clients)
+        return BroadcastEach(
+            "content.reload",
+            _ => true,
+            client => new ProtocolEnvelope
+            {
+                V = 2,
+                Type = "content.reload",
+                Seq = client.NextServerSeq(),
+                Payload = new { category = "segments", dungeons }
+            });
+    }
+
+    /// <summary>
+    /// Fans one envelope out to every open, eligible client concurrently. Sends run in parallel
+    /// because each socket has its own send lock: awaiting them in sequence would let a single
+    /// backpressured client hold up delivery to everyone else. One client's failure is reported
+    /// and skipped rather than aborting the fan-out.
+    /// </summary>
+    private Task BroadcastEach(
+        string label,
+        Func<ClientConnection, bool> eligible,
+        Func<ClientConnection, ProtocolEnvelope> buildEnvelope)
+    {
+        var sends = new List<Task>();
+
+        foreach (var client in _registry.Snapshot())
         {
-            try
-            {
-                if (client.Socket.State == WebSocketState.Open)
-                {
-                    var envelope = new ProtocolEnvelope
-                    {
-                        V = 2,
-                        Type = "content.reload",
-                        Seq = client.NextServerSeq(),
-                        Payload = new
-                        {
-                            category = "segments",
-                            dungeons = dungeons
-                                .Select(d => new { templateId = d.TemplateId, name = d.Name })
-                                .ToArray()
-                        }
-                    };
-                    await SendEnvelope(client, envelope);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"[Broadcast] content-reload send to a client failed: {ex.Message}");
-            }
+            if (client.Socket.State != WebSocketState.Open || !eligible(client)) continue;
+            sends.Add(SendGuarded(client, buildEnvelope(client), label));
+        }
+
+        return sends.Count == 0 ? Task.CompletedTask : Task.WhenAll(sends);
+    }
+
+    private async Task SendGuarded(ClientConnection client, ProtocolEnvelope envelope, string label)
+    {
+        try
+        {
+            await SendEnvelope(client, envelope);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Broadcast] {label} send to a client failed: {ex.Message}");
         }
     }
 

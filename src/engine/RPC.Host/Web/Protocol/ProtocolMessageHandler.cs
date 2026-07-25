@@ -80,9 +80,16 @@ internal sealed class ProtocolMessageHandler
 
         if (envelope.Type == "heartbeat.pong")
         {
-            if (envelope.Payload is JsonElement json && json.TryGetProperty("pingSeq", out var pingSeqEl))
+            // TryGetInt32 rather than GetInt32: a pong carrying a non-numeric pingSeq is a client
+            // bug, and throwing here would unwind the receive loop and drop an otherwise healthy
+            // connection. Ignoring the malformed pong lets the heartbeat time it out normally.
+            if (envelope.Payload is JsonElement json
+                && json.ValueKind == JsonValueKind.Object
+                && json.TryGetProperty("pingSeq", out var pingSeqEl)
+                && pingSeqEl.ValueKind == JsonValueKind.Number
+                && pingSeqEl.TryGetInt32(out var pingSeq))
             {
-                client.LastPongSeq = pingSeqEl.GetInt32();
+                client.LastPongSeq = pingSeq;
             }
             return;
         }
@@ -197,8 +204,14 @@ internal sealed class ProtocolMessageHandler
                 await _broadcaster.BroadcastState(excludeClient: client, payload: snapshot);
             }
         }
+        catch (OperationCanceledException)
+        {
+            // Server shutdown, not a command failure — let the receive loop unwind.
+            throw;
+        }
         catch (Exception ex)
         {
+            Console.Error.WriteLine($"[Protocol] Action failed: {ex}");
             await SendError(client, "internal_error", $"Internal error processing action: {ex.Message}", recoverable: true, ackSeq: envelope.Seq);
         }
     }
