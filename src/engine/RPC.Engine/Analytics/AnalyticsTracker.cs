@@ -77,29 +77,90 @@ public class AnalyticsTracker
 
     public AnalyticsData GetData() => _data;
 
+    private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
+
+    /// <summary>
+    /// Reads the stored aggregates. A file that cannot be read or parsed is set aside rather than
+    /// ignored: starting from empty and then saving over it would destroy the player's whole
+    /// analytics history on the next recorded event, turning a transient read problem into
+    /// permanent data loss.
+    /// </summary>
     private AnalyticsData Load()
     {
+        if (!File.Exists(_path)) return new AnalyticsData();
+
         try
         {
-            if (File.Exists(_path))
-            {
-                var json = File.ReadAllText(_path);
-                return JsonSerializer.Deserialize<AnalyticsData>(json) ?? new AnalyticsData();
-            }
+            var json = File.ReadAllText(_path);
+            var loaded = JsonSerializer.Deserialize<AnalyticsData>(json);
+            if (loaded != null) return loaded;
+            Quarantine("file did not contain analytics data");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Quarantine(ex.Message);
+        }
+
         return new AnalyticsData();
     }
 
+    private void Quarantine(string reason)
+    {
+        var quarantinePath = $"{_path}.corrupt.{DateTime.UtcNow:yyyyMMddTHHmmss}";
+        try
+        {
+            File.Move(_path, quarantinePath, overwrite: true);
+            Console.Error.WriteLine($"[Analytics] Unreadable analytics file ({reason}); moved to {quarantinePath}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Analytics] Unreadable analytics file ({reason}) and it could not be set aside: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Writes via a temp file and a rename so a crash mid-write cannot leave a half-written file
+    /// behind — the previous whole-file write could, and the truncated result then read back as
+    /// corrupt. Analytics are recorded only at campaign and discovery milestones, so the durable
+    /// flush costs nothing on any hot path.
+    ///
+    /// A write failure is reported but not thrown: analytics are incidental to play and must
+    /// never take a run down. Reporting is what makes the difference between incidental and
+    /// invisible.
+    /// </summary>
     private void Save()
+    {
+        var tmpPath = _path + ".tmp";
+        try
+        {
+            var dir = Path.GetDirectoryName(_path);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+            var json = JsonSerializer.Serialize(_data, WriteOptions);
+            File.WriteAllText(tmpPath, json);
+            using (var fs = new FileStream(tmpPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                fs.Flush(flushToDisk: true);
+            }
+            File.Move(tmpPath, _path, overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Analytics] Failed to write {_path}: {ex.Message}");
+            TryDelete(tmpPath);
+        }
+    }
+
+    private static void TryDelete(string path)
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            var json = JsonSerializer.Serialize(_data, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(_path, json);
+            if (File.Exists(path)) File.Delete(path);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Analytics] Failed to clean up {path}: {ex.Message}");
+        }
     }
 }
 

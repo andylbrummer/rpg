@@ -707,16 +707,26 @@ public class GameState
         }
         else
         {
-            // Delete ironman save on rescue failure
+            // Delete the ironman save on rescue failure: the run is over and must not be
+            // resumable. A failure here leaves the run resumable, which silently defeats
+            // permadeath, so it is reported and recorded rather than swallowed.
             try
             {
                 if (File.Exists(SavePath))
                 {
                     File.Delete(SavePath);
-                    EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string> { { "rescueFailed", "true" } });
                 }
+                EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string> { { "rescueFailed", "true" } });
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Ironman] Failed to delete save at {SavePath}: {ex.Message}");
+                EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string>
+                {
+                    { "rescueFailed", "true" },
+                    { "saveDeleteFailed", "true" }
+                });
+            }
         }
     }
 }
