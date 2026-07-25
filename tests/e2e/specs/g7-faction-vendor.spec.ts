@@ -41,10 +41,17 @@ test.describe('Faction vendors in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 25 });
     await page.waitForTimeout(500);
+
+    // Stock size is content, not behaviour: take it from the state the server sent rather than
+    // pinning a number that every catalogue change breaks. What this test owns is that at or
+    // above the threshold the vendor is unlocked and every stocked item is offered for sale.
+    const state = await getGameState(page);
+    const stockCount = state.town?.factionVendors
+      ?.find((v: any) => v.factionId === 'bureau')?.stock?.length ?? 0;
+    expect(stockCount).toBeGreaterThan(0);
 
     await page.getByRole('button', { name: 'Market', exact: true }).click();
     const bureauHeading = page.locator('.town-services h2:has-text("Bureau Quartermaster")');
@@ -52,11 +59,10 @@ test.describe('Faction vendors in town', () => {
     await expect(bureauHeading).not.toHaveClass(/locked-heading/);
 
     const stockItems = page.locator('.town-services h2:has-text("Bureau Quartermaster") + .service-list .service-item');
-    await expect(stockItems).toHaveCount(8);
+    await expect(stockItems).toHaveCount(stockCount);
 
-    await page.locator('.town-nav-btn').filter({ hasText: 'Market' }).click();
     const buyButtons = page.locator('.town-services h2:has-text("Bureau Quartermaster") + .service-list .action-btn');
-    await expect(buyButtons).toHaveCount(8);
+    await expect(buyButtons).toHaveCount(stockCount);
   });
 
   test('purchasing faction item reduces gold and adds to inventory', async ({ page, serverUrl }) => {
