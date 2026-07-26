@@ -122,21 +122,25 @@ public class StateBroadcaster
         var json = JsonSerializer.Serialize(envelope, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
 
-        using var sendCts = CancellationTokenSource.CreateLinkedTokenSource(client.Token, _cts.Token);
-        sendCts.CancelAfter(ClientConnection.SendTimeout);
-
         try
         {
-            await client.SendLock.WaitAsync(sendCts.Token);
+            // Queueing behind this socket's other senders is deliberately not on the clock: under a
+            // broadcast burst a healthy client can have several sends outstanding, and charging a
+            // send for the time it spent waiting its turn would retire clients for being popular.
+            // The lock wait is bounded instead by the connection's lifetime — whoever holds it is
+            // itself on the clock below, so the queue always drains or the connection dies.
+            await client.SendLock.WaitAsync(client.Token);
             try
             {
                 if (client.Socket.State == WebSocketState.Open)
                 {
+                    using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(client.Token, _cts.Token);
+                    writeCts.CancelAfter(ClientConnection.SendTimeout);
                     await client.Socket.SendAsync(
                         new ArraySegment<byte>(bytes),
                         WebSocketMessageType.Text,
                         true,
-                        sendCts.Token);
+                        writeCts.Token);
                 }
             }
             finally
