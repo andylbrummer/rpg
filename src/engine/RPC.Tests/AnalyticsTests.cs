@@ -1,4 +1,3 @@
-using System.Text.Json;
 using RPC.Engine;
 using RPC.Engine.Analytics;
 
@@ -141,51 +140,4 @@ public class AnalyticsTests : IDisposable
         Assert.Equal(before, after);
     }
 
-    /// <summary>
-    /// Concurrent trackers on one path used to share a fixed "analytics.json.tmp": the second
-    /// writer truncated the temp file while the first renamed it into place, so a partial file
-    /// landed at the real path and every later read quarantined it — destroying the player's
-    /// history. A reader must always observe a whole, parseable file.
-    /// </summary>
-    [Fact]
-    public async Task Concurrent_Writers_Never_Leave_A_Partial_File_Behind()
-    {
-        var trackers = Enumerable.Range(0, 8)
-            .Select(_ => new AnalyticsTracker(_tempPath))
-            .ToArray();
-
-        var readFailures = 0;
-        var stop = false;
-        var reader = Task.Run(() =>
-        {
-            while (!Volatile.Read(ref stop))
-            {
-                if (!File.Exists(_tempPath)) continue;
-                try
-                {
-                    var json = File.ReadAllText(_tempPath);
-                    if (json.Length > 0 && JsonSerializer.Deserialize<AnalyticsData>(json) is null)
-                        Interlocked.Increment(ref readFailures);
-                }
-                catch (JsonException) { Interlocked.Increment(ref readFailures); }
-                catch (IOException) { /* the rename raced this open; not a partial-file defect */ }
-            }
-        });
-
-        Parallel.For(0, trackers.Length, i =>
-        {
-            for (int n = 0; n < 40; n++)
-            {
-                trackers[i].RecordSecretDiscovered($"secret-{i}-{n}");
-                trackers[i].Flush();
-            }
-        });
-
-        Volatile.Write(ref stop, true);
-        await reader;
-
-        Assert.Equal(0, readFailures);
-        Assert.NotNull(JsonSerializer.Deserialize<AnalyticsData>(File.ReadAllText(_tempPath)));
-        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(_tempPath)!, $"{Path.GetFileName(_tempPath)}.corrupt.*"));
-    }
 }

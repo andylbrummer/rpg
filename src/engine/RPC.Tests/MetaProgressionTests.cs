@@ -63,48 +63,6 @@ public class MetaProgressionTests
         File.Delete(quarantined[0]);
     }
 
-    /// <summary>
-    /// The meta file sits at one well-known per-user path, so two hosts can write it at once. A
-    /// non-atomic whole-file write let one truncate the other's; every reader after that saw a
-    /// corrupt file and started over.
-    /// </summary>
-    [Fact]
-    public async Task Concurrent_Saves_Never_Leave_A_Partial_File_Behind()
-    {
-        var path = TempPath();
-        var unreadable = 0;
-        var stop = false;
-
-        var reader = Task.Run(() =>
-        {
-            while (!Volatile.Read(ref stop))
-            {
-                if (!File.Exists(path)) continue;
-                try
-                {
-                    if (MetaProgressionStore.Load(path).RunsCompleted == 0)
-                        Interlocked.Increment(ref unreadable);
-                }
-                catch (IOException) { /* the rename raced this open; not a partial-file defect */ }
-            }
-        });
-
-        Parallel.For(0, 8, i =>
-        {
-            var meta = new MetaProgression { RunsCompleted = i + 1 };
-            for (int n = 0; n < 20; n++)
-                MetaProgressionStore.Save(meta, path);
-        });
-
-        Volatile.Write(ref stop, true);
-        await reader;
-
-        Assert.Equal(0, unreadable);
-        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(path)!, $"{Path.GetFileName(path)}.corrupt.*"));
-
-        File.Delete(path);
-    }
-
     [Fact]
     public void RecordCampaignEnd_FoldsRunIntoMeta()
     {

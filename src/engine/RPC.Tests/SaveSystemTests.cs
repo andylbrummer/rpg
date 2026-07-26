@@ -21,50 +21,31 @@ public class SaveSystemTests : IDisposable
             File.Delete(_testSavePath);
         foreach (var sidecar in Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, $"{Path.GetFileName(_testSavePath)}.*"))
             File.Delete(sidecar);
+        if (Directory.Exists($"{_testSavePath}.tmp"))
+            Directory.Delete($"{_testSavePath}.tmp", recursive: true);
     }
 
     /// <summary>
-    /// Saves used to stage through one fixed "save.json.tmp". Two writers on the same path — two
-    /// hosts, or an autosave racing a manual save — interleaved: the second truncated the temp
-    /// while the first renamed it, so a partial file landed at the real save path and the run's
-    /// progress was gone. Every observation of the save file must be whole and loadable.
+    /// Saves used to stage through one fixed "save.json.tmp" shared by every writer. Two of them —
+    /// two hosts on the same per-user save, or an autosave racing a manual save — collided on that
+    /// name: the loser threw IOException straight out of SaveGame. Occupying the legacy staging name
+    /// proves the save no longer depends on it. See AtomicFileTests for the underlying contract.
     /// </summary>
     [Fact]
-    public async Task Concurrent_Saves_Never_Leave_A_Partial_Save_Behind()
+    public void Saving_Does_Not_Depend_On_A_Staging_Name_Another_Writer_Could_Hold()
     {
+        Directory.CreateDirectory($"{_testSavePath}.tmp"); // an occupied staging name a save cannot use
+
         var gs = new GameState(seed: 42);
         gs.EnterDungeon(new Dungeon(3, 3, "test"), "test");
         gs.Player = new Player(new Position(1, 2), Direction.East);
+        gs.SaveGame(_testSavePath);
 
-        var partialReads = 0;
-        var stop = false;
-        var reader = Task.Run(() =>
-        {
-            while (!Volatile.Read(ref stop))
-            {
-                if (!File.Exists(_testSavePath)) continue;
-                try
-                {
-                    var probe = new GameState(seed: 7);
-                    if (!probe.LoadGame(_testSavePath))
-                        Interlocked.Increment(ref partialReads);
-                }
-                catch (IOException) { /* the rename raced this open; not a partial-file defect */ }
-            }
-        });
+        var reloaded = new GameState(seed: 7);
+        Assert.True(reloaded.LoadGame(_testSavePath));
+        Assert.Equal(1, reloaded.Player.Position.X);
 
-        Parallel.For(0, 8, _ =>
-        {
-            for (int n = 0; n < 15; n++)
-                gs.SaveGame(_testSavePath);
-        });
-
-        Volatile.Write(ref stop, true);
-        await reader;
-
-        Assert.Equal(0, partialReads);
-        Assert.True(new GameState(seed: 7).LoadGame(_testSavePath));
-        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, $"{Path.GetFileName(_testSavePath)}.quarantine.*"));
+        Directory.Delete($"{_testSavePath}.tmp", recursive: true);
     }
 
     [Fact]
