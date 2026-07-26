@@ -549,20 +549,8 @@ public class CombatService
                 var rescueStarted = state.StartRescueExpedition();
                 if (!rescueStarted)
                 {
-                    // No bench characters available — delete save
-                    try
-                    {
-                        var savePath = state.SavePath;
-                        if (File.Exists(savePath))
-                        {
-                            File.Delete(savePath);
-                            state.EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string>());
-                        }
-                    }
-                    catch
-                    {
-                        // best effort
-                    }
+                    // No bench characters available: the run is over.
+                    state.EndIronmanRun(rescueFailed: false);
                 }
             }
         }

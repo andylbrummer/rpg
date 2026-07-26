@@ -707,26 +707,38 @@ public class GameState
         }
         else
         {
-            // Delete the ironman save on rescue failure: the run is over and must not be
-            // resumable. A failure here leaves the run resumable, which silently defeats
-            // permadeath, so it is reported and recorded rather than swallowed.
-            try
-            {
-                if (File.Exists(SavePath))
-                {
-                    File.Delete(SavePath);
-                }
-                EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string> { { "rescueFailed", "true" } });
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"[Ironman] Failed to delete save at {SavePath}: {ex.Message}");
-                EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string>
-                {
-                    { "rescueFailed", "true" },
-                    { "saveDeleteFailed", "true" }
-                });
-            }
+            EndIronmanRun(rescueFailed: true);
         }
+    }
+
+    /// <summary>
+    /// End an ironman run for good: delete the save so it cannot be resumed, and record that the
+    /// run ended. The two callers (a total party kill with no rescue available, and a failed rescue
+    /// expedition) enforce the same rule, so they share one implementation — the combat path used to
+    /// carry its own copy that swallowed the failure and only logged the TPK when a save file
+    /// happened to exist.
+    /// <para>
+    /// A delete failure leaves the run resumable, which silently defeats permadeath, so it is
+    /// reported and recorded rather than swallowed. The TPK itself is logged either way: the run
+    /// ended whether or not there was a file to remove.
+    /// </para>
+    /// </summary>
+    internal void EndIronmanRun(bool rescueFailed)
+    {
+        var payload = new Dictionary<string, string>();
+        if (rescueFailed) payload["rescueFailed"] = "true";
+
+        try
+        {
+            if (File.Exists(SavePath))
+                File.Delete(SavePath);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Ironman] Failed to delete save at {SavePath}: {ex.Message}");
+            payload["saveDeleteFailed"] = "true";
+        }
+
+        EmitActionLog("meta", "ironman_tpk", payload);
     }
 }
