@@ -105,26 +105,51 @@ public class StateBroadcaster
         }
     }
 
+    /// <summary>
+    /// Sends one envelope on a client's socket, serialized against that socket's other senders.
+    /// <para>
+    /// Bounded by <see cref="ClientConnection.SendTimeout"/> and by the connection's own lifetime
+    /// rather than only by server shutdown. A peer that stops draining its socket leaves
+    /// SendAsync parked with the socket still Open, which would otherwise hold the send lock and
+    /// wedge the heartbeat for the life of the process — and, because a broadcast is awaited by
+    /// the acting client before its next action, stall every other player behind one dead peer.
+    /// An expired send declares the connection finished so its receive loop unwinds and
+    /// deregisters it.
+    /// </para>
+    /// </summary>
     public async Task SendEnvelope(ClientConnection client, ProtocolEnvelope envelope)
     {
         var json = JsonSerializer.Serialize(envelope, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
 
-        await client.SendLock.WaitAsync(_cts.Token);
+        using var sendCts = CancellationTokenSource.CreateLinkedTokenSource(client.Token, _cts.Token);
+        sendCts.CancelAfter(ClientConnection.SendTimeout);
+
         try
         {
-            if (client.Socket.State == WebSocketState.Open)
+            await client.SendLock.WaitAsync(sendCts.Token);
+            try
             {
-                await client.Socket.SendAsync(
-                    new ArraySegment<byte>(bytes),
-                    WebSocketMessageType.Text,
-                    true,
-                    _cts.Token);
+                if (client.Socket.State == WebSocketState.Open)
+                {
+                    await client.Socket.SendAsync(
+                        new ArraySegment<byte>(bytes),
+                        WebSocketMessageType.Text,
+                        true,
+                        sendCts.Token);
+                }
+            }
+            finally
+            {
+                client.SendLock.Release();
             }
         }
-        finally
+        catch (OperationCanceledException)
         {
-            client.SendLock.Release();
+            // Server shutdown cancels every send at once and is not this client's fault; anything
+            // else means this peer stopped draining, so retire the connection.
+            if (!_cts.IsCancellationRequested) client.Abort();
+            throw;
         }
     }
 }

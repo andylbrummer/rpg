@@ -44,13 +44,13 @@ internal sealed class WebSocketConnectionHandler
     {
         var wsContext = await context.AcceptWebSocketAsync(null);
         var socket = wsContext.WebSocket;
-        var client = new ClientConnection(socket);
+        // The connection owns its own lifetime (linked to server shutdown), so the heartbeat, the
+        // receive loop and any in-flight send all stop the moment any one of them decides the
+        // client is finished — instead of leaving the others to notice a disposed socket up to one
+        // ping interval later.
+        var client = new ClientConnection(socket, _cts.Token);
         _registry.Add(client);
 
-        // Ties the heartbeat to this connection's lifetime as well as to server shutdown, so the
-        // receive loop exiting stops the heartbeat immediately instead of leaving it to notice a
-        // disposed socket up to one ping interval later.
-        using var connectionCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
         Task heartbeat = Task.CompletedTask;
 
         try
@@ -62,17 +62,17 @@ internal sealed class WebSocketConnectionHandler
                 Seq = client.NextServerSeq(),
                 Payload = new HelloPayload { ProtocolVersion = 2, SessionId = client.SessionId }
             });
-            heartbeat = Task.Run(() => RunHeartbeatLoop(client, connectionCts));
+            heartbeat = Task.Run(() => RunHeartbeatLoop(client));
 
             var buffer = new byte[4096];
-            while (socket.State == WebSocketState.Open && !connectionCts.IsCancellationRequested)
+            while (socket.State == WebSocketState.Open && !client.Token.IsCancellationRequested)
             {
                 using var ms = new MemoryStream();
                 WebSocketReceiveResult result;
                 var oversized = false;
                 do
                 {
-                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), connectionCts.Token);
+                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), client.Token);
                     if (result.MessageType == WebSocketMessageType.Close) break;
                     if (ms.Length + result.Count > MaxInboundMessageBytes)
                     {
@@ -107,7 +107,7 @@ internal sealed class WebSocketConnectionHandler
             // Stop and drain the heartbeat before disposing, so it can never touch a disposed
             // socket; then deregister before disposing, so a broadcast that snapshots the
             // registry never hands out a connection whose socket is already gone.
-            connectionCts.Cancel();
+            client.Abort();
             await heartbeat;
             _registry.Remove(client);
             client.Dispose();
@@ -127,9 +127,9 @@ internal sealed class WebSocketConnectionHandler
     /// connection registered — and the session leaked — for the life of the process.
     /// </para>
     /// </summary>
-    private async Task RunHeartbeatLoop(ClientConnection client, CancellationTokenSource connectionCts)
+    private async Task RunHeartbeatLoop(ClientConnection client)
     {
-        var token = connectionCts.Token;
+        var token = client.Token;
         try
         {
             while (client.Socket.State == WebSocketState.Open && !token.IsCancellationRequested)
@@ -150,9 +150,8 @@ internal sealed class WebSocketConnectionHandler
         catch (ObjectDisposedException) { }
         finally
         {
-            // Safe to call after Handle's finally has already cancelled: Cancel is idempotent, and
-            // Handle awaits this task before the source is disposed.
-            try { connectionCts.Cancel(); } catch (ObjectDisposedException) { }
+            // Safe to call after Handle's finally has already aborted: Abort is idempotent.
+            client.Abort();
         }
     }
 
