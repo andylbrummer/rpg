@@ -113,15 +113,21 @@
   // listener registered on mount.
   let documentVisible = $state(true);
 
-  // Stop drawing the 3D scene whenever nothing can see it. The renderer draws into a canvas that
-  // sits behind the UI layer, so a frame is wasted whole while the title screen covers it —
-  // that screen is position:fixed inset:0 with an opaque background above every other layer — and
-  // likewise while the tab is in the background. Both are cases where pausing is invisible by
-  // construction, which is the only reason they are listed here: the town view is opaque too, but
-  // the bars framing it are not, so the scene does show through and pausing there would be a
-  // change the player could see.
+  // Stop continuously drawing the 3D scene wherever the player is not looking at it. The renderer
+  // draws into a canvas behind the UI layer, so a frame is wasted whole while the tab is in the
+  // background, and while the title screen covers it — position:fixed inset:0, opaque, above every
+  // other layer.
+  //
+  // Menu mode is included deliberately rather than by the same reasoning. Town is a menu screen:
+  // its own panel is opaque, but the bars framing it are 80% black over the canvas, so the scene's
+  // ambient motion does faintly show through and freezing it is a change a player could notice.
+  // It is worth it — town is where the game spends much of its time not being a 3D game, and the
+  // renderer stays responsive to state changes there because pausing switches it to drawing on
+  // demand rather than not drawing. Combat is left running: its overlay is 92% opaque, so the
+  // scene behind it is meaningfully visible.
   $effect(() => {
-    host?.setPaused(showTitleScreen || !documentVisible);
+    const inMenu = gameState?.mode === 'Menu';
+    host?.setPaused(inMenu || showTitleScreen || !documentVisible);
   });
 
   function applyDisplaySettings(d: DisplaySettings) {
