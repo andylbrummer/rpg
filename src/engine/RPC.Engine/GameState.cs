@@ -369,6 +369,7 @@ public class GameState
         CombatSession.Reset();
         Campaign.Reset();
         Party.Reset();
+        SessionMeta.Reset();
         Town = new TownState();
         Overworld = new OverworldState();
         Secrets.Clear();

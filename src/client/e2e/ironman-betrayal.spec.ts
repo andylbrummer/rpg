@@ -46,7 +46,12 @@ test.describe('Ironman mode', () => {
     expect(await getCaptured(page)).toContainEqual({ type: 'set_ironman', enabled: true });
   });
 
-  test('a run already in ironman shows the toggle on', async ({ page }) => {
+  /**
+   * Once taken, the server refuses to turn it back off — and a refused action changes nothing, so
+   * no state comes back to correct a checkbox the player has just unticked. The control has to be
+   * locked rather than merely ignored, or the panel would sit there showing the wrong thing.
+   */
+  test('a committed run shows the toggle on and locked', async ({ page }) => {
     await loadTown(page);
     await setState(page, { ...MENU_STATE, isIronman: true });
 
@@ -54,6 +59,9 @@ test.describe('Ironman mode', () => {
     const toggle = page.locator('.settings-section', { hasText: 'Gameplay' }).locator('input[type="checkbox"]');
 
     await expect(toggle).toBeChecked();
+    await expect(toggle).toBeDisabled();
+    await expect(page.locator('.settings-section', { hasText: 'Gameplay' }))
+      .toContainText('only a new campaign clears it');
   });
 });
 

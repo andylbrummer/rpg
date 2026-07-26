@@ -112,4 +112,74 @@ public class BetrayalAndIronmanStateTests
 
         Assert.True(Present(state).GetProperty("isIronman").GetBoolean());
     }
+
+    /// <summary>
+    /// Ironman is a commitment for the length of a run. Everything that makes it mean something —
+    /// the single save, its deletion on a wipe — is worth nothing if the player can step out of the
+    /// mode before a hard fight and back into it afterwards.
+    /// </summary>
+    [Fact]
+    public void Ironman_Cannot_Be_Turned_Off_Once_Taken()
+    {
+        var state = new GameState(seed: 42);
+        var handler = new GameCommandHandler(state, new StubDungeonGenerator());
+        handler.Execute(new SetIronmanCommand(true));
+
+        var result = handler.Execute(new SetIronmanCommand(false));
+
+        Assert.False(result.StateChanged);
+        Assert.True(state.IsIronman);
+    }
+
+    [Fact]
+    public void Asking_For_Ironman_Twice_Changes_Nothing_The_Second_Time()
+    {
+        var state = new GameState(seed: 42);
+        var handler = new GameCommandHandler(state, new StubDungeonGenerator());
+        Assert.True(handler.Execute(new SetIronmanCommand(true)).StateChanged);
+
+        Assert.False(handler.Execute(new SetIronmanCommand(true)).StateChanged);
+        Assert.True(state.IsIronman);
+    }
+
+    /// <summary>
+    /// The one way out, and it costs the run. Without this a commitment made in one campaign would
+    /// bind every campaign after it, with no way to undo it — the same shape as the aggregates that
+    /// were surviving a reset before each one was made to clear itself.
+    /// </summary>
+    [Fact]
+    public void A_New_Campaign_Is_Not_Bound_By_The_Previous_Runs_Commitment()
+    {
+        var state = new GameState(seed: 42);
+        var handler = new GameCommandHandler(state, new StubDungeonGenerator());
+        handler.Execute(new SetIronmanCommand(true));
+
+        handler.Execute(new ResetGameCommand());
+
+        Assert.False(state.IsIronman);
+        Assert.False(Present(state).GetProperty("isIronman").GetBoolean());
+    }
+
+    /// <summary>
+    /// Restoring a save has to be able to set the flag either way — it reports what the run was,
+    /// and is not the player asking for a change.
+    /// </summary>
+    [Fact]
+    public void Loading_A_Save_Still_Restores_Either_Setting()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"test_save_{Guid.NewGuid()}.json");
+        try
+        {
+            var ironmanRun = new GameState(seed: 42) { SavePath = path, IsIronman = true };
+            RPC.Engine.Save.SaveSystem.Save(ironmanRun, path);
+
+            var standardRun = new GameState(seed: 42) { SavePath = path };
+            Assert.True(RPC.Engine.Save.SaveSystem.Load(standardRun, path));
+            Assert.True(standardRun.IsIronman);
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { }
+        }
+    }
 }

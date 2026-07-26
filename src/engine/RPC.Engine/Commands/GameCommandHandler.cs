@@ -120,8 +120,22 @@ public class GameCommandHandler
                 break;
 
             case SetIronmanCommand ironmanCmd:
-                _gameState.IsIronman = ironmanCmd.Enabled;
-                stateChanged = true;
+                // Ironman is a commitment for the length of a run: it can be taken on, never given
+                // back. A permadeath mode the player can switch off in front of a hard fight and
+                // back on afterwards is not one, and every consequence that makes it mean
+                // something — the single save, the deletion on a wipe — is worth nothing if the
+                // mode can be stepped out of first. Starting a new campaign clears it; that is the
+                // only way out, and it costs the run.
+                //
+                // Enforced here rather than on GameState.IsIronman because the field itself has to
+                // stay settable both ways: loading a save restores whatever the run was, and
+                // Reset clears it for the next campaign. It is the player's request that is
+                // one-way, not the value.
+                if (ironmanCmd.Enabled && !_gameState.IsIronman)
+                {
+                    _gameState.IsIronman = true;
+                    stateChanged = true;
+                }
                 break;
             case ResetGameCommand:
                 _gameState.Reset();

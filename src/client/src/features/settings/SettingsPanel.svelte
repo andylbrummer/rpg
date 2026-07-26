@@ -250,10 +250,14 @@
 
       <div class="settings-section">
         <h3>Gameplay</h3>
+        <!-- Locked once taken, because the server will not turn it back off. Offering a control
+             whose request is refused would also leave this checkbox wrong: a refused action
+             changes nothing, so no state comes back to correct it. -->
         <label class="audio-toggle">
           <input
             type="checkbox"
             checked={isIronman}
+            disabled={isIronman}
             onchange={(e) => onIronmanChange?.(e.currentTarget.checked)}
           />
           <span>Ironman {isIronman ? 'ON' : 'OFF'}</span>
@@ -261,6 +265,11 @@
         <p class="setting-note">
           One save, written after every action. A total party kill ends the run and deletes it —
           the bench may attempt a rescue to recover equipment, but the dead stay dead.
+          {#if isIronman}
+            This run is committed; only a new campaign clears it.
+          {:else}
+            Once taken, it cannot be turned off for this run.
+          {/if}
         </p>
       </div>
 
