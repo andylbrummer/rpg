@@ -140,6 +140,39 @@ public class DeathAndResurrectionTests
         Assert.Equal(1, gs.Party.Members[0].ResurrectionAttempts);
     }
 
+    /// <summary>
+    /// Which stat resurrection burns is a permanent, 500-1500 gold consequence, so it has to fall
+    /// out of the campaign seed like every other game-affecting roll. It was rolled off
+    /// Random.Shared instead: two runs of the same seed took different stats, and no save replay
+    /// or bug repro could reproduce the character it produced. The existing cost tests only assert
+    /// the stat *total* drops, which is exactly the assertion that hid it.
+    /// </summary>
+    [Fact]
+    public void Resurrect_StatLoss_IsDeterministicForASeed()
+    {
+        static BaseStats ResurrectUnderSeed(int seed, int priorAttempts)
+        {
+            var gs = new GameState(seed: seed);
+            for (int i = 0; i < 6; i++) gs.Party.SetMember(i, default);
+            var heroId = new Guid("11111111-1111-1111-1111-111111111111");
+            gs.Party.DeadCharacters.Add(
+                MakeChar(heroId, "Hero", "stillblade", 0) with { ResurrectionAttempts = priorAttempts });
+            gs.PartyGold = 5000;
+            gs.TitheTokens = 5;
+
+            var result = gs.ResurrectCharacter(heroId);
+            Assert.NotNull(result);
+            Assert.True(result!.Success);
+            return gs.Party.Members[0].BaseStats;
+        }
+
+        for (int seed = 1; seed <= 10; seed++)
+        {
+            Assert.Equal(ResurrectUnderSeed(seed, 0), ResurrectUnderSeed(seed, 0));
+            Assert.Equal(ResurrectUnderSeed(seed, 1), ResurrectUnderSeed(seed, 1));
+        }
+    }
+
     [Fact]
     public void Resurrect_SecondAttempt_Costs1500Gold2TitheMinus2StatsAndLocksBranch()
     {

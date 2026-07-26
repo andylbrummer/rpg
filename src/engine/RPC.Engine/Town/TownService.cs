@@ -361,7 +361,7 @@ public class TownService
         state.PartyGold -= goldCost;
         state.TitheTokens -= titheCost;
 
-        var newStats = ApplyRandomStatLoss(dead.BaseStats, statLoss);
+        var newStats = ApplyRandomStatLoss(dead.BaseStats, statLoss, state._encounterRng);
         var maxHp = EffectiveStats.FromBase(newStats, dead.Level).MaxHp;
         var resurrected = dead with
         {
@@ -453,9 +453,13 @@ public class TownService
         return true;
     }
 
-    private static BaseStats ApplyRandomStatLoss(BaseStats stats, int count)
+    /// <summary>
+    /// Burns <paramref name="count"/> points off random stats. Rolled from the campaign's seeded
+    /// RNG, not Random.Shared: the loss is permanent and paid for, so it has to reproduce from the
+    /// seed like every other game-affecting roll.
+    /// </summary>
+    private static BaseStats ApplyRandomStatLoss(BaseStats stats, int count, GameRandom r)
     {
-        var r = Random.Shared;
         var s = stats;
         for (int i = 0; i < count; i++)
         {
