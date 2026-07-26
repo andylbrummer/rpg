@@ -46,6 +46,14 @@ export class RendererHost {
     return this.audioManager;
   }
 
+  /**
+   * Pause or resume drawing the 3D scene. See {@link DungeonRenderer.setPaused}; the shell decides
+   * when the scene is hidden, because only it knows which view is on top.
+   */
+  setPaused(paused: boolean) {
+    this.renderer.setPaused(paused);
+  }
+
   applyDisplaySettings(d: DisplaySettings) {
     this.renderer.setFov(d.fov);
     this.renderer.setResolutionScale(d.resolutionScale);

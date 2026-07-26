@@ -1135,9 +1135,32 @@ export class DungeonRenderer {
     this.reduceMotion = value;
   }
 
+  /**
+   * When set, frames are scheduled but neither drawn nor advanced. See {@link setPaused}.
+   */
+  private isPaused = false;
+
+  /**
+   * Stop drawing the scene while nothing can see it, and resume when something can.
+   *
+   * A frame costs the same whether or not it reaches the player: the scene is rendered into a
+   * canvas that sits behind the UI layer, so while a full-screen opaque view covers it, or while
+   * the tab is in the background, every frame is a full render nobody observes. That is a real
+   * cost on a laptop (battery, heat) and a dominant one anywhere the GPU is software-emulated.
+   *
+   * Animations advance from absolute timestamps rather than accumulated deltas, so a paused
+   * stretch does not drift them — on resume they simply reflect the time that has passed. Frames
+   * keep being scheduled while paused so resuming needs no restart path that could leave the loop
+   * dead; a rAF callback that returns immediately costs nothing measurable next to a draw.
+   */
+  setPaused(paused: boolean): void {
+    this.isPaused = paused;
+  }
+
   private animate(): void {
     if (this.isDisposed) return;
     requestAnimationFrame(() => this.animate());
+    if (this.isPaused) return;
     const time = performance.now() * 0.001;
     // Periodically trigger a mutation transition on a random cluster.
     if (!this.reduceMotion && this.bloomClusters.length > 0 && time >= this.nextBloomMutation) {

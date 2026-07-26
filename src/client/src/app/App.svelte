@@ -109,6 +109,21 @@
     }
   });
 
+  // Whether the tab is currently being displayed at all; kept in sync by a visibilitychange
+  // listener registered on mount.
+  let documentVisible = $state(true);
+
+  // Stop drawing the 3D scene whenever nothing can see it. The renderer draws into a canvas that
+  // sits behind the UI layer, so a frame is wasted whole while the title screen covers it —
+  // that screen is position:fixed inset:0 with an opaque background above every other layer — and
+  // likewise while the tab is in the background. Both are cases where pausing is invisible by
+  // construction, which is the only reason they are listed here: the town view is opaque too, but
+  // the bars framing it are not, so the scene does show through and pausing there would be a
+  // change the player could see.
+  $effect(() => {
+    host?.setPaused(showTitleScreen || !documentVisible);
+  });
+
   function applyDisplaySettings(d: DisplaySettings) {
     host?.applyDisplaySettings(d);
   }
@@ -219,11 +234,18 @@
       }
     });
 
+    const handleVisibilityChange = () => {
+      documentVisible = !document.hidden;
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    handleVisibilityChange();
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       input.dispose();
       unsubTest();
       gamepadManager.dispose();
