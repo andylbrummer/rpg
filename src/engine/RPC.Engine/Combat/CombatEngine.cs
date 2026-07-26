@@ -611,11 +611,12 @@ public static class CombatEngine
                 newLog.Add(new(Guid.Empty, "Fallen Unaccounted reassemble into something worse", newRound));
             }
 
-            // Clean up dread from dead Unaccounted
+            // Clean up dread from dead Unaccounted. The id set is built once: it does not change
+            // across the sweep, and rebuilding it per combatant made the pass O(combatants x dead).
+            var deadUnaccountedIds = deadUnaccounted.Select(d => d.Id).ToHashSet();
             for (int i = 0; i < newCombatants.Length; i++)
             {
                 var c = newCombatants[i];
-                var deadUnaccountedIds = deadUnaccounted.Select(d => d.Id).ToHashSet();
                 if (c.StatusEffects.Any(s => s.Type == "dread" && deadUnaccountedIds.Contains(s.SourceId)))
                 {
                     var cleaned = c.StatusEffects
@@ -673,6 +674,11 @@ public static class CombatEngine
                 }
             }
 
+            // Survivors of the expiry sweep, shared by all three exits below.
+            var newAssignments = state.SummonSlotAssignments
+                .Where(kv => !expiredIds.Contains(kv.Value))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
             // Check for victory/defeat AFTER reassembly
             var allEnemiesDead = newCombatants.All(c => c.IsPlayer || !c.IsAlive)
                 && !deadUnaccounted.Any(d => !d.Burned && state.Round - d.RoundDied < 2);
@@ -688,9 +694,7 @@ public static class CombatEngine
                     Phase = CombatPhase.Ended,
                     Combatants = newCombatants,
                     Log = newLog,
-                    SummonSlotAssignments = state.SummonSlotAssignments
-                        .Where(kv => !expiredIds.Contains(kv.Value))
-                        .ToDictionary(kv => kv.Key, kv => kv.Value),
+                    SummonSlotAssignments = newAssignments,
                     DeadUnaccounted = deadUnaccounted
                 };
             }
@@ -705,16 +709,10 @@ public static class CombatEngine
                     Phase = CombatPhase.Ended,
                     Combatants = newCombatants,
                     Log = newLog,
-                    SummonSlotAssignments = state.SummonSlotAssignments
-                        .Where(kv => !expiredIds.Contains(kv.Value))
-                        .ToDictionary(kv => kv.Key, kv => kv.Value),
+                    SummonSlotAssignments = newAssignments,
                     DeadUnaccounted = deadUnaccounted
                 };
             }
-
-            var newAssignments = state.SummonSlotAssignments
-                .Where(kv => !expiredIds.Contains(kv.Value))
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             return state with
             {
