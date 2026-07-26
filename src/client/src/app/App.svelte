@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { modal } from '$shared/actions/modal';
-  import { gameStore, sendAction, serverErrorStore, bootstrapGameStore, onTestSetState } from '$shared/stores/gameStore';
+  import { gameStore, sendAction, serverErrorStore, bootstrapGameStore, onTestSetState, connectionStatus } from '$shared/stores/gameStore';
   import { GameClient } from '$shared/net/GameClient';
   import { TownMenu } from '$features/town';
   import type { PlayerAction } from '$shared/types/game';
@@ -323,6 +323,14 @@
 <main class="game">
   <div bind:this={gameContainer} class="renderer"></div>
   <div class="ui-layer">
+    {#if $connectionStatus === 'disconnected'}
+      <!-- Only once a live session has actually dropped. The initial handshake is already
+           covered by the title screen, and announcing it there would be noise. -->
+      <div class="connection-banner" role="alert">
+        <span class="connection-banner-title">Connection lost</span>
+        <span class="connection-banner-detail">Reconnecting — input is not being recorded.</span>
+      </div>
+    {/if}
     {#if serverError}
       <div class="error-toast" role="alert">
         <span class="error-code">{serverError.code}</span>
@@ -707,6 +715,33 @@
 
   .bottom-bar {
     background: rgba(0, 0, 0, 0.8);
+  }
+
+  .connection-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: rgba(120, 60, 20, 0.97);
+    border-bottom: 1px solid #d4a84b;
+    padding: 0.5em 1em;
+    display: flex;
+    gap: 0.75em;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    pointer-events: auto;
+  }
+
+  .connection-banner-title {
+    font-weight: 700;
+    color: #ffdca8;
+  }
+
+  .connection-banner-detail {
+    color: #f0e2cc;
+    font-size: 0.9em;
   }
 
   .error-toast {

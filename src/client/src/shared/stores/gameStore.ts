@@ -12,6 +12,21 @@ export interface GameStore {
   __testClearStateOverride: () => void;
 }
 
+/**
+ * `connecting` covers both the initial handshake and every reconnect attempt: an open socket is
+ * not yet a usable session, because the server will not accept an action until the ready
+ * handshake has produced a first state.
+ */
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
+
+/**
+ * Whether the session can currently carry the player's input. GameClient has always reported
+ * connect/disconnect and nothing listened, so a dropped session was invisible — the party simply
+ * stopped responding. Input made while disconnected is deliberately dropped rather than replayed
+ * on reconnect, which makes saying so out loud a requirement rather than a nicety.
+ */
+export const connectionStatus = writable<ConnectionStatus>('connecting');
+
 const state = writable<GameState | null>(null);
 const errorStore = writable<ErrorPayload | null>(null);
 const testSetStateCallbacks: Array<(s: GameState | null) => void> = [];
@@ -56,9 +71,15 @@ export let serverErrorStore: typeof errorStore = errorStore;
 
 export function bootstrapGameStore(client: GameClient): GameStore {
   client.onState((s) => {
+    // State arriving is the only proof the session is live end to end, so it — not socket open —
+    // is what promotes the status to connected.
+    connectionStatus.set('connected');
     if (testStateOverrideActive) return;
     state.set(s);
   });
+
+  client.onConnect(() => connectionStatus.set('connecting'));
+  client.onDisconnect(() => connectionStatus.set('disconnected'));
 
   client.onError((err) => {
     console.error('Server error:', err.code, err.message);
