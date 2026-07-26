@@ -266,7 +266,18 @@ public class GameState
 
         if (!ComponentInventorySystem.CanAddComponent(
                 Party.ExpeditionCache, itemId, 1, PartyState.MaxExpeditionCacheSlots))
-            return false; // cache full — leave loot on the floor
+        {
+            // Leave the loot on the floor, but say so. The handler only reads the bool as "did
+            // state change", so a silent false meant an explicit pickup did nothing at all and
+            // offered the player no reason — indistinguishable from an input that never landed.
+            EmitActionLog("dungeon", "loot_refused_cache_full", new Dictionary<string, string>
+            {
+                { "itemId", itemId },
+                { "x", pos.X.ToString() },
+                { "y", pos.Y.ToString() }
+            });
+            return false;
+        }
 
         ComponentInventorySystem.AddToExpeditionCache(Party, itemId, 1);
         Exploration.CollectedLoot.Add(key);

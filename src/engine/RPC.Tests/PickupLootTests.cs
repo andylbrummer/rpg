@@ -1,5 +1,7 @@
 using RPC.Engine;
+using RPC.Engine.Character;
 using RPC.Engine.Models.Dungeons;
+using RPC.Engine.Party;
 using Xunit;
 
 namespace RPC.Tests;
@@ -34,6 +36,23 @@ public class PickupLootTests
         var gs = StateOnLootTile("rat_tail");
         Assert.True(gs.TryPickupLoot());
         Assert.False(gs.TryPickupLoot());
+    }
+
+    /// <summary>
+    /// A full cache leaves the loot on the floor. The command handler reads the return only as
+    /// "did state change", so refusing silently made an explicit pickup look like a dropped input.
+    /// </summary>
+    [Fact]
+    public void Pickup_refused_by_a_full_cache_says_why()
+    {
+        var gs = StateOnLootTile("rat_tail");
+        gs.Party.ExpeditionCache = Enumerable.Range(0, PartyState.MaxExpeditionCacheSlots)
+            .Select(i => new ComponentStack($"filler_{i}", 99, 99))
+            .ToArray();
+
+        Assert.False(gs.TryPickupLoot());
+        Assert.Contains(gs.ActionLog, e => e.Type == "loot_refused_cache_full");
+        Assert.DoesNotContain("1,1", gs.Exploration.CollectedLoot);
     }
 
     [Fact]
