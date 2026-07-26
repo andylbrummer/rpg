@@ -97,7 +97,14 @@ public class GameCommandHandler
                 stateChanged = true;
                 break;
             case SaveGameCommand:
-                _gameState.SaveGame();
+                // Save where the run says it saves. The ironman autosave below and the permadeath
+                // delete both resolve the file through GameState.SavePath, and a manual save that
+                // resolved it differently would be writing to a file the other two do not manage:
+                // a run whose save path is not the default would autosave to one file and save to
+                // another, and permadeath would delete only the first. The two agree today only
+                // because nothing outside tests ever sets SavePath — which is also why a test that
+                // dispatches this command writes to the real per-user save rather than its own.
+                _gameState.SaveGame(_gameState.SavePath);
                 stateChanged = true;
                 break;
 
