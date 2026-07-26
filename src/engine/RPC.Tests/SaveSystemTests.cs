@@ -19,8 +19,52 @@ public class SaveSystemTests : IDisposable
     {
         if (File.Exists(_testSavePath))
             File.Delete(_testSavePath);
-        if (File.Exists(_testSavePath + ".tmp"))
-            File.Delete(_testSavePath + ".tmp");
+        foreach (var sidecar in Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, $"{Path.GetFileName(_testSavePath)}.*"))
+            File.Delete(sidecar);
+    }
+
+    /// <summary>
+    /// Saves used to stage through one fixed "save.json.tmp". Two writers on the same path — two
+    /// hosts, or an autosave racing a manual save — interleaved: the second truncated the temp
+    /// while the first renamed it, so a partial file landed at the real save path and the run's
+    /// progress was gone. Every observation of the save file must be whole and loadable.
+    /// </summary>
+    [Fact]
+    public async Task Concurrent_Saves_Never_Leave_A_Partial_Save_Behind()
+    {
+        var gs = new GameState(seed: 42);
+        gs.EnterDungeon(new Dungeon(3, 3, "test"), "test");
+        gs.Player = new Player(new Position(1, 2), Direction.East);
+
+        var partialReads = 0;
+        var stop = false;
+        var reader = Task.Run(() =>
+        {
+            while (!Volatile.Read(ref stop))
+            {
+                if (!File.Exists(_testSavePath)) continue;
+                try
+                {
+                    var probe = new GameState(seed: 7);
+                    if (!probe.LoadGame(_testSavePath))
+                        Interlocked.Increment(ref partialReads);
+                }
+                catch (IOException) { /* the rename raced this open; not a partial-file defect */ }
+            }
+        });
+
+        Parallel.For(0, 8, _ =>
+        {
+            for (int n = 0; n < 15; n++)
+                gs.SaveGame(_testSavePath);
+        });
+
+        Volatile.Write(ref stop, true);
+        await reader;
+
+        Assert.Equal(0, partialReads);
+        Assert.True(new GameState(seed: 7).LoadGame(_testSavePath));
+        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, $"{Path.GetFileName(_testSavePath)}.quarantine.*"));
     }
 
     [Fact]
