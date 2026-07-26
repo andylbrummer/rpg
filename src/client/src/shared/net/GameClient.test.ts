@@ -308,3 +308,28 @@ describe('GameClient action queueing', () => {
     expect(pong?.payload).toEqual({ pingSeq: 42 });
   });
 });
+
+describe('GameClient socket URL', () => {
+  beforeEach(() => {
+    FakeWebSocket.instances = [];
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = FakeWebSocket;
+  });
+
+  function connectFrom(location: { host: string; protocol: string }): string {
+    (globalThis as unknown as { window: unknown }).window = { location };
+    new GameClient().connect();
+    return latest().url;
+  }
+
+  it('connects over ws from a plain-http page', () => {
+    expect(connectFrom({ host: 'localhost:19421', protocol: 'http:' })).toBe('ws://localhost:19421/ws');
+  });
+
+  /**
+   * A secure page may not open an insecure socket — the browser blocks it outright, so a
+   * hard-coded ws:// scheme means the game never connects at all rather than degrading.
+   */
+  it('connects over wss from an https page', () => {
+    expect(connectFrom({ host: 'reach.example:443', protocol: 'https:' })).toBe('wss://reach.example:443/ws');
+  });
+});

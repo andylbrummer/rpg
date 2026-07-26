@@ -25,7 +25,10 @@ export class GameClient {
 
 
   connect(): void {
-    const wsUrl = `ws://${window.location.host}/ws`;
+    // Follow the page's scheme: a browser refuses an insecure socket from a secure page, so a
+    // hard-coded ws:// does not degrade over https — it never connects.
+    const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${scheme}//${window.location.host}/ws`;
     this.reconnectClosed = false;
     this.clearReconnectTimer();
 
