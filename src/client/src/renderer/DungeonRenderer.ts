@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Tile, RenderModel, RenderCombat, RenderPlayer } from './RenderModel';
-import { getTheme, type DungeonTheme } from './DungeonTheme';
+import { getTheme, dungeonTypeKey, type DungeonTheme } from './DungeonTheme';
+import { torchProfileFor } from './TorchProfiles';
 import { BloomCluster, BloomParticleSystem, BloomHazardOverlay } from './BloomEffects';
 import { getCreatureMaterials, type CreatureMaterialSet } from './CreatureMaterials';
 import { createUnaccountedMaterial } from './UnaccountedMaterial';
@@ -31,6 +32,8 @@ export class DungeonRenderer {
   static readonly BREAK_ANIMATION_MS = 600;
   private currentTheme: DungeonTheme;
   private currentDungeonType: string | undefined;
+  /** Canonical form of currentDungeonType; see dungeonTypeKey. Recomputed only on change. */
+  private currentDungeonKey = '';
   private bloomClusters: BloomCluster[] = [];
   private bloomParticles: BloomParticleSystem[] = [];
   private bloomHazards: BloomHazardOverlay[] = [];
@@ -319,6 +322,7 @@ export class DungeonRenderer {
     const dungeonType = model.dungeonType;
     if (dungeonType !== this.currentDungeonType) {
       this.currentDungeonType = dungeonType;
+      this.currentDungeonKey = dungeonTypeKey(dungeonType);
       this.currentTheme = getTheme(dungeonType);
       this.applyTheme(this.currentTheme);
       this.setupAmbientParticles(dungeonType);
@@ -469,7 +473,7 @@ export class DungeonRenderer {
       this.clearCreatures();
       return;
     }
-    const mats = getCreatureMaterials(this.currentDungeonType ?? '', this.currentTheme);
+    const mats = getCreatureMaterials(this.currentDungeonKey, this.currentTheme);
     const enemies = combat.combatants.filter(c => !c.isPlayer && c.alive);
     const alive = new Set(enemies.map(c => c.id));
     // Detect unaccounted attacks for wrong-speed animation
@@ -752,7 +756,7 @@ export class DungeonRenderer {
 
   private addBloomEffects(tiles: Tile[]): void {
     if (this.bloomEffectsAdded) return;
-    if (this.currentDungeonType !== 'bloom-site') return;
+    if (this.currentDungeonKey !== 'bloom-site') return;
 
     let floorIndex = 0;
     for (const tile of tiles) {
@@ -1161,45 +1165,10 @@ export class DungeonRenderer {
   }
 
   private updateAnimatedLighting(time: number): void {
-    const type = this.currentDungeonType?.toLowerCase().replace(/_/g, '-');
-    const baseIntensity = this.currentTheme.glowIntensity;
-
-    // Universal subtle torch flicker
-    const flicker = 1 + Math.sin(time * 10) * 0.03 + Math.sin(time * 23) * 0.02;
-    this.torchLight.intensity = baseIntensity * flicker;
-
-    switch (type) {
-      case 'broken_engine': {
-        // Emergency red strobe
-        const strobe = Math.sin(time * 3) > 0.7 ? 1.5 : 1.0;
-        this.torchLight.color.setHex(0xffaa44);
-        this.torchLight.intensity = baseIntensity * flicker * strobe;
-        break;
-      }
-      case 'bloom-site': {
-        // Bioluminescent pulse
-        const pulse = 1 + Math.sin(time * 2) * 0.3;
-        this.torchLight.color.setHex(0x88ff44);
-        this.torchLight.intensity = baseIntensity * pulse;
-        break;
-      }
-      case 'sealed-vault': {
-        // Ward hum — gentle blue oscillation
-        const hum = 1 + Math.sin(time * 1.5) * 0.15;
-        this.torchLight.color.setHex(0x44aaff);
-        this.torchLight.intensity = baseIntensity * hum;
-        break;
-      }
-      case 'crypt': {
-        // Ghostly whisper — slow purple drift
-        const drift = 1 + Math.sin(time * 0.8) * 0.2;
-        this.torchLight.color.setHex(0x9966ff);
-        this.torchLight.intensity = baseIntensity * drift;
-        break;
-      }
-      default:
-        // Standard torch flicker already applied
-        break;
+    const profile = torchProfileFor(this.currentDungeonKey, this.currentTheme.glowIntensity, time);
+    this.torchLight.intensity = profile.intensity;
+    if (profile.color !== null) {
+      this.torchLight.color.setHex(profile.color);
     }
   }
 

@@ -170,9 +170,17 @@ const archiveTheme: DungeonTheme = {
   glowIntensity: 3,
 };
 
+/**
+ * The canonical form of a dungeon type id. Content spells these both ways — schemes author
+ * `broken_engine`, dungeon templates author `bloom-site` — so every renderer lookup keyed on a
+ * dungeon type must go through here. A lookup that skips it silently misses half the content.
+ */
+export function dungeonTypeKey(dungeonType: string | undefined): string {
+  return dungeonType?.toLowerCase().replace(/_/g, '-') ?? '';
+}
+
 export function getTheme(dungeonType: string | undefined): DungeonTheme {
-  const normalized = dungeonType?.toLowerCase().replace(/_/g, '-');
-  switch (normalized) {
+  switch (dungeonTypeKey(dungeonType)) {
     case 'bloom-site':
       return bloomTheme;
     case 'boneyard':
