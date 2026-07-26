@@ -107,8 +107,36 @@ public static class SaveSystem
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to load save: {ex.Message}");
+            // Set the file aside before returning. A save that parses but cannot be restored was
+            // previously left in place, and the game carries on from a default state — in ironman
+            // that means the next state-changing command autosaves straight over the player's
+            // campaign, destroying a file that a later build (or a human) might have recovered.
+            // Quarantining preserves it under a timestamped name and stops the same failure
+            // repeating on every launch.
+            var quarantinePath = TryQuarantine(fileIo, $"restore failed: {ex.Message}");
+            Console.Error.WriteLine(quarantinePath is null
+                ? $"Failed to load save '{fileIo.SavePath}': {ex.Message}. The file could not be set aside; it is still in place."
+                : $"Failed to load save '{fileIo.SavePath}': {ex.Message}. Moved to '{quarantinePath}' so it cannot be overwritten.");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Moves the unreadable save aside, returning the new path, or null if it could not be moved.
+    /// Never throws: this runs while already handling a failure, and losing the original error to
+    /// a secondary one would hide why the load failed in the first place.
+    /// </summary>
+    private static string? TryQuarantine(SaveFileIO fileIo, string reason)
+    {
+        try
+        {
+            var path = fileIo.Quarantine(reason);
+            return string.IsNullOrEmpty(path) ? null : path;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Save] Could not quarantine '{fileIo.SavePath}': {ex.Message}");
+            return null;
         }
     }
 
