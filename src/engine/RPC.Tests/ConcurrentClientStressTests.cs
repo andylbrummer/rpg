@@ -85,41 +85,93 @@ public class ConcurrentClientStressTests : IDisposable
     }
 
     /// <summary>
-    /// Answers heartbeat pings and discards everything else, so a client under test never stalls
-    /// the server's per-socket send by leaving its receive buffer full.
+    /// Reads a client's frames for the duration of a test: answers heartbeat pings and discards
+    /// everything else, so a client under test never stalls the server's per-socket send by
+    /// leaving its receive buffer full — which the server now treats as a dead peer.
+    ///
+    /// <para>
+    /// Frame counts are published live rather than returned at the end, and the reader announces
+    /// when it is actually reading. A test that starts a burst before its readers are scheduled,
+    /// then cancels them and reads their return values, is asserting on whatever the thread pool
+    /// happened to do: on a loaded machine every reader could return zero without a single frame
+    /// having been missed.
+    /// </para>
     /// </summary>
-    private static async Task<int> DrainAsync(ClientWebSocket ws, CancellationToken token)
+    private sealed class ClientDrainer
     {
-        var stateFrames = 0;
-        var buffer = new byte[64 * 1024];
-        try
-        {
-            while (ws.State == WebSocketState.Open && !token.IsCancellationRequested)
-            {
-                using var ms = new MemoryStream();
-                WebSocketReceiveResult result;
-                do
-                {
-                    result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), token);
-                    if (result.MessageType == WebSocketMessageType.Close) return stateFrames;
-                    ms.Write(buffer, 0, result.Count);
-                }
-                while (!result.EndOfMessage);
+        private readonly ClientWebSocket _ws;
+        private readonly TaskCompletionSource _reading = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _stateFrames;
+        private int _totalFrames;
 
-                var frame = JsonSerializer.Deserialize<JsonElement>(Encoding.UTF8.GetString(ms.ToArray()));
-                if (frame.GetProperty("type").GetString() == "state") stateFrames++;
-                if (frame.GetProperty("type").GetString() == "heartbeat.ping"
-                    && frame.TryGetProperty("payload", out var payload)
-                    && payload.TryGetProperty("pingSeq", out var seq))
+        public ClientDrainer(ClientWebSocket ws, CancellationToken token)
+        {
+            _ws = ws;
+            Completion = Task.Run(() => Pump(token));
+        }
+
+        /// <summary>Completes once the reader is inside its receive loop.</summary>
+        public Task Reading => _reading.Task;
+
+        public Task Completion { get; }
+
+        public int StateFrames => Volatile.Read(ref _stateFrames);
+        public int TotalFrames => Volatile.Read(ref _totalFrames);
+
+        private async Task Pump(CancellationToken token)
+        {
+            var buffer = new byte[64 * 1024];
+            try
+            {
+                while (_ws.State == WebSocketState.Open && !token.IsCancellationRequested)
                 {
-                    await SendAsync(ws, "{\"v\":2,\"type\":\"heartbeat.pong\",\"seq\":1,\"payload\":{\"pingSeq\":" + seq.GetInt32() + "}}");
+                    _reading.TrySetResult();
+
+                    using var ms = new MemoryStream();
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), token);
+                        if (result.MessageType == WebSocketMessageType.Close) return;
+                        ms.Write(buffer, 0, result.Count);
+                    }
+                    while (!result.EndOfMessage);
+
+                    var frame = JsonSerializer.Deserialize<JsonElement>(Encoding.UTF8.GetString(ms.ToArray()));
+                    Interlocked.Increment(ref _totalFrames);
+                    var type = frame.GetProperty("type").GetString();
+                    if (type == "state") Interlocked.Increment(ref _stateFrames);
+                    if (type == "heartbeat.ping"
+                        && frame.TryGetProperty("payload", out var payload)
+                        && payload.TryGetProperty("pingSeq", out var seq))
+                    {
+                        await SendAsync(_ws, "{\"v\":2,\"type\":\"heartbeat.pong\",\"seq\":1,\"payload\":{\"pingSeq\":" + seq.GetInt32() + "}}");
+                    }
                 }
             }
+            catch (OperationCanceledException) { }
+            catch (WebSocketException) { }
+            finally
+            {
+                // Unblocks anyone waiting on a reader that never got as far as its loop.
+                _reading.TrySetResult();
+            }
         }
-        catch (OperationCanceledException) { }
-        catch (WebSocketException) { }
+    }
 
-        return stateFrames;
+    /// <summary>
+    /// Waits for a condition the server reaches asynchronously, so tests assert on the outcome
+    /// rather than on how promptly a loaded machine scheduled them.
+    /// </summary>
+    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout, Func<string> describe)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition()) return;
+            await Task.Delay(20);
+        }
+        Assert.Fail(describe());
     }
 
     [Fact]
@@ -132,10 +184,10 @@ public class ConcurrentClientStressTests : IDisposable
         for (int i = 0; i < clientCount; i++) clients.Add(await ConnectReadyAsync());
 
         using var drainCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
-        // One client is the observer; the rest hammer the server while draining their own frames.
-        var observer = clients[0];
-        var drains = clients.Skip(1).Select(c => Task.Run(() => DrainAsync(c, drainCts.Token))).ToList();
-        drains.Add(Task.Run(() => DrainAsync(observer, drainCts.Token)));
+        var drainers = clients.Select(c => new ClientDrainer(c, drainCts.Token)).ToList();
+        // Every client must be reading before the burst starts: a client that leaves frames
+        // unread is indistinguishable from a dead peer, and the server is entitled to drop it.
+        await Task.WhenAll(drainers.Select(d => d.Reading)).WaitAsync(TimeSpan.FromSeconds(30));
 
         var senders = clients.Select(c => Task.Run(async () =>
         {
@@ -154,13 +206,19 @@ public class ConcurrentClientStressTests : IDisposable
         var status = await http.GetAsync($"http://localhost:{_server.Port}/api/status");
         Assert.Equal(HttpStatusCode.OK, status.StatusCode);
 
-        drainCts.Cancel();
-        var frameCounts = await Task.WhenAll(drains);
-
         // Guard against a vacuous pass: if the actions had been rejected, or the fan-out had not
         // run, the burst would have produced no state frames and every assertion above would
-        // still hold.
-        Assert.True(frameCounts.Sum() > 0, "no state frames were broadcast during the burst");
+        // still hold. Broadcast delivery trails the last action, so wait for it rather than
+        // sampling the instant the senders finish.
+        await WaitUntilAsync(
+            () => drainers.Sum(d => d.StateFrames) > 0,
+            TimeSpan.FromSeconds(30),
+            () => "no state frames were broadcast during the burst; clients saw "
+                  + string.Join(", ", drainers.Select(d => $"{d.TotalFrames} frames"))
+                  + $" and {clients.Count(c => c.State != WebSocketState.Open)} of {clients.Count} sockets were no longer open");
+
+        drainCts.Cancel();
+        await Task.WhenAll(drainers.Select(d => d.Completion));
 
         foreach (var c in clients)
         {
@@ -181,7 +239,8 @@ public class ConcurrentClientStressTests : IDisposable
     {
         var steady = await ConnectReadyAsync();
         using var drainCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
-        var drain = Task.Run(() => DrainAsync(steady, drainCts.Token));
+        var drain = new ClientDrainer(steady, drainCts.Token);
+        await drain.Reading.WaitAsync(TimeSpan.FromSeconds(30));
 
         var traffic = Task.Run(async () =>
         {
@@ -208,8 +267,13 @@ public class ConcurrentClientStressTests : IDisposable
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
         Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"http://localhost:{_server.Port}/api/status")).StatusCode);
 
+        await WaitUntilAsync(
+            () => drain.StateFrames > 0,
+            TimeSpan.FromSeconds(30),
+            () => $"the steady client saw no state frames while connections churned ({drain.TotalFrames} frames of any type)");
+
         drainCts.Cancel();
-        Assert.True(await drain > 0, "the steady client saw no state frames while connections churned");
+        await drain.Completion;
         steady.Abort();
         steady.Dispose();
 
