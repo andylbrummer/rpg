@@ -75,7 +75,17 @@ public class GameServer
 
         if (loadSave)
         {
-            _gameState.LoadGame(dungeonGenerator: dungeonGenerator);
+            // Say so when an existing save did not load. LoadGame also returns false when there
+            // simply is no save yet, which is the ordinary first-run case and not worth reporting —
+            // but a save that exists and fails to load has just been quarantined, and the player is
+            // about to start a fresh campaign without being told why.
+            var hadSave = RPC.Engine.Save.SaveSystem.HasSave();
+            if (!_gameState.LoadGame(dungeonGenerator: dungeonGenerator) && hadSave)
+            {
+                Console.Error.WriteLine(
+                    "[Save] An existing save could not be loaded; starting a new campaign. " +
+                    "The unreadable file has been set aside — see the messages above.");
+            }
         }
         if (isDev)
         {
