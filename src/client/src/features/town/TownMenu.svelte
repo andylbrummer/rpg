@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GameState, PartyMember } from '$shared/types/game';
+  import { modal } from '$shared/actions/modal';
   import type { AmbientAudioManager } from '$renderer/AmbientAudio';
   import type { UiIntent } from '$shared/actions/uiIntent';
   import { CharacterSheet, PartyBroadsheet } from '$features/party';
@@ -241,7 +242,7 @@
   {#if pendingBranchMembers.length > 0}
     {@const member = pendingBranchMembers[0]}
     {@const isLevel6 = member.level >= 6 && member.branchChoice != null}
-    <div class="branch-modal-overlay" role="dialog" aria-label="Choose branch">
+    <div class="branch-modal-overlay" role="dialog" aria-label="Choose branch" aria-modal="true" tabindex="-1" use:modal>
       <div class="branch-modal-card">
         <h2 class="branch-modal-title">
           {member.name} — {isLevel6 ? 'Specialize' : 'Choose Path'}

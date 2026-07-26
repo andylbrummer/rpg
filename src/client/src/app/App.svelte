@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { modal } from '$shared/actions/modal';
   import { gameStore, sendAction, serverErrorStore, bootstrapGameStore, onTestSetState } from '$shared/stores/gameStore';
   import { GameClient } from '$shared/net/GameClient';
   import { TownMenu } from '$features/town';
@@ -424,7 +425,7 @@
         />
       {/if}
       {#if gameState?.travelEncounter && gameState?.mode === 'Menu'}
-        <div class="travel-encounter-overlay" role="dialog" aria-label="Travel encounter">
+        <div class="travel-encounter-overlay" role="dialog" aria-label="Travel encounter" aria-modal="true" tabindex="-1" use:modal>
           <div class="travel-encounter-card">
             <h2 class="travel-encounter-title">{gameState.travelEncounter.name}</h2>
             {#if gameState.travelEncounter.resolutionType === 'stat_test'}
@@ -447,7 +448,7 @@
         </div>
       {/if}
       {#if gameState?.campaignEnded}
-        <div class="campaign-end-overlay" role="dialog" aria-label="Campaign complete">
+        <div class="campaign-end-overlay" role="dialog" aria-label="Campaign complete" aria-modal="true" tabindex="-1" use:modal>
           <div class="campaign-end-card">
             <h2 class="campaign-end-title">Campaign Complete</h2>
             <p class="campaign-end-turns">Final Turn: {gameState.overworld?.turns ?? 15}/15</p>
@@ -491,7 +492,7 @@
         />
       {/if}
       {#if showStats}
-        <div class="stats-overlay" role="dialog" aria-label="Your stats">
+        <div class="stats-overlay" role="dialog" aria-label="Your stats" aria-modal="true" tabindex="-1" use:modal>
           <div class="stats-card">
             <h2 class="stats-title">Your Stats</h2>
             {#if analyticsData}
@@ -514,7 +515,7 @@
         </div>
       {/if}
       {#if replaySynergyId}
-        <div class="replay-modal-overlay" role="dialog" aria-label="Synergy replay">
+        <div class="replay-modal-overlay" role="dialog" aria-label="Synergy replay" aria-modal="true" tabindex="-1" use:modal>
           <div class="replay-modal-card">
             <h3 class="replay-title">{ALL_SYNERGIES.find(s => s.id === replaySynergyId)?.abilities.join(' + ') ?? 'Synergy'}</h3>
             <div class="replay-anim"></div>
@@ -1058,7 +1059,9 @@
     background: rgba(120, 160, 200, 0.2);
     border-radius: 0.25rem;
     font-size: 0.75rem;
-    color: #78a0c8;
+    /* #78a0c8 measured 4.45:1 against its own tinted background — just under the 4.5:1 AA
+       floor at this size. A slightly lighter blue clears it while keeping the same hue. */
+    color: #8ab4dc;
   }
 
   .stats-loading {

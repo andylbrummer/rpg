@@ -101,7 +101,8 @@ test.describe('Synergy Feedback', () => {
         return {
           flashTarget: overlay?.getAttribute('data-flash-target') ?? 'missing',
           hasFlashClass: flashEl !== null,
-          flashParentText: flashEl?.closest('.enemy-side, .player-side')?.querySelector('h3')?.textContent ?? 'unknown',
+          // The side's section title; h2 since the combat overlay gained an h1 of its own.
+          flashParentText: flashEl?.closest('.enemy-side, .player-side')?.querySelector('h2')?.textContent ?? 'unknown',
         };
       });
       if (flashInfo.hasFlashClass) break;

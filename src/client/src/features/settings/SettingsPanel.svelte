@@ -36,6 +36,7 @@
     type AccessibilitySettings,
     type ColorblindMode,
   } from '$config/accessibilitySettings';
+  import { modal } from '$shared/actions/modal';
 
   interface Props {
     open: boolean;
@@ -210,9 +211,18 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="settings-overlay" onclick={onClose}>
-    <div class="settings-panel" onclick={(e) => e.stopPropagation()} tabindex="-1" onkeydown={handleKeyDown}>
+    <div
+      class="settings-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+      onclick={(e) => e.stopPropagation()}
+      tabindex="-1"
+      onkeydown={handleKeyDown}
+      use:modal
+    >
       <div class="settings-header">
-        <h2>Settings</h2>
+        <h2 id="settings-title">Settings</h2>
         <button class="close-btn" onclick={onClose} aria-label="Close settings">×</button>
       </div>
 
@@ -556,7 +566,12 @@
     background: rgba(100, 100, 100, 0.15);
     border: 1px solid #555;
     border-radius: 0.25rem;
-    color: #888;
+    /*
+      #888 measures 4.48:1 against this button's composited background — under the 4.5:1 AA
+      floor for text this size, which is why axe flagged it. #9a9a9a clears it at ~5.6:1 and
+      still reads as the muted, secondary control it is meant to be.
+    */
+    color: #9a9a9a;
     font-size: 0.8rem;
     cursor: pointer;
   }

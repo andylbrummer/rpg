@@ -226,6 +226,13 @@
 </script>
 
 <div class="combat-overlay" data-testid="combat-overlay" data-flash-target={flashingTargetId ?? ''}>
+  <!--
+    The top bar carries the app's h1, and it is hidden during combat — leaving the document with
+    no top-level heading and its outline starting at the section titles below. Combat is the
+    page's whole content at this point, so it owns the heading; it is offscreen because the
+    overlay already announces itself visually.
+  -->
+  <h1 class="combat-heading-sr">Combat</h1>
   {#if showResult && lastResult}
     <CombatResultToast result={lastResult} onDismiss={dismissResult} />
   {:else}
@@ -253,7 +260,7 @@
 
       <div class="combat-arena">
         <div class="party-side">
-          <h3>Party</h3>
+          <h2>Party</h2>
           <div class="row-band front-band">
             <span class="band-label">Front</span>
             {#each getFrontRow(getParty()) as member (member.id)}
@@ -309,7 +316,7 @@
         <div class="vs-divider">VS</div>
 
         <div class="enemy-side">
-          <h3>Enemies</h3>
+          <h2>Enemies</h2>
           <div class="row-band front-band">
             <span class="band-label">Front</span>
             {#each getFrontRow(getEnemies()) as enemy (enemy.id)}
@@ -606,8 +613,8 @@
     width: 100%;
   }
 
-  .party-side h3,
-  .enemy-side h3 {
+  .party-side h2,
+  .enemy-side h2 {
     margin: 0 0 0.25rem;
     font-size: clamp(0.75rem, 1.8vw, 0.9rem);
     color: #ccc;
@@ -936,5 +943,18 @@
       box-shadow: 0 0 1.5em 0.75em rgba(212, 168, 75, 0);
       border-color: #444;
     }
+  }
+
+  /* Offscreen rather than display:none — hidden content is skipped by screen readers too. */
+  .combat-heading-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

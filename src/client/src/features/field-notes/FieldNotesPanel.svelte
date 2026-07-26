@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ALL_SYNERGIES } from '$shared/data/synergies';
+  import { modal } from '$shared/actions/modal';
 
   interface Props {
     discoveredOrder: string[];
@@ -30,7 +31,7 @@
 
 <svelte:window onkeydown={handleKeyDown} />
 
-<div class="field-notes-overlay" role="dialog" aria-label="Field Notes">
+<div class="field-notes-overlay" role="dialog" aria-modal="true" aria-label="Field Notes" tabindex="-1" use:modal>
   <div class="field-notes-card">
     <div class="field-notes-header">
       <h2 class="field-notes-title">Field Notes</h2>
@@ -161,7 +162,13 @@
   }
 
   .field-note-locked {
-    color: #666;
+    /*
+      #666 measured 2.75:1 on this panel — well under the 4.5:1 AA floor, and it was the whole
+      panel's score: ten locked rows, ten failures. Dimness was not carrying the "locked" meaning
+      anyway; the row already says "Undiscovered synergy" and shows "??? + ???". The italic and
+      smaller size keep it visually secondary without making it unreadable.
+    */
+    color: #949494;
     font-size: 0.8rem;
     font-style: italic;
   }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PartyMember } from '$shared/types/game';
+  import { modal } from '$shared/actions/modal';
 
   interface Props {
     member: PartyMember;
@@ -70,6 +71,8 @@
     role="dialog"
     aria-modal="true"
     aria-label="{member.name} — Character Sheet"
+    tabindex="-1"
+    use:modal
   >
     <button class="close-btn" onclick={onClose} aria-label="Close character sheet">×</button>
 
