@@ -43,7 +43,7 @@ public static class SaveSystem
             var pipeline = SaveMigrationPipeline.CreateDefault(SaveBuilder.CurrentSchemaVersion);
             if (!pipeline.CanMigrate(schemaVersion))
             {
-                var quarantinePath = fileIo.Quarantine($"unsupported schema version {schemaVersion}");
+                var quarantinePath = fileIo.Quarantine();
                 Console.Error.WriteLine(
                     $"Save file '{fileIo.SavePath}' has unsupported schema version {schemaVersion}. Quarantined to '{quarantinePath}'.");
                 return false;
@@ -113,7 +113,7 @@ public static class SaveSystem
             // campaign, destroying a file that a later build (or a human) might have recovered.
             // Quarantining preserves it under a timestamped name and stops the same failure
             // repeating on every launch.
-            var quarantinePath = TryQuarantine(fileIo, $"restore failed: {ex.Message}");
+            var quarantinePath = TryQuarantine(fileIo);
             Console.Error.WriteLine(quarantinePath is null
                 ? $"Failed to load save '{fileIo.SavePath}': {ex.Message}. The file could not be set aside; it is still in place."
                 : $"Failed to load save '{fileIo.SavePath}': {ex.Message}. Moved to '{quarantinePath}' so it cannot be overwritten.");
@@ -126,11 +126,11 @@ public static class SaveSystem
     /// Never throws: this runs while already handling a failure, and losing the original error to
     /// a secondary one would hide why the load failed in the first place.
     /// </summary>
-    private static string? TryQuarantine(SaveFileIO fileIo, string reason)
+    private static string? TryQuarantine(SaveFileIO fileIo)
     {
         try
         {
-            var path = fileIo.Quarantine(reason);
+            var path = fileIo.Quarantine();
             return string.IsNullOrEmpty(path) ? null : path;
         }
         catch (Exception ex)

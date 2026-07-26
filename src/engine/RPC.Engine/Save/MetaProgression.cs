@@ -26,27 +26,53 @@ public static class MetaProgressionStore
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "RPC", "meta.json");
 
+    /// <summary>
+    /// Read the stored meta-progression, or a fresh one when there is nothing to read.
+    /// <para>
+    /// An unreadable file is set aside rather than ignored. Returning a fresh instance and then
+    /// saving over the original destroyed every run the player had ever completed — and silently,
+    /// because a fresh meta is indistinguishable from a first launch. Quarantining preserves the
+    /// file under a timestamped name and says so, so a transient read problem stays transient.
+    /// </para>
+    /// </summary>
     public static MetaProgression Load(string? path = null)
     {
         var p = path ?? DefaultPath;
+        if (!File.Exists(p)) return new MetaProgression();
+
         try
         {
-            if (!File.Exists(p)) return new MetaProgression();
             var meta = JsonSerializer.Deserialize<MetaProgression>(File.ReadAllText(p), JsonOptions);
-            return meta ?? new MetaProgression();
+            if (meta != null) return meta;
+            Quarantine(p, "file did not contain meta-progression");
         }
-        catch
+        catch (Exception ex)
         {
-            return new MetaProgression(); // corrupt/unreadable -> fresh meta
+            Quarantine(p, ex.Message);
         }
+
+        return new MetaProgression();
     }
 
+    /// <summary>
+    /// Durably replace the meta-progression file. The previous whole-file write could be
+    /// interrupted, and the truncated result then read back as corrupt — which, before the
+    /// quarantine above, meant the player's whole cross-run history was discarded on next launch.
+    /// </summary>
     public static void Save(MetaProgression meta, string? path = null)
+        => AtomicFile.WriteAllText(path ?? DefaultPath, JsonSerializer.Serialize(meta, JsonOptions));
+
+    private static void Quarantine(string path, string reason)
     {
-        var p = path ?? DefaultPath;
-        var dir = Path.GetDirectoryName(p);
-        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-        File.WriteAllText(p, JsonSerializer.Serialize(meta, JsonOptions));
+        try
+        {
+            var quarantinePath = AtomicFile.Quarantine(path, "corrupt");
+            Console.Error.WriteLine($"[Meta] Unreadable meta-progression ({reason}); moved to {quarantinePath}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Meta] Unreadable meta-progression ({reason}) and it could not be set aside: {ex.Message}");
+        }
     }
 
     /// <summary>

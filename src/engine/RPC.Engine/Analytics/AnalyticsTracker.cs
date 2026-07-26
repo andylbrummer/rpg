@@ -122,10 +122,9 @@ public class AnalyticsTracker
 
     private static void Quarantine(string path, string reason)
     {
-        var quarantinePath = $"{path}.corrupt.{DateTime.UtcNow:yyyyMMddTHHmmssfff}";
         try
         {
-            File.Move(path, quarantinePath, overwrite: true);
+            var quarantinePath = AtomicFile.Quarantine(path, "corrupt");
             Console.Error.WriteLine($"[Analytics] Unreadable analytics file ({reason}); moved to {quarantinePath}");
         }
         catch (Exception ex)
@@ -138,13 +137,6 @@ public class AnalyticsTracker
     /// Persist the accumulated aggregates if anything changed since the last write. A no-op for an
     /// in-memory tracker (null path) and for a clean one, so callers may flush freely.
     /// <para>
-    /// Writes to a caller-unique temp file and renames it into place. The temp name must be unique:
-    /// a fixed <c>analytics.json.tmp</c> let two writers interleave — the second truncated the temp
-    /// while the first renamed it — so a partial file landed at the real path and every later read
-    /// quarantined it, discarding the player's history. With a unique temp the rename is atomic and
-    /// a reader always sees a whole file; the worst concurrent outcome is a lost update.
-    /// </para>
-    /// <para>
     /// A write failure is reported but not thrown: analytics are incidental to play and must never
     /// take a run down. Reporting is what makes the difference between incidental and invisible.
     /// </para>
@@ -153,37 +145,14 @@ public class AnalyticsTracker
     {
         if (_path is null || !_dirty) return;
 
-        var tmpPath = $"{_path}.{Guid.NewGuid():N}.tmp";
         try
         {
-            var dir = Path.GetDirectoryName(_path);
-            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-
-            var json = JsonSerializer.Serialize(_data, WriteOptions);
-            File.WriteAllText(tmpPath, json);
-            using (var fs = new FileStream(tmpPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-            {
-                fs.Flush(flushToDisk: true);
-            }
-            File.Move(tmpPath, _path, overwrite: true);
+            AtomicFile.WriteAllText(_path, JsonSerializer.Serialize(_data, WriteOptions));
             _dirty = false;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[Analytics] Failed to write {_path}: {ex.Message}");
-            TryDelete(tmpPath);
-        }
-    }
-
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            if (File.Exists(path)) File.Delete(path);
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"[Analytics] Failed to clean up {path}: {ex.Message}");
         }
     }
 }
