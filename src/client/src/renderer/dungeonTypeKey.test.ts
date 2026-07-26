@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getTheme, dungeonTypeKey } from './DungeonTheme';
 import { getParticlePreset } from './AmbientParticles';
 import { torchProfileFor } from './TorchProfiles';
+import { getAmbientTrack } from './AmbientAudio';
 
 /**
  * Dungeon type ids reach the client in two spellings: content authored under the schemes uses
@@ -27,6 +28,12 @@ describe('dungeon type key', () => {
     expect(getParticlePreset('broken_engine')).not.toBeNull();
     expect(getParticlePreset('broken_engine')).toBe(getParticlePreset('broken-engine'));
     expect(getParticlePreset('bloom_site')).toBe(getParticlePreset('bloom-site'));
+  });
+
+  it('resolves the ambient track regardless of which spelling arrives', () => {
+    // Falling back to the default track is how this failed: audible, plausible, and wrong.
+    expect(getAmbientTrack('broken_engine')).toBe(getAmbientTrack('broken-engine'));
+    expect(getAmbientTrack('broken_engine')).not.toBe(getAmbientTrack('no-such-dungeon'));
   });
 
   it('has no preset for an unknown dungeon type', () => {
