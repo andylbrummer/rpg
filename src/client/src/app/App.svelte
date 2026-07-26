@@ -84,6 +84,8 @@
     return () => {
       unsubGameStore();
       feedback.dispose();
+      host?.dispose();
+      host = null;
     };
   });
 

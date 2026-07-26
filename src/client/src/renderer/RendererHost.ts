@@ -59,4 +59,15 @@ export class RendererHost {
     this.audioManager.setEnabled(enabled);
     this.unaccountedAudio.setEnabled(enabled);
   }
+
+  /**
+   * Releases the renderer, its WebGL context and the audio graph. Without this the host outlives
+   * the component that created it: the render loop keeps running, ambient oscillators keep
+   * playing, and the scene stays reachable from the window resize listener.
+   */
+  dispose() {
+    this.renderer.dispose();
+    this.unaccountedAudio.dispose();
+    this.audioManager.stop();
+  }
 }

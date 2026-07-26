@@ -41,6 +41,7 @@ export class DungeonRenderer {
   private dyingUnaccounted: Map<string, { mesh: THREE.Group; startTime: number }> = new Map();
   private lastCombatLogLength = 0;
   private unaccountedAttackBoosts: Map<string, number> = new Map();
+  private readonly onWindowResize: () => void;
 
   static isSupported(): boolean {
     try {
@@ -110,8 +111,11 @@ export class DungeonRenderer {
     this.rimLight.position.set(-5, 3, -5);
     this.scene.add(this.rimLight);
 
-    // Handle resize
-    window.addEventListener('resize', () => this.handleResize(container));
+    // Keep the handler so dispose() can detach it. An anonymous listener cannot be removed, and
+    // because it closes over `this`, window holds the whole scene — textures, meshes, WebGL
+    // context — alive for the life of the page even after the renderer is torn down.
+    this.onWindowResize = () => this.handleResize(container);
+    window.addEventListener('resize', this.onWindowResize);
 
     // Start render loop
     this.animate();
@@ -1201,12 +1205,16 @@ export class DungeonRenderer {
 
   dispose(): void {
     this.isDisposed = true;
+    window.removeEventListener('resize', this.onWindowResize);
     this.clearBloomEffects();
     this.clearCreatures();
     this.ambientParticleSystem?.dispose();
     this.ambientParticleSystem = null;
     this.clearBreakingWalls();
     this.renderer.dispose();
+    // Drop the canvas too: a host that is rebuilt onto the same container would otherwise stack a
+    // second canvas over the first, leaving the dead one painted underneath.
+    this.renderer.domElement.remove();
     this.wallTexture.dispose();
     this.floorTexture.dispose();
     this.doorTexture.dispose();
