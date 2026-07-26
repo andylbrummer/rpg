@@ -59,7 +59,7 @@ public static class CombatEngine
     {
         var order = RollInitiative(state.Combatants, rng);
         var unaccounted = state.Combatants
-            .Where(c => c.IsAlive && IsUnaccounted(c))
+            .Where(c => c.IsAlive && c.IsUnaccounted)
             .Select(c => c.Id)
             .ToArray();
 
@@ -131,7 +131,7 @@ public static class CombatEngine
             // Counter — Warding Stance: a Stillblade's ward anchors the Unaccounted in place,
             // preventing it from phasing. The roll is always consumed to keep RNG parity.
             List<CombatLogEntry>? phaseLog = null;
-            if (IsUnaccounted(currentActor) && rng.Next(2) == 0)
+            if (currentActor.IsUnaccounted && rng.Next(2) == 0)
             {
                 var warded = state.Combatants.Any(c =>
                     c.IsPlayer && c.IsAlive && c.StatusEffects.Any(s => s.Type == "warding_stance"));
@@ -150,7 +150,7 @@ public static class CombatEngine
                 }
             }
 
-            var aiAction = GenerateAIAction(state, currentActor, rng);
+            var aiAction = EnemyAI.Decide(state, currentActor, rng);
             return state with
             {
                 Combatants = newCombatants,
@@ -165,149 +165,6 @@ public static class CombatEngine
             return state;
 
         return state with { PendingAction = action, Phase = CombatPhase.Resolve };
-    }
-
-    private static CombatAction GenerateAIAction(CombatState state, Combatant actor, GameRandom rng)
-    {
-        var targets = state.Combatants.Where(c => c.IsPlayer && c.IsAlive).ToArray();
-        if (targets.Length == 0)
-            return new CombatAction(actor.Id, ActionType.Wait, null, null, null);
-
-        var behavior = actor.AiBehavior?.ToLowerInvariant() ?? "";
-
-        // Faction soldier retreat check
-        if (behavior == "soldier_tactical" && ShouldRetreat(state, actor))
-        {
-            return new CombatAction(actor.Id, ActionType.Flee, null, null, null);
-        }
-
-        var target = SelectTarget(state, actor, targets, behavior, rng);
-        var (actionType, abilityId) = ChooseAction(actor, behavior, state);
-
-        return new CombatAction(actor.Id, actionType, target.Id, abilityId, null);
-    }
-
-    private static bool ShouldRetreat(CombatState state, Combatant actor)
-    {
-        var allies = state.Combatants.Where(c => !c.IsPlayer && c.IsAlive).ToArray();
-        var enemies = state.Combatants.Where(c => c.IsPlayer && c.IsAlive).ToArray();
-
-        if (enemies.Length == 0) return false;
-
-        var allyHp = allies.Sum(a => a.Hp);
-        var enemyHp = enemies.Sum(e => e.Hp);
-
-        return allyHp < enemyHp * 0.5;
-    }
-
-    private static Combatant SelectTarget(CombatState state, Combatant actor, Combatant[] targets, string behavior, GameRandom rng)
-    {
-        // Reach-through: Unaccounted can target back row directly
-        if (IsUnaccounted(actor))
-        {
-            var backRowTargets = targets.Where(t => t.Row == 1).ToArray();
-            if (backRowTargets.Length > 0)
-            {
-                // Animator summons absorb back-row targeting
-                var summon = state.Combatants.FirstOrDefault(c => c.IsSummoned && c.IsAlive);
-                if (summon.IsAlive)
-                {
-                    return summon;
-                }
-                return backRowTargets[rng.Next(backRowTargets.Length)];
-            }
-        }
-
-        return behavior switch
-        {
-            "aggressive" or "zealot_aggressive" => targets.OrderBy(t => t.Hp).ThenBy(t => t.Id).First(),
-            "pack_hunter" => SelectPackHunterTarget(state, targets),
-            "ranged_priority" => targets.OrderByDescending(t => t.Row).ThenBy(t => t.Id).First(),
-            "defensive" => targets.OrderByDescending(t => t.Power).ThenByDescending(t => t.MaxHp).ThenBy(t => t.Id).First(),
-            "soldier_tactical" => targets.OrderBy(t => t.Hp).ThenBy(t => t.Id).First(),
-            _ => DefaultTarget(actor, targets, rng)
-        };
-    }
-
-    private static Combatant SelectPackHunterTarget(CombatState state, Combatant[] targets)
-    {
-        var enemyRows = state.Combatants
-            .Where(c => !c.IsPlayer && c.IsAlive)
-            .Select(c => c.Row)
-            .ToArray();
-
-        return targets
-            .Select(t => (Target: t, Count: enemyRows.Count(r => r == t.Row)))
-            .OrderByDescending(x => x.Count)
-            .ThenBy(x => x.Target.Id)
-            .First()
-            .Target;
-    }
-
-    private static Combatant DefaultTarget(Combatant actor, Combatant[] targets, GameRandom rng)
-    {
-        return actor.Speed >= 6 && rng.Next(2) == 0
-            ? targets.OrderByDescending(t => t.Row).First()
-            : targets[rng.Next(targets.Length)];
-    }
-
-    private static (ActionType Type, string? AbilityId) ChooseAction(Combatant actor, string behavior, CombatState state)
-    {
-        var abilityId = behavior switch
-        {
-            "aggressive" or "pack_hunter" => FindMatchingAbility(actor, "melee"),
-            "ranged_priority" => FindMatchingAbility(actor, "ranged"),
-            "defensive" => FindMatchingAbility(actor, "defensive"),
-            "soldier_tactical" or "zealot_aggressive" => ChooseSoldierAbility(actor, state),
-            _ => null
-        };
-
-        if (abilityId != null)
-            return (ActionType.UseAbility, abilityId);
-
-        return behavior == "defensive"
-            ? (ActionType.Defend, null)
-            : (ActionType.Attack, null);
-    }
-
-    private static string? ChooseSoldierAbility(Combatant actor, CombatState state)
-    {
-        if (actor.Abilities == null || actor.Abilities.Length == 0)
-            return null;
-
-        // If another ability from this actor's list was used this round, pick a different one
-        var usedThisRound = state.AbilitiesUsedThisRound
-            .Where(a => actor.Abilities.Contains(a))
-            .ToHashSet();
-
-        var available = actor.Abilities.Where(a => !usedThisRound.Contains(a)).ToArray();
-        if (available.Length > 0)
-            return available[0];
-
-        return actor.Abilities[0];
-    }
-
-    private static string? FindMatchingAbility(Combatant actor, string category)
-    {
-        if (actor.Abilities == null || actor.Abilities.Length == 0)
-            return null;
-
-        var keywords = category switch
-        {
-            "ranged" => new[] { "arrow", "shot", "bolt", "ranged", "throw" },
-            "melee" => new[] { "slash", "strike", "bite", "crack", "rend", "shiv", "spear", "blade", "thrust" },
-            "defensive" => new[] { "ward", "shield", "block", "stance", "heal", "buff", "guard", "suppress" },
-            _ => Array.Empty<string>()
-        };
-
-        foreach (var ability in actor.Abilities)
-        {
-            var lower = ability.ToLowerInvariant();
-            if (keywords.Any(k => lower.Contains(k)))
-                return ability;
-        }
-
-        return null;
     }
 
     private static CombatState Resolve(CombatState state, GameRandom rng, ClassRegistry? classes, Action<string, string, Dictionary<string, string>>? actionLogEmitter = null, SynergyRegistry? synergies = null)
@@ -334,7 +191,7 @@ public static class CombatEngine
                         var newEffects = new List<StatusEffect>(target.StatusEffects);
 
                         // Dread: Unaccounted attacks inflict dread
-                        if (IsUnaccounted(actor))
+                        if (actor.IsUnaccounted)
                         {
                             newEffects.Add(new StatusEffect("dread", -1, null, actor.Id));
                             newLog.Add(new(action.ActorId, $"{target.Name} is stricken with dread", state.Round));
@@ -364,7 +221,7 @@ public static class CombatEngine
                             var newEffects = new List<StatusEffect>(target.StatusEffects);
 
                             // Cauterist fire: burned corpses cannot reassemble
-                            if (IsUnaccounted(target) && newHp == 0 && IsFireAbility(actor, action.AbilityId, classes))
+                            if (target.IsUnaccounted && newHp == 0 && IsFireAbility(actor, action.AbilityId, classes))
                             {
                                 newEffects.Add(new StatusEffect("burned", 999, null));
                             }
@@ -693,7 +550,7 @@ public static class CombatEngine
         var known = t.DeadUnaccounted.Select(d => d.Id).ToHashSet();
         foreach (var c in t.Combatants)
         {
-            if (!c.IsAlive && IsUnaccounted(c) && known.Add(c.Id))
+            if (!c.IsAlive && c.IsUnaccounted && known.Add(c.Id))
             {
                 var isBurned = c.StatusEffects.Any(s => s.Type == "burned");
                 t.DeadUnaccounted.Add(new DeadUnaccounted(c.Id, t.EndedRound, isBurned));
@@ -821,8 +678,6 @@ public static class CombatEngine
             .Select(x => x.Id)
             .ToArray();
     }
-
-    private static bool IsUnaccounted(Combatant c) => c.AiBehavior == "unaccounted";
 
     private static bool IsFireAbility(Combatant actor, string abilityId, ClassRegistry? classes)
     {
