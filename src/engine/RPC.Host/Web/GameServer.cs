@@ -235,7 +235,7 @@ public class GameServer
             // Load outside the lock (file I/O), then swap under the game-state lock so the
             // mutation can't tear a concurrent DungeonGenerator read (generation runs under
             // the same lock via the command handler).
-            var reloaded = ContentBootstrap.LoadSegments(_catalog);
+            var reloaded = ContentBootstrap.LoadSegments(_catalog, _dungeonContent.SegmentDirectories);
             _gameStateLock.Wait(_cts.Token);
             try
             {

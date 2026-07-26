@@ -56,12 +56,12 @@ internal static class ContentBootstrap
 
         var encounterTables = LoadEncounterTables(catalog);
         var dungeonTemplates = LoadDungeonTemplates(catalog);
-        var segments = LoadSegments(catalog);
+        var dungeonContent = new DungeonContentSet(dungeonTemplates);
+        var segments = LoadSegments(catalog, dungeonContent.SegmentDirectories);
 
         // Fail-fast: a content pack that wires a dungeon template to missing segments, an unknown
         // encounter table, or no display name/watcher path must not start the host with silently
         // broken dungeons.
-        var dungeonContent = new DungeonContentSet(dungeonTemplates);
         dungeonContent.Validate(segments, encounterTables);
 
         return new HostContent(
@@ -201,7 +201,7 @@ internal static class ContentBootstrap
             var json = catalog.GetString(file) ?? catalog.GetString($"items/{Path.GetFileName(file)}");
             if (json != null)
             {
-                var items = JsonSerializer.Deserialize<ItemDef[]>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var items = Deserialize<ItemDef[]>(json, CaseInsensitive, file);
                 if (items != null)
                 {
                     foreach (var item in items)
@@ -213,26 +213,57 @@ internal static class ContentBootstrap
     }
 
     /// <summary>
-    /// Loads all room segments. Public so the host's segment hot-reload watcher can re-run it
-    /// when files change on disk.
+    /// Loads all room segments from the shared root plus the directories the dungeon templates
+    /// declare. Public so the host's segment hot-reload watcher can re-run it when files change.
+    ///
+    /// The directory list comes from the templates rather than being written out here, so it
+    /// cannot drift from the set the hot-reload watcher observes — both now read
+    /// <see cref="DungeonContentSet.SegmentDirectories"/>. Adding a dungeon means adding its
+    /// template; nothing here needs to change.
     /// </summary>
-    public static List<RoomSegment> LoadSegments(IContentCatalog catalog)
+    public static List<RoomSegment> LoadSegments(IContentCatalog catalog, IEnumerable<string> segmentDirectories)
     {
         var segments = new List<RoomSegment>();
-        foreach (var dir in new[] { "segments", "segments/broken-engine", "segments/bloom-site", "segments/boneyard", "segments/sealed-vault", "segments/settlement-gone-wrong", "segments/ossuary", "segments/contested-ruin", "segments/underway" })
+        var directories = new List<string> { "segments" };
+        directories.AddRange(segmentDirectories
+            .Where(d => !string.IsNullOrWhiteSpace(d))
+            .Select(d => d.TrimEnd('/'))
+            .Where(d => !string.Equals(d, "segments", StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal));
+
+        foreach (var dir in directories)
         {
             foreach (var file in catalog.EnumerateFiles(dir, "*.json"))
             {
                 var json = catalog.GetString(file) ?? catalog.GetString($"{dir.TrimEnd('/')}/{Path.GetFileName(file)}");
-                if (json != null)
-                {
-                    var segment = JsonSerializer.Deserialize<RoomSegment>(json, _segmentOptions);
-                    if (segment != null)
-                        segments.Add(segment);
-                }
+                if (json == null) continue;
+
+                var segment = Deserialize<RoomSegment>(json, _segmentOptions, file);
+                if (segment != null)
+                    segments.Add(segment);
             }
         }
         return segments;
+    }
+
+    /// <summary>
+    /// Deserializes a content file, naming the file when it fails. The raw JsonException reports a
+    /// path and offset but not which of several hundred content files produced it, which is the
+    /// one thing needed to fix it.
+    /// </summary>
+    private static readonly JsonSerializerOptions CaseInsensitive = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions CaseInsensitiveLenient = new() { PropertyNameCaseInsensitive = true, AllowTrailingCommas = true };
+
+    private static T? Deserialize<T>(string json, JsonSerializerOptions options, string file)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json, options);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException($"Content file '{file}' is not valid {typeof(T).Name} JSON: {ex.Message}", ex);
+        }
     }
 
     private static Dictionary<string, DungeonTemplate> LoadDungeonTemplates(IContentCatalog catalog)
@@ -243,9 +274,13 @@ internal static class ContentBootstrap
             var json = catalog.GetString(file);
             if (json != null)
             {
-                var template = JsonSerializer.Deserialize<DungeonTemplate>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowTrailingCommas = true });
-                if (template != null)
-                    templates[template.Id] = template;
+                var template = Deserialize<DungeonTemplate>(json, CaseInsensitiveLenient, file);
+                if (template is null) continue;
+                if (string.IsNullOrWhiteSpace(template.Id))
+                    throw new InvalidOperationException($"Dungeon template '{file}' has no id.");
+                if (templates.TryGetValue(template.Id, out var existing))
+                    Console.Error.WriteLine($"[Content] Dungeon template id '{template.Id}' is declared twice; '{file}' replaces the earlier '{existing.Name}'.");
+                templates[template.Id] = template;
             }
         }
         return templates;
