@@ -62,17 +62,17 @@ internal sealed class WebSocketConnectionHandler
                 Seq = client.NextServerSeq(),
                 Payload = new HelloPayload { ProtocolVersion = 2, SessionId = client.SessionId }
             });
-            heartbeat = Task.Run(() => RunHeartbeatLoop(client, connectionCts.Token));
+            heartbeat = Task.Run(() => RunHeartbeatLoop(client, connectionCts));
 
             var buffer = new byte[4096];
-            while (socket.State == WebSocketState.Open && !_cts.Token.IsCancellationRequested)
+            while (socket.State == WebSocketState.Open && !connectionCts.IsCancellationRequested)
             {
                 using var ms = new MemoryStream();
                 WebSocketReceiveResult result;
                 var oversized = false;
                 do
                 {
-                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
+                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), connectionCts.Token);
                     if (result.MessageType == WebSocketMessageType.Close) break;
                     if (ms.Length + result.Count > MaxInboundMessageBytes)
                     {
@@ -118,8 +118,18 @@ internal sealed class WebSocketConnectionHandler
     private static readonly TimeSpan PongTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan PongPollInterval = TimeSpan.FromMilliseconds(100);
 
-    private async Task RunHeartbeatLoop(ClientConnection client, CancellationToken token)
+    /// <summary>
+    /// Pings the client until it stops answering, then cancels the connection.
+    /// <para>
+    /// Cancelling is the point: a client that fails its heartbeat has usually gone silent at the
+    /// TCP level rather than closed, so the receive loop's pending ReceiveAsync would never
+    /// return on its own. Deciding the client is gone and not unblocking the reader left the
+    /// connection registered — and the session leaked — for the life of the process.
+    /// </para>
+    /// </summary>
+    private async Task RunHeartbeatLoop(ClientConnection client, CancellationTokenSource connectionCts)
     {
+        var token = connectionCts.Token;
         try
         {
             while (client.Socket.State == WebSocketState.Open && !token.IsCancellationRequested)
@@ -138,6 +148,12 @@ internal sealed class WebSocketConnectionHandler
         catch (OperationCanceledException) { }
         catch (IOException) { }
         catch (ObjectDisposedException) { }
+        finally
+        {
+            // Safe to call after Handle's finally has already cancelled: Cancel is idempotent, and
+            // Handle awaits this task before the source is disposed.
+            try { connectionCts.Cancel(); } catch (ObjectDisposedException) { }
+        }
     }
 
     /// <summary>
@@ -170,18 +186,35 @@ internal sealed class WebSocketConnectionHandler
     }
 
     /// <summary>
+    /// How long a close is allowed to take before the connection is abandoned. Both paths that
+    /// close a socket here are provoked by a client that is already misbehaving, so the close
+    /// cannot be allowed to depend on that client cooperating.
+    /// </summary>
+    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(2);
+
+    /// <summary>
     /// Closes a socket best-effort. A peer that has already vanished makes the close handshake
     /// throw, which is not a condition the caller can act on — it is already tearing down.
+    /// <para>
+    /// Uses CloseOutputAsync, under a timeout: CloseAsync waits for the peer's answering close
+    /// frame, and the peer here is by definition unresponsive — a heartbeat timeout means it has
+    /// already stopped answering, and a black-holed connection (dropped link, sleeping machine)
+    /// never answers at all. That wait had no cancellation, so the heartbeat task never finished,
+    /// the receive loop's finally block awaited it forever, and the client was never removed from
+    /// the registry. One wedged peer leaked a session for the life of the process.
+    /// </para>
     /// </summary>
     private static async Task CloseQuietly(WebSocket socket, WebSocketCloseStatus status, string description)
     {
+        using var timeout = new CancellationTokenSource(CloseTimeout);
         try
         {
-            await socket.CloseAsync(status, description, CancellationToken.None);
+            await socket.CloseOutputAsync(status, description, timeout.Token);
         }
         catch (WebSocketException) { }
         catch (IOException) { }
         catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) { }
         catch (OperationCanceledException) { }
     }
 

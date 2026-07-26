@@ -107,6 +107,34 @@ public class TransportHardeningTests : IDisposable
         Assert.Equal(WebSocketState.Open, ws.State);
     }
 
+    /// <summary>
+    /// A client that goes silent — a dropped link, a sleeping machine — never answers a heartbeat
+    /// and never sends a close frame either. The server used to decide such a client was gone and
+    /// then wait on it anyway: the close handshake waited for an answering frame with no
+    /// cancellation, and the receive loop's ReceiveAsync was tied only to server shutdown, so
+    /// neither ever completed. The connection stayed registered for the life of the process, and
+    /// every wedged client added another.
+    ///
+    /// Silence is produced by simply never reading: the client acknowledges nothing the server
+    /// sends, which is exactly what a black-holed connection looks like from the server's side.
+    /// </summary>
+    [Fact]
+    public async Task Unresponsive_Client_Is_Deregistered_Instead_Of_Leaking_Its_Session()
+    {
+        using var ws = await ConnectAsync();
+        await SendAsync(ws, """{"v":2,"type":"ready","seq":1}""");
+        Assert.Equal(1, _server.ClientCount);
+
+        // Ping interval + pong timeout + close timeout, with headroom for a loaded machine.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while (_server.ClientCount > 0 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(100, _cts.Token);
+        }
+
+        Assert.Equal(0, _server.ClientCount);
+    }
+
     [Fact]
     public async Task Malformed_Envelope_Is_Answered_With_A_Recoverable_Error()
     {
