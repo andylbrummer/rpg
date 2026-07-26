@@ -78,12 +78,16 @@ internal sealed class HttpRequestRouter
     {
         var clientDir = ClientDir;
 
+        // Only "/app" and the routes beneath it are client routes; everything else this method is
+        // reached for names a build artefact directly.
+        var isAppRoute = path == "/app" || path.StartsWith("/app/");
+
         string relativePath;
         if (path == "/app" || path == "/app/")
         {
             relativePath = "index.html";
         }
-        else if (path.StartsWith("/app/"))
+        else if (isAppRoute)
         {
             relativePath = path.Substring(5).TrimStart('/');
         }
@@ -109,6 +113,19 @@ internal sealed class HttpRequestRouter
 
         if (!File.Exists(filePath))
         {
+            // A client route that does not name a file is the single-page app's own routing, so it
+            // gets the shell and the client resolves the route. A missing build artefact is not
+            // that, and must not be answered with the shell: the browser asked for a script or a
+            // stylesheet, and handing back HTML with a 200 turns "this file is missing" into a MIME
+            // or parse error several layers away from the cause. That case means the page is
+            // referencing a build that is no longer on disk, which is worth seeing as a 404.
+            if (!isAppRoute)
+            {
+                context.Response.StatusCode = 404;
+                context.Response.Close();
+                return;
+            }
+
             filePath = Path.Combine(clientDir, "index.html");
             if (!File.Exists(filePath))
             {
