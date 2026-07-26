@@ -85,7 +85,7 @@ internal sealed class WebSocketConnectionHandler
 
                 if (oversized)
                 {
-                    await CloseQuietly(socket, WebSocketCloseStatus.MessageTooBig, "Message exceeds size limit");
+                    await client.CloseQuietly(WebSocketCloseStatus.MessageTooBig, "Message exceeds size limit");
                     break;
                 }
 
@@ -108,7 +108,7 @@ internal sealed class WebSocketConnectionHandler
             // socket; then deregister before disposing, so a broadcast that snapshots the
             // registry never hands out a connection whose socket is already gone.
             client.Abort();
-            await heartbeat;
+            await DrainHeartbeat(heartbeat);
             _registry.Remove(client);
             client.Dispose();
         }
@@ -160,7 +160,7 @@ internal sealed class WebSocketConnectionHandler
                 // client that is merely busy gets several intervals to catch up.
                 if (client.LastPongSeq <= pingSeq - MaxMissedPongs)
                 {
-                    await CloseQuietly(client.Socket, WebSocketCloseStatus.PolicyViolation, "Heartbeat timeout");
+                    await client.CloseQuietly(WebSocketCloseStatus.PolicyViolation, "Heartbeat timeout");
                     break;
                 }
             }
@@ -177,36 +177,23 @@ internal sealed class WebSocketConnectionHandler
     }
 
     /// <summary>
-    /// How long a close is allowed to take before the connection is abandoned. Both paths that
-    /// close a socket here are provoked by a client that is already misbehaving, so the close
-    /// cannot be allowed to depend on that client cooperating.
+    /// Waits for the heartbeat to finish, reporting rather than rethrowing whatever it failed
+    /// with. The caller drains it from the same finally block that deregisters and disposes the
+    /// connection, so an exception escaping here would skip both and strand the connection in the
+    /// registry for the life of the process — the leak <see cref="GameServer.ClientCount"/> exists
+    /// to detect. The heartbeat's failure is worth reporting; it is never worth the cleanup that
+    /// follows it.
     /// </summary>
-    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(2);
-
-    /// <summary>
-    /// Closes a socket best-effort. A peer that has already vanished makes the close handshake
-    /// throw, which is not a condition the caller can act on — it is already tearing down.
-    /// <para>
-    /// Uses CloseOutputAsync, under a timeout: CloseAsync waits for the peer's answering close
-    /// frame, and the peer here is by definition unresponsive — a heartbeat timeout means it has
-    /// already stopped answering, and a black-holed connection (dropped link, sleeping machine)
-    /// never answers at all. That wait had no cancellation, so the heartbeat task never finished,
-    /// the receive loop's finally block awaited it forever, and the client was never removed from
-    /// the registry. One wedged peer leaked a session for the life of the process.
-    /// </para>
-    /// </summary>
-    private static async Task CloseQuietly(WebSocket socket, WebSocketCloseStatus status, string description)
+    private static async Task DrainHeartbeat(Task heartbeat)
     {
-        using var timeout = new CancellationTokenSource(CloseTimeout);
         try
         {
-            await socket.CloseOutputAsync(status, description, timeout.Token);
+            await heartbeat;
         }
-        catch (WebSocketException) { }
-        catch (IOException) { }
-        catch (ObjectDisposedException) { }
-        catch (InvalidOperationException) { }
-        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Transport] Heartbeat loop faulted: {ex.Message}");
+        }
     }
 
     private async Task SendPing(ClientConnection client, int pingSeq)

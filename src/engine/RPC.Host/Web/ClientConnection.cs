@@ -89,6 +89,70 @@ public class ClientConnection : IDisposable
     public int NextServerSeq() => Interlocked.Increment(ref _serverSeq);
     public int NextPingSeq() => Interlocked.Increment(ref _pingSeq);
 
+    /// <summary>
+    /// How long teardown will spend closing this socket before abandoning the attempt. Both paths
+    /// that close a connection are provoked by a client that is already misbehaving, so the close
+    /// cannot be allowed to depend on that client cooperating.
+    /// </summary>
+    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Closes this socket best-effort, serialized against the connection's other senders.
+    /// <para>
+    /// The close frame is a write like every other, so it has to hold <see cref="SendLock"/>: a
+    /// WebSocket permits only one send at a time, and a close issued while a broadcast or a ping
+    /// is mid-flight throws <see cref="InvalidOperationException"/> out of whichever of the two
+    /// loses the race. Losing it in the heartbeat was the damaging case — that exception is not
+    /// one the heartbeat loop expects, so it faulted the heartbeat task, and the receive loop's
+    /// teardown awaited that task before deregistering the client. The connection then stayed in
+    /// the registry for the life of the process, which is exactly the leak
+    /// <c>GameServer.ClientCount</c> exists to detect.
+    /// </para>
+    /// <para>
+    /// Acquiring the lock is bounded by the same deadline as the close itself, and giving up on it
+    /// simply skips the close frame. Teardown must never be gated on a lock held by a send that is
+    /// itself waiting on an unresponsive peer; the caller aborts the connection regardless, which
+    /// drops the socket without the courtesy frame.
+    /// </para>
+    /// <para>
+    /// Uses CloseOutputAsync rather than CloseAsync because the latter waits for the peer's
+    /// answering close frame, and the peer here is by definition unresponsive — a heartbeat
+    /// timeout means it has already stopped answering, and a black-holed connection (dropped link,
+    /// sleeping machine) never answers at all.
+    /// </para>
+    /// </summary>
+    public async Task CloseQuietly(WebSocketCloseStatus status, string description)
+    {
+        using var timeout = new CancellationTokenSource(CloseTimeout);
+
+        try
+        {
+            await SendLock.WaitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
+
+        try
+        {
+            await Socket.CloseOutputAsync(status, description, timeout.Token);
+        }
+        catch (WebSocketException) { }
+        catch (IOException) { }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) { }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            SendLock.Release();
+        }
+    }
+
     public void Dispose()
     {
         Socket.Dispose();
