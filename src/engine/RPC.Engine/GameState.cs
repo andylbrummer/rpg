@@ -646,24 +646,12 @@ public class GameState
         foreach (var r in bench)
             Party.Bench.Remove(r);
 
-        // Reset rescue party to dungeon entrance
-        if (CurrentDungeon != null)
+        // The rescue party walks in from the entrance, not from where the last party fell.
+        if (CurrentDungeon?.FindEntrance() is { } entrance)
         {
-            for (int x = 0; x < CurrentDungeon.Width; x++)
-            {
-                for (int y = 0; y < CurrentDungeon.Height; y++)
-                {
-                    if (CurrentDungeon.Tiles[x, y].Type == TileType.Floor)
-                    {
-                        Player.Position = new Position(x, y);
-                        Player.Facing = Direction.North;
-                        ExploreAroundPlayer();
-                        break;
-                    }
-                }
-                if (Player.Position.X != RescueExpedition.TpkLocation.X || Player.Position.Y != RescueExpedition.TpkLocation.Y)
-                    break;
-            }
+            Player.Position = entrance;
+            Player.Facing = Direction.North;
+            ExploreAroundPlayer();
         }
         StepsSinceEncounter = 0;
 

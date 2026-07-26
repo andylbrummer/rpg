@@ -39,20 +39,10 @@ public class ExplorationService
         state.Mode = GameMode.Exploration;
         state.EmitActionLog("dungeon", "dungeon_entered", new Dictionary<string, string> { { "dungeonType", dungeonType } });
         state.IncrementTurns(1);
-        // Find entrance position
-        for (int x = 0; x < dungeon.Width; x++)
-        {
-            for (int y = 0; y < dungeon.Height; y++)
-            {
-                if (dungeon.Tiles[x, y].Type == TileType.Floor)
-                {
-                    state.Player.Position = new Position(x, y);
-                    state.Player.Facing = Direction.North;
-                    ExploreAroundPlayer(state);
-                    return;
-                }
-            }
-        }
+        if (dungeon.FindEntrance() is not { } entrance) return;
+        state.Player.Position = entrance;
+        state.Player.Facing = Direction.North;
+        ExploreAroundPlayer(state);
     }
 
     public void ExploreAroundPlayer(GameState state)

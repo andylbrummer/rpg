@@ -131,6 +131,32 @@ public class Dungeon
 
     public Tile GetTile(Position pos) =>
         IsValidPosition(pos) ? Tiles[pos.X, pos.Y] : new Tile(TileType.Empty);
+
+    /// <summary>
+    /// Where a party arrives in this dungeon: the tile the stitcher marked
+    /// <see cref="TileType.StairsUp"/>, or — for hand-built or stairless maps — the first walkable
+    /// tile in scan order. Null only when nothing is walkable.
+    /// <para>
+    /// Every consumer that needs "the entrance" must come through here. The stairs tile is not
+    /// <see cref="TileType.Floor"/>, so an independent scan looking for floor silently answers with
+    /// a different room than the one the path classifier and the stairs placer agree on.
+    /// </para>
+    /// </summary>
+    public Position? FindEntrance()
+    {
+        Position? firstWalkable = null;
+        for (int x = 0; x < Width; x++)
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                var tile = Tiles[x, y];
+                if (!tile.IsWalkable) continue;
+                if (tile.Type == TileType.StairsUp) return new Position(x, y);
+                firstWalkable ??= new Position(x, y);
+            }
+        }
+        return firstWalkable;
+    }
 }
 
 public class RoomInfo
