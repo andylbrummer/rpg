@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using RPC.Content;
 using RPC.Engine;
+using RPC.Engine.Analytics;
 using RPC.Engine.Commands;
 using RPC.Engine.Content;
 using RPC.Engine.Dungeons;
@@ -57,6 +58,10 @@ public class GameServer
         // Real game sessions persist cross-campaign meta-progression to disk; campaign start loads
         // and biases the run, campaign end folds the result back and saves it.
         _gameState.MetaPersistenceEnabled = true;
+        // Likewise for anonymized aggregates: only a real session records them to the per-user
+        // file. The engine's default tracker is in-memory, which keeps parallel headless tests off
+        // this shared path.
+        _gameState.Analytics = new AnalyticsTracker(AnalyticsTracker.DefaultPath);
 
         var jsonOptions = new JsonSerializerOptions
         {
@@ -177,6 +182,10 @@ public class GameServer
     public void Stop()
     {
         if (Interlocked.Exchange(ref _stopped, 1) == 1) return;
+
+        // Analytics accumulate in memory between campaign milestones, so a shutdown mid-campaign
+        // would otherwise drop everything discovered since the run began.
+        _gameState.Analytics.Flush();
 
         _cts.Cancel();
 

@@ -95,7 +95,12 @@ public class GameState
     private readonly IReadOnlyDictionary<string, DungeonTemplate> _dungeonTemplates;
     private readonly FactionContentRepository? _factionContent;
     private readonly CampaignContentRegistry? _campaignContent;
-    public Analytics.AnalyticsTracker Analytics { get; } = new();
+    /// <summary>
+    /// Anonymized aggregate tracker for the session. Defaults to an in-memory tracker so headless
+    /// tests never read or write the shared per-user analytics file; the host replaces it with a
+    /// persisting one, mirroring <see cref="MetaPersistenceEnabled"/>.
+    /// </summary>
+    public Analytics.AnalyticsTracker Analytics { get; set; } = new();
 
     /// <summary>
     /// Cross-campaign meta-progression for the current session. Defaults to an empty instance so
@@ -160,7 +165,6 @@ public class GameState
         _eventScheduler = new EventScheduler(_campaignService);
         _factionInteractionService = new FactionInteractionService(_campaignService);
         _dungeonTemplates = dungeonTemplates ?? new Dictionary<string, DungeonTemplate>();
-        Analytics = new Analytics.AnalyticsTracker();
     }
 
     private void InitializeDefaultParty()
