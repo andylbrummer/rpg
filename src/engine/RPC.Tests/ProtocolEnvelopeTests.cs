@@ -323,6 +323,57 @@ public class ProtocolEnvelopeTests : IDisposable
         Assert.Equal("state", state.GetProperty("type").GetString());
     }
 
+    /// <summary>
+    /// A client that stalls briefly must not be dropped. The pong is answered on the browser's main
+    /// thread, and this is a WebGL dungeon crawler: building a dungeon's geometry or a GC pause
+    /// blocks that thread past a ping interval. Killing on the first missed pong disconnected
+    /// healthy sessions at exactly the busiest moments, and input entered while down is discarded —
+    /// so the action that caused the stall appeared to do nothing at all.
+    ///
+    /// Silence is simulated by ignoring pings for longer than one interval, then answering the
+    /// latest one, which is what a client returning from a blocked main thread does.
+    /// </summary>
+    [Fact]
+    public async Task A_Client_That_Misses_One_Heartbeat_Is_Not_Dropped()
+    {
+        using var ws = await ConnectAsync();
+        await ReceiveAsync(ws); // hello
+
+        await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await ReceiveAsync(ws); // state
+
+        // Read pings without answering until more than one interval has passed.
+        var stallUntil = DateTime.UtcNow + TimeSpan.FromSeconds(8);
+        var latestPingSeq = 0;
+        var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        while (DateTime.UtcNow < stallUntil && !deadline.Token.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            if (msg.GetProperty("type").GetString() == "heartbeat.ping")
+                latestPingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+        }
+
+        Assert.True(latestPingSeq >= 1, "Expected at least one heartbeat.ping during the stall");
+
+        // Catch up, as a client does once its main thread frees up.
+        await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = 2, payload = new { pingSeq = latestPingSeq } });
+
+        await SendAsync(ws, new { v = 2, type = "action", seq = 3, payload = new { type = "turn_left" } });
+        var state = await WaitForTypeAsync(ws, "state", new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+        Assert.Equal("state", state.GetProperty("type").GetString());
+        Assert.Equal(WebSocketState.Open, ws.State);
+    }
+
+    private static async Task<JsonElement> WaitForTypeAsync(ClientWebSocket ws, string type, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            if (msg.GetProperty("type").GetString() == type) return msg;
+        }
+        throw new TimeoutException($"No '{type}' message arrived before the deadline.");
+    }
+
     [Fact]
     public async Task Stale_Protocol_Version_Returns_Error()
     {

@@ -115,8 +115,23 @@ internal sealed class WebSocketConnectionHandler
     }
 
     private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan PongTimeout = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan PongPollInterval = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>
+    /// How many consecutive pings a client may leave unanswered before it is considered gone.
+    /// <para>
+    /// A single missed pong does not mean a client is dead. The browser answers on its main thread,
+    /// and this is a WebGL dungeon crawler: building a dungeon's geometry, compiling a shader, or a
+    /// GC pause blocks that thread for longer than one interval. Killing on the first miss dropped
+    /// healthy sessions at exactly the busiest moments — the player saw "Connection lost", and
+    /// input entered while down is discarded by design, so the action that triggered the stall
+    /// appeared to do nothing.
+    /// </para>
+    /// <para>
+    /// Three misses still deregisters a genuinely silent client inside ~15s, which is what keeps a
+    /// black-holed connection from leaking its session for the life of the process.
+    /// </para>
+    /// </summary>
+    private const int MaxMissedPongs = 3;
 
     /// <summary>
     /// Pings the client until it stops answering, then cancels the connection.
@@ -141,7 +156,13 @@ internal sealed class WebSocketConnectionHandler
                 var pingSeq = client.NextPingSeq();
                 await SendPing(client, pingSeq);
 
-                if (!await WaitForPong(client, pingSeq, token)) break;
+                // Judged against the pong the client owes us from MaxMissedPongs pings ago, so a
+                // client that is merely busy gets several intervals to catch up.
+                if (client.LastPongSeq <= pingSeq - MaxMissedPongs)
+                {
+                    await CloseQuietly(client.Socket, WebSocketCloseStatus.PolicyViolation, "Heartbeat timeout");
+                    break;
+                }
             }
         }
         catch (WebSocketException) { }
@@ -153,35 +174,6 @@ internal sealed class WebSocketConnectionHandler
             // Safe to call after Handle's finally has already aborted: Abort is idempotent.
             client.Abort();
         }
-    }
-
-    /// <summary>
-    /// Polls for the pong matching <paramref name="pingSeq"/>. Returns false when the client
-    /// failed to answer in time and the socket was closed, i.e. the heartbeat loop should stop.
-    /// </summary>
-    private static async Task<bool> WaitForPong(ClientConnection client, int pingSeq, CancellationToken token)
-    {
-        using var pongCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-        pongCts.CancelAfter(PongTimeout);
-        try
-        {
-            while (client.Socket.State == WebSocketState.Open && !pongCts.Token.IsCancellationRequested)
-            {
-                if (client.LastPongSeq >= pingSeq) return true;
-                await Task.Delay(PongPollInterval, pongCts.Token);
-            }
-        }
-        catch (OperationCanceledException) { }
-
-        if (token.IsCancellationRequested) return false;
-
-        if (client.LastPongSeq < pingSeq && client.Socket.State == WebSocketState.Open)
-        {
-            await CloseQuietly(client.Socket, WebSocketCloseStatus.PolicyViolation, "Heartbeat timeout");
-            return false;
-        }
-
-        return true;
     }
 
     /// <summary>
