@@ -1,9 +1,12 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { resetGame, sendWsAction } from './helpers';
 
 test.describe('WebSocket Reconnect', () => {
   test('server bounce triggers reconnect and full state snapshot', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    // Reset first: these assert on the town menu, which only renders in Menu mode. Preceding
+    // specs leave the game in a dungeon, so without this the assertion depends on run order.
+    await resetGame(page, serverUrl);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
     // Kill the server process by evaluating in the browser context
@@ -30,6 +33,9 @@ test.describe('WebSocket Reconnect', () => {
 
   test('heartbeat timeout closes connection and client reconnects', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
+    // Reset first: these assert on the town menu, which only renders in Menu mode. Preceding
+    // specs leave the game in a dungeon, so without this the assertion depends on run order.
+    await resetGame(page, serverUrl);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
     // Intercept heartbeat.ping and do not respond to trigger server-side timeout
