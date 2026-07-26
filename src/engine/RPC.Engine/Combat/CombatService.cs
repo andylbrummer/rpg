@@ -575,9 +575,14 @@ public class CombatService
             && ability.Tags.Contains("area");
     }
 
-    public void FleeCombat(GameState state)
+    /// <summary>
+    /// Flee the current combat, reporting whether there was one to flee. A caller that assumes it
+    /// always happened broadcasts an unchanged state to every client, saves an ironman run for an
+    /// action that did not occur, and clears a combat result the player has not seen yet.
+    /// </summary>
+    public bool FleeCombat(GameState state)
     {
-        if (state.Mode != GameMode.Combat) return;
+        if (state.Mode != GameMode.Combat) return false;
         state.Mode = GameMode.Exploration;
         if (state.CurrentEncounterId != null)
         {
@@ -587,5 +592,6 @@ public class CombatService
         state.Combat = null;
         state.ClearTaggedEncounterTile(resolved: false);
         state.LastUpdate = DateTime.UtcNow;
+        return true;
     }
 }

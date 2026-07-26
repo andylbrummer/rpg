@@ -26,9 +26,15 @@ public class TownService
         _rumors?.VerifyRumor(rumor, source, rng) ?? false;
 
 
-    public void RestAtInn(GameState state)
+    /// <summary>
+    /// Rest the party at the inn, reporting whether it happened. The inn is a town facility, so
+    /// resting from anywhere else does nothing — and the caller has to be able to tell, because
+    /// treating a refusal as a change broadcasts an unchanged state to every client and, in an
+    /// ironman run, writes a save for an action that did not occur.
+    /// </summary>
+    public bool RestAtInn(GameState state)
     {
-        if (state.Mode != GameMode.Menu) return;
+        if (state.Mode != GameMode.Menu) return false;
         foreach (var member in state.Party.Members)
         {
             if (member.Id == Guid.Empty) continue;
@@ -37,6 +43,7 @@ public class TownService
             state.Party.SetMember(index, member with { CurrentHp = maxHp, TempModifiers = Array.Empty<TempStatModifier>() });
         }
         state.LastUpdate = DateTime.UtcNow;
+        return true;
     }
 
     public DowntimeResult? PerformDowntimeAction(GameState state, Guid characterId, DowntimeAction action)

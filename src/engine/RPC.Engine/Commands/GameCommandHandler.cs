@@ -72,9 +72,11 @@ public class GameCommandHandler
                 stateChanged = UseConsumable(useCmd);
                 break;
             case FleeCombatCommand:
-                _gameState.FleeCombat();
-                stateChanged = true;
-                clearCombatResult = true;
+                stateChanged = _gameState.FleeCombat();
+                // Only clear a combat result that this flee actually produced. Clearing on a flee
+                // that did nothing would discard the result of the previous fight before the
+                // player had seen it.
+                clearCombatResult = stateChanged;
                 break;
             case TriggerEncounterCommand:
                 _gameState.TriggerEncounter();
@@ -89,12 +91,21 @@ public class GameCommandHandler
                 }
                 break;
             case RestAtInnCommand:
-                _gameState.RestAtInn();
-                stateChanged = true;
+                stateChanged = _gameState.RestAtInn();
                 break;
             case ReturnToTownCommand:
-                _gameState.ReturnToTown();
-                stateChanged = true;
+                // Only from outside town. GameState.ReturnToTown also runs the town-arrival cycle
+                // — a campaign turn, the downtime reset, the recruit and rumor refresh — and does
+                // so unconditionally, so replaying this command from town (a double click, a
+                // reconnect resending its last action) would burn a turn off the campaign clock
+                // and clear the party's downtime progress in exchange for nothing. Guarded here
+                // rather than in the engine because arriving in town is also how the engine itself
+                // advances that cycle; it is only the client asking twice that is wrong.
+                if (_gameState.Mode != GameMode.Menu)
+                {
+                    _gameState.ReturnToTown();
+                    stateChanged = true;
+                }
                 break;
             case SaveGameCommand:
                 // Save where the run says it saves. The ironman autosave below and the permadeath

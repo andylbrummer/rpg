@@ -306,12 +306,14 @@ public class GameState
         return _combatService.SubmitCombatAction(this, action);
     }
 
-    public void FleeCombat()
+    /// <summary>Flee the current combat. False when there is no combat to flee.</summary>
+    public bool FleeCombat()
     {
-        _combatService.FleeCombat(this);
+        return _combatService.FleeCombat(this);
     }
 
-    public void RestAtInn() => _townService.RestAtInn(this);
+    /// <summary>Rest the party at the inn. False when the party is not in town.</summary>
+    public bool RestAtInn() => _townService.RestAtInn(this);
 
     public DowntimeResult? PerformDowntimeAction(Guid characterId, DowntimeAction action)
     {
