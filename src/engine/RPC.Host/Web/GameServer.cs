@@ -72,7 +72,7 @@ public class GameServer
         var dungeonGenerator = new DungeonGenerator(_segments, content.DungeonTemplates, content.EncounterTables, content.LootTables);
         var commandHandler = new GameCommandHandler(_gameState, dungeonGenerator, content.ItemRegistry);
         var statePresenter = new StatePresenter(content.ClassRegistry, content.ItemRegistry);
-        _broadcaster = new StateBroadcaster(_registry, statePresenter, _gameState, jsonOptions, _cts);
+        _broadcaster = new StateBroadcaster(_registry, jsonOptions, _cts);
 
         var protocolHandler = new ProtocolMessageHandler(_broadcaster, jsonOptions, _gameState, _gameStateLock, commandHandler, statePresenter, _cts);
         var webSocketHandler = new WebSocketConnectionHandler(_registry, _broadcaster, protocolHandler, _cts);

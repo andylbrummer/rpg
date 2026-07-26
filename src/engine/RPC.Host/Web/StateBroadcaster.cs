@@ -6,41 +6,56 @@ using RPC.Engine.Protocol;
 
 namespace RPC.Host.Web;
 
+/// <summary>
+/// Serializes protocol envelopes onto client sockets, one client at a time or fanned out to all
+/// of them. Deliberately knows nothing about the game state: snapshots are built by callers under
+/// the game-state lock and arrive here already immutable, which is what lets a send proceed
+/// without holding that lock.
+/// </summary>
 public class StateBroadcaster
 {
     private readonly ClientRegistry _registry;
-    private readonly StatePresenter _presenter;
-    private readonly GameState _gameState;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly CancellationTokenSource _cts;
 
-    public StateBroadcaster(ClientRegistry registry, StatePresenter presenter, GameState gameState, JsonSerializerOptions jsonOptions, CancellationTokenSource cts)
+    public StateBroadcaster(ClientRegistry registry, JsonSerializerOptions jsonOptions, CancellationTokenSource cts)
     {
         _registry = registry;
-        _presenter = presenter;
-        _gameState = gameState;
         _jsonOptions = jsonOptions;
         _cts = cts;
     }
 
-    public async Task SendState(ClientConnection client, int? ackSeq = null, object? payload = null)
+    /// <summary>
+    /// Sends a state snapshot to one client.
+    /// <para>
+    /// The snapshot is a required argument rather than something this class can build on demand.
+    /// Building one reads the game state's mutable collections, so it is only correct under the
+    /// game-state lock, and this class does not hold that lock — it is on the send path, where
+    /// taking it would serialize every socket write behind gameplay. Callers already build their
+    /// snapshot inside the lock and publish the immutable result out here; making that the only
+    /// option means a future caller cannot silently reintroduce a torn or concurrently-enumerated
+    /// snapshot by leaving the argument off.
+    /// </para>
+    /// </summary>
+    public async Task SendState(ClientConnection client, object payload, int? ackSeq = null)
     {
-        var state = payload ?? _presenter.CreateStateMessage(_gameState);
         var envelope = new ProtocolEnvelope
         {
             V = 2,
             Type = "state",
             Seq = client.NextServerSeq(),
             AckSeq = ackSeq,
-            Payload = state
+            Payload = payload
         };
         await SendEnvelope(client, envelope);
     }
 
-    public Task BroadcastState(ClientConnection? excludeClient = null, object? payload = null)
+    /// <summary>
+    /// Fans a state snapshot out to every ready client except <paramref name="excludeClient"/>.
+    /// The snapshot is required for the reason given on <see cref="SendState"/>.
+    /// </summary>
+    public Task BroadcastState(object payload, ClientConnection? excludeClient = null)
     {
-        var state = payload ?? _presenter.CreateStateMessage(_gameState);
-
         return BroadcastEach(
             "state",
             client => client != excludeClient && client.IsReady,
@@ -49,7 +64,7 @@ public class StateBroadcaster
                 V = 2,
                 Type = "state",
                 Seq = client.NextServerSeq(),
-                Payload = state
+                Payload = payload
             });
     }
 

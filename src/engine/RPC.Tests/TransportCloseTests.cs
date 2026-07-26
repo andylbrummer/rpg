@@ -1,9 +1,6 @@
 using System.Net.WebSockets;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using RPC.Engine;
-using RPC.Engine.Character;
-using RPC.Engine.Content;
 using RPC.Engine.Protocol;
 using RPC.Host.Web;
 
@@ -36,8 +33,6 @@ public class TransportCloseTests
         };
         return new StateBroadcaster(
             new ClientRegistry(),
-            new StatePresenter(new ClassRegistry(), new ItemRegistry()),
-            new GameState(),
             jsonOptions,
             new CancellationTokenSource());
     }

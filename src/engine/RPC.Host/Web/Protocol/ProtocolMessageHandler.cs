@@ -74,7 +74,7 @@ internal sealed class ProtocolMessageHandler
             {
                 _gameStateLock.Release();
             }
-            await _broadcaster.SendState(client, payload: snapshot);
+            await _broadcaster.SendState(client, snapshot);
             return;
         }
 
@@ -204,8 +204,8 @@ internal sealed class ProtocolMessageHandler
 
             if (stateChanged && snapshot != null)
             {
-                await _broadcaster.SendState(client, envelope.Seq, snapshot);
-                await _broadcaster.BroadcastState(excludeClient: client, payload: snapshot);
+                await _broadcaster.SendState(client, snapshot, envelope.Seq);
+                await _broadcaster.BroadcastState(snapshot, excludeClient: client);
             }
         }
         catch (OperationCanceledException)
