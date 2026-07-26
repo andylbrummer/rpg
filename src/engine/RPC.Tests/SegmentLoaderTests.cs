@@ -201,37 +201,13 @@ public class SegmentLoaderTests
         var outputDir = Path.Combine(tempDir, "out");
         Directory.CreateDirectory(outputDir);
 
-        var toolPath = FindContentPackPath();
-        var psi = new System.Diagnostics.ProcessStartInfo("dotnet", $"{toolPath} {tempDir} {outputDir}")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false
-        };
-
-        using var process = System.Diagnostics.Process.Start(psi)!;
-        process.WaitForExit();
+        var result = ContentPackToolRunner.Run(tempDir, outputDir);
 
         Directory.Delete(tempDir, recursive: true);
 
-        Assert.NotEqual(0, process.ExitCode);
-        var output = process.StandardOutput.ReadToEnd();
-        Assert.Contains("Orphan tile", output);
-        Assert.Contains("invalid.json", output);
+        Assert.True(result.ExitCode != 0, "An orphan tile must fail the content build. " + result);
+        Assert.Contains("Orphan tile", result.Output);
+        Assert.Contains("invalid.json", result.Output);
     }
 
-    private static string FindContentPackPath()
-    {
-        var baseDir = AppContext.BaseDirectory;
-        for (int ups = 0; ups <= 8; ups++)
-        {
-            var parts = new List<string> { baseDir };
-            for (int i = 0; i < ups; i++) parts.Add("..");
-            parts.AddRange(new[] { "tools", "content-pack", "bin", "Debug", "net9.0", "content-pack.dll" });
-            var candidate = Path.GetFullPath(Path.Combine(parts.ToArray()));
-            if (File.Exists(candidate))
-                return candidate;
-        }
-        throw new FileNotFoundException("Could not find content-pack.dll");
-    }
 }

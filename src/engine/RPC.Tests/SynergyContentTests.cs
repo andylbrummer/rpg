@@ -116,25 +116,13 @@ public class SynergyContentTests
     [Fact]
     public void SynergyCompiler_EmitsFlatMap()
     {
-        var toolPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "tools", "content-pack");
         var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var outputDir = Path.Combine(tempDir, "output");
         Directory.CreateDirectory(outputDir);
 
         var contentDir = Path.GetFullPath(Path.Combine(SynergyDir, ".."));
-        var startInfo = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "dotnet",
-            Arguments = $"run --project \"{toolPath}\" -- \"{contentDir}\" \"{outputDir}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false
-        };
-
-        using var process = System.Diagnostics.Process.Start(startInfo)!;
-        process.WaitForExit();
-        var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
-        Assert.Equal(0, process.ExitCode);
+        var result = ContentPackToolRunner.Run(contentDir, outputDir);
+        Assert.True(result.ExitCode == 0, result.ToString());
 
         var mapPath = Path.Combine(outputDir, "synergies.map.json");
         Assert.True(File.Exists(mapPath), "Expected synergies.map.json to be emitted");
