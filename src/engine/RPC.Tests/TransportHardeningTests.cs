@@ -88,6 +88,26 @@ public class TransportHardeningTests : IDisposable
         throw new InvalidOperationException($"No '{type}' frame arrived within 20 messages");
     }
 
+    /// <summary>
+    /// A command that reaches its handler and is rejected for what it carried — here a party slot
+    /// that does not exist — is the client's action being wrong, not the server failing. Reporting
+    /// it as "internal_error" told the player nothing and pointed anyone debugging it at a server
+    /// fault that was not there.
+    /// </summary>
+    [Fact]
+    public async Task Action_Rejected_For_A_Bad_Argument_Reports_Invalid_Action()
+    {
+        using var ws = await ConnectAsync();
+        await SendAsync(ws, """{"v":2,"type":"ready","seq":1}""");
+        await ReceiveOfTypeAsync(ws, "state");
+
+        await SendAsync(ws, """{"v":2,"type":"action","seq":2,"payload":{"type":"swap_row","slot":99}}""");
+        var error = await ReceiveOfTypeAsync(ws, "error");
+
+        Assert.Equal("invalid_action", error.GetProperty("payload").GetProperty("code").GetString());
+        Assert.Equal(WebSocketState.Open, ws.State);
+    }
+
     [Fact]
     public async Task Malformed_Heartbeat_Pong_Does_Not_Drop_The_Connection()
     {

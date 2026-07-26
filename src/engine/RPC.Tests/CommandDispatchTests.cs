@@ -67,6 +67,44 @@ public class CommandDispatchTests : IDisposable
     }
 
     /// <summary>
+    /// The slot in a row-swap comes straight off the wire. PartyState.SwapRows range-checks it,
+    /// but this case read the member out of the party array before calling it, so an out-of-range
+    /// slot failed on the raw array access instead — an IndexOutOfRangeException, which carries
+    /// nothing about which argument was wrong and reaches the client as an internal error.
+    /// </summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(6)]
+    [InlineData(int.MaxValue)]
+    public void Out_Of_Range_Party_Slot_Is_Rejected_As_A_Bad_Argument(int slot)
+    {
+        var state = new GameState(seed: 42) { SavePath = _tempSavePath };
+        var handler = new GameCommandHandler(state, new StubDungeonGenerator());
+
+        var ex = Record.Exception(() => handler.Execute(new SwapRowCommand(slot)));
+
+        Assert.IsType<ArgumentOutOfRangeException>(ex);
+    }
+
+    [Fact]
+    public void In_Range_Party_Slot_Still_Swaps()
+    {
+        var state = new GameState(seed: 42) { SavePath = _tempSavePath };
+        var handler = new GameCommandHandler(state, new StubDungeonGenerator());
+        // Slot 0 is a front-row position and slot 3 is its back-row partner. The swap exchanges the
+        // members between the two; the row number belongs to the position, so it is the identities
+        // that move.
+        var front = state.Party.Members[0].Id;
+        var back = state.Party.Members[3].Id;
+
+        var result = handler.Execute(new SwapRowCommand(0));
+
+        Assert.True(result.StateChanged);
+        Assert.Equal(back, state.Party.Members[0].Id);
+        Assert.Equal(front, state.Party.Members[3].Id);
+    }
+
+    /// <summary>
     /// Builds a command from its primary constructor with placeholder arguments. The values are
     /// deliberately meaningless: this test is about reaching the right case, and a command that is
     /// refused once it gets there has still proved the only thing being asserted.

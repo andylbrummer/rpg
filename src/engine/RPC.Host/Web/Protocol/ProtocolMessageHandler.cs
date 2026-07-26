@@ -213,6 +213,14 @@ internal sealed class ProtocolMessageHandler
             // Server shutdown, not a command failure — let the receive loop unwind.
             throw;
         }
+        catch (ArgumentException ex)
+        {
+            // The command reached its handler and was rejected for what it carried — an unknown
+            // id, a slot the party does not have. That is the client's action being wrong, not the
+            // server failing, and reporting it as an internal error tells the player nothing and
+            // sends whoever debugs it looking for a server fault that does not exist.
+            await SendError(client, "invalid_action", ex.Message, recoverable: true, ackSeq: envelope.Seq);
+        }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[Protocol] Action failed: {ex}");

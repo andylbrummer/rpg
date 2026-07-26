@@ -118,6 +118,15 @@ public class GameCommandHandler
                 break;
             case SwapRowCommand swapCmd:
                 {
+                    // The slot arrives from the client. PartyState.SwapRows range-checks it, but
+                    // this case reads the member out of the array first — so an out-of-range slot
+                    // failed on the array access, as an IndexOutOfRangeException, before the
+                    // domain's own check could reject it. Bound it against the party itself rather
+                    // than restating the range, so the two cannot drift apart.
+                    if (swapCmd.Slot < 0 || swapCmd.Slot >= _gameState.Party.Members.Length)
+                        throw new ArgumentOutOfRangeException(
+                            nameof(swapCmd.Slot), swapCmd.Slot, "No such party slot.");
+
                     var member = _gameState.Party.Members[swapCmd.Slot];
                     _gameState.Party.SwapRows(swapCmd.Slot);
                     stateChanged = true;
