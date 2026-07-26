@@ -56,16 +56,23 @@ public static class AtomicFile
 
     /// <summary>
     /// Move an unreadable file aside under a timestamped name and return that name, or "" when
-    /// there was nothing to set aside. The timestamp carries milliseconds: at second granularity
-    /// two quarantines in the same second collided on the destination and the rename threw out of
-    /// the read path, turning an unreadable file into an unhandled crash.
+    /// there was nothing to set aside.
+    /// <para>
+    /// The name carries a timestamp so the copies read in order, and a random suffix so they cannot
+    /// collide. Whole seconds alone collided, and the rename threw out of the read path — turning an
+    /// unreadable file into an unhandled crash. Widening to milliseconds only narrowed the window;
+    /// two quarantines still landed in one millisecond under load. Renaming onto an existing
+    /// quarantine is never right either: these files exist precisely because something already went
+    /// wrong, and overwriting one discards the evidence of the first failure.
+    /// </para>
     /// </summary>
     public static string Quarantine(string path, string label)
     {
         if (!File.Exists(path)) return "";
 
-        var quarantinePath = $"{path}.{label}.{DateTime.UtcNow:yyyyMMddTHHmmssfff}";
-        File.Move(path, quarantinePath, overwrite: true);
+        var unique = Guid.NewGuid().ToString("N")[..8];
+        var quarantinePath = $"{path}.{label}.{DateTime.UtcNow:yyyyMMddTHHmmssfff}.{unique}";
+        File.Move(path, quarantinePath, overwrite: false);
         return quarantinePath;
     }
 

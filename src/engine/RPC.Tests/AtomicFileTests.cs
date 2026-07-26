@@ -106,20 +106,23 @@ public class AtomicFileTests : IDisposable
     /// <summary>
     /// Quarantine names used to carry only whole seconds, so two quarantines inside the same second
     /// collided on the destination and the rename threw — turning an unreadable file into an
-    /// unhandled crash on the read path.
+    /// unhandled crash on the read path. Milliseconds alone only narrowed that window, so the name
+    /// also carries a random suffix. Every quarantined copy must survive: they exist because
+    /// something already failed, and overwriting one discards the evidence of the first failure.
     /// </summary>
     [Fact]
-    public void Quarantine_Names_Do_Not_Collide_Within_The_Same_Second()
+    public void Quarantining_Repeatedly_Preserves_Every_Copy()
     {
-        File.WriteAllText(_path, "first");
-        var first = AtomicFile.Quarantine(_path, "corrupt");
+        var quarantined = new List<string>();
+        for (int i = 0; i < 50; i++)
+        {
+            File.WriteAllText(_path, $"copy-{i}");
+            quarantined.Add(AtomicFile.Quarantine(_path, "corrupt"));
+        }
 
-        File.WriteAllText(_path, "second");
-        var second = AtomicFile.Quarantine(_path, "corrupt");
-
-        Assert.NotEqual(first, second);
-        Assert.Equal("first", File.ReadAllText(first));
-        Assert.Equal("second", File.ReadAllText(second));
+        Assert.Equal(50, quarantined.Distinct().Count());
+        for (int i = 0; i < quarantined.Count; i++)
+            Assert.Equal($"copy-{i}", File.ReadAllText(quarantined[i]));
         Assert.False(File.Exists(_path));
     }
 
