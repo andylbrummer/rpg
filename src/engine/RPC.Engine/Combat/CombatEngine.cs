@@ -566,117 +566,21 @@ public static class CombatEngine
         var nextIndex = state.CurrentTurnIndex + 1;
         if (nextIndex >= state.InitiativeOrder.Length)
         {
-            var newRound = state.Round + 1;
-            var newCombatants = state.Combatants.ToArray();
-            var newLog = new List<CombatLogEntry>(state.Log);
-            var expiredIds = new HashSet<Guid>();
-            var deadUnaccounted = new List<DeadUnaccounted>(state.DeadUnaccounted);
+            var transition = new RoundTransition(state);
 
-            // Track newly dead Unaccounted
-            foreach (var c in newCombatants)
-            {
-                if (!c.IsAlive && IsUnaccounted(c) && !deadUnaccounted.Any(d => d.Id == c.Id))
-                {
-                    var isBurned = c.StatusEffects.Any(s => s.Type == "burned");
-                    deadUnaccounted.Add(new DeadUnaccounted(c.Id, state.Round, isBurned));
-                }
-            }
+            RecordNewlyDeadUnaccounted(transition);
+            ReassembleDeadUnaccounted(transition);
+            ClearDreadFromDeadSources(transition);
+            TickModifiersAndSummons(transition, actionLogEmitter);
 
-            // Reassemble: merge 2+ dead Unaccounted after 2 rounds (burned corpses excluded)
-            var readyToReassemble = deadUnaccounted.Where(d => !d.Burned && state.Round - d.RoundDied >= 2).ToArray();
-            if (readyToReassemble.Length >= 2)
-            {
-                var toMerge = readyToReassemble.Take(2).ToArray();
-                deadUnaccounted = deadUnaccounted.Where(d => !toMerge.Any(t => t.Id == d.Id)).ToList();
-
-                var newId = Guid.NewGuid();
-                var reassembled = new Combatant(
-                    newId,
-                    "Reassembled",
-                    false,
-                    18,
-                    18,
-                    6,
-                    0,
-                    new List<StatusEffect>(),
-                    6,
-                    null,
-                    false,
-                    0,
-                    null,
-                    "unaccounted",
-                    new[] { "unaccounted_strike" });
-
-                newCombatants = newCombatants.Append(reassembled).ToArray();
-                newLog.Add(new(Guid.Empty, "Fallen Unaccounted reassemble into something worse", newRound));
-            }
-
-            // Clean up dread from dead Unaccounted. The id set is built once: it does not change
-            // across the sweep, and rebuilding it per combatant made the pass O(combatants x dead).
-            var deadUnaccountedIds = deadUnaccounted.Select(d => d.Id).ToHashSet();
-            for (int i = 0; i < newCombatants.Length; i++)
-            {
-                var c = newCombatants[i];
-                if (c.StatusEffects.Any(s => s.Type == "dread" && deadUnaccountedIds.Contains(s.SourceId)))
-                {
-                    var cleaned = c.StatusEffects
-                        .Where(s => !(s.Type == "dread" && deadUnaccountedIds.Contains(s.SourceId)))
-                        .ToList();
-                    newCombatants[i] = c with { StatusEffects = cleaned };
-                }
-            }
-
-            // War Cry: Ashmouth ability dispels dread from all allies
-            // (handled in Resolve; this ensures any lingering dread from dead sources is also cleared)
-
-            for (int i = 0; i < newCombatants.Length; i++)
-            {
-                var c = newCombatants[i];
-                if (c.TempModifiers.Length > 0)
-                {
-                    var remaining = new List<TempStatModifier>();
-                    foreach (var mod in c.TempModifiers)
-                    {
-                        var decremented = mod.Decrement();
-                        if (decremented.Duration > 0)
-                        {
-                            remaining.Add(decremented);
-                        }
-                        else
-                        {
-                            RemoveModifierFromCombatant(ref c, mod);
-                            newLog.Add(new(Guid.Empty, $"{c.Name}'s {mod.Stat} restored", newRound));
-                            actionLogEmitter?.Invoke("combat", "stat_restored", new Dictionary<string, string>
-                            {
-                                { "characterId", c.Id.ToString() },
-                                { "stat", mod.Stat },
-                                { "source", mod.Source }
-                            });
-                        }
-                    }
-                    newCombatants[i] = c with { TempModifiers = remaining.ToArray() };
-                }
-
-                c = newCombatants[i];
-                if (c.IsSummoned && c.IsAlive && c.SummonDuration > 0)
-                {
-                    var newDuration = c.SummonDuration - 1;
-                    if (newDuration <= 0)
-                    {
-                        newCombatants[i] = c with { Hp = 0, SummonDuration = 0 };
-                        newLog.Add(new(Guid.Empty, $"{c.Name} expired", newRound));
-                        expiredIds.Add(c.Id);
-                    }
-                    else
-                    {
-                        newCombatants[i] = c with { SummonDuration = newDuration };
-                    }
-                }
-            }
+            var newRound = transition.NewRound;
+            var newCombatants = transition.Combatants;
+            var newLog = transition.Log;
+            var deadUnaccounted = transition.DeadUnaccounted;
 
             // Survivors of the expiry sweep, shared by all three exits below.
             var newAssignments = state.SummonSlotAssignments
-                .Where(kv => !expiredIds.Contains(kv.Value))
+                .Where(kv => !transition.ExpiredSummonIds.Contains(kv.Value))
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             // Check for victory/defeat AFTER reassembly
@@ -753,6 +657,158 @@ public static class CombatEngine
             CurrentTurnIndex = nextIndex,
             Phase = CombatPhase.Turn
         };
+    }
+
+    /// <summary>
+    /// The working set of an end-of-round transition. The phases below run in order and each
+    /// rewrites part of it — reassembly appends a combatant that the later sweeps must then see —
+    /// so they share one carrier instead of threading five ref parameters through every step.
+    /// </summary>
+    private sealed class RoundTransition
+    {
+        public RoundTransition(CombatState state)
+        {
+            EndedRound = state.Round;
+            NewRound = state.Round + 1;
+            Combatants = state.Combatants.ToArray();
+            Log = new List<CombatLogEntry>(state.Log);
+            DeadUnaccounted = new List<DeadUnaccounted>(state.DeadUnaccounted);
+        }
+
+        /// <summary>The round that just finished. Reassembly ages corpses against this.</summary>
+        public int EndedRound { get; }
+
+        /// <summary>The round about to begin. Everything logged here belongs to it.</summary>
+        public int NewRound { get; }
+
+        public Combatant[] Combatants { get; set; }
+        public List<CombatLogEntry> Log { get; }
+        public List<DeadUnaccounted> DeadUnaccounted { get; set; }
+        public HashSet<Guid> ExpiredSummonIds { get; } = new();
+    }
+
+    /// <summary>Notes any Unaccounted that died this round, and whether fire denied it a corpse.</summary>
+    private static void RecordNewlyDeadUnaccounted(RoundTransition t)
+    {
+        var known = t.DeadUnaccounted.Select(d => d.Id).ToHashSet();
+        foreach (var c in t.Combatants)
+        {
+            if (!c.IsAlive && IsUnaccounted(c) && known.Add(c.Id))
+            {
+                var isBurned = c.StatusEffects.Any(s => s.Type == "burned");
+                t.DeadUnaccounted.Add(new DeadUnaccounted(c.Id, t.EndedRound, isBurned));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Two unburned Unaccounted corpses that have lain for two rounds merge into something worse.
+    /// Burned corpses are excluded — fire is the counterplay.
+    /// </summary>
+    private static void ReassembleDeadUnaccounted(RoundTransition t)
+    {
+        var readyToReassemble = t.DeadUnaccounted
+            .Where(d => !d.Burned && t.EndedRound - d.RoundDied >= 2)
+            .ToArray();
+        if (readyToReassemble.Length < 2) return;
+
+        var merged = readyToReassemble.Take(2).Select(d => d.Id).ToHashSet();
+        t.DeadUnaccounted = t.DeadUnaccounted.Where(d => !merged.Contains(d.Id)).ToList();
+
+        var reassembled = new Combatant(
+            Guid.NewGuid(),
+            "Reassembled",
+            false,
+            18,
+            18,
+            6,
+            0,
+            new List<StatusEffect>(),
+            6,
+            null,
+            false,
+            0,
+            null,
+            "unaccounted",
+            new[] { "unaccounted_strike" });
+
+        t.Combatants = t.Combatants.Append(reassembled).ToArray();
+        t.Log.Add(new(Guid.Empty, "Fallen Unaccounted reassemble into something worse", t.NewRound));
+    }
+
+    /// <summary>
+    /// Drops dread inflicted by an Unaccounted that is now dead. (War Cry dispels dread from the
+    /// living; this covers what a dead source left behind.)
+    /// </summary>
+    private static void ClearDreadFromDeadSources(RoundTransition t)
+    {
+        // Built once: the set cannot change during the sweep, and rebuilding it per combatant made
+        // the pass O(combatants x dead).
+        var deadIds = t.DeadUnaccounted.Select(d => d.Id).ToHashSet();
+        for (int i = 0; i < t.Combatants.Length; i++)
+        {
+            var c = t.Combatants[i];
+            if (!c.StatusEffects.Any(s => s.Type == "dread" && deadIds.Contains(s.SourceId))) continue;
+
+            t.Combatants[i] = c with
+            {
+                StatusEffects = c.StatusEffects
+                    .Where(s => !(s.Type == "dread" && deadIds.Contains(s.SourceId)))
+                    .ToList()
+            };
+        }
+    }
+
+    /// <summary>
+    /// Ages every temporary stat modifier and summon by one round: expired modifiers are undone and
+    /// announced, and summons that run out are killed and noted so their slot can be released.
+    /// </summary>
+    private static void TickModifiersAndSummons(
+        RoundTransition t,
+        Action<string, string, Dictionary<string, string>>? actionLogEmitter)
+    {
+        for (int i = 0; i < t.Combatants.Length; i++)
+        {
+            var c = t.Combatants[i];
+            if (c.TempModifiers.Length > 0)
+            {
+                var remaining = new List<TempStatModifier>();
+                foreach (var mod in c.TempModifiers)
+                {
+                    var decremented = mod.Decrement();
+                    if (decremented.Duration > 0)
+                    {
+                        remaining.Add(decremented);
+                        continue;
+                    }
+
+                    RemoveModifierFromCombatant(ref c, mod);
+                    t.Log.Add(new(Guid.Empty, $"{c.Name}'s {mod.Stat} restored", t.NewRound));
+                    actionLogEmitter?.Invoke("combat", "stat_restored", new Dictionary<string, string>
+                    {
+                        { "characterId", c.Id.ToString() },
+                        { "stat", mod.Stat },
+                        { "source", mod.Source }
+                    });
+                }
+                t.Combatants[i] = c with { TempModifiers = remaining.ToArray() };
+            }
+
+            c = t.Combatants[i];
+            if (!c.IsSummoned || !c.IsAlive || c.SummonDuration <= 0) continue;
+
+            var newDuration = c.SummonDuration - 1;
+            if (newDuration <= 0)
+            {
+                t.Combatants[i] = c with { Hp = 0, SummonDuration = 0 };
+                t.Log.Add(new(Guid.Empty, $"{c.Name} expired", t.NewRound));
+                t.ExpiredSummonIds.Add(c.Id);
+            }
+            else
+            {
+                t.Combatants[i] = c with { SummonDuration = newDuration };
+            }
+        }
     }
 
     private static Guid[] RollInitiative(Combatant[] combatants, GameRandom rng)
