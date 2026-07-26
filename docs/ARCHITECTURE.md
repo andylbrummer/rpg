@@ -122,7 +122,7 @@ rg "class Combat\w+Tests" src/engine/RPC.Tests/
 | **Commands** | `Commands/` | `CommandDispatcher` (`KnownActions`), `ICommand`, `PlayerAction`, `GameCommandHandler` | Action-string → command parsing + execution coordination |
 | **Protocol** | `Protocol/` | `ProtocolEnvelope` | Wire envelope/framing contract |
 | **Content** | `Content/` | `IContentCatalog`, `FileSystemCatalog`, `RpkCatalog`, `ItemRegistry` | Content pack + asset loading |
-| **Core / Models** | `Core/`, `Models/` | `GameRandom`, `Position`, `Direction`, `Tile`, `Dungeon` | Cross-cutting primitives + RNG |
+| **Core / Models** | `Core/`, `Models/` | `GameRandom`, `Position`, `Direction`, `Tile`, `Dungeon`, `AtomicFile` | Cross-cutting primitives + RNG; durable whole-file replace for per-user state |
 | **Analytics / LLM** | `Analytics/`, `LLM/` | `AnalyticsTracker` | Telemetry; LLM hooks |
 
 `GameState` (`GameState.cs`) is the composition root: it owns feature aggregates (`Exploration`, `Campaign`, `Party`, `Economy`, `Town`, `Overworld`, `CombatSession`, `SessionMeta`) and exposes thin delegating facades — not loose fields.
@@ -170,6 +170,7 @@ See `src/client/src/README.md` for the client taxonomy + barrel conventions.
 | Travel encounters | `RPC.Engine/Travel/`, `Overworld/OverworldService.cs` |
 | Town / vendors / missions / rumors | `RPC.Engine/Town/` |
 | Save format / migration | `RPC.Engine/Save/SaveData.*.cs`, `SaveBuilder.cs`, `SaveRestorer.cs`, `Save/Migrations/` |
+| How a per-user file is written durably | `RPC.Engine/Core/AtomicFile.cs` — used by the save, meta-progression, analytics, and LLM cache |
 | Protocol actions (server) | `RPC.Engine/Commands/CommandDispatcher.cs` (`KnownActions`) |
 | Protocol action types (client) | `tools/protocol-gen/schema.json` → `src/client/src/shared/types/protocol.gen.ts` |
 | State projection to client | `RPC.Host/Web/StatePresenter.cs`, `Presenters/*Presenter.cs` |
