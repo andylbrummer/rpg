@@ -28,6 +28,17 @@ public static class CampaignPresenter
             canAccuse = state.Evidence.Counters.Values.Any(v => v >= 7),
             hasIrrefutableProof = state.Evidence.Counters.Values.Any(v => v >= 10),
             accusedFaction = state.AccusedFaction,
+            // Whether the party could throw in with whoever is really behind the scheme, and
+            // whether they already have. Both are plain booleans on purpose: the mastermind's
+            // identity is the campaign's hidden information, and the client only needs to know
+            // that the option exists, not who it points at. Mirrors CampaignService.ChooseBetrayal,
+            // which requires a mastermind, at least one piece of evidence against them, and a run
+            // not already committed.
+            canBetray = !state.Campaign.BetrayalPath
+                && !string.IsNullOrEmpty(state.CampaignConfig?.Mastermind)
+                && state.Evidence.Counters.TryGetValue(state.CampaignConfig!.Mastermind, out var mastermindEvidence)
+                && mastermindEvidence >= 1,
+            onBetrayalPath = state.Campaign.BetrayalPath,
             mastermindRevealed = state.CampaignConfig != null && state.AccusedFaction == state.CampaignConfig.Mastermind,
             mastermindAdvantage = state.MastermindAdvantage,
             finalDungeonUnlocked = state.FinalDungeonUnlocked

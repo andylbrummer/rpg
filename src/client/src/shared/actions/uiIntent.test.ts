@@ -275,6 +275,8 @@ describe('protocol dispatch completeness', () => {
     equip_item: 'intent',
     unequip_item: 'intent',
     pay_tithe: 'intent',
+    set_ironman: 'intent',
+    choose_betrayal: 'intent',
   };
 
   // One representative sample per UiIntent kind. Keeping this exhaustive is what
@@ -286,6 +288,8 @@ describe('protocol dispatch completeness', () => {
     { kind: 'flee' },
     { kind: 'downtime', memberId: '00000000-0000-0000-0000-000000000000', action: 'rest' },
     { kind: 'wildcardAlliance', choice: 'accept' },
+    { kind: 'chooseBetrayal' },
+    { kind: 'setIronman', enabled: true },
     { kind: 'resurrect', characterId: 'c' },
     { kind: 'payTithe' },
     { kind: 'readArchive', archiveId: 'r' },

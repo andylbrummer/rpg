@@ -15,4 +15,5 @@ public class PlayerAction
     public string? Source { get; set; }
     public string? ItemId { get; set; }
     public string? EquipSlot { get; set; }
+    public bool? Enabled { get; set; }
 }

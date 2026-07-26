@@ -21,19 +21,12 @@ public class CommandReachabilityTests
     /// <summary>
     /// Command types no action string builds, and why that is currently so.
     /// <para>
-    /// Neither entry is a decision anyone recorded — both are engine features that were built and
-    /// tested but never given a way in. Ironman mode carries autosave, permadeath, the rescue
-    /// expedition and save deletion on a wipe, and no player can switch it on. Choosing betrayal is
-    /// likewise unreachable, while the analytics dashboard shows a "Betrayals" counter that
-    /// therefore cannot move. Wiring either one needs a product decision about where it belongs in
-    /// the UI, so they are recorded here rather than quietly invented.
+    /// Empty, and worth keeping that way. Anything added here is engine behaviour that exists but
+    /// that no player can reach, which is the state ironman mode and the betrayal choice were both
+    /// found in — built, tested and documented, with nothing on the wire to invoke them.
     /// </para>
     /// </summary>
-    private static readonly HashSet<string> NotReachableFromTheWire = new()
-    {
-        nameof(SetIronmanCommand),
-        nameof(ChooseBetrayalCommand),
-    };
+    private static readonly HashSet<string> NotReachableFromTheWire = new();
 
     [Fact]
     public void Every_Command_Type_Is_Reachable_From_Some_Action()
@@ -97,5 +90,6 @@ public class CommandReachabilityTests
         Source = nameof(RPC.Engine.Town.RumorVerificationSource.Firsthand),
         ItemId = "item",
         EquipSlot = "weapon",
+        Enabled = true,
     };
 }

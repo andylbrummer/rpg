@@ -302,6 +302,13 @@ export interface EvidenceState {
   canConfront: boolean;
   canAccuse: boolean;
   hasIrrefutableProof: boolean;
+  /**
+   * Whether the party could side with whoever is really behind the scheme, and whether they
+   * already have. Deliberately booleans rather than a faction id: who the mastermind is stays
+   * server-side until the campaign reveals them.
+   */
+  canBetray?: boolean;
+  onBetrayalPath?: boolean;
 }
 
 export interface DeadCharacter {
@@ -367,6 +374,7 @@ export interface GameState {
   titheTokens?: number;
   tithe?: TitheState;
   campaignEnded?: boolean;
+  isIronman?: boolean;
   isFragileState?: boolean;
   rescueExpedition?: {
     isActive: boolean;

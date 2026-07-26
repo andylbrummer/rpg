@@ -390,6 +390,42 @@
     </div>
   </div>
 {/if}
+
+<!-- The offer to change sides. The server decides whether it can be made at all — it needs a
+     mastermind and evidence against them — and says so without naming who, because that is the
+     campaign's hidden information until the party proves it. -->
+{#if gameState?.evidence?.onBetrayalPath}
+  <h2>Betrayal</h2>
+  <div class="service-list">
+    <div class="service-item betrayal-active">
+      <span class="betrayal-title">You serve the scheme now</span>
+      <span class="betrayal-desc">
+        Your evidence bought a place at their table rather than a case against them. The missions
+        ahead are theirs.
+      </span>
+    </div>
+  </div>
+{:else if gameState?.evidence?.canBetray}
+  <h2>Betrayal</h2>
+  <div class="service-list">
+    <div class="service-item betrayal-offer">
+      <div class="betrayal-text">
+        <span class="betrayal-title">Turn your evidence into an introduction</span>
+        <span class="betrayal-desc">
+          What you have gathered is enough to reach whoever is really behind this — not to expose
+          them, but to join them. There is no coming back from it.
+        </span>
+      </div>
+      <button
+        type="button"
+        class="action-btn betray"
+        onclick={() => onIntent({ kind: 'chooseBetrayal' })}
+      >
+        Throw in with them
+      </button>
+    </div>
+  </div>
+{/if}
 {/if}
 
 {#if activeTab === 'clerk'}
@@ -1099,5 +1135,47 @@
   .alliance-benefits {
     color: #888;
     font-size: clamp(0.65rem, 1.2vw, 0.8rem);
+  }
+
+  /* Deliberately the coldest thing on the screen: this is the one town action that cannot be
+     undone, and it should not read like the alliance offer sitting above it. */
+  .betrayal-offer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    background: rgba(124, 63, 63, 0.12);
+    border: 1px solid rgba(124, 63, 63, 0.4);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .betrayal-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .betrayal-title {
+    color: #c96a6a;
+    font-weight: bold;
+  }
+
+  .betrayal-desc {
+    color: #ccc;
+    font-size: clamp(0.65rem, 1.2vw, 0.8rem);
+  }
+
+  .action-btn.betray {
+    background: #7c3f3f;
+  }
+
+  .betrayal-active {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    background: rgba(124, 63, 63, 0.12);
+    border: 1px solid rgba(124, 63, 63, 0.4);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
   }
 </style>

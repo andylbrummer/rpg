@@ -366,6 +366,22 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "set_ironman"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "enabled"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "swap_row"
             },
             "slot": {
@@ -630,6 +646,18 @@
           "required": [
             "type",
             "targetId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "choose_betrayal"
+            }
+          },
+          "required": [
+            "type"
           ]
         },
         {

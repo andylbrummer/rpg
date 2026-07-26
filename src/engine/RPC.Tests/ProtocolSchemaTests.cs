@@ -43,6 +43,7 @@ public class ProtocolSchemaTests
                 "use_consumable" => new PlayerAction { Type = actionType, Action = new CombatAction(Guid.Empty, ActionType.UseItem, Guid.Empty, null, "salve") },
                 "enter_dungeon" => new PlayerAction { Type = actionType, DungeonType = "test" },
                 "swap_row" => new PlayerAction { Type = actionType, Slot = 0 },
+                "set_ironman" => new PlayerAction { Type = actionType, Enabled = true },
                 "swap_active_bench" => new PlayerAction { Type = actionType, Slot = 0, TargetId = Guid.Empty.ToString() },
                 "dismiss_character" => new PlayerAction { Type = actionType, TargetId = Guid.Empty.ToString() },
                 "set_reputation" => new PlayerAction { Type = actionType, TargetId = "bureau", Value = 0 },

@@ -87,6 +87,7 @@ public class StatePresenter
                     : 0
             },
             campaignEnded = state.CampaignEnded,
+            isIronman = state.IsIronman,
             isFragileState = state.IsFragileState,
             rescueExpedition = state.RescueExpedition != null ? new
             {

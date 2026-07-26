@@ -527,6 +527,8 @@
           onAudioToggle={(enabled) => host?.setAudioEnabled(enabled)}
           onDisplayChange={applyDisplaySettings}
           onAccessibilityChange={applyAccessibilitySettings}
+          isIronman={gameState?.isIronman ?? false}
+          onIronmanChange={(enabled) => dispatchIntent({ kind: 'setIronman', enabled })}
         />
       {/if}
       {#if showStats}
