@@ -339,9 +339,14 @@ export class DungeonRenderer {
 
     // While paused the animation loop is not drawing, so the canvas would otherwise keep showing
     // whatever was on it when the pause began — the dungeon the party just left, in the case that
-    // matters. Drawing the new state once here keeps the still image current: paused means "draw
-    // on demand" rather than "stop drawing".
-    if (this.isPaused) this.renderFrame();
+    // matters. Ask for one frame instead: paused means "draw on demand" rather than "stop drawing".
+    //
+    // Requested rather than drawn here on purpose. Drawing inline would put the cost of a whole
+    // frame on the state-update path, which is not where it belongs and is not free — where the
+    // GPU is software-emulated a frame runs into the hundreds of milliseconds, and everything the
+    // shell does after this call, including collecting the subtitles that are due, would wait
+    // behind it. The loop is still scheduling frames, so the next tick picks this up.
+    if (this.isPaused) this.needsRedraw = true;
   }
 
   private applyTheme(theme: DungeonTheme): void {
@@ -1146,6 +1151,9 @@ export class DungeonRenderer {
    */
   private isPaused = false;
 
+  /** Set while paused to ask the loop for a single frame; see {@link setPaused}. */
+  private needsRedraw = false;
+
   /**
    * Switch between drawing every frame and drawing only when the state changes.
    *
@@ -1169,13 +1177,14 @@ export class DungeonRenderer {
   setPaused(paused: boolean): void {
     const wasPaused = this.isPaused;
     this.isPaused = paused;
-    if (paused && !wasPaused) this.renderFrame();
+    if (paused && !wasPaused) this.needsRedraw = true;
   }
 
   private animate(): void {
     if (this.isDisposed) return;
     requestAnimationFrame(() => this.animate());
-    if (this.isPaused) return;
+    if (this.isPaused && !this.needsRedraw) return;
+    this.needsRedraw = false;
     this.renderFrame();
   }
 
