@@ -20,13 +20,32 @@ public class ExplorationService
 
     public void EnterDungeon(GameState state, Dungeon dungeon, string dungeonType)
     {
-        if (state.CampaignEnded) return;
-        if (state.HasPendingBranchChoices) return;
+        // Every refusal says why. Two of these used to return silently: the party simply stayed in
+        // town with no log line and no message, which reads as a dropped input rather than a rule.
+        // The client disables the button for pending branches, but it decides that from a state
+        // snapshot, so a click racing the level-up that created the pending choice still lands here.
+        if (state.CampaignEnded)
+        {
+            state.EmitActionLog("dungeon", "dungeon_blocked_campaign_ended", new Dictionary<string, string>
+            {
+                { "dungeonType", dungeonType }
+            });
+            return;
+        }
+        if (state.HasPendingBranchChoices)
+        {
+            state.EmitActionLog("dungeon", "dungeon_blocked_pending_branches", new Dictionary<string, string>
+            {
+                { "dungeonType", dungeonType }
+            });
+            return;
+        }
         if (state.Heat.IsLockdown)
         {
             state.EmitActionLog("heat", "dungeon_blocked_lockdown", new Dictionary<string, string>
             {
-                { "heat", state.Heat.Value.ToString() }
+                { "heat", state.Heat.Value.ToString() },
+                { "dungeonType", dungeonType }
             });
             return;
         }
