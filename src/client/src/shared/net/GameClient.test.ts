@@ -214,6 +214,87 @@ describe('GameClient action queueing', () => {
     expect(actions.map((a) => a.payload.type)).toContain('turn');
   });
 
+  /**
+   * onclose drops the queue precisely so stale input is not replayed. Input made *after* that,
+   * while the client is visibly down and backing off, was still being queued — and a reconnect
+   * flushed the lot, so a player who kept pressing forward for the length of a 30s backoff
+   * teleported once the session came back.
+   */
+  it('drops actions taken while disconnected instead of replaying them on reconnect', () => {
+    const client = new GameClient();
+    client.connect();
+    const first = latest();
+    first.open();
+    first.receive(HELLO);
+    first.receive(STATE);
+
+    first.drop();
+    client.sendAction({ type: 'move_forward' } as never);
+    client.sendAction({ type: 'move_forward' } as never);
+
+    vi.advanceTimersByTime(60_000);
+    const second = latest();
+    expect(second).not.toBe(first);
+    second.open();
+    second.receive(HELLO);
+    second.receive(STATE);
+
+    expect(second.sentTypes()).not.toContain('action');
+  });
+
+  /**
+   * A held action must not be overtaken. The queue used to be bypassed entirely whenever the
+   * direct send happened to succeed, so a later action went out ahead of an earlier one and the
+   * earlier one sat in the queue until some future ready transition — or forever.
+   */
+  it('keeps a later action behind one already queued', () => {
+    const client = new GameClient();
+    client.connect();
+    const socket = latest();
+    socket.open();
+    socket.receive(HELLO);
+    socket.receive(STATE);
+
+    // The socket dies without onclose running: the client still believes it is ready, so this
+    // action is held rather than lost.
+    socket.readyState = FakeWebSocket.CLOSED;
+    client.sendAction({ type: 'move_forward' } as never);
+
+    // It comes back before onclose fires. The next action must not jump the queue.
+    socket.readyState = FakeWebSocket.OPEN;
+    client.sendAction({ type: 'turn_left' } as never);
+
+    const actions = socket.sent
+      .map((raw) => JSON.parse(raw))
+      .filter((envelope) => envelope.type === 'action');
+    expect(actions.map((a) => a.payload.type)).toEqual(['move_forward', 'turn_left']);
+  });
+
+  /**
+   * The handshake window is short, but nothing bounded it: a server that accepts the socket and
+   * then never sends state let held input grow without limit for as long as the player kept
+   * pressing keys.
+   */
+  it('bounds the held queue instead of growing without limit', () => {
+    const client = new GameClient();
+    client.connect();
+    const socket = latest();
+    socket.open(); // open, but no state yet — everything is held
+
+    for (let i = 0; i < 5000; i++) {
+      client.sendAction({ type: 'move_forward' } as never);
+    }
+
+    socket.receive(HELLO);
+    socket.receive(STATE);
+
+    const actions = socket.sent
+      .map((raw) => JSON.parse(raw))
+      .filter((envelope) => envelope.type === 'action');
+    expect(actions.length).toBeGreaterThan(0);
+    expect(actions.length).toBeLessThanOrEqual(256);
+  });
+
   it('answers a heartbeat ping with the matching pong sequence', () => {
     const client = new GameClient();
     client.connect();

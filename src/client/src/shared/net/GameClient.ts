@@ -1,6 +1,13 @@
 import type { GameState, PlayerAction, ProtocolEnvelope, ErrorPayload, AnalyticsData } from '$shared/types/game';
 
 export class GameClient {
+  /**
+   * Ceiling on unsent actions. Reached only when the socket is open but the server never sends
+   * state; without it, a player holding a movement key fills memory with input that will be
+   * replayed all at once if the handshake ever completes.
+   */
+  private static readonly MAX_HELD_ACTIONS = 128;
+
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   // Retry indefinitely with capped backoff: a dev backend restart (or any transient
@@ -185,15 +192,36 @@ export class GameClient {
   }
 
   sendAction(action: PlayerAction): void {
-    // Queue rather than drop when the send does not land: isReady can still be true for the
-    // moment between the socket closing and onclose running, and an action silently lost
-    // there is an input the player made that the game never sees.
-    if (!this.isReady || !this.sendEnvelope('action', action as unknown as Record<string, unknown>)) {
-      this.actionQueue.push(action);
+    if (!this.isWorthHolding()) return;
+
+    // Everything goes through the queue, even when the socket could take it right now. Sending
+    // directly whenever the send happened to succeed let a later action overtake one already
+    // held, and left the held one stranded until some future ready transition.
+    if (this.actionQueue.length >= GameClient.MAX_HELD_ACTIONS) {
+      console.warn('Dropping action: too many are already held unsent.');
+      return;
     }
+    this.actionQueue.push(action);
+    this.flushActionQueue();
+  }
+
+  /**
+   * Whether an action is worth holding until the connection can carry it.
+   *
+   * Held: the socket is open but the first state has not arrived yet (the handshake window), and
+   * the moment between a socket dying and its onclose running, where the client still believes it
+   * is ready and an input would otherwise vanish silently.
+   *
+   * Dropped: anything entered once the client knows it is down. Those inputs were made against a
+   * screen the server never agreed to, and replaying a backoff's worth of them on reconnect moves
+   * the party somewhere the player never chose. onclose clears the queue for the same reason.
+   */
+  private isWorthHolding(): boolean {
+    return this.isReady || this.ws?.readyState === WebSocket.OPEN;
   }
 
   private flushActionQueue(): void {
+    if (!this.isReady) return;
     while (this.actionQueue.length > 0) {
       const action = this.actionQueue[0];
       if (!this.sendEnvelope('action', action as unknown as Record<string, unknown>)) {
