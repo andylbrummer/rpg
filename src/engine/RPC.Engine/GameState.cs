@@ -348,14 +348,16 @@ public class GameState
 
     public void Reset()
     {
+        // Each aggregate clears itself. Listing their fields here instead let new ones be forgotten:
+        // an open parley, an in-flight rescue expedition, the bench, and the component stores were
+        // all surviving into the next campaign.
         Mode = GameMode.Menu;
-        Combat = null;
-        LastCombatResult = null;
-        Player = new Player(new Position(32, 32), Direction.North);
         Exploration.Reset();
+        CombatSession.Reset();
+        Campaign.Reset();
+        Party.Reset();
         Town = new TownState();
         Overworld = new OverworldState();
-        Campaign.Reset();
         Secrets.Clear();
         Archives.Clear();
         _cachedEpilogue = null;
@@ -365,14 +367,11 @@ public class GameState
         Tithe.OutstandingSinceTurn = null;
         Tithe.BilledMilestones.Clear();
         PartyInventory.Clear();
-        Party.DeadCharacters.Clear();
+        _downtimeCompleted.Clear();
         InitializeDefaultParty();
         InitializeTown();
         ActionLog.Clear();
         _actionLogTurn = 0;
-        CurrentTravelEncounter = null;
-        RolledTravelEncounterCount = 0;
-        ResolvedTravelEncounterCount = 0;
         LastUpdate = DateTime.UtcNow;
     }
 
