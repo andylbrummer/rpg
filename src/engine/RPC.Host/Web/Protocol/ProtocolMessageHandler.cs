@@ -116,7 +116,11 @@ internal sealed class ProtocolMessageHandler
                     classesPlayed = data.ClassesPlayed.ToArray(),
                     branchesChosen = data.BranchesChosen.ToArray(),
                     optionalDungeonsUnlocked = data.OptionalDungeonsUnlocked.ToArray(),
-                    factionEndStates = data.FactionEndStates
+                    // Copied like the arrays above, not passed by reference. Serialization happens
+                    // after the lock is released, so handing out the live dictionary let a campaign
+                    // ending on the command thread mutate it mid-enumeration — which throws and
+                    // takes down the send rather than returning stale numbers.
+                    factionEndStates = new Dictionary<string, int>(data.FactionEndStates)
                 };
             }
             finally
