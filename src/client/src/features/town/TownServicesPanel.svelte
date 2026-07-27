@@ -13,6 +13,20 @@
 
   let { gameState, onTavernRecruit, onMissionAccept, onVendorPurchase, onIntent, activeTab = 'tavern' }: Props = $props();
 
+  /**
+   * Factions the party has built a public case against. Seven is the engine's threshold
+   * (CampaignService.AccuseFaction refuses below it), so offering anything less would present a
+   * button the server would decline.
+   */
+  const ACCUSATION_THRESHOLD = 7;
+
+  let accusableFactions = $derived(
+    Object.entries(gameState?.evidence?.counters ?? {})
+      .filter(([, evidence]) => evidence >= ACCUSATION_THRESHOLD)
+      .map(([id, evidence]) => ({ id, evidence }))
+      .sort((a, b) => b.evidence - a.evidence || a.id.localeCompare(b.id)),
+  );
+
   const classColors: Record<string, string> = {
     bonewarden: '#8B7355',
     stillblade: '#6B8E9F',
@@ -388,6 +402,43 @@
       <span class="alliance-faction">Allied with {gameState.wildCardAlliance.factionId}</span>
       <span class="alliance-benefits">Combat assistance active. Vendor discount active.</span>
     </div>
+  </div>
+{/if}
+
+<!-- Naming the faction behind the scheme. Seven pieces of evidence make the case public, and the
+     campaign allows exactly one accusation: naming the wrong faction costs standing with them and
+     hands the real mastermind the advantage. The server holds the answer; the party decides. -->
+{#if gameState?.evidence?.accusedFaction}
+  <h2>Accusation</h2>
+  <div class="service-list">
+    <div class="service-item accusation-made">
+      <span class="betrayal-title">You named {gameState.evidence.accusedFaction}</span>
+      <span class="betrayal-desc">The case is public. There is only one accusation in a campaign.</span>
+    </div>
+  </div>
+{:else if gameState?.evidence?.canAccuse}
+  <h2>Accusation</h2>
+  <div class="service-list">
+    {#each accusableFactions as faction (faction.id)}
+      <div class="service-item accusation-offer" data-testid="accusation-offer">
+        <div class="betrayal-text">
+          <span class="betrayal-title">Accuse {faction.id}</span>
+          <span class="betrayal-desc">
+            {faction.evidence} pieces of evidence — enough to make the case publicly. Name the wrong
+            faction and you lose standing with them, and whoever is really behind this gains ground.
+          </span>
+        </div>
+        <button
+          type="button"
+          class="action-btn betray"
+          data-testid="accuse-btn"
+          data-faction={faction.id}
+          onclick={() => onIntent({ kind: 'accuseFaction', factionId: faction.id })}
+        >
+          Accuse publicly
+        </button>
+      </div>
+    {/each}
   </div>
 {/if}
 

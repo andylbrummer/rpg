@@ -22,6 +22,7 @@ export type UiIntent =
   | { kind: 'downtime'; memberId: string; action: string }
   | { kind: 'wildcardAlliance'; choice: 'accept' | 'refuse' | 'ignore' }
   | { kind: 'chooseBetrayal' }
+  | { kind: 'accuseFaction'; factionId: string }
   | { kind: 'setIronman'; enabled: boolean }
   | { kind: 'resurrect'; characterId: string }
   | { kind: 'payTithe' }
@@ -82,6 +83,8 @@ export function intentToAction(intent: UiIntent): PlayerAction {
       return { type: 'wildcard_alliance', targetId: intent.choice };
     case 'chooseBetrayal':
       return { type: 'choose_betrayal' };
+    case 'accuseFaction':
+      return { type: 'accuse_faction', targetId: intent.factionId };
     case 'setIronman':
       return { type: 'set_ironman', enabled: intent.enabled };
     case 'resurrect':

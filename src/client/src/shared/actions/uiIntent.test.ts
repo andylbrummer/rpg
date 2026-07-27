@@ -191,6 +191,13 @@ describe('intentToAction', () => {
     });
   });
 
+  it('maps an accuseFaction intent to accuse_faction carrying the faction', () => {
+    expect(intentToAction({ kind: 'accuseFaction', factionId: 'bureau' })).toEqual({
+      type: 'accuse_faction',
+      targetId: 'bureau',
+    });
+  });
+
   it('maps a searchSecrets intent to search_secrets', () => {
     expect(intentToAction({ kind: 'searchSecrets' })).toEqual({ type: 'search_secrets' });
   });
@@ -262,7 +269,7 @@ describe('protocol dispatch completeness', () => {
     dialogue_choice: 'server',
     encounter_choice: 'direct',
     branch_choose: 'intent',
-    accuse_faction: 'server',
+    accuse_faction: 'intent',
     read_archive: 'intent',
     transfer_to_cache: 'intent',
     transfer_from_cache: 'intent',
@@ -309,6 +316,7 @@ describe('protocol dispatch completeness', () => {
     { kind: 'unequipItem', characterId: 'c', slot: 's' },
     { kind: 'searchSecrets' },
     { kind: 'breakWall', targetId: 't' },
+    { kind: 'accuseFaction', factionId: 'bureau' },
   ];
 
   const intentWireNames = new Set<string>(ALL_INTENT_SAMPLES.map((i) => intentToAction(i).type));

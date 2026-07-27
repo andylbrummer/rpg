@@ -311,6 +311,10 @@ export interface TitheState {
 
 export interface EvidenceState {
   suspectedFaction?: string;
+  /** Evidence gathered per faction. The threshold to accuse is 7. */
+  counters?: Record<string, number>;
+  /** The faction already accused, if any — an accusation is once per campaign. */
+  accusedFaction?: string | null;
   canConfront: boolean;
   canAccuse: boolean;
   hasIrrefutableProof: boolean;

@@ -24,6 +24,10 @@ public static class CampaignPresenter
         return new
         {
             suspectedFaction = state.Evidence.SuspectedFaction,
+            // Per-faction counts. The party gathered these, so they are theirs to see — unlike the
+            // mastermind's identity, which stays server-side. Without them the client knows an
+            // accusation is possible but not against whom it could be made.
+            counters = new Dictionary<string, int>(state.Evidence.Counters),
             canConfront = state.Evidence.Counters.Values.Any(v => v >= 5),
             canAccuse = state.Evidence.Counters.Values.Any(v => v >= 7),
             hasIrrefutableProof = state.Evidence.Counters.Values.Any(v => v >= 10),
