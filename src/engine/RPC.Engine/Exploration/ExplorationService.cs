@@ -238,7 +238,16 @@ public class ExplorationService
         if (secret.X is not int sx || secret.Y is not int sy) return false;
         if (!TryParseWall(secret.Wall, out var dir)) return false;
 
-        SetBorderBothSides(state.CurrentDungeon, new Position(sx, sy), dir, BorderType.None);
+        // The secret's coordinates are content-fixed while the dungeon around them is generated per
+        // seed, so they are not guaranteed to name a wall this layout actually made breakable.
+        // Clearing the border regardless punched a hole through an ordinary wall and rewrote the
+        // map's connectivity from what is really a content/geometry mismatch.
+        var pos = new Position(sx, sy);
+        var border = state.CurrentDungeon.GetTile(pos).GetBorder(dir);
+        if (border is not (BorderType.BreakableWall or BorderType.CrackedWall))
+            return false;
+
+        SetBorderBothSides(state.CurrentDungeon, pos, dir, BorderType.None);
 
         // One break = one in-dungeon turn (ages carried bloom samples).
         Inventory.BloomDecaySystem.TickDungeonTurn(state);

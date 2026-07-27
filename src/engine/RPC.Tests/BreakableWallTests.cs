@@ -81,6 +81,45 @@ public class BreakableWallTests
         Assert.False(gs.BreakWall("vault"));
     }
 
+    /// <summary>
+    /// A breakable-wall secret carries its own coordinates, and nothing guarantees they line up
+    /// with a wall the dungeon actually made breakable — secrets are content-fixed while dungeon
+    /// geometry is generated per seed. Breaking used to clear the border regardless, which opens a
+    /// hole through an ordinary wall and rewrites the map's connectivity from a mismatch.
+    /// </summary>
+    [Fact]
+    public void Break_WhereTheWallIsNotBreakable_LeavesTheMapAlone()
+    {
+        var gs = WallState(out var dungeon, new Position(1, 2));
+        // A solid wall, not a breakable one, at the secret's coordinates.
+        dungeon.Tiles[1, 2] = new Tile(TileType.Floor, North: BorderType.Wall);
+        dungeon.Tiles[1, 1] = new Tile(TileType.Floor, South: BorderType.Wall);
+        gs.Secrets.Register(new SecretDef("mismatched", "breakable_wall", X: 1, Y: 2, Wall: "North"));
+        Assert.True(gs.DiscoverSecret("breakable_wall", "mismatched", "search"));
+
+        Assert.False(gs.BreakWall("mismatched"));
+
+        Assert.Equal(BorderType.Wall, dungeon.Tiles[1, 2].North);
+        Assert.Equal(BorderType.Wall, dungeon.Tiles[1, 1].South);
+        Assert.False(dungeon.CanMoveTo(new Position(1, 2), Direction.North));
+    }
+
+    /// <summary>A wall already revealed by a search reads as CrackedWall, and must still break.</summary>
+    [Fact]
+    public void Break_ARevealedCrackedWall_Opens()
+    {
+        var gs = WallState(out var dungeon, new Position(3, 2));
+        dungeon.Tiles[3, 2] = new Tile(TileType.Floor, North: BorderType.CrackedWall);
+        dungeon.Tiles[3, 1] = new Tile(TileType.Floor, South: BorderType.CrackedWall);
+        gs.Secrets.Register(new SecretDef("crack", "breakable_wall", X: 3, Y: 2, Wall: "North"));
+        Assert.True(gs.DiscoverSecret("breakable_wall", "crack", "search"));
+
+        Assert.True(gs.BreakWall("crack"));
+
+        Assert.Equal(BorderType.None, dungeon.Tiles[3, 2].North);
+        Assert.True(dungeon.CanMoveTo(new Position(3, 2), Direction.North));
+    }
+
     [Fact]
     public void Break_UnknownSecretId_Fails()
     {
