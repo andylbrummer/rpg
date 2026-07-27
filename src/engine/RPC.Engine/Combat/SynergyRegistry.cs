@@ -21,9 +21,21 @@ public class SynergyRegistry
             : $"{b}|{a}";
     }
 
+    /// <summary>
+    /// Index an effect under its order-independent pair key. A pair that cannot form a key — an
+    /// empty ability id, or an ability paired with itself — is rejected rather than stored: it used
+    /// to land under the empty-string key, where <see cref="Lookup"/> could never reach it and the
+    /// next bad pair overwrote it.
+    /// </summary>
     public void Register(string a, string b, SynergyEffect effect, string? id = null, bool hidden = false, string? environment = null)
     {
-        _effects[MakeKey(a, b)] = (id, effect, hidden, environment);
+        var key = MakeKey(a, b);
+        if (string.IsNullOrEmpty(key))
+            throw new ArgumentException(
+                $"Synergy '{id ?? "(no id)"}' pairs '{a}' with '{b}', which is not two distinct ability ids, so it could never be looked up.",
+                nameof(a));
+
+        _effects[key] = (id, effect, hidden, environment);
     }
 
     public SynergyEffect? Lookup(string a, string b)
@@ -71,12 +83,25 @@ public class SynergyRegistry
             kvp => kvp.Key,
             kvp => (kvp.Value.Id, kvp.Value.Effect));
 
-    public void LoadFromJson(string json)
+    /// <summary>
+    /// Load one authored synergy. <paramref name="source"/> names the file in error messages.
+    /// A definition that cannot be registered is reported, not dropped: a silently skipped synergy
+    /// looks exactly like a pair the designers chose not to give an effect.
+    /// </summary>
+    public void LoadFromJson(string json, string? source = null)
     {
-        var def = JsonSerializer.Deserialize<SynergyDef>(json, ContentJsonOptions.Standard);
+        var where = source is null ? "A synergy definition" : $"Synergy definition '{source}'";
+        var def = JsonSerializer.Deserialize<SynergyDef>(json, ContentJsonOptions.Standard)
+            ?? throw new InvalidOperationException($"{where} did not parse into a definition.");
 
-        if (def is null || def.Anti || def.Abilities.Length != 2)
+        // Anti-synergies are authored to record that a pair deliberately does nothing. There is no
+        // effect to index, so skipping one is the intended outcome rather than a lost definition.
+        if (def.Anti)
             return;
+
+        if (def.Abilities is not { Length: 2 })
+            throw new InvalidOperationException(
+                $"{where} lists {def.Abilities?.Length ?? 0} abilities; a synergy pairs exactly two.");
 
         var effect = new SynergyEffect(
             def.Effect.Type,
@@ -93,7 +118,7 @@ public class SynergyRegistry
         foreach (var file in Directory.EnumerateFiles(directoryPath, "*.json"))
         {
             var json = File.ReadAllText(file);
-            LoadFromJson(json);
+            LoadFromJson(json, Path.GetFileName(file));
         }
     }
 }

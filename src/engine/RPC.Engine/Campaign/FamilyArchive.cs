@@ -36,7 +36,11 @@ public class ArchiveRegistry
 
     public void Register(FamilyArchiveDef archive)
     {
-        if (string.IsNullOrEmpty(archive.Id)) return;
+        if (string.IsNullOrEmpty(archive.Id))
+            throw new ArgumentException(
+                "A Family Archive must carry an id; reading one addresses it by id and tracks it by id.",
+                nameof(archive));
+
         _byId[archive.Id] = archive;
     }
 
@@ -46,11 +50,20 @@ public class ArchiveRegistry
 
     public void Clear() => _byId.Clear();
 
-    public void LoadFromJson(string json)
+    /// <summary>
+    /// Load one authored archive. <paramref name="source"/> names the file in error messages. A
+    /// definition that cannot be registered is reported, not dropped: reading an archive the
+    /// registry never accepted just returns null, which reads as "already read".
+    /// </summary>
+    public void LoadFromJson(string json, string? source = null)
     {
-        var def = JsonSerializer.Deserialize<FamilyArchiveDef>(json, ContentJsonOptions.Standard);
-        if (def is null || string.IsNullOrEmpty(def.Id))
-            return;
+        var where = source is null ? "An archive definition" : $"Archive definition '{source}'";
+        var def = JsonSerializer.Deserialize<FamilyArchiveDef>(json, ContentJsonOptions.Standard)
+            ?? throw new InvalidOperationException($"{where} did not parse into a definition.");
+
+        if (string.IsNullOrEmpty(def.Id))
+            throw new InvalidOperationException($"{where} carries no id, so nothing could ever read it.");
+
         Register(def);
     }
 
@@ -59,7 +72,7 @@ public class ArchiveRegistry
         if (!Directory.Exists(directoryPath))
             return;
         foreach (var file in Directory.EnumerateFiles(directoryPath, "*.json"))
-            LoadFromJson(File.ReadAllText(file));
+            LoadFromJson(File.ReadAllText(file), Path.GetFileName(file));
     }
 
     /// <summary>
@@ -73,7 +86,7 @@ public class ArchiveRegistry
         {
             var json = catalog.GetString(file) ?? catalog.GetString($"archives/{Path.GetFileName(file)}");
             if (json != null)
-                LoadFromJson(json);
+                LoadFromJson(json, Path.GetFileName(file));
         }
     }
 }

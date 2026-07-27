@@ -192,7 +192,7 @@ internal static class ContentBootstrap
         {
             var json = catalog.GetString(file) ?? catalog.GetString($"synergies/{Path.GetFileName(file)}");
             if (json != null)
-                registry.LoadFromJson(json);
+                registry.LoadFromJson(json, Path.GetFileName(file));
         }
         return registry;
     }
