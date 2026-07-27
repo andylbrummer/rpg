@@ -88,6 +88,7 @@ public static class SaveSystem
             SaveRestorer.RestoreWildCardAlliance(state, data);
             SaveRestorer.RestoreStepsSinceEncounter(state, data);
             SaveRestorer.RestoreIronman(state, data);
+            SaveRestorer.RestoreRescueExpedition(state, data);
 
             if (dungeonGenerator != null
                 && state.Mode == GameMode.Exploration

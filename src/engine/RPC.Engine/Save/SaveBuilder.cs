@@ -65,6 +65,7 @@ public static class SaveBuilder
             UnlockedDungeons = state.Campaign.UnlockedDungeons.ToArray(),
             ReadDocuments = state.Campaign.ReadDocuments.ToArray(),
             AnnouncedFactionStates = state.Campaign.AnnouncedFactionStates.ToArray(),
+            RescueExpedition = BuildRescueExpedition(state),
             BetrayalPath = state.Campaign.BetrayalPath,
             FamilyName = state.Campaign.FamilyName
         };
@@ -229,6 +230,23 @@ public static class SaveBuilder
             ResurrectionAttempts = d.ResurrectionAttempts,
             BranchAdvancementLocked = d.BranchAdvancementLocked
         }).ToArray();
+
+    public static SaveRescueExpedition? BuildRescueExpedition(GameState state)
+    {
+        var rescue = state.RescueExpedition;
+        if (rescue is null) return null;
+
+        return new SaveRescueExpedition
+        {
+            IsActive = rescue.IsActive,
+            RescuePartyIds = rescue.RescuePartyIds.Select(id => id.ToString()).ToArray(),
+            DungeonType = rescue.DungeonType,
+            TpkX = rescue.TpkLocation.X,
+            TpkY = rescue.TpkLocation.Y,
+            Success = rescue.Success,
+            Resolved = rescue.Resolved
+        };
+    }
 
     public static SaveJournalState BuildJournal(GameState state) => new()
     {

@@ -351,6 +351,32 @@ public static class SaveRestorer
         state.StepsSinceEncounter = Math.Max(0, data.StepsSinceEncounter);
     }
 
+    /// <summary>
+    /// Restores the in-flight rescue expedition, or clears it when the save carries none — a state
+    /// object being loaded into must not keep an expedition the save does not describe.
+    /// </summary>
+    public static void RestoreRescueExpedition(GameState state, SaveData data)
+    {
+        if (data.RescueExpedition is not { } saved)
+        {
+            state.RescueExpedition = null;
+            return;
+        }
+
+        state.RescueExpedition = new Combat.RescueExpeditionState
+        {
+            IsActive = saved.IsActive,
+            RescuePartyIds = saved.RescuePartyIds
+                .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
+                .Where(g => g != Guid.Empty)
+                .ToArray(),
+            DungeonType = saved.DungeonType,
+            TpkLocation = new Models.Dungeons.Position(saved.TpkX, saved.TpkY),
+            Success = saved.Success,
+            Resolved = saved.Resolved
+        };
+    }
+
     public static void RestoreIronman(GameState state, SaveData data)
     {
         state.IsIronman = data.IsIronman;

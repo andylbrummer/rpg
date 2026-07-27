@@ -66,6 +66,9 @@ public class SaveData
     /// run was re-announcing every transition it had already reported.
     /// </summary>
     public string[] AnnouncedFactionStates { get; set; } = Array.Empty<string>();
+
+    /// <summary>The in-flight ironman rescue expedition, or null when none is running.</summary>
+    public SaveRescueExpedition? RescueExpedition { get; set; }
     public bool BetrayalPath { get; set; } = false;
     public string FamilyName { get; set; } = "";
 }
