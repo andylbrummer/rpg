@@ -24,6 +24,13 @@ namespace RPC.Tests;
 /// </summary>
 public class TransportSendTimeoutTests
 {
+    /// <summary>
+    /// The send deadline these tests run their wedged connections at. They exist to prove a send
+    /// expires at all, not to measure the production five seconds — waiting those out three times
+    /// made them among the slowest tests in the suite for no added confidence.
+    /// </summary>
+    private static readonly TimeSpan FastSendTimeout = TimeSpan.FromMilliseconds(200);
+
     private static StateBroadcaster CreateBroadcaster()
     {
         var jsonOptions = new JsonSerializerOptions
@@ -50,11 +57,11 @@ public class TransportSendTimeoutTests
     {
         var broadcaster = CreateBroadcaster();
         using var socket = new WedgedWebSocket();
-        var client = new ClientConnection(socket, CancellationToken.None);
+        var client = new ClientConnection(socket, CancellationToken.None, FastSendTimeout);
 
         var send = broadcaster.SendEnvelope(client, Envelope(client));
 
-        var finished = await Task.WhenAny(send, Task.Delay(ClientConnection.SendTimeout * 4));
+        var finished = await Task.WhenAny(send, Task.Delay(FastSendTimeout * 8));
         Assert.True(ReferenceEquals(finished, send), "SendEnvelope never returned; the send is unbounded.");
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => send);
     }
@@ -64,7 +71,7 @@ public class TransportSendTimeoutTests
     {
         var broadcaster = CreateBroadcaster();
         using var socket = new WedgedWebSocket();
-        var client = new ClientConnection(socket, CancellationToken.None);
+        var client = new ClientConnection(socket, CancellationToken.None, FastSendTimeout);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => broadcaster.SendEnvelope(client, Envelope(client)));
@@ -83,7 +90,7 @@ public class TransportSendTimeoutTests
     {
         var broadcaster = CreateBroadcaster();
         using var socket = new WedgedWebSocket();
-        var client = new ClientConnection(socket, CancellationToken.None);
+        var client = new ClientConnection(socket, CancellationToken.None, FastSendTimeout);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => broadcaster.SendEnvelope(client, Envelope(client)));
@@ -101,6 +108,9 @@ public class TransportSendTimeoutTests
     {
         var broadcaster = CreateBroadcaster();
         using var socket = new WedgedWebSocket();
+        // The production deadline on purpose: this test is about Abort unblocking the send, and a
+        // short deadline would expire it on its own and let the test pass without Abort doing
+        // anything. Abort happens immediately, so the long deadline costs nothing.
         var client = new ClientConnection(socket, CancellationToken.None);
 
         var send = broadcaster.SendEnvelope(client, Envelope(client));

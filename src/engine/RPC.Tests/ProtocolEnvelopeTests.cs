@@ -406,8 +406,12 @@ public class ProtocolEnvelopeTests : IDisposable
     /// healthy sessions at exactly the busiest moments, and input entered while down is discarded —
     /// so the action that caused the stall appeared to do nothing at all.
     ///
-    /// Silence is simulated by ignoring pings for longer than one interval, then answering the
-    /// latest one, which is what a client returning from a blocked main thread does.
+    /// Silence is simulated by ignoring the first ping and answering the second, which is what a
+    /// client returning from a blocked main thread does. Counting pings rather than waiting out
+    /// wall-clock is what makes this reliable: the server's rule counts consecutive unanswered
+    /// pings, so a test that stalls "for 1.6 intervals" and then races to catch up before the third
+    /// one is measuring the machine's scheduler as much as the server, and loses that race under a
+    /// loaded parallel run.
     /// </summary>
     [Fact]
     public async Task A_Client_That_Misses_One_Heartbeat_Is_Not_Dropped()
@@ -419,27 +423,51 @@ public class ProtocolEnvelopeTests : IDisposable
         await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
         await ReceiveAsync(ws); // state
 
-        // Read pings without answering for longer than one interval, but short of the three
-        // consecutive misses that legitimately end a connection.
-        var stallUntil = DateTime.UtcNow + server.HeartbeatInterval * 1.6;
-        var latestPingSeq = 0;
+        // Ignore the first ping outright; answer the second.
+        var pingsSeen = 0;
         var deadline = new CancellationTokenSource(server.HeartbeatInterval * 40);
-        while (DateTime.UtcNow < stallUntil && !deadline.Token.IsCancellationRequested)
+        while (!deadline.Token.IsCancellationRequested)
         {
             var msg = await ReceiveAsync(ws);
-            if (msg.GetProperty("type").GetString() == "heartbeat.ping")
-                latestPingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+            if (msg.GetProperty("type").GetString() != "heartbeat.ping") continue;
+
+            if (++pingsSeen < 2) continue;
+
+            var pingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+            await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = 2, payload = new { pingSeq } });
+            break;
         }
 
-        Assert.True(latestPingSeq >= 1, "Expected at least one heartbeat.ping during the stall");
+        Assert.Equal(2, pingsSeen);
 
-        // Catch up, as a client does once its main thread frees up.
-        await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = 2, payload = new { pingSeq = latestPingSeq } });
-
+        // Still alive, and still serving actions. Pings that arrive while the action is in flight
+        // are answered rather than ignored, so this assertion cannot fail for the unrelated reason
+        // of a second stall it never meant to simulate.
         await SendAsync(ws, new { v = 2, type = "action", seq = 3, payload = new { type = "turn_left" } });
-        var state = await WaitForTypeAsync(ws, "state", new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+        var state = await WaitForTypeAnsweringPingsAsync(ws, "state", deadline.Token);
         Assert.Equal("state", state.GetProperty("type").GetString());
         Assert.Equal(WebSocketState.Open, ws.State);
+    }
+
+    /// <summary>
+    /// Waits for a message of <paramref name="type"/>, answering heartbeat pings while it waits so
+    /// the wait itself cannot look like a stalled client.
+    /// </summary>
+    private static async Task<JsonElement> WaitForTypeAnsweringPingsAsync(ClientWebSocket ws, string type, CancellationToken token)
+    {
+        var pongSeq = 100;
+        while (!token.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            var msgType = msg.GetProperty("type").GetString();
+            if (msgType == type) return msg;
+            if (msgType == "heartbeat.ping")
+            {
+                var pingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = pongSeq++, payload = new { pingSeq } });
+            }
+        }
+        throw new TimeoutException($"No '{type}' message arrived before the deadline.");
     }
 
     private static async Task<JsonElement> WaitForTypeAsync(ClientWebSocket ws, string type, CancellationToken token)

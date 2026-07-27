@@ -123,7 +123,7 @@ public class StateBroadcaster
     /// <summary>
     /// Sends one envelope on a client's socket, serialized against that socket's other senders.
     /// <para>
-    /// Bounded by <see cref="ClientConnection.SendTimeout"/> and by the connection's own lifetime
+    /// Bounded by the connection's <see cref="ClientConnection.SendTimeout"/> and by the connection's own lifetime
     /// rather than only by server shutdown. A peer that stops draining its socket leaves
     /// SendAsync parked with the socket still Open, which would otherwise hold the send lock and
     /// wedge the heartbeat for the life of the process — and, because a broadcast is awaited by
@@ -150,7 +150,7 @@ public class StateBroadcaster
                 if (client.Socket.State == WebSocketState.Open)
                 {
                     using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(client.Token, _cts.Token);
-                    writeCts.CancelAfter(ClientConnection.SendTimeout);
+                    writeCts.CancelAfter(client.SendTimeout);
                     await client.Socket.SendAsync(
                         new ArraySegment<byte>(bytes),
                         WebSocketMessageType.Text,

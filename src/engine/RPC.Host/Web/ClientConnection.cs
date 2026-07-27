@@ -17,7 +17,14 @@ public class ClientConnection : IDisposable
     /// microseconds) and above the heartbeat's own ping/pong window, so a send only expires when
     /// the peer has genuinely stopped draining.
     /// </summary>
-    public static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan DefaultSendTimeout = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// This connection's send deadline. Per-connection rather than a constant so the tests that
+    /// deliberately wedge a peer can expire it in milliseconds instead of waiting out the
+    /// production five seconds three times over.
+    /// </summary>
+    public TimeSpan SendTimeout { get; }
 
     public WebSocket Socket { get; }
     public string SessionId { get; }
@@ -65,10 +72,11 @@ public class ClientConnection : IDisposable
     /// </summary>
     public SemaphoreSlim SendLock { get; } = new(1, 1);
 
-    public ClientConnection(WebSocket socket, CancellationToken serverShutdown)
+    public ClientConnection(WebSocket socket, CancellationToken serverShutdown, TimeSpan? sendTimeout = null)
     {
         Socket = socket;
         SessionId = Guid.NewGuid().ToString("N");
+        SendTimeout = sendTimeout ?? DefaultSendTimeout;
         _connectionCts = CancellationTokenSource.CreateLinkedTokenSource(serverShutdown);
     }
 
