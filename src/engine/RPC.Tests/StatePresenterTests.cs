@@ -21,6 +21,15 @@ public class StatePresenterTests
         _presenter = new StatePresenter(_classRegistry, _itemRegistry);
     }
 
+    /// <summary>
+    /// A game state whose save path points at a file that does not exist, so LoadGame is the
+    /// no-save case these tests mean it to be. Left to its default, LoadGame read the machine's
+    /// real save file: whatever the developer last played decided what mode these tests observed,
+    /// and a save left behind by any other test failed them.
+    /// </summary>
+    private static GameState IsolatedState()
+        => new() { SavePath = Path.Combine(Path.GetTempPath(), $"reach-presenter-{Guid.NewGuid():N}.json") };
+
     private static void SetCombat(GameState state, CombatState? combat)
     {
         typeof(GameState).GetProperty("Combat", BindingFlags.Instance | BindingFlags.Public)!.SetValue(state, combat);
@@ -35,7 +44,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_TopLevel_Type_And_Mode()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -49,7 +58,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_Player_Position_And_Facing()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -65,7 +74,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_Party_As_Array()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -79,7 +88,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_Combat_When_In_Combat_Mode()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
         var combat = new CombatState(
             Array.Empty<Combatant>(),
@@ -99,7 +108,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Combat_Is_Null_When_Not_In_Combat()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
         typeof(GameState).GetProperty("Mode", BindingFlags.Instance | BindingFlags.Public)!.SetValue(state, GameMode.Menu);
 
@@ -113,7 +122,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_Town_State()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -131,7 +140,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_Overworld_State()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -148,7 +157,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_Reputation()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -161,7 +170,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_Evidence()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -178,7 +187,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_FactionStates()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -194,7 +203,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_ActionLog()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -208,7 +217,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_ActionLog_Is_Capped_To_Recent_Tail()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         // The reused local host accumulates ActionLog history across many e2e runs; the full
@@ -270,7 +279,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Includes_WorldState()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var msg = _presenter.CreateStateMessage(state);
@@ -303,7 +312,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_ComponentInventory_Includes_ItemMetadata_And_EquipSlot()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
         _itemRegistry.Register(new ItemDef("iron_sword", "Iron Sword", "A blade.", "weapon", "mainHand", "", null, 50));
 
@@ -327,7 +336,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_ExpeditionCache_Includes_ItemMetadata_And_NullEquipSlot_For_Components()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
         _itemRegistry.Register(new ItemDef("bloom_dust", "Bloom Dust", "Crafting stock.", "component", null, "", null, 5));
         RPC.Engine.Inventory.ComponentInventorySystem.AddToExpeditionCache(state.Party, "bloom_dust", 3);
@@ -345,7 +354,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_UnknownItem_Falls_Back_To_ItemId_Name()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
 
         var member = state.Party.Members[0];
@@ -367,7 +376,7 @@ public class StatePresenterTests
     [Fact]
     public void CreateStateMessage_Has_No_Side_Effects()
     {
-        var state = new GameState();
+        var state = IsolatedState();
         state.LoadGame();
         SetLastCombatResult(state, new CombatResult(true, 100, Array.Empty<string>(), 5));
 

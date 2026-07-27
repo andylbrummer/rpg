@@ -619,7 +619,13 @@ public class GameState
     /// </summary>
     public CampaignContentRegistry? CampaignContent => _campaignContent;
 
-    public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path, ContentHash);
+    /// <summary>
+    /// Save the run. Defaults to <see cref="SavePath"/> — where this run says it saves — rather
+    /// than to the shared default location. They are the same for an ordinary run, but a run that
+    /// set its own path used to save and load somewhere other than it autosaved and, in ironman,
+    /// other than permadeath deletes.
+    /// </summary>
+    public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path ?? SavePath, ContentHash);
 
     public void ApplyReputationDelta(string factionId, int delta, string source)
     {
@@ -650,7 +656,8 @@ public class GameState
         FinalDungeonUnlocked = value;
     }
 
-    public bool LoadGame(string? path = null, Dungeons.IDungeonGenerator? dungeonGenerator = null) => Save.SaveSystem.Load(this, path, ContentHash, dungeonGenerator);
+    /// <summary>Load the run from <see cref="SavePath"/> unless told otherwise. See <see cref="SaveGame"/>.</summary>
+    public bool LoadGame(string? path = null, Dungeons.IDungeonGenerator? dungeonGenerator = null) => Save.SaveSystem.Load(this, path ?? SavePath, ContentHash, dungeonGenerator);
 
     public bool ChooseBranch(Guid characterId, string branch) => _campaignService.ChooseBranch(this, characterId, branch);
 

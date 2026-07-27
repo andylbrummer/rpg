@@ -20,6 +20,15 @@ public class BetrayalAndIronmanStateTests
 {
     private readonly StatePresenter _presenter = new(new ClassRegistry(), new ItemRegistry());
 
+    /// <summary>
+    /// A run whose save file is its own. Turning ironman on through the command handler autosaves,
+    /// and a state left on the default path writes the machine's real save file — these tests were
+    /// overwriting whatever the developer last played, and the file they left behind then decided
+    /// what other tests observed when they loaded "no save".
+    /// </summary>
+    private static GameState IsolatedRun(int seed = 42)
+        => new(seed: seed) { SavePath = Path.Combine(Path.GetTempPath(), $"reach-ironman-{Guid.NewGuid():N}.json") };
+
     private JsonElement Present(GameState state)
     {
         var json = JsonSerializer.Serialize(_presenter.CreateStateMessage(state));
@@ -104,7 +113,7 @@ public class BetrayalAndIronmanStateTests
     [Fact]
     public void Ironman_Is_Reported_So_The_Settings_Toggle_Reflects_The_Run()
     {
-        var state = new GameState(seed: 42);
+        var state = IsolatedRun();
         Assert.False(Present(state).GetProperty("isIronman").GetBoolean());
 
         var handler = new GameCommandHandler(state, new StubDungeonGenerator());
@@ -121,7 +130,7 @@ public class BetrayalAndIronmanStateTests
     [Fact]
     public void Ironman_Cannot_Be_Turned_Off_Once_Taken()
     {
-        var state = new GameState(seed: 42);
+        var state = IsolatedRun();
         var handler = new GameCommandHandler(state, new StubDungeonGenerator());
         handler.Execute(new SetIronmanCommand(true));
 
@@ -134,7 +143,7 @@ public class BetrayalAndIronmanStateTests
     [Fact]
     public void Asking_For_Ironman_Twice_Changes_Nothing_The_Second_Time()
     {
-        var state = new GameState(seed: 42);
+        var state = IsolatedRun();
         var handler = new GameCommandHandler(state, new StubDungeonGenerator());
         Assert.True(handler.Execute(new SetIronmanCommand(true)).StateChanged);
 
@@ -150,7 +159,7 @@ public class BetrayalAndIronmanStateTests
     [Fact]
     public void A_New_Campaign_Is_Not_Bound_By_The_Previous_Runs_Commitment()
     {
-        var state = new GameState(seed: 42);
+        var state = IsolatedRun();
         var handler = new GameCommandHandler(state, new StubDungeonGenerator());
         handler.Execute(new SetIronmanCommand(true));
 
