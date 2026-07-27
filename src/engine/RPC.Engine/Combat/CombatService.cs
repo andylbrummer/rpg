@@ -79,7 +79,7 @@ public class CombatService
             else if (rep < -25)
             {
                 // Hostile: reinforce the encounter
-                var reinforced = encounter.Enemies.Concat(new[] { new EnemySpawn("faction_soldier", 1) }).ToArray();
+                var reinforced = encounter.Enemies.Concat(new[] { new EnemySpawn(EnemyRegistry.SoldierIdFor(factionId), 1) }).ToArray();
                 encounter = encounter with { Enemies = reinforced };
             }
         }
@@ -266,7 +266,7 @@ public class CombatService
     {
         var encounter = ResolveOrFallbackEncounter(state);
         var reinforced = encounter.Enemies
-            .Concat(new[] { new EnemySpawn("faction_soldier", 1) })
+            .Concat(new[] { new EnemySpawn(EnemyRegistry.SoldierIdFor(factionId), 1) })
             .ToArray();
         encounter = encounter with { Enemies = reinforced };
         state.CurrentParley = null;

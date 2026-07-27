@@ -111,6 +111,22 @@ public class EnemyContentWiringTests
         }
     }
 
+    /// <summary>
+    /// Hostile patrols, reinforcements, and parley escalations all spawned a literal
+    /// "faction_soldier", which no content file defines — so every faction fight was the anonymous
+    /// fallback while bureau_soldier and convocation_soldier sat unused. They now name the
+    /// faction's own soldier, and the two authored ones must be findable under that name.
+    /// </summary>
+    [Fact]
+    public void FactionSoldierIds_MatchTheAuthoredSoldierContent()
+    {
+        var registry = new EnemyRegistry();
+        registry.LoadFromCatalog(new RPC.Engine.Content.FileSystemCatalog());
+
+        Assert.NotNull(registry.Get(EnemyRegistry.SoldierIdFor("bureau")));
+        Assert.NotNull(registry.Get(EnemyRegistry.SoldierIdFor("convocation")));
+    }
+
     [Fact]
     public void EnemyDefinition_ThatDoesNotParse_IsReported()
     {

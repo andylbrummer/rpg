@@ -328,7 +328,9 @@ public class OverworldService
 
         if (isHostilePatrol)
         {
-            var patrolEnemies = new[] { new EnemySpawn("faction_soldier", 2) };
+            // isHostilePatrol is only set when the encounter carries a faction, so the patrol always
+            // knows whose soldiers it is fighting.
+            var patrolEnemies = new[] { new EnemySpawn(EnemyRegistry.SoldierIdFor(factionId!), 2) };
             var encounterDef = new EncounterDef(encounter.Id, encounter.Name, patrolEnemies, 15);
             state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies);
             state.CurrentTravelEncounter = null;

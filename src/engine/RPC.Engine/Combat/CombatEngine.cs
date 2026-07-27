@@ -688,6 +688,18 @@ public static class CombatEngine
         return ability?.Tags.Any(t => t.Contains("fire")) == true;
     }
 
+    // Enemy ids already reported as undefined. An encounter that names an enemy no content file
+    // defines still spawns — the fallback combatant keeps the run playable — but it is 10 HP,
+    // nameless and behaviourless, which reads as a balance problem rather than the content problem
+    // it is. Reported once per id so a repeating encounter does not bury the rest of the log.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _reportedUnknownEnemies = new();
+
+    private static void ReportUnknownEnemy(string enemyId)
+    {
+        if (_reportedUnknownEnemies.TryAdd(enemyId, 0))
+            Console.Error.WriteLine($"[Combat] Encounter spawns undefined enemy '{enemyId}'; using fallback stats. Add content/enemies/{enemyId}.json.");
+    }
+
     private static Combatant[] SpawnEnemies(EncounterDef encounter, GameRandom rng, EnemyRegistry? registry)
     {
         var enemies = new List<Combatant>();
@@ -695,6 +707,8 @@ public static class CombatEngine
         foreach (var spawn in encounter.Enemies)
         {
             var def = registry?.Get(spawn.EnemyId);
+            if (registry != null && def is null)
+                ReportUnknownEnemy(spawn.EnemyId);
             for (int i = 0; i < spawn.Count; i++)
             {
                 // Deterministic pseudo-GUID based on index for reproducibility

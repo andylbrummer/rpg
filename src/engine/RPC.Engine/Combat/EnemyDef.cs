@@ -25,6 +25,14 @@ public class EnemyRegistry
     private readonly Dictionary<string, EnemyDef> _enemies = new();
 
     /// <summary>
+    /// The enemy id a faction's soldiers spawn under. Hostile patrols, reinforcements, and parley
+    /// escalations all know which faction they are fighting; they used to spawn a literal
+    /// "faction_soldier", which no content file defines, so every one of them was the anonymous
+    /// fallback even though bureau_soldier and convocation_soldier were authored for exactly this.
+    /// </summary>
+    public static string SoldierIdFor(string factionId) => $"{factionId}_soldier";
+
+    /// <summary>
     /// Load one authored enemy under <paramref name="id"/>. A definition that does not parse is
     /// reported rather than skipped: a missing enemy does not fail combat, it silently spawns the
     /// 10 HP unnamed fallback, which looks like a balance problem instead of a content problem.
