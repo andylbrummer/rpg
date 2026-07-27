@@ -101,6 +101,9 @@ public static class SaveSystem
                     data.DungeonSeed != 0 ? data.DungeonSeed : null,
                     data.ContentHash);
                 state.CurrentDungeon = dungeonGenerator.Generate(request).Dungeon;
+                // The layout is rebuilt from its seed, so its breakable walls have to be
+                // re-registered exactly as entering the dungeon would have registered them.
+                state.InstallDungeonSecrets(state.CurrentDungeon);
             }
 
             return true;

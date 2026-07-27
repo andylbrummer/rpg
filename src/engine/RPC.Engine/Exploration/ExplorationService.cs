@@ -50,6 +50,7 @@ public class ExplorationService
             return;
         }
         state.CurrentDungeon = dungeon;
+        state.InstallDungeonSecrets(dungeon);
         state.CurrentDungeonType = dungeonType;
         state.ExploredTiles.Clear();
         state.Exploration.CollectedLoot.Clear();

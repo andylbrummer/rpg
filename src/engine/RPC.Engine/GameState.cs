@@ -151,13 +151,31 @@ public class GameState
 
     private void SeedContentDefinitions()
     {
-        if (_contentSecrets != null)
-            foreach (var secret in _contentSecrets.All)
-                Secrets.Register(secret);
+        SeedContentSecrets();
 
         if (_contentArchives != null)
             foreach (var archive in _contentArchives.All)
                 Archives.Register(archive);
+    }
+
+    private void SeedContentSecrets()
+    {
+        if (_contentSecrets != null)
+            foreach (var secret in _contentSecrets.All)
+                Secrets.Register(secret);
+    }
+
+    /// <summary>
+    /// Point the secret registry at a newly installed dungeon: the run's authored secrets plus a
+    /// secret for every breakable wall this particular layout contains. Rebuilt rather than added
+    /// to — wall positions belong to one dungeon, and carrying the last one's forward would mark
+    /// tiles in this one that hold nothing.
+    /// </summary>
+    internal void InstallDungeonSecrets(Dungeon dungeon)
+    {
+        Secrets.Clear();
+        SeedContentSecrets();
+        BreakableWallSecrets.RegisterFrom(Secrets, dungeon);
     }
 
     // Cached campaign epilogue for the current run — generated once (LLM or template) and reused
