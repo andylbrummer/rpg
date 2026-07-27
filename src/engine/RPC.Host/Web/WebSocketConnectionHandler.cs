@@ -19,17 +19,20 @@ internal sealed class WebSocketConnectionHandler
     private readonly StateBroadcaster _broadcaster;
     private readonly ProtocolMessageHandler _protocol;
     private readonly CancellationTokenSource _cts;
+    private readonly TimeSpan _pingInterval;
 
     public WebSocketConnectionHandler(
         ClientRegistry registry,
         StateBroadcaster broadcaster,
         ProtocolMessageHandler protocol,
-        CancellationTokenSource cts)
+        CancellationTokenSource cts,
+        TimeSpan pingInterval)
     {
         _registry = registry;
         _broadcaster = broadcaster;
         _protocol = protocol;
         _cts = cts;
+        _pingInterval = pingInterval;
     }
 
     /// <summary>
@@ -114,7 +117,14 @@ internal sealed class WebSocketConnectionHandler
         }
     }
 
-    private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
+    /// <summary>
+    /// How often a ready client is pinged. Five seconds for a real session; the interval is a
+    /// constructor argument rather than a constant so the tests that exercise heartbeat behaviour
+    /// can run it fast. Waiting out the production interval made them the slowest tests in the
+    /// suite and its critical path, and a test that sleeps for real seconds tends to be padded with
+    /// generous fixed timeouts, which is where timing flakiness comes from.
+    /// </summary>
+    public static readonly TimeSpan DefaultPingInterval = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// How many consecutive pings a client may leave unanswered before it is considered gone.
@@ -149,7 +159,7 @@ internal sealed class WebSocketConnectionHandler
         {
             while (client.Socket.State == WebSocketState.Open && !token.IsCancellationRequested)
             {
-                await Task.Delay(PingInterval, token);
+                await Task.Delay(_pingInterval, token);
                 if (client.Socket.State != WebSocketState.Open) break;
                 if (!client.IsReady) continue;
 

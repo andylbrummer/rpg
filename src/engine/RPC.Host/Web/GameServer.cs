@@ -39,10 +39,17 @@ public class GameServer
     private Task? _acceptLoop;
     private int _stopped;
 
-    public GameServer(int port = 8080, bool isDev = false, bool loadSave = true)
+    /// <summary>
+    /// How often this server pings a ready client. Defaults to the production interval; tests that
+    /// are about heartbeat behaviour shorten it so they do not have to wait out real seconds.
+    /// </summary>
+    public TimeSpan HeartbeatInterval { get; }
+
+    public GameServer(int port = 8080, bool isDev = false, bool loadSave = true, TimeSpan? heartbeatInterval = null)
     {
         _listener = new HttpListener();
         Port = port;
+        HeartbeatInterval = heartbeatInterval ?? WebSocketConnectionHandler.DefaultPingInterval;
         _listener.Prefixes.Add($"http://localhost:{port}/");
         _listener.Prefixes.Add($"http://127.0.0.1:{port}/");
 
@@ -75,7 +82,7 @@ public class GameServer
         _broadcaster = new StateBroadcaster(_registry, jsonOptions, _cts);
 
         var protocolHandler = new ProtocolMessageHandler(_broadcaster, jsonOptions, _gameState, _gameStateLock, commandHandler, statePresenter, _cts);
-        var webSocketHandler = new WebSocketConnectionHandler(_registry, _broadcaster, protocolHandler, _cts);
+        var webSocketHandler = new WebSocketConnectionHandler(_registry, _broadcaster, protocolHandler, _cts, HeartbeatInterval);
         _router = new HttpRequestRouter(jsonOptions, _gameState, _gameStateLock, _cts, webSocketHandler);
 
         if (loadSave)

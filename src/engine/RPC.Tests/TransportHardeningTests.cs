@@ -141,18 +141,34 @@ public class TransportHardeningTests : IDisposable
     [Fact]
     public async Task Unresponsive_Client_Is_Deregistered_Instead_Of_Leaking_Its_Session()
     {
-        using var ws = await ConnectAsync();
-        await SendAsync(ws, """{"v":2,"type":"ready","seq":1}""");
-        Assert.Equal(1, _server.ClientCount);
-
-        // Ping interval + pong timeout + close timeout, with headroom for a loaded machine.
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
-        while (_server.ClientCount > 0 && DateTime.UtcNow < deadline)
+        // Its own server, ticking fast: this test has to wait out several whole ping intervals, and
+        // at the production five seconds it was the slowest test in the suite by a wide margin.
+        var server = new GameServer(port: GetFreePort(), loadSave: false, heartbeatInterval: TimeSpan.FromMilliseconds(200));
+        server.Start();
+        try
         {
-            await Task.Delay(100, _cts.Token);
-        }
+            var ws = new ClientWebSocket();
+            await ws.ConnectAsync(new Uri($"ws://localhost:{server.Port}/"), _cts.Token);
+            using (ws)
+            {
+                await ReceiveAsync(ws); // hello
+                await SendAsync(ws, """{"v":2,"type":"ready","seq":1}""");
+                Assert.Equal(1, server.ClientCount);
 
-        Assert.Equal(0, _server.ClientCount);
+                // Ping interval + pong timeout + close timeout, with headroom for a loaded machine.
+                var deadline = DateTime.UtcNow + server.HeartbeatInterval * 60;
+                while (server.ClientCount > 0 && DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(20, _cts.Token);
+                }
+
+                Assert.Equal(0, server.ClientCount);
+            }
+        }
+        finally
+        {
+            server.Stop();
+        }
     }
 
     [Fact]
