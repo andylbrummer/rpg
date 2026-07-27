@@ -63,6 +63,7 @@ public static class SaveBuilder
             FactionTimelineModifiers = new Dictionary<string, int>(state.Campaign.FactionTimelineModifiers),
             FiredEvents = state.Campaign.FiredEvents.ToArray(),
             UnlockedDungeons = state.Campaign.UnlockedDungeons.ToArray(),
+            ReadDocuments = state.Campaign.ReadDocuments.ToArray(),
             BetrayalPath = state.Campaign.BetrayalPath,
             FamilyName = state.Campaign.FamilyName
         };

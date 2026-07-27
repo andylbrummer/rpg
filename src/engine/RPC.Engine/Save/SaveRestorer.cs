@@ -157,9 +157,30 @@ public static class SaveRestorer
 
     public static void RestoreCampaignConfig(GameState state, SaveData data)
     {
-        // Family name is campaign state independent of the (optional) campaign config block, so it
-        // restores even for saves without a config.
+        // Everything above the guard is campaign progress rather than the campaign's configuration,
+        // and none of it lives inside the (optional) config block — so it has to restore even for a
+        // save written before a campaign was generated. Family name was hoisted out for exactly
+        // this reason once already, while the rest stayed behind the guard where a configless save
+        // silently dropped them.
         state.Campaign.FamilyName = data.FamilyName ?? "";
+
+        state.Campaign.FactionTimelineModifiers = data.FactionTimelineModifiers != null
+            ? new Dictionary<string, int>(data.FactionTimelineModifiers)
+            : new Dictionary<string, int>();
+
+        state.Campaign.FiredEvents = data.FiredEvents != null
+            ? new HashSet<string>(data.FiredEvents)
+            : new HashSet<string>();
+
+        state.Campaign.UnlockedDungeons = data.UnlockedDungeons != null
+            ? new HashSet<string>(data.UnlockedDungeons)
+            : new HashSet<string>();
+
+        state.Campaign.ReadDocuments = data.ReadDocuments != null
+            ? new HashSet<string>(data.ReadDocuments)
+            : new HashSet<string>();
+
+        state.Campaign.BetrayalPath = data.BetrayalPath;
 
         if (data.CampaignConfig == null) return;
 
@@ -186,19 +207,6 @@ public static class SaveRestorer
                 data.CampaignConfig.WildcardTrigger.TurnThreshold)
         };
 
-        state.Campaign.FactionTimelineModifiers = data.FactionTimelineModifiers != null
-            ? new Dictionary<string, int>(data.FactionTimelineModifiers)
-            : new Dictionary<string, int>();
-
-        state.Campaign.FiredEvents = data.FiredEvents != null
-            ? new HashSet<string>(data.FiredEvents)
-            : new HashSet<string>();
-
-        state.Campaign.UnlockedDungeons = data.UnlockedDungeons != null
-            ? new HashSet<string>(data.UnlockedDungeons)
-            : new HashSet<string>();
-
-        state.Campaign.BetrayalPath = data.BetrayalPath;
     }
 
     public static void RestoreOverworld(GameState state, SaveData data)

@@ -52,6 +52,13 @@ public class SaveData
     public Dictionary<string, int> FactionTimelineModifiers { get; set; } = new();
     public string[] FiredEvents { get; set; } = Array.Empty<string>();
     public string[] UnlockedDungeons { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Documents and Family Archives whose intel has already been granted. Persisted because the
+    /// grant is meant to happen once per campaign, not once per session: without it every archive
+    /// paid out again on each reload.
+    /// </summary>
+    public string[] ReadDocuments { get; set; } = Array.Empty<string>();
     public bool BetrayalPath { get; set; } = false;
     public string FamilyName { get; set; } = "";
 }
