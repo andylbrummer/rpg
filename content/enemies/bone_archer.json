@@ -3,11 +3,11 @@
   "name": "Bone Archer",
   "description": "A skeletal figure clutching a bow of fused ribs.",
   "stats": {
-    "str": 4,
-    "dex": 7,
-    "con": 3,
-    "int": 2,
-    "wil": 4
+    "strength": 4,
+    "dexterity": 7,
+    "constitution": 3,
+    "intelligence": 2,
+    "willpower": 4
   },
   "hpBase": 10,
   "speed": 6,

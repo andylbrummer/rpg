@@ -122,6 +122,13 @@ public class GameState
     /// <summary>Persist the current <see cref="Meta"/> to disk.</summary>
     public void SaveMetaProgression() => Save.MetaProgressionStore.Save(Meta, MetaPath);
 
+    /// <summary>
+    /// Enemy definitions from the content pack, used to spawn combatants. Null when none were
+    /// injected, which leaves <c>SpawnEnemies</c> on its unnamed fallback stats — acceptable for a
+    /// focused engine test, never for a real run.
+    /// </summary>
+    public EnemyRegistry? Enemies { get; }
+
     /// <summary>Secret definitions for the current run, indexed for document-triggered discovery.</summary>
     public SecretRegistry Secrets { get; } = new();
 
@@ -159,11 +166,12 @@ public class GameState
     /// </summary>
     public string ResolveEpilogue() => _cachedEpilogue ??= EpilogueGenerator.Generate(this);
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null, SecretRegistry? secrets = null, Campaign.ArchiveRegistry? archives = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null, SecretRegistry? secrets = null, Campaign.ArchiveRegistry? archives = null, EnemyRegistry? enemies = null)
     {
         LastUpdate = DateTime.UtcNow;
         _contentSecrets = secrets;
         _contentArchives = archives;
+        Enemies = enemies;
         SeedContentDefinitions();
         _seed = seed ?? DateTime.UtcNow.GetHashCode();
         _encounterRng = new GameRandom(_seed);
@@ -177,9 +185,9 @@ public class GameState
         Overworld = new OverworldState();
         Mode = GameMode.Menu; // Start in town/hub
 
-        _combatService = new CombatService(_encounterTables, _classRegistry, _encounterRng, synergies);
+        _combatService = new CombatService(_encounterTables, _classRegistry, _encounterRng, synergies, enemies);
         _explorationService = new ExplorationService(_encounterTables, _classRegistry, _encounterRng);
-        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies, campaignContent);
+        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies, campaignContent, enemies);
         _campaignService = new CampaignService(_classRegistry);
         _missionService = new MissionService(_classRegistry);
         _eventScheduler = new EventScheduler(_campaignService);

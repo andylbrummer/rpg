@@ -33,7 +33,8 @@ internal sealed record HostContent(
     List<RoomSegment> Segments,
     CampaignContentRegistry CampaignContent,
     SecretRegistry Secrets,
-    ArchiveRegistry Archives);
+    ArchiveRegistry Archives,
+    EnemyRegistry Enemies);
 
 /// <summary>
 /// Locates the content pack and loads every registry the host needs. Keeps the file/JSON
@@ -80,7 +81,8 @@ internal static class ContentBootstrap
             Segments: segments,
             CampaignContent: CampaignContentRegistry.FromCatalog(catalog),
             Secrets: LoadSecrets(catalog),
-            Archives: LoadArchives(catalog));
+            Archives: LoadArchives(catalog),
+            Enemies: LoadEnemies(catalog));
     }
 
     private static string? FindRpkPath()
@@ -194,6 +196,13 @@ internal static class ContentBootstrap
             if (json != null)
                 registry.LoadFromJson(json, Path.GetFileName(file));
         }
+        return registry;
+    }
+
+    private static EnemyRegistry LoadEnemies(IContentCatalog catalog)
+    {
+        var registry = new EnemyRegistry();
+        registry.LoadFromCatalog(catalog);
         return registry;
     }
 

@@ -12,13 +12,15 @@ public class OverworldService
     private readonly ClassRegistry? _classRegistry;
     private readonly SynergyRegistry? _synergies;
     private readonly CampaignContentRegistry? _campaignContent;
+    private readonly EnemyRegistry? _enemies;
 
-    public OverworldService(GameRandom encounterRng, ClassRegistry? classRegistry, SynergyRegistry? synergies = null, CampaignContentRegistry? campaignContent = null)
+    public OverworldService(GameRandom encounterRng, ClassRegistry? classRegistry, SynergyRegistry? synergies = null, CampaignContentRegistry? campaignContent = null, EnemyRegistry? enemies = null)
     {
         _encounterRng = encounterRng;
         _classRegistry = classRegistry;
         _synergies = synergies;
         _campaignContent = campaignContent;
+        _enemies = enemies;
     }
 
     public void GenerateOverworld(GameState state, CampaignConfig config)
@@ -328,7 +330,7 @@ public class OverworldService
         {
             var patrolEnemies = new[] { new EnemySpawn("faction_soldier", 2) };
             var encounterDef = new EncounterDef(encounter.Id, encounter.Name, patrolEnemies, 15);
-            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
+            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies);
             state.CurrentTravelEncounter = null;
 
             if (state.Combat.IsFinished)
@@ -349,7 +351,7 @@ public class OverworldService
         else if (encounter.ResolutionType == TravelResolutionType.Combat && encounter.Enemies != null)
         {
             var encounterDef = new EncounterDef(encounter.Id, encounter.Name, encounter.Enemies, 15);
-            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
+            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies);
             state.CurrentTravelEncounter = null;
 
             if (state.Combat.IsFinished)

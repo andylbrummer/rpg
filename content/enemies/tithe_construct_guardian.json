@@ -3,11 +3,11 @@
   "name": "Tithe-Construct Guardian",
   "description": "A lattice of bound bone and ledger-iron that tallies the ancestral debts owed to the Compact.",
   "stats": {
-    "str": 6,
-    "dex": 3,
-    "con": 7,
-    "int": 3,
-    "wil": 6
+    "strength": 6,
+    "dexterity": 3,
+    "constitution": 7,
+    "intelligence": 3,
+    "willpower": 6
   },
   "hpBase": 22,
   "speed": 4,

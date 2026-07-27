@@ -24,11 +24,32 @@ public class EnemyRegistry
 {
     private readonly Dictionary<string, EnemyDef> _enemies = new();
 
+    /// <summary>
+    /// Load one authored enemy under <paramref name="id"/>. A definition that does not parse is
+    /// reported rather than skipped: a missing enemy does not fail combat, it silently spawns the
+    /// 10 HP unnamed fallback, which looks like a balance problem instead of a content problem.
+    /// </summary>
     public void LoadFromJson(string id, string json)
     {
-        var def = JsonSerializer.Deserialize<EnemyDef>(json, ContentJsonOptions.CaseInsensitive);
-        if (def is not null)
-            _enemies[id] = def;
+        var def = JsonSerializer.Deserialize<EnemyDef>(json, ContentJsonOptions.CaseInsensitive)
+            ?? throw new InvalidOperationException($"Enemy definition '{id}' did not parse into a definition.");
+
+        _enemies[id] = def;
+    }
+
+    /// <summary>
+    /// Catalog-driven load, so the host reads enemies from whichever content pack it resolved
+    /// rather than inferring a directory off the filesystem. Mirrors the other registries'
+    /// catalog loaders.
+    /// </summary>
+    public void LoadFromCatalog(IContentCatalog catalog)
+    {
+        foreach (var file in catalog.EnumerateFiles("enemies", "*.json"))
+        {
+            var json = catalog.GetString(file) ?? catalog.GetString($"enemies/{Path.GetFileName(file)}");
+            if (json != null)
+                LoadFromJson(Path.GetFileNameWithoutExtension(file), json);
+        }
     }
 
     public EnemyDef? Get(string id)
