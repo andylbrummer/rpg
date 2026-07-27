@@ -180,6 +180,10 @@ public static class SaveRestorer
             ? new HashSet<string>(data.ReadDocuments)
             : new HashSet<string>();
 
+        state.Campaign.AnnouncedFactionStates = data.AnnouncedFactionStates != null
+            ? new HashSet<string>(data.AnnouncedFactionStates)
+            : new HashSet<string>();
+
         state.Campaign.BetrayalPath = data.BetrayalPath;
 
         if (data.CampaignConfig == null) return;

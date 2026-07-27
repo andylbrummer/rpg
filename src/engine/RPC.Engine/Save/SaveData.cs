@@ -59,6 +59,13 @@ public class SaveData
     /// paid out again on each reload.
     /// </summary>
     public string[] ReadDocuments { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Faction transitions already announced in the action log. Persisted for the same reason as
+    /// the read documents: the announcement is meant to happen once per campaign, and a resumed
+    /// run was re-announcing every transition it had already reported.
+    /// </summary>
+    public string[] AnnouncedFactionStates { get; set; } = Array.Empty<string>();
     public bool BetrayalPath { get; set; } = false;
     public string FamilyName { get; set; } = "";
 }

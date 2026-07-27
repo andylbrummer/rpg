@@ -64,6 +64,7 @@ public static class SaveBuilder
             FiredEvents = state.Campaign.FiredEvents.ToArray(),
             UnlockedDungeons = state.Campaign.UnlockedDungeons.ToArray(),
             ReadDocuments = state.Campaign.ReadDocuments.ToArray(),
+            AnnouncedFactionStates = state.Campaign.AnnouncedFactionStates.ToArray(),
             BetrayalPath = state.Campaign.BetrayalPath,
             FamilyName = state.Campaign.FamilyName
         };

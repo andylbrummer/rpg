@@ -61,6 +61,7 @@ public class ReadDocumentPersistenceTests : IDisposable
         before.Campaign.FiredEvents.Add("event_a");
         before.Campaign.UnlockedDungeons.Add("crypt");
         before.Campaign.ReadDocuments.Add("some_doc");
+        before.Campaign.AnnouncedFactionStates.Add("inkblood:Preparing");
         before.Campaign.BetrayalPath = true;
         before.SaveGame();
 
@@ -70,6 +71,7 @@ public class ReadDocumentPersistenceTests : IDisposable
         Assert.Contains("event_a", after.Campaign.FiredEvents);
         Assert.Contains("crypt", after.Campaign.UnlockedDungeons);
         Assert.Contains("some_doc", after.Campaign.ReadDocuments);
+        Assert.Contains("inkblood:Preparing", after.Campaign.AnnouncedFactionStates);
         Assert.True(after.Campaign.BetrayalPath);
     }
 
