@@ -20,23 +20,33 @@ export class GamepadManager {
   private onAction: (action: PlayerAction) => void;
   private rafId: number | null = null;
   private connected = false;
+  private disposed = false;
+
+  // Kept so dispose() can detach them. These were anonymous listeners, which cannot be removed at
+  // all: after the owning component unmounted they stayed on window for the life of the page, and
+  // a pad connecting later restarted polling on a dead manager, sending input through a callback
+  // whose socket was gone. Every remount added another pair.
+  private readonly onGamepadConnected = () => {
+    if (this.disposed) return;
+    this.connected = true;
+    this.startPolling();
+  };
+
+  private readonly onGamepadDisconnected = () => {
+    if (this.disposed) return;
+    const pads = navigator.getGamepads();
+    this.connected = pads.some(p => p !== null);
+    if (!this.connected) {
+      this.stopPolling();
+    }
+  };
 
   constructor(onAction: (action: PlayerAction) => void, config?: Partial<GamepadConfig>) {
     this.onAction = onAction;
     this.config = { ...DEFAULT_CONFIG, ...config };
 
-    window.addEventListener('gamepadconnected', (e) => {
-      this.connected = true;
-      this.startPolling();
-    });
-
-    window.addEventListener('gamepaddisconnected', (e) => {
-      const pads = navigator.getGamepads();
-      this.connected = pads.some(p => p !== null);
-      if (!this.connected) {
-        this.stopPolling();
-      }
-    });
+    window.addEventListener('gamepadconnected', this.onGamepadConnected);
+    window.addEventListener('gamepaddisconnected', this.onGamepadDisconnected);
 
     // Check if already connected
     const pads = navigator.getGamepads();
@@ -59,6 +69,9 @@ export class GamepadManager {
   }
 
   dispose() {
+    this.disposed = true;
+    window.removeEventListener('gamepadconnected', this.onGamepadConnected);
+    window.removeEventListener('gamepaddisconnected', this.onGamepadDisconnected);
     this.stopPolling();
     for (const timer of this.repeatTimers.values()) {
       clearTimeout(timer);
@@ -67,8 +80,11 @@ export class GamepadManager {
   }
 
   private startPolling() {
-    if (this.rafId !== null) return;
+    if (this.rafId !== null || this.disposed) return;
     const poll = () => {
+      // A frame can already be queued when dispose lands, and rescheduling from inside it would
+      // outlive the cancel.
+      if (this.disposed) return;
       if (!this.config.enabled) {
         this.rafId = requestAnimationFrame(poll);
         return;
