@@ -60,7 +60,7 @@ public class GameServer
 
         var factionRepo = new FactionContentRepository(content.FactionContent);
         var rumorRepo = new RumorRepository(_catalog);
-        _gameState = new GameState(encounterTables: content.EncounterTables, classRegistry: content.ClassRegistry, synergies: content.Synergies, factionContent: factionRepo, rumors: rumorRepo, dungeonTemplates: content.DungeonTemplates, campaignContent: content.CampaignContent, secrets: content.Secrets, archives: content.Archives, enemies: content.Enemies);
+        _gameState = new GameState(encounterTables: content.EncounterTables, classRegistry: content.ClassRegistry, synergies: content.Synergies, factionContent: factionRepo, rumors: rumorRepo, dungeonTemplates: content.DungeonTemplates, campaignContent: content.CampaignContent, secrets: content.Secrets, archives: content.Archives, enemies: content.Enemies, items: content.ItemRegistry);
         _gameState.ContentHash = content.ContentHash;
         // Real game sessions persist cross-campaign meta-progression to disk; campaign start loads
         // and biases the run, campaign end folds the result back and saves it.

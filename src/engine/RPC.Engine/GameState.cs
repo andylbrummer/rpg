@@ -1,6 +1,7 @@
 using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
+using RPC.Engine.Content;
 using RPC.Engine.Exploration;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
@@ -123,6 +124,13 @@ public class GameState
     public void SaveMetaProgression() => Save.MetaProgressionStore.Save(Meta, MetaPath);
 
     /// <summary>
+    /// Item definitions from the content pack. Equipment stat bonuses are stored as item ids, so
+    /// every stat calculation that should account for what a character is wearing needs this;
+    /// without it the bonus silently resolves to zero.
+    /// </summary>
+    public ItemRegistry? Items { get; }
+
+    /// <summary>
     /// Enemy definitions from the content pack, used to spawn combatants. Null when none were
     /// injected, which leaves <c>SpawnEnemies</c> on its unnamed fallback stats — acceptable for a
     /// focused engine test, never for a real run.
@@ -166,9 +174,10 @@ public class GameState
     /// </summary>
     public string ResolveEpilogue() => _cachedEpilogue ??= EpilogueGenerator.Generate(this);
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null, SecretRegistry? secrets = null, Campaign.ArchiveRegistry? archives = null, EnemyRegistry? enemies = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null, SecretRegistry? secrets = null, Campaign.ArchiveRegistry? archives = null, EnemyRegistry? enemies = null, ItemRegistry? items = null)
     {
         LastUpdate = DateTime.UtcNow;
+        Items = items;
         _contentSecrets = secrets;
         _contentArchives = archives;
         Enemies = enemies;
@@ -179,15 +188,15 @@ public class GameState
         _classRegistry = classRegistry;
         _factionContent = factionContent;
         _campaignContent = campaignContent;
-        _townService = new TownService(factionContent, rumors);
+        _townService = new TownService(factionContent, rumors, items);
         InitializeDefaultParty();
         InitializeTown();
         Overworld = new OverworldState();
         Mode = GameMode.Menu; // Start in town/hub
 
-        _combatService = new CombatService(_encounterTables, _classRegistry, _encounterRng, synergies, enemies);
+        _combatService = new CombatService(_encounterTables, _classRegistry, _encounterRng, synergies, enemies, items);
         _explorationService = new ExplorationService(_encounterTables, _classRegistry, _encounterRng);
-        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies, campaignContent, enemies);
+        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies, campaignContent, enemies, items);
         _campaignService = new CampaignService(_classRegistry);
         _missionService = new MissionService(_classRegistry);
         _eventScheduler = new EventScheduler(_campaignService);

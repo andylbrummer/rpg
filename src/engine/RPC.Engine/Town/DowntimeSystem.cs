@@ -55,24 +55,25 @@ public static class DowntimeSystem
         PartyState party,
         ReputationState reputation,
         EvidenceState evidence,
-        GameRandom rng)
+        GameRandom rng,
+        RPC.Engine.Content.ItemRegistry? items = null)
     {
         return action switch
         {
-            DowntimeAction.Rest => PerformRest(character, party),
+            DowntimeAction.Rest => PerformRest(character, party, items),
             DowntimeAction.Train => PerformTrain(character, party),
             DowntimeAction.Craft => PerformCraft(character, party, rng),
             DowntimeAction.Network => PerformNetwork(reputation, rng),
             DowntimeAction.Investigate => PerformInvestigate(evidence, rng),
             DowntimeAction.LayLow => PerformLayLow(reputation),
-            DowntimeAction.TendBlooms => PerformTendBlooms(character, party, rng),
+            DowntimeAction.TendBlooms => PerformTendBlooms(character, party, rng, items),
             _ => new DowntimeResult(false, action.ToString(), "Unknown downtime action.")
         };
     }
 
-    private static DowntimeResult PerformRest(CharacterState character, PartyState party)
+    private static DowntimeResult PerformRest(CharacterState character, PartyState party, RPC.Engine.Content.ItemRegistry? items)
     {
-        var maxHp = character.GetEffectiveStats().MaxHp;
+        var maxHp = character.GetEffectiveStats(items).MaxHp;
         var hpRestored = maxHp - character.CurrentHp;
 
         if (hpRestored <= 0 && (character.TempModifiers == null || character.TempModifiers.Length == 0))
@@ -166,13 +167,13 @@ public static class DowntimeSystem
         return new DowntimeResult(true, "LayLow", $"Laid low. {mostNegative.FactionId} reputation improved by {actualDelta}.", FactionId: mostNegative.FactionId, RepDelta: actualDelta, HeatDelta: -30);
     }
 
-    private static DowntimeResult PerformTendBlooms(CharacterState character, PartyState party, GameRandom rng)
+    private static DowntimeResult PerformTendBlooms(CharacterState character, PartyState party, GameRandom rng, RPC.Engine.Content.ItemRegistry? items)
     {
         var index = Array.IndexOf(party.Members, character);
         if (index < 0)
             return new DowntimeResult(false, "TendBlooms", "Character not found in party.");
 
-        var maxHp = character.GetEffectiveStats().MaxHp;
+        var maxHp = character.GetEffectiveStats(items).MaxHp;
         var healAmount = Math.Max(1, maxHp / 4);
         var newHp = Math.Min(maxHp, character.CurrentHp + healAmount);
         var actualHeal = newHp - character.CurrentHp;

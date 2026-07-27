@@ -9,11 +9,13 @@ public class TownService
 {
     private readonly FactionContentRepository? _factionContent;
     private readonly RumorRepository? _rumors;
+    private readonly RPC.Engine.Content.ItemRegistry? _items;
 
-    public TownService(FactionContentRepository? factionContent = null, RumorRepository? rumors = null)
+    public TownService(FactionContentRepository? factionContent = null, RumorRepository? rumors = null, RPC.Engine.Content.ItemRegistry? items = null)
     {
         _factionContent = factionContent;
         _rumors = rumors;
+        _items = items;
     }
 
     public List<FactionContact> GenerateContacts() => _factionContent?.GenerateContacts() ?? new List<FactionContact>();
@@ -38,7 +40,7 @@ public class TownService
         foreach (var member in state.Party.Members)
         {
             if (member.Id == Guid.Empty) continue;
-            var maxHp = member.GetEffectiveStats().MaxHp;
+            var maxHp = member.GetEffectiveStats(_items).MaxHp;
             var index = Array.IndexOf(state.Party.Members, member);
             state.Party.SetMember(index, member with { CurrentHp = maxHp, TempModifiers = Array.Empty<TempStatModifier>() });
         }
@@ -54,7 +56,7 @@ public class TownService
         var character = state.Party.Members.FirstOrDefault(m => m.Id == characterId);
         if (character.Id == Guid.Empty) return null;
 
-        var result = DowntimeSystem.PerformAction(character, action, state.Party, state.Reputation, state.Evidence, state._encounterRng);
+        var result = DowntimeSystem.PerformAction(character, action, state.Party, state.Reputation, state.Evidence, state._encounterRng, _items);
         if (result.Success)
         {
             state._downtimeCompleted.Add(characterId);

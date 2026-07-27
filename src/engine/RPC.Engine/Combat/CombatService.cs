@@ -10,15 +10,17 @@ public class CombatService
     private readonly ClassRegistry? _classRegistry;
     private readonly SynergyRegistry? _synergies;
     private readonly EnemyRegistry? _enemies;
+    private readonly RPC.Engine.Content.ItemRegistry? _items;
     private readonly GameRandom _encounterRng;
 
-    public CombatService(EncounterTableRegistry? encounterTables, ClassRegistry? classRegistry, GameRandom encounterRng, SynergyRegistry? synergies = null, EnemyRegistry? enemies = null)
+    public CombatService(EncounterTableRegistry? encounterTables, ClassRegistry? classRegistry, GameRandom encounterRng, SynergyRegistry? synergies = null, EnemyRegistry? enemies = null, RPC.Engine.Content.ItemRegistry? items = null)
     {
         _encounterTables = encounterTables;
         _classRegistry = classRegistry;
         _encounterRng = encounterRng;
         _synergies = synergies;
         _enemies = enemies;
+        _items = items;
     }
 
     public void TriggerEncounter(GameState state, EncounterDef? encounter = null)
@@ -90,7 +92,7 @@ public class CombatService
     private void EnterCombat(GameState state, EncounterDef encounter)
     {
         state.CurrentEncounterId = Guid.NewGuid().ToString();
-        state.Combat = CombatEngine.Enter(state.Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies, state.CurrentDungeonType);
+        state.Combat = CombatEngine.Enter(state.Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies, state.CurrentDungeonType, _items);
 
         state.EmitActionLog("combat", "encounter_started", new Dictionary<string, string> { { "encounterId", state.CurrentEncounterId } });
 

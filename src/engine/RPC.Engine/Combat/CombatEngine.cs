@@ -10,10 +10,11 @@ public static class CombatEngine
         EncounterDef encounter,
         GameRandom rng,
         EnemyRegistry? enemies = null,
-        string? environment = null)
+        string? environment = null,
+        RPC.Engine.Content.ItemRegistry? items = null)
     {
         var enemyCombatants = SpawnEnemies(encounter, rng, enemies);
-        var all = party.Active.Select(ToCombatant)
+        var all = party.Active.Select(c => ToCombatant(c, items))
             .Concat(enemyCombatants)
             .ToArray();
 
@@ -855,9 +856,14 @@ public static class CombatEngine
         return state;
     }
 
-    private static Combatant ToCombatant(CharacterState character)
+    /// <summary>
+    /// Snapshots a party member as a combatant. The item registry is what resolves equipped stat
+    /// bonuses; omitting it silently fights with the character's unequipped stats, which is what
+    /// every production caller used to do while the character sheet showed the equipped ones.
+    /// </summary>
+    private static Combatant ToCombatant(CharacterState character, RPC.Engine.Content.ItemRegistry? items)
     {
-        var stats = character.GetEffectiveStats();
+        var stats = character.GetEffectiveStats(items);
         return new Combatant(
             character.Id,
             character.Name,

@@ -13,14 +13,16 @@ public class OverworldService
     private readonly SynergyRegistry? _synergies;
     private readonly CampaignContentRegistry? _campaignContent;
     private readonly EnemyRegistry? _enemies;
+    private readonly RPC.Engine.Content.ItemRegistry? _items;
 
-    public OverworldService(GameRandom encounterRng, ClassRegistry? classRegistry, SynergyRegistry? synergies = null, CampaignContentRegistry? campaignContent = null, EnemyRegistry? enemies = null)
+    public OverworldService(GameRandom encounterRng, ClassRegistry? classRegistry, SynergyRegistry? synergies = null, CampaignContentRegistry? campaignContent = null, EnemyRegistry? enemies = null, RPC.Engine.Content.ItemRegistry? items = null)
     {
         _encounterRng = encounterRng;
         _classRegistry = classRegistry;
         _synergies = synergies;
         _campaignContent = campaignContent;
         _enemies = enemies;
+        _items = items;
     }
 
     public void GenerateOverworld(GameState state, CampaignConfig config)
@@ -332,7 +334,7 @@ public class OverworldService
             // knows whose soldiers it is fighting.
             var patrolEnemies = new[] { new EnemySpawn(EnemyRegistry.SoldierIdFor(factionId!), 2) };
             var encounterDef = new EncounterDef(encounter.Id, encounter.Name, patrolEnemies, 15);
-            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies);
+            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies, items: _items);
             state.CurrentTravelEncounter = null;
 
             if (state.Combat.IsFinished)
@@ -353,7 +355,7 @@ public class OverworldService
         else if (encounter.ResolutionType == TravelResolutionType.Combat && encounter.Enemies != null)
         {
             var encounterDef = new EncounterDef(encounter.Id, encounter.Name, encounter.Enemies, 15);
-            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies);
+            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies, items: _items);
             state.CurrentTravelEncounter = null;
 
             if (state.Combat.IsFinished)
