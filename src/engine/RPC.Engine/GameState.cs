@@ -128,6 +128,23 @@ public class GameState
     /// <summary>Family Archive definitions for the current run, read for faction intel.</summary>
     public Campaign.ArchiveRegistry Archives { get; } = new();
 
+    // The content-pack definitions the host loaded, kept so a new campaign can be re-seeded from
+    // them. The run's own registries are separate instances: a dungeon may register secrets of its
+    // own, and those must not leak back into the content the next campaign starts from.
+    private readonly SecretRegistry? _contentSecrets;
+    private readonly Campaign.ArchiveRegistry? _contentArchives;
+
+    private void SeedContentDefinitions()
+    {
+        if (_contentSecrets != null)
+            foreach (var secret in _contentSecrets.All)
+                Secrets.Register(secret);
+
+        if (_contentArchives != null)
+            foreach (var archive in _contentArchives.All)
+                Archives.Register(archive);
+    }
+
     // Cached campaign epilogue for the current run — generated once (LLM or template) and reused
     // across state snapshots so a slow/failed LLM call doesn't regenerate on every frame.
     private string? _cachedEpilogue;
@@ -142,9 +159,12 @@ public class GameState
     /// </summary>
     public string ResolveEpilogue() => _cachedEpilogue ??= EpilogueGenerator.Generate(this);
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null, SecretRegistry? secrets = null, Campaign.ArchiveRegistry? archives = null)
     {
         LastUpdate = DateTime.UtcNow;
+        _contentSecrets = secrets;
+        _contentArchives = archives;
+        SeedContentDefinitions();
         _seed = seed ?? DateTime.UtcNow.GetHashCode();
         _encounterRng = new GameRandom(_seed);
         _encounterTables = encounterTables;
@@ -372,8 +392,12 @@ public class GameState
         SessionMeta.Reset();
         Town = new TownState();
         Overworld = new OverworldState();
+        // Clear the run's registrations, then put the content-pack definitions back: they describe
+        // what exists to be found, not what this run has found, and a campaign after the first must
+        // not start with an empty world.
         Secrets.Clear();
         Archives.Clear();
+        SeedContentDefinitions();
         _cachedEpilogue = null;
         PartyGold = 500;
         TitheTokens = 0;

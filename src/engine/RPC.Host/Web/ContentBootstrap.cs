@@ -31,7 +31,9 @@ internal sealed record HostContent(
     List<FactionContentDef> FactionContent,
     DungeonLootTableRegistry LootTables,
     List<RoomSegment> Segments,
-    CampaignContentRegistry CampaignContent);
+    CampaignContentRegistry CampaignContent,
+    SecretRegistry Secrets,
+    ArchiveRegistry Archives);
 
 /// <summary>
 /// Locates the content pack and loads every registry the host needs. Keeps the file/JSON
@@ -76,7 +78,9 @@ internal static class ContentBootstrap
             FactionContent: FactionContentLoader.LoadAll(catalog),
             LootTables: LoadLootTables(catalog),
             Segments: segments,
-            CampaignContent: CampaignContentRegistry.FromCatalog(catalog));
+            CampaignContent: CampaignContentRegistry.FromCatalog(catalog),
+            Secrets: LoadSecrets(catalog),
+            Archives: LoadArchives(catalog));
     }
 
     private static string? FindRpkPath()
@@ -190,6 +194,20 @@ internal static class ContentBootstrap
             if (json != null)
                 registry.LoadFromJson(json);
         }
+        return registry;
+    }
+
+    private static SecretRegistry LoadSecrets(IContentCatalog catalog)
+    {
+        var registry = new SecretRegistry();
+        registry.LoadFromCatalog(catalog);
+        return registry;
+    }
+
+    private static ArchiveRegistry LoadArchives(IContentCatalog catalog)
+    {
+        var registry = new ArchiveRegistry();
+        registry.LoadFromCatalog(catalog);
         return registry;
     }
 

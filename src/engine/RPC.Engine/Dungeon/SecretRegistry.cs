@@ -82,4 +82,19 @@ public class SecretRegistry
         foreach (var file in Directory.EnumerateFiles(directoryPath, "*.json"))
             LoadFromJson(File.ReadAllText(file));
     }
+
+    /// <summary>
+    /// Catalog-driven load, so the host reads secrets from whichever content pack it resolved
+    /// rather than inferring a directory off the filesystem. Mirrors the other registries'
+    /// catalog loaders.
+    /// </summary>
+    public void LoadFromCatalog(IContentCatalog catalog)
+    {
+        foreach (var file in catalog.EnumerateFiles("secrets", "*.json"))
+        {
+            var json = catalog.GetString(file) ?? catalog.GetString($"secrets/{Path.GetFileName(file)}");
+            if (json != null)
+                LoadFromJson(json);
+        }
+    }
 }

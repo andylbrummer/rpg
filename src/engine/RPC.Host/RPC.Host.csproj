@@ -6,6 +6,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The test project pins the composition root's content wiring directly; ContentBootstrap and
+         HostContent stay internal so nothing else depends on the loading shape. -->
+    <InternalsVisibleTo Include="RPC.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Photino.NET" Version="4.0.16" />
     <PackageReference Include="System.Text.Json" Version="10.0.5" />
   </ItemGroup>
