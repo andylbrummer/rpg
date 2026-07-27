@@ -136,9 +136,10 @@ public class CombatService
 
             // Kick off the first round and auto-resolve any leading AI turns
             var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+            var openingEmitter = CombatActionLog.EmitterFor(state);
             state.Combat = CombatEngine.AutoResolveToPlayerTurn(
-                CombatEngine.Tick(state.Combat, null, rng, _classRegistry, null, _synergies),
-                rng, _classRegistry, null, _synergies);
+                CombatEngine.Tick(state.Combat, null, rng, _classRegistry, openingEmitter, _synergies),
+                rng, _classRegistry, openingEmitter, _synergies);
         }
         state.LastUpdate = DateTime.UtcNow;
     }
@@ -427,19 +428,7 @@ public class CombatService
         }
 
         var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-        Action<string, string, Dictionary<string, string>> emitter = (cat, type, payload) =>
-        {
-            if (type == "synergy_triggered" && state.CurrentEncounterId != null)
-            {
-                payload["encounterId"] = state.CurrentEncounterId;
-            }
-            if (type == "synergy_triggered" && payload.TryGetValue("synergyId", out var sid) && !string.IsNullOrEmpty(sid))
-            {
-                state.Journal.Discover(sid);
-                state.Analytics.RecordSynergyDiscovered(sid);
-            }
-            state.EmitActionLog(cat, type, payload);
-        };
+        var emitter = CombatActionLog.EmitterFor(state);
 
         state.Combat = CombatEngine.Tick(state.Combat, action, rng, _classRegistry, emitter, _synergies);
 

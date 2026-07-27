@@ -347,9 +347,10 @@ public class OverworldService
             {
                 state.Mode = GameMode.Combat;
                 var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+                var emitter = CombatActionLog.EmitterFor(state);
                 state.Combat = CombatEngine.AutoResolveToPlayerTurn(
-                    CombatEngine.Tick(state.Combat, null, rng, _classRegistry, null, _synergies),
-                    rng, _classRegistry, null, _synergies);
+                    CombatEngine.Tick(state.Combat, null, rng, _classRegistry, emitter, _synergies),
+                    rng, _classRegistry, emitter, _synergies);
             }
         }
         else if (encounter.ResolutionType == TravelResolutionType.Combat && encounter.Enemies != null)
@@ -368,9 +369,10 @@ public class OverworldService
             {
                 state.Mode = GameMode.Combat;
                 var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+                var emitter = CombatActionLog.EmitterFor(state);
                 state.Combat = CombatEngine.AutoResolveToPlayerTurn(
-                    CombatEngine.Tick(state.Combat, null, rng, _classRegistry, null, _synergies),
-                    rng, _classRegistry, null, _synergies);
+                    CombatEngine.Tick(state.Combat, null, rng, _classRegistry, emitter, _synergies),
+                    rng, _classRegistry, emitter, _synergies);
             }
         }
     }
