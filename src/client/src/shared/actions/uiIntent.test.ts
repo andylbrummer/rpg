@@ -260,7 +260,7 @@ describe('protocol dispatch completeness', () => {
     fail_mission: 'server',
     abandon_mission: 'server',
     dialogue_choice: 'server',
-    encounter_choice: 'server',
+    encounter_choice: 'direct',
     branch_choose: 'intent',
     accuse_faction: 'server',
     read_archive: 'intent',

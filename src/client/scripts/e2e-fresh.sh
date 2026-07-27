@@ -14,6 +14,9 @@
 #
 set -euo pipefail
 
+# The host serves client/dist, so a run against an unbuilt tree silently exercises the previous
+# bundle: a client change can be "verified green" by e2e without ever having been loaded.
+
 E2E_PORT="${E2E_PORT:-19421}"
 
 kill_stale_host() {
@@ -30,6 +33,10 @@ kill_stale_host() {
 echo "[e2e-fresh] killing any stale RPC.Host on :${E2E_PORT} ..."
 kill_stale_host
 
-echo "[e2e-fresh] starting Playwright against a fresh backend ..."
 cd "$(dirname "$0")/.."
+
+echo "[e2e-fresh] building the client so the host serves this tree ..."
+npx vite build
+
+echo "[e2e-fresh] starting Playwright against a fresh backend ..."
 exec npx playwright test "$@"

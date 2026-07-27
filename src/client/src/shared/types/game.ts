@@ -258,6 +258,18 @@ export interface TravelEncounter {
   options?: string[];
 }
 
+/**
+ * A faction encounter the party can talk its way out of. The server pauses the encounter and
+ * offers the options this party has earned — parley at standing, a Bureau or Convocation
+ * diplomatic protocol, an Ashmouth negotiation, a Bonewarden's ancestral bargain — plus Fight.
+ * Answered with an `encounter_choice` carrying the chosen option.
+ */
+export interface PendingParley {
+  encounterId: string;
+  factionId: string;
+  options: string[];
+}
+
 export interface ActionLogEntry {
   turn: number;
   act: number;
@@ -360,6 +372,7 @@ export interface GameState {
   town?: TownState;
   overworld?: OverworldState;
   travelEncounter?: TravelEncounter;
+  pendingParley?: PendingParley | null;
   reputation?: Record<string, number>;
   heat?: HeatState;
   evidence?: EvidenceState;

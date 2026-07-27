@@ -39,7 +39,7 @@ alias "test-client" {
 // boots a dotnet host first.
 alias "e2e" {
     command "sh"
-    args "-c" "cd src/client && npx playwright test"
+    args "-c" "cd src/client && npm run test:e2e"
     stall "5m"
     max-time "45m"
 }

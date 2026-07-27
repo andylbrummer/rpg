@@ -341,6 +341,16 @@
     sendAction({ type: 'resolve_travel_encounter', targetId: choice });
   }
 
+  /**
+   * Answer a faction encounter the party can talk its way out of. The server pauses the encounter
+   * and waits for this; without it the offer sat in every state frame with nothing to accept it,
+   * so walking into a patrol at good standing simply did nothing — no fight, no parley, no
+   * Ashmouth negotiation, and no Bonewarden ancestral bargain.
+   */
+  function handleParleyChoice(option: string) {
+    sendAction({ type: 'encounter_choice', targetId: option });
+  }
+
   function turnColor(turns: number): string {
     if (turns >= 13) return '#c44';
     if (turns >= 10) return '#d4a84b';
@@ -461,6 +471,24 @@
           onPickup={handlePickup}
           onIntent={dispatchIntent}
         />
+      {/if}
+      {#if gameState?.pendingParley}
+        <div class="travel-encounter-overlay" role="dialog" aria-label="Faction encounter" aria-modal="true" tabindex="-1" use:modal>
+          <div class="travel-encounter-card" data-testid="parley-card">
+            <h2 class="travel-encounter-title">{gameState.pendingParley.factionId} patrol</h2>
+            <p class="travel-encounter-desc">They have seen you. How do you answer?</p>
+            <div class="travel-options">
+              {#each gameState.pendingParley.options as option}
+                <button
+                  class="travel-action-btn"
+                  data-testid="parley-option"
+                  data-option={option}
+                  onclick={() => handleParleyChoice(option)}
+                >{option}</button>
+              {/each}
+            </div>
+          </div>
+        </div>
       {/if}
       {#if gameState?.travelEncounter && gameState?.mode === 'Menu'}
         <div class="travel-encounter-overlay" role="dialog" aria-label="Travel encounter" aria-modal="true" tabindex="-1" use:modal>
