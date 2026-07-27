@@ -162,16 +162,59 @@ public class ProtocolEnvelopeTests : IDisposable
         var state = await ReceiveAsync(ws);
         seqs.Add(state.GetProperty("seq").GetInt32());
 
-        // send action
-        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "move_forward" } });
+        // An action that changes nothing draws no reply at all, so this step used to send
+        // move_forward from the menu — where there is no dungeon to move in — and then sit for a
+        // whole heartbeat interval reading the server's ping as its third "server message". The
+        // sequence numbers were monotonic, so it passed, having never seen the state it names.
+        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "turn_left" } });
 
         // state ack
         var state2 = await ReceiveAsync(ws);
+        Assert.Equal("state", state2.GetProperty("type").GetString());
         seqs.Add(state2.GetProperty("seq").GetInt32());
 
         for (int i = 1; i < seqs.Count; i++)
         {
             Assert.True(seqs[i] > seqs[i - 1], $"Sequence not monotonic: {seqs[i]} <= {seqs[i - 1]}");
+        }
+    }
+
+    /// <summary>
+    /// A well-formed action the server considers and declines to act on draws no reply of any
+    /// kind — not a state, not an error, not an ack. The client is fire-and-forget so nothing
+    /// hangs, but on the wire "refused", "ignored" and "still working" are indistinguishable, and
+    /// tests that expected a reply here sat waiting for the next heartbeat and read that instead.
+    /// Pinned so the silence is a known property rather than something rediscovered.
+    /// </summary>
+    [Fact]
+    public async Task An_Action_That_Changes_Nothing_Draws_No_Reply()
+    {
+        using var ws = await ConnectAsync();
+        await ReceiveAsync(ws); // hello
+        await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await ReceiveAsync(ws); // state
+
+        // move_forward from the menu: there is no dungeon to move in, so nothing changes.
+        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "move_forward" } });
+
+        using var quiet = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        var reply = await ReceiveWithin(ws, quiet.Token);
+
+        Assert.Null(reply);
+    }
+
+    /// <summary>Returns the next message, or null if none arrives before the token trips.</summary>
+    private static async Task<JsonElement?> ReceiveWithin(ClientWebSocket ws, CancellationToken token)
+    {
+        var buffer = new byte[16384];
+        try
+        {
+            var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), token);
+            return JsonSerializer.Deserialize<JsonElement>(Encoding.UTF8.GetString(buffer, 0, result.Count));
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
         }
     }
 
