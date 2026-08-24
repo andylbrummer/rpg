@@ -1,14 +1,15 @@
 // Supervision caps for The Reach's build and test commands.
 //
-// The default 60s stall cap kills this repo's legitimate runs: `dotnet test` prints nothing
+// The default 60s stall cap killed this repo's legitimate runs: `dotnet test` prints nothing
 // between "Starting test execution" and its summary (~25s, but longer on a cold build), and the
 // Playwright suite has individual tests that legitimately run 30-60s while the list reporter
-// stays silent. Both were being killed mid-run and reported as failures. These caps are sized to
-// the observed runtimes, not opened up to hide a slow suite.
+// stays silent. Both were being killed mid-run and reported as failures. The per-alias caps below
+// are sized to the observed runtimes, not opened up to hide a slow suite; the defaults block no
+// longer pins a stall at all, so anything without its own cap — a hook-rewritten bare `dotnet
+// test`, for one — takes tman's built-in 30m backstop instead of dying at 60s. No max-cpu either:
+// it normalises across all cores, so any ceiling reads as "kill a healthy parallel build".
 defaults {
-    stall "60s"
     max-mem 4096
-    max-cpu 95
     max-parallel 2
 }
 
