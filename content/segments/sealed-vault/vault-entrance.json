@@ -1,0 +1,19 @@
+{
+  "id": "vault_entrance",
+  "name": "Vault Antechamber",
+  "description": "Gold and bronze imperial architecture. Glowing ward lines trace the walls. The air tastes of ozone.",
+  "tags": ["entrance", "sealed_vault"],
+  "width": 3,
+  "height": 3,
+  "tiles": [
+    { "x": 1, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 2, "y": 1, "type": "Floor" },
+    { "x": 3, "y": 1, "type": "Floor" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 2, "y": 2, "type": "Floor" },
+    { "x": 3, "y": 2, "type": "Floor" },
+    { "x": 1, "y": 3, "type": "Floor" },
+    { "x": 2, "y": 3, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
+    { "x": 3, "y": 3, "type": "Floor" }
+  ]
+}

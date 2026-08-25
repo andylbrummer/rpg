@@ -1,0 +1,26 @@
+{
+  "id": "spore_nest",
+  "name": "Spore Nest",
+  "description": "The heart of the Bloom Site. A grotesque chamber where the air is thick with spores and the walls writhe with fungal mass.",
+  "tags": ["encounter:bs-d5-full-mix", "boss", "bloom_site"],
+  "width": 4,
+  "height": 4,
+  "tiles": [
+    { "x": 1, "y": 1, "type": "Floor" },
+    { "x": 2, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 3, "y": 1, "type": "Floor" },
+    { "x": 4, "y": 1, "type": "Floor" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 2, "y": 2, "type": "Floor" },
+    { "x": 3, "y": 2, "type": "Floor" },
+    { "x": 4, "y": 2, "type": "Floor" },
+    { "x": 1, "y": 3, "type": "Floor" },
+    { "x": 2, "y": 3, "type": "Floor" },
+    { "x": 3, "y": 3, "type": "Floor" },
+    { "x": 4, "y": 3, "type": "Floor" },
+    { "x": 1, "y": 4, "type": "Floor" },
+    { "x": 2, "y": 4, "type": "Floor" },
+    { "x": 3, "y": 4, "type": "Floor" },
+    { "x": 4, "y": 4, "type": "Floor" }
+  ]
+}

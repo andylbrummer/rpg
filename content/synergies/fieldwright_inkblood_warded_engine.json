@@ -1,0 +1,18 @@
+{
+  "id": "fieldwright_inkblood_warded_engine",
+  "abilities": [
+    "coil_overload",
+    "crimson_ward"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "status_effect",
+    "value": 0,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A coil overload bound inside a crimson ward becomes a self-renewing war engine.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true
+}

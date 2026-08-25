@@ -1,0 +1,8 @@
+{
+  "id": "sewers",
+  "entries": [
+    { "itemId": "rat_tail", "weight": 4 },
+    { "itemId": "spore_sacs", "weight": 2 },
+    { "itemId": "antitoxin", "weight": 1 }
+  ]
+}

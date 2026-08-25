@@ -1,0 +1,10 @@
+[
+  { "id": "cartography_new_pass", "text": "The Cartographers mapped a new mountain pass. Cuts two days off the northern route.", "truthStatus": "true", "relatedFactionId": "cartography", "hiddenTag": "route_intel" },
+  { "id": "cartography_old_road", "text": "The old imperial road east of the Reach is clear again. Safe passage guaranteed.", "truthStatus": "outdated", "relatedFactionId": "cartography", "hiddenTag": "route_intel" },
+  { "id": "cartography_surveyor", "text": "A surveyor found a bloom-free valley beyond the Broken Engine. Perfect for a settlement.", "truthStatus": "planted", "relatedFactionId": "cartography", "hiddenTag": "settlement_hope" },
+  { "id": "cartography_missing_map", "text": "The Compact's master map of the undervaults vanished from a locked archive.", "truthStatus": "true", "relatedFactionId": "cartography", "hiddenTag": "mastermind_clue" },
+  { "id": "cartography_toll", "text": "The Cartographers now charge a toll for their route markers. Coin or favors.", "truthStatus": "true", "relatedFactionId": "cartography", "hiddenTag": "route_intel" },
+  { "id": "cartography_drowned_path", "text": "The river path flooded and swallowed a whole caravan. Their maps were wrong.", "truthStatus": "outdated", "relatedFactionId": "cartography", "hiddenTag": "route_danger" },
+  { "id": "cartography_star_chart", "text": "An apprentice swears the Cartographers chart more than roads — they chart the Bloom's spread.", "truthStatus": "true", "relatedFactionId": "cartography", "hiddenTag": "bloom_omen" },
+  { "id": "cartography_hidden_door", "text": "One map bears a door marked in a district where no building stands.", "truthStatus": "planted", "relatedFactionId": "cartography", "hiddenTag": "secret_location" }
+]

@@ -1,0 +1,17 @@
+{
+  "id": "ashmouth_marcher_war_drums",
+  "abilities": [
+    "rally",
+    "travel_bonus"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 5,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Rallying war drums quicken the Marcher's advance into a thundering charge.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "id": "sealed_vault",
+  "name": "Sealed Vault Encounters",
+  "entries": [
+    {
+      "weight": 30,
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 1, "rowOverride": 0 }
+      ],
+      "xpReward": 15
+    },
+    {
+      "weight": 30,
+      "enemies": [
+        { "enemyId": "convocation_soldier", "count": 1, "rowOverride": 0 }
+      ],
+      "xpReward": 15
+    },
+    {
+      "weight": 20,
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 28
+    },
+    {
+      "weight": 15,
+      "enemies": [
+        { "enemyId": "convocation_soldier", "count": 2, "rowOverride": 0 },
+        { "enemyId": "bone_archer", "count": 1, "rowOverride": 1 }
+      ],
+      "xpReward": 35
+    },
+    {
+      "weight": 5,
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 2, "rowOverride": 0 },
+        { "enemyId": "convocation_soldier", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 42
+    }
+  ]
+}

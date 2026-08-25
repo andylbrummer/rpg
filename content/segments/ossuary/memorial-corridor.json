@@ -1,0 +1,25 @@
+{
+  "id": "memorial_corridor",
+  "name": "Memorial Corridor",
+  "description": "A narrow hall lined with memorial plaques and chimes that sound when the air moves.",
+  "tags": ["corridor", "ossuary"],
+  "width": 3,
+  "height": 5,
+  "tiles": [
+    { "x": 1, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 2, "y": 1, "type": "Floor" },
+    { "x": 3, "y": 1, "type": "Floor" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 2, "y": 2, "type": "Floor" },
+    { "x": 3, "y": 2, "type": "Floor" },
+    { "x": 1, "y": 3, "type": "Floor" },
+    { "x": 2, "y": 3, "type": "Floor" },
+    { "x": 3, "y": 3, "type": "Floor" },
+    { "x": 1, "y": 4, "type": "Floor" },
+    { "x": 2, "y": 4, "type": "Floor" },
+    { "x": 3, "y": 4, "type": "Floor" },
+    { "x": 1, "y": 5, "type": "Floor" },
+    { "x": 2, "y": 5, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
+    { "x": 3, "y": 5, "type": "Floor" }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "bloom_sporeling",
+  "name": "Bloom Sporeling",
+  "description": "A bulbous fungal mass that floats on drifting spores, lobbing concentrated blight at distant prey.",
+  "stats": {
+    "str": 4,
+    "dex": 6,
+    "con": 5,
+    "int": 7,
+    "wil": 6
+  },
+  "hpBase": 10,
+  "speed": 4,
+  "ai": "ranged_priority",
+  "abilities": ["spore_shot", "spore_burst"],
+  "lootTable": [
+    { "itemId": "spore_sacs", "chance": 0.5 },
+    { "itemId": "bloom_dust", "chance": 0.35 }
+  ]
+}

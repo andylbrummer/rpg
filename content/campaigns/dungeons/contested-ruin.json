@@ -1,0 +1,35 @@
+{
+  "id": "contested_ruin",
+  "name": "Contested Ruin",
+  "segmentPool": [
+    "ruin_entrance",
+    "ruin_corridor",
+    "contested_hall",
+    "ruin_cache",
+    "ruin_dead_end",
+    "ruin_boss_room"
+  ],
+  "segmentPriority": [
+    "ruin_entrance",
+    "ruin_corridor",
+    "contested_hall",
+    "ruin_cache",
+    "ruin_dead_end",
+    "ruin_boss_room"
+  ],
+  "targetRooms": 8,
+  "bossEncounterId": "cr-boss-arbiter",
+  "encounterTableId": "contested_ruin",
+  "wanderingTableId": "contested_ruin",
+  "unlockConditions": [
+    {
+      "factionId": "bureau",
+      "minReputation": 0
+    },
+    {
+      "factionId": "convocation",
+      "minReputation": 0
+    }
+  ],
+  "segmentDirectory": "segments/contested-ruin"
+}

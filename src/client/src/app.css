@@ -1,0 +1,334 @@
+:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 0.625rem 0.9375rem -0.1875rem, rgba(0, 0, 0, 0.05) 0 0.25rem 0.375rem -0.125rem;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 1.125rem/145% var(--sans);
+  letter-spacing: 0.01125rem;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 64rem) {
+    font-size: 1rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --code-bg: #1f2028;
+    --accent: #c084fc;
+    --accent-bg: rgba(192, 132, 252, 0.15);
+    --accent-border: rgba(192, 132, 252, 0.5);
+    --social-bg: rgba(47, 48, 58, 0.5);
+    --shadow:
+      rgba(0, 0, 0, 0.4) 0 0.625rem 0.9375rem -0.1875rem, rgba(0, 0, 0, 0.25) 0 0.25rem 0.375rem -0.125rem;
+  }
+
+  #social .button-icon {
+    filter: invert(1) brightness(2);
+  }
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 3.5rem;
+  letter-spacing: -0.105rem;
+  margin: 2rem 0;
+  @media (max-width: 64rem) {
+    font-size: 2.25rem;
+    margin: 1.25rem 0;
+  }
+}
+h2 {
+  font-size: 1.5rem;
+  line-height: 118%;
+  letter-spacing: -0.015rem;
+  margin: 0 0 0.5rem;
+  @media (max-width: 64rem) {
+    font-size: 1.25rem;
+  }
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 0.25rem;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 0.9375rem;
+  line-height: 135%;
+  padding: 0.25rem 0.5rem;
+  background: var(--code-bg);
+}
+
+.counter {
+  font-size: 1rem;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.3125rem;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 0.125em solid transparent;
+  transition: border-color 0.3s;
+  margin-bottom: 1.5rem;
+
+  &:hover {
+    border-color: var(--accent-border);
+  }
+  &:focus-visible {
+    outline: 0.125em solid var(--accent);
+    outline-offset: 0.125em;
+  }
+}
+
+.hero {
+  position: relative;
+
+  .base,
+  .framework,
+  .vite {
+    inset-inline: 0;
+    margin: 0 auto;
+  }
+
+  .base {
+    width: 10.625rem;
+    position: relative;
+    z-index: 0;
+  }
+
+  .framework,
+  .vite {
+    position: absolute;
+  }
+
+  .framework {
+    z-index: 1;
+    top: 2.125rem;
+    height: 1.75rem;
+    transform: perspective(125rem) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
+      scale(1.4);
+  }
+
+  .vite {
+    z-index: 0;
+    top: 6.6875rem;
+    height: 1.625rem;
+    width: auto;
+    transform: perspective(125rem) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
+      scale(0.8);
+  }
+}
+
+#app {
+  width: 70.375rem;
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  border-inline: 0.0625em solid var(--border);
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+#center {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5625rem;
+  place-content: center;
+  place-items: center;
+  flex-grow: 1;
+
+  @media (max-width: 64rem) {
+    padding: 2rem 1.25rem 1.5rem;
+    gap: 1.125rem;
+  }
+}
+
+#next-steps {
+  display: flex;
+  border-top: 0.0625em solid var(--border);
+  text-align: left;
+
+  & > div {
+    flex: 1 1 0;
+    padding: 2rem;
+    @media (max-width: 64rem) {
+      padding: 1.5rem 1.25rem;
+    }
+  }
+
+  .icon {
+    margin-bottom: 1rem;
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  @media (max-width: 64rem) {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+#docs {
+  border-right: 0.0625em solid var(--border);
+
+  @media (max-width: 64rem) {
+    border-right: none;
+    border-bottom: 0.0625em solid var(--border);
+  }
+}
+
+#next-steps ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 0.5rem;
+  margin: 2rem 0 0;
+
+  .logo {
+    height: 1.125rem;
+  }
+
+  a {
+    color: var(--text-h);
+    font-size: 1rem;
+    border-radius: 0.375rem;
+    background: var(--social-bg);
+    display: flex;
+    padding: 0.375rem 0.75rem;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    transition: box-shadow 0.3s;
+
+    &:hover {
+      box-shadow: var(--shadow);
+    }
+    .button-icon {
+      height: 1.125rem;
+      width: 1.125rem;
+    }
+  }
+
+  @media (max-width: 64rem) {
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    li {
+      flex: 1 1 calc(50% - 0.5rem);
+    }
+
+    a {
+      width: 100%;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+  }
+}
+
+#spacer {
+  height: 5.5rem;
+  border-top: 0.0625em solid var(--border);
+  @media (max-width: 64rem) {
+    height: 3rem;
+  }
+}
+
+.ticks {
+  position: relative;
+  width: 100%;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: -0.28125rem;
+    border: 0.3125em solid transparent;
+  }
+
+  &::before {
+    left: 0;
+    border-left-color: var(--border);
+  }
+  &::after {
+    right: 0;
+    border-right-color: var(--border);
+  }
+}
+
+/* ---- Accessibility ---- */
+:root {
+  --text-scale: 1;
+}
+
+html {
+  font-size: calc(1.125rem * var(--text-scale, 1));
+}
+
+:root[data-high-contrast='on'] {
+  --border: currentColor;
+}
+
+:root[data-high-contrast='on'] button {
+  outline: 0.125rem solid currentColor;
+  outline-offset: 0.0625rem;
+}
+
+:root[data-reduce-motion='on'] *,
+:root[data-reduce-motion='on'] *::before,
+:root[data-reduce-motion='on'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Coarse colorblind palette shift applied to the 3D canvas. */
+:root[data-colorblind='protanopia'] canvas {
+  filter: saturate(0.85) hue-rotate(-12deg);
+}
+:root[data-colorblind='deuteranopia'] canvas {
+  filter: saturate(0.85) hue-rotate(12deg);
+}
+:root[data-colorblind='tritanopia'] canvas {
+  filter: saturate(0.9) hue-rotate(24deg);
+}

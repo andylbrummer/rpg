@@ -1,0 +1,9 @@
+{
+  "id": "bloom_site",
+  "entries": [
+    { "itemId": "bloom_dust", "weight": 4 },
+    { "itemId": "bloom_essence", "weight": 2 },
+    { "itemId": "spore_sacs", "weight": 2 },
+    { "itemId": "mite_chitin", "weight": 1 }
+  ]
+}

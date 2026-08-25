@@ -1,0 +1,78 @@
+{
+  "id": "ruin_entrance",
+  "name": "Collapsed Gatehouse",
+  "description": "What was once a fortified gate now slumps inward. Bureau and Convocation sigils overlay each other on the broken arch \u2014 neither faction holds the threshold.",
+  "tags": [
+    "entrance",
+    "contested_ruin"
+  ],
+  "width": 4,
+  "height": 4,
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "type": "Floor",
+      "isExit": true,
+      "exitDirection": "North",
+      "north": "Door"
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "type": "Floor",
+      "east": "BreakableWall"
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "type": "Floor",
+      "north": "None"
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "type": "Floor"
+    }
+  ]
+}

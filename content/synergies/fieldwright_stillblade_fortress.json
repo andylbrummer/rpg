@@ -1,0 +1,17 @@
+{
+  "id": "fieldwright_stillblade_fortress",
+  "abilities": [
+    "barricade",
+    "warding_stance"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 4,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Scrap barricades and warding stance create a defensive line that punishes attackers.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

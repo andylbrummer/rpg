@@ -1,0 +1,19 @@
+{
+  "id": "env_bloom_site_skirmish_bash",
+  "abilities": [
+    "skirmish",
+    "bash"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 5,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Spore-thick air carries the combined strike further.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true,
+  "environment": "bloom_site"
+}

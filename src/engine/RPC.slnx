@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="RPC.Content/RPC.Content.csproj" />
+  <Project Path="RPC.Engine/RPC.Engine.csproj" />
+  <Project Path="RPC.Host/RPC.Host.csproj" />
+  <Project Path="RPC.Tests/RPC.Tests.csproj" />
+</Solution>

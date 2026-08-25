@@ -1,0 +1,17 @@
+{
+  "id": "cauterist_fieldwright_emergency_repairs",
+  "abilities": [
+    "cauterize",
+    "repair_pulse"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 4,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Combined medical and mechanical expertise patches wounds others would abandon.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

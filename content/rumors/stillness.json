@@ -1,0 +1,10 @@
+[
+  { "id": "stillness_sabotage", "text": "Stillness agents have been seen near the main Engine. They're planning something.", "truthStatus": "true", "relatedFactionId": "stillness", "hiddenTag": "engine_crisis" },
+  { "id": "stillness_peace", "text": "The Stillness leadership has called for a cease-fire. They want to negotiate.", "truthStatus": "planted", "relatedFactionId": "stillness", "hiddenTag": "stillness_threat" },
+  { "id": "stillness_recruit", "text": "The Stillness is recruiting from the desperate. They promise an end to suffering.", "truthStatus": "true", "relatedFactionId": "stillness", "hiddenTag": "stillness_threat" },
+  { "id": "stillness_silence_district", "text": "A whole district went silent overnight. No screams, no struggle. Just gone.", "truthStatus": "true", "relatedFactionId": "stillness", "hiddenTag": "stillness_threat" },
+  { "id": "stillness_relic_null", "text": "They've unearthed a relic that drinks sound. Near it, even prayers die in the throat.", "truthStatus": "planted", "relatedFactionId": "stillness", "hiddenTag": "mastermind_clue" },
+  { "id": "stillness_defector", "text": "A Stillness defector hides in the lower wards, begging passage out of the Reach.", "truthStatus": "true", "relatedFactionId": "stillness", "hiddenTag": "smuggling" },
+  { "id": "stillness_engine_stop", "text": "If the Engine stops, the Stillness say, the Bloom stops with it. They mean to try.", "truthStatus": "true", "relatedFactionId": "stillness", "hiddenTag": "engine_crisis" },
+  { "id": "stillness_old_pact", "text": "The Stillness once swore a pact with the Compact. The terms are coming due.", "truthStatus": "outdated", "relatedFactionId": "stillness", "hiddenTag": "mastermind_clue" }
+]

@@ -1,0 +1,400 @@
+{
+  "id": "ashmouth",
+  "name": "Ashmouth",
+  "description": "Agitator and front-line leader who inspires allies and manipulates enemies through intimidation and negotiation. Pays with vitality to command the battlefield.",
+  "baseStats": {
+    "strength": 5,
+    "dexterity": 4,
+    "constitution": 5,
+    "intelligence": 3,
+    "willpower": 4
+  },
+  "abilities": [
+    {
+      "id": "bash",
+      "name": "Bash",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "1d8+PWR",
+        "range": "melee"
+      },
+      "tags": [
+        "physical",
+        "melee"
+      ]
+    },
+    {
+      "id": "shove",
+      "name": "Shove",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "1d6+PWR",
+        "range": "melee",
+        "extra": "knockback"
+      },
+      "tags": [
+        "physical",
+        "melee"
+      ]
+    },
+    {
+      "id": "war_cry",
+      "name": "War Cry",
+      "cost": {
+        "type": "hp",
+        "amount": 2
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "power",
+        "value": 3,
+        "duration": 2,
+        "target": "ally_group"
+      },
+      "tags": [
+        "social",
+        "buff",
+        "agitator"
+      ]
+    },
+    {
+      "id": "rally",
+      "name": "Rally",
+      "cost": {
+        "type": "hp",
+        "amount": 3
+      },
+      "effect": {
+        "type": "heal",
+        "value": "1d6+WIL",
+        "target": "ally"
+      },
+      "tags": [
+        "social",
+        "heal",
+        "agitator"
+      ]
+    },
+    {
+      "id": "negotiate",
+      "name": "Negotiate",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "negotiate",
+        "target": "faction_soldier"
+      },
+      "tags": [
+        "social",
+        "dialogue",
+        "agitator"
+      ]
+    },
+    {
+      "id": "intimidate",
+      "name": "Intimidate",
+      "cost": {
+        "type": "hp",
+        "amount": 2
+      },
+      "effect": {
+        "type": "debuff",
+        "stat": "accuracy",
+        "value": -3,
+        "duration": 2,
+        "target": "enemy_group"
+      },
+      "tags": [
+        "social",
+        "debuff",
+        "agitator"
+      ]
+    },
+    {
+      "id": "banner_of_fury",
+      "name": "Banner of Fury",
+      "cost": {
+        "type": "hp",
+        "amount": 3
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "power",
+        "value": 4,
+        "duration": 3,
+        "target": "ally_group"
+      },
+      "tags": [
+        "social",
+        "buff"
+      ],
+      "branch": "warlord"
+    },
+    {
+      "id": "mass_dread",
+      "name": "Mass Dread",
+      "cost": {
+        "type": "hp",
+        "amount": 3
+      },
+      "effect": {
+        "type": "debuff",
+        "stat": "accuracy",
+        "value": -4,
+        "duration": 2,
+        "target": "enemy_group"
+      },
+      "tags": [
+        "social",
+        "debuff"
+      ],
+      "branch": "demagogue"
+    },
+    {
+      "id": "unbreakable",
+      "name": "Unbreakable",
+      "cost": {
+        "type": "hp",
+        "amount": 4
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "power",
+        "value": 5,
+        "duration": 3,
+        "target": "ally_group"
+      },
+      "tags": [
+        "social",
+        "buff"
+      ],
+      "branch": "war_marshal"
+    },
+    {
+      "id": "rallying_banner",
+      "name": "Rallying Banner",
+      "cost": {
+        "type": "hp",
+        "amount": 4
+      },
+      "effect": {
+        "type": "heal",
+        "value": "1d8+WIL",
+        "target": "ally_group"
+      },
+      "tags": [
+        "social",
+        "heal",
+        "buff"
+      ],
+      "branch": "standardbearer"
+    },
+    {
+      "id": "incite_riot",
+      "name": "Incite Riot",
+      "cost": {
+        "type": "hp",
+        "amount": 4
+      },
+      "effect": {
+        "type": "debuff",
+        "stat": "power",
+        "value": -4,
+        "duration": 2,
+        "target": "enemy_group"
+      },
+      "tags": [
+        "social",
+        "debuff"
+      ],
+      "branch": "firebrand"
+    },
+    {
+      "id": "mass_panic",
+      "name": "Mass Panic",
+      "cost": {
+        "type": "hp",
+        "amount": 4
+      },
+      "effect": {
+        "type": "debuff",
+        "stat": "accuracy",
+        "value": -5,
+        "duration": 3,
+        "target": "enemy_group"
+      },
+      "tags": [
+        "social",
+        "debuff"
+      ],
+      "branch": "agitator_lord"
+    }
+  ],
+  "availableBranches": [
+    "warlord",
+    "demagogue"
+  ],
+  "branches": [
+    {
+      "id": "war_marshal",
+      "requiresBranch": "warlord"
+    },
+    {
+      "id": "standardbearer",
+      "requiresBranch": "warlord"
+    },
+    {
+      "id": "firebrand",
+      "requiresBranch": "demagogue",
+      "factionGate": {
+        "factionId": "convocation",
+        "threshold": 30
+      },
+      "fallbackBranch": "agitator_lord"
+    },
+    {
+      "id": "agitator_lord",
+      "requiresBranch": "demagogue"
+    }
+  ],
+  "levelTable": [
+    {
+      "level": 1,
+      "hpGain": 0,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": [
+        "bash",
+        "shove"
+      ]
+    },
+    {
+      "level": 2,
+      "hpGain": 4,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 1
+      },
+      "newAbilities": [
+        "war_cry"
+      ]
+    },
+    {
+      "level": 3,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": [
+        "rally"
+      ]
+    },
+    {
+      "level": 4,
+      "hpGain": 4,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 1
+      },
+      "newAbilities": [
+        "negotiate"
+      ]
+    },
+    {
+      "level": 5,
+      "hpGain": 4,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": [
+        "intimidate"
+      ]
+    },
+    {
+      "level": 6,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 7,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 1
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 8,
+      "hpGain": 4,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 9,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 10,
+      "hpGain": 5,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 1
+      },
+      "newAbilities": []
+    }
+  ]
+}

@@ -1,0 +1,1193 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using RPC.Engine.Campaign;
+using RPC.Engine.Character;
+using RPC.Engine.Combat;
+using RPC.Engine.Content;
+using RPC.Engine.Dungeons;
+using RPC.Engine.Models.Dungeons;
+using RPC.Engine.Town;
+
+namespace ContentPack;
+
+class Program
+{
+    static int Main(string[] args)
+    {
+        if (args.Length < 2)
+        {
+            Console.WriteLine("Usage: dotnet run -- <content-dir> <output-dir>");
+            return 1;
+        }
+
+        var contentDir = args[0];
+        var outputDir = args[1];
+
+        if (!Directory.Exists(contentDir))
+        {
+            Console.WriteLine($"Content directory not found: {contentDir}");
+            return 1;
+        }
+
+        Directory.CreateDirectory(outputDir);
+
+        var jsonFiles = Directory.EnumerateFiles(contentDir, "*.json", SearchOption.AllDirectories)
+            .OrderBy(f => f)
+            .ToList();
+
+        // Pre-pass: collect all content IDs for cross-reference validation
+        var segmentIds = new HashSet<string>();
+        var enemyIds = new HashSet<string>();
+        var encounterIds = new HashSet<string>();
+        var npcIds = new HashSet<string>();
+        var itemIds = new HashSet<string>();
+        var classIds = new HashSet<string>();
+        var abilityIds = new HashSet<string>();
+
+        foreach (var file in jsonFiles)
+        {
+            var relativePath = Path.GetRelativePath(contentDir, file).Replace('\\', '/');
+            var json = File.ReadAllText(file);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var elementList = new List<JsonElement>();
+            if (root.ValueKind == JsonValueKind.Array)
+                foreach (var e in root.EnumerateArray()) elementList.Add(e);
+            else
+                elementList.Add(root);
+
+            foreach (var el in elementList)
+            {
+                if (el.ValueKind != JsonValueKind.Object) continue;
+                if (!el.TryGetProperty("id", out var idProp)) continue;
+                var id = idProp.GetString() ?? "";
+                if (string.IsNullOrEmpty(id)) continue;
+
+                if (relativePath.Contains("/segments/") || relativePath.StartsWith("segments/"))
+                    segmentIds.Add(id);
+                else if (relativePath.Contains("/enemies/") || relativePath.StartsWith("enemies/"))
+                    enemyIds.Add(id);
+                else if (relativePath.Contains("/encounters/") || relativePath.StartsWith("encounters/"))
+                    encounterIds.Add(id);
+                else if (relativePath.Contains("/npcs/") || relativePath.StartsWith("npcs/"))
+                    npcIds.Add(id);
+                else if (relativePath.Contains("/items/") || relativePath.StartsWith("items/"))
+                    itemIds.Add(id);
+                else if (relativePath.Contains("/classes/") || relativePath.StartsWith("classes/"))
+                {
+                    classIds.Add(id);
+                    if (el.TryGetProperty("abilities", out var abilitiesProp))
+                    {
+                        foreach (var ability in abilitiesProp.EnumerateArray())
+                        {
+                            if (ability.TryGetProperty("id", out var abilityId))
+                                abilityIds.Add(abilityId.GetString() ?? "");
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach (var file in jsonFiles)
+        {
+            var relativePath = Path.GetRelativePath(contentDir, file).Replace('\\', '/');
+            var json = File.ReadAllText(file);
+            int result;
+
+            if (relativePath.Contains("/segments/") || relativePath.StartsWith("segments/"))
+            {
+                result = ValidateSegment(file, json);
+            }
+            else if (relativePath.Contains("/synergies/") || relativePath.StartsWith("synergies/"))
+            {
+                result = ValidateSynergy(file, json);
+            }
+            else if (relativePath.Contains("/classes/") || relativePath.StartsWith("classes/"))
+            {
+                result = ValidateClass(file, json);
+            }
+            else if (relativePath.Contains("/enemies/") || relativePath.StartsWith("enemies/"))
+            {
+                result = ValidateEnemy(file, json);
+            }
+            else if (relativePath.Contains("/encounters/") || relativePath.StartsWith("encounters/"))
+            {
+                result = ValidateEncounter(file, json);
+            }
+            else if (relativePath.Contains("/factions/") || relativePath.StartsWith("factions/"))
+            {
+                result = ValidateFaction(file, json);
+            }
+            else if (relativePath.Contains("/archives/") || relativePath.StartsWith("archives/"))
+            {
+                result = ValidateArchive(file, json);
+            }
+            else if (relativePath.Contains("/secrets/") || relativePath.StartsWith("secrets/"))
+            {
+                result = ValidateSecret(file, json);
+            }
+            else if (relativePath.Contains("/campaigns/dungeons/") || relativePath.StartsWith("campaigns/dungeons/"))
+            {
+                result = ValidateDungeonTemplate(file, json, segmentIds, encounterIds);
+            }
+            else if (relativePath.Contains("/items/") || relativePath.StartsWith("items/"))
+            {
+                result = ValidateItems(file, json);
+            }
+            else if (relativePath.Contains("/loot/") || relativePath.StartsWith("loot/"))
+            {
+                result = ValidateLootTable(file, json, itemIds);
+            }
+            else if (relativePath.Contains("/schemes/") || relativePath.StartsWith("schemes/"))
+            {
+                result = ValidateScheme(file, json);
+            }
+            else if (relativePath.Contains("/complications/") || relativePath.StartsWith("complications/"))
+            {
+                result = ValidateComplication(file, json);
+            }
+            else if (relativePath.Contains("/rumors/") || relativePath.StartsWith("rumors/"))
+            {
+                result = ValidateRumors(file, json);
+            }
+            else if (relativePath.Contains("/dialogue/") || relativePath.StartsWith("dialogue/"))
+            {
+                result = ValidateDialogue(file, json);
+            }
+            else if (relativePath.Contains("/npcs/") || relativePath.StartsWith("npcs/"))
+            {
+                result = ValidateNpcs(file, json);
+            }
+            else if (relativePath.Contains("/campaigns/") || relativePath.StartsWith("campaigns/"))
+            {
+                result = ValidateCampaign(file, json);
+            }
+            else if (relativePath.Contains("/schemas/") || relativePath.StartsWith("schemas/"))
+            {
+                continue; // JSON Schema definitions, not game content
+            }
+            else
+            {
+                // Fail fast: unmatched content must never be emitted into the pack
+                // unvalidated. Adding a new content category requires adding a
+                // validator branch above (or an explicit schemas/-style skip).
+                Console.WriteLine($"FAIL: {relativePath} - No validator for this category; refusing to emit unvalidated content");
+                return 1;
+            }
+
+            if (result != 0) return result;
+        }
+
+        var contentHash = ComputeContentHash(jsonFiles);
+        var manifest = new Manifest
+        {
+            Version = 1,
+            ContentHash = contentHash,
+            Files = jsonFiles.Select(f => Path.GetRelativePath(contentDir, f).Replace('\\', '/')).ToArray()
+        };
+
+        var manifestPath = Path.Combine(outputDir, "manifest.json");
+        File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"Wrote manifest: {manifestPath} (hash: {contentHash})");
+
+        var synergyMap = CompileSynergyMap(contentDir);
+        var synergyMapPath = Path.Combine(outputDir, "synergies.map.json");
+        File.WriteAllText(synergyMapPath, JsonSerializer.Serialize(synergyMap, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"Wrote synergy map: {synergyMapPath}");
+
+        var rpkPath = Path.Combine(outputDir, "content.rpk");
+        CompileRpk(contentDir, jsonFiles, rpkPath);
+        Console.WriteLine($"Wrote pack: {rpkPath} ({new FileInfo(rpkPath).Length} bytes)");
+
+        var indexPath = Path.Combine(outputDir, "content-index.json");
+        CompileContentIndex(contentDir, jsonFiles, indexPath);
+        Console.WriteLine($"Wrote content index: {indexPath}");
+
+        return 0;
+    }
+
+    static int ValidateSegment(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        RoomSegment? segment;
+        try
+        {
+            segment = JsonSerializer.Deserialize<RoomSegment>(json, options);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        if (segment == null)
+        {
+            Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+            return 1;
+        }
+
+        var seen = new HashSet<(int, int)>();
+        foreach (var tile in segment.Tiles)
+        {
+            if (!seen.Add((tile.X, tile.Y)))
+            {
+                var line = FindLineNumber(json, tile.X, tile.Y);
+                Console.WriteLine($"FAIL: {filePath}:{line} - Duplicate tile at ({tile.X}, {tile.Y})");
+                return 1;
+            }
+        }
+
+        if (segment.Tiles.Count > 1)
+        {
+            foreach (var tile in segment.Tiles)
+            {
+                bool hasNeighbor = segment.Tiles.Any(t =>
+                    !ReferenceEquals(t, tile) &&
+                    Math.Abs(t.X - tile.X) + Math.Abs(t.Y - tile.Y) == 1);
+                if (!hasNeighbor)
+                {
+                    var line = FindLineNumber(json, tile.X, tile.Y);
+                    Console.WriteLine($"FAIL: {filePath}:{line} - Orphan tile at ({tile.X}, {tile.Y})");
+                    return 1;
+                }
+            }
+        }
+
+        foreach (var tile in segment.Tiles)
+        {
+            if (tile.IsExit)
+            {
+                if (tile.ExitDirection == null)
+                {
+                    var line = FindLineNumber(json, tile.X, tile.Y);
+                    Console.WriteLine($"FAIL: {filePath}:{line} - Exit tile at ({tile.X}, {tile.Y}) missing exitDirection");
+                    return 1;
+                }
+
+                var border = tile.ExitDirection.Value switch
+                {
+                    Direction.North => tile.North,
+                    Direction.South => tile.South,
+                    Direction.East => tile.East,
+                    Direction.West => tile.West,
+                    _ => null
+                };
+
+                if (border != BorderType.Door)
+                {
+                    var line = FindLineNumber(json, tile.X, tile.Y);
+                    Console.WriteLine($"FAIL: {filePath}:{line} - Exit tile at ({tile.X}, {tile.Y}) has {tile.ExitDirection} border '{border}' but expected 'Door'");
+                    return 1;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    static int ValidateSynergy(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        SynergyDef? def;
+        try
+        {
+            def = JsonSerializer.Deserialize<SynergyDef>(json, options);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        if (def == null)
+        {
+            Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(def.Id))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Missing id");
+            return 1;
+        }
+
+        if (def.Abilities == null || def.Abilities.Length != 2)
+        {
+            Console.WriteLine($"FAIL: {filePath} - Expected exactly 2 abilities");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(def.Abilities[0]) || string.IsNullOrWhiteSpace(def.Abilities[1]))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Ability IDs must not be empty");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(def.Hint))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Hint must not be empty");
+            return 1;
+        }
+
+        var validAppliesAfter = new[] { "first_ability", "second_ability", "round_end" };
+        if (def.Effect == null || !validAppliesAfter.Contains(def.Effect.AppliesAfter))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Invalid or missing effect.appliesAfter");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateClass(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<ClassDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Name))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing name");
+                return 1;
+            }
+            if (def.Abilities == null || def.Abilities.Length < 3)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Expected at least 3 abilities, got {def.Abilities?.Length ?? 0}");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateEnemy(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<EnemyDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (def.HpBase <= 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - hpBase must be positive");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Ai))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing AI behavior tag");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateLootTable(string filePath, string json, HashSet<string> itemIds)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+        try
+        {
+            var def = JsonSerializer.Deserialize<DungeonLootTableDef>(json, options);
+            if (def == null || string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (def.Entries == null || def.Entries.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Loot table has no entries");
+                return 1;
+            }
+            foreach (var e in def.Entries)
+            {
+                if (string.IsNullOrWhiteSpace(e.ItemId) || !itemIds.Contains(e.ItemId))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Unknown itemId '{e.ItemId}'");
+                    return 1;
+                }
+                if (e.Weight <= 0)
+                {
+                    Console.WriteLine($"FAIL: {filePath} - itemId '{e.ItemId}' weight must be positive");
+                    return 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static int ValidateEncounter(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var registry = new EncounterTableRegistry();
+            registry.LoadFromJson(Path.GetFileNameWithoutExtension(filePath), json);
+            var table = registry.Get(Path.GetFileNameWithoutExtension(filePath));
+            if (table == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Could not load encounter table");
+                return 1;
+            }
+            if (table.Entries.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Encounter table has no entries");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateFaction(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<FactionContentDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Name))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing name");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateArchive(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<RPC.Engine.Campaign.FamilyArchiveDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.FactionId))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing factionId");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateSecret(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<RPC.Engine.Dungeons.SecretDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Type))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing type");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateDungeonTemplate(string filePath, string json, HashSet<string> segmentIds, HashSet<string> encounterIds)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            AllowTrailingCommas = true
+        };
+
+        DungeonTemplate? template;
+        try
+        {
+            template = JsonSerializer.Deserialize<DungeonTemplate>(json, options);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+
+        if (template == null)
+        {
+            Console.WriteLine($"FAIL: {filePath} - Could not deserialize dungeon template");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(template.Id))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Missing id");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(template.Name))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Missing name");
+            return 1;
+        }
+
+        if (template.SegmentPool.Length == 0)
+        {
+            Console.WriteLine($"FAIL: {filePath} - SegmentPool must not be empty");
+            return 1;
+        }
+
+        foreach (var segmentId in template.SegmentPool)
+        {
+            if (!segmentIds.Contains(segmentId))
+            {
+                Console.WriteLine($"FAIL: {filePath} - SegmentPool references unknown segment: {segmentId}");
+                return 1;
+            }
+        }
+
+        if (template.TargetRooms <= 0)
+        {
+            Console.WriteLine($"FAIL: {filePath} - TargetRooms must be > 0");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(template.BossEncounterId))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Missing bossEncounterId");
+            return 1;
+        }
+
+        if (!encounterIds.Contains(template.BossEncounterId))
+        {
+            Console.WriteLine($"WARN: {filePath} - BossEncounterId '{template.BossEncounterId}' not found in encounters");
+        }
+
+        if (string.IsNullOrWhiteSpace(template.EncounterTableId))
+        {
+            Console.WriteLine($"FAIL: {filePath} - Missing encounterTableId");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int ValidateItems(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        try
+        {
+            var items = JsonSerializer.Deserialize<ItemDef[]>(json, options);
+            if (items == null || items.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Expected non-empty array of items");
+                return 1;
+            }
+            foreach (var item in items)
+            {
+                if (string.IsNullOrWhiteSpace(item.Id))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Item missing id");
+                    return 1;
+                }
+                if (string.IsNullOrWhiteSpace(item.Name))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Item '{item.Id}' missing name");
+                    return 1;
+                }
+                if (string.IsNullOrWhiteSpace(item.Type))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Item '{item.Id}' missing type");
+                    return 1;
+                }
+                if (item.Value < 0)
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Item '{item.Id}' value must be >= 0");
+                    return 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static int ValidateScheme(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<SchemeDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Name))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing name");
+                return 1;
+            }
+            if (def.EvidenceChain == null || def.EvidenceChain.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - EvidenceChain must not be empty");
+                return 1;
+            }
+            if (def.Events == null || def.Events.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Events must not be empty");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static int ValidateComplication(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var def = JsonSerializer.Deserialize<ComplicationDef>(json, options);
+            if (def == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Id))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing id");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(def.Name))
+            {
+                Console.WriteLine($"FAIL: {filePath} - Missing name");
+                return 1;
+            }
+            if (def.Events == null || def.Events.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Events must not be empty");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static int ValidateRumors(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var rumors = JsonSerializer.Deserialize<RumorDef[]>(json, options);
+            if (rumors == null || rumors.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Expected non-empty array of rumors");
+                return 1;
+            }
+            foreach (var rumor in rumors)
+            {
+                if (string.IsNullOrWhiteSpace(rumor.Id))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Rumor missing id");
+                    return 1;
+                }
+                if (string.IsNullOrWhiteSpace(rumor.Text))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Rumor '{rumor.Id}' missing text");
+                    return 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static int ValidateDialogue(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var defs = JsonSerializer.Deserialize<DialogueDef[]>(json, options);
+            if (defs == null || defs.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Expected non-empty array of dialogue defs");
+                return 1;
+            }
+            foreach (var def in defs)
+            {
+                if (string.IsNullOrWhiteSpace(def.Speaker))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Dialogue entry missing speaker");
+                    return 1;
+                }
+                if (string.IsNullOrWhiteSpace(def.Kind))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Dialogue entry for '{def.Speaker}' missing kind");
+                    return 1;
+                }
+                if (def.Tiers == null || def.Tiers.Count == 0)
+                {
+                    Console.WriteLine($"FAIL: {filePath} - Dialogue entry for '{def.Speaker}/{def.Kind}' has empty tiers map");
+                    return 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static int ValidateNpcs(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        try
+        {
+            var npcs = JsonSerializer.Deserialize<NpcDef[]>(json, options);
+            if (npcs == null || npcs.Length == 0)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Expected non-empty array of NPCs");
+                return 1;
+            }
+            foreach (var npc in npcs)
+            {
+                if (string.IsNullOrWhiteSpace(npc.Id))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - NPC missing id");
+                    return 1;
+                }
+                if (string.IsNullOrWhiteSpace(npc.Name))
+                {
+                    Console.WriteLine($"FAIL: {filePath} - NPC '{npc.Id}' missing name");
+                    return 1;
+                }
+                if (npc.Level < 1)
+                {
+                    Console.WriteLine($"FAIL: {filePath} - NPC '{npc.Id}' level must be >= 1");
+                    return 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static int ValidateCampaign(string filePath, string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        try
+        {
+            var config = JsonSerializer.Deserialize<CampaignConfig>(json, options);
+            if (config == null)
+            {
+                Console.WriteLine($"FAIL: {filePath} - Deserialization returned null");
+                return 1;
+            }
+            if (!config.Validate(out var error))
+            {
+                Console.WriteLine($"FAIL: {filePath} - {error}");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAIL: {filePath} - {ex.Message}");
+            return 1;
+        }
+        return 0;
+    }
+
+    static Dictionary<string, SynergyEffect> CompileSynergyMap(string contentDir)
+    {
+        var map = new Dictionary<string, SynergyEffect>();
+        var synergyDir = Path.Combine(contentDir, "synergies");
+        if (!Directory.Exists(synergyDir))
+            return map;
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        foreach (var file in Directory.EnumerateFiles(synergyDir, "*.json"))
+        {
+            var json = File.ReadAllText(file);
+            var def = JsonSerializer.Deserialize<SynergyDef>(json, options);
+            if (def == null || def.Anti || def.Abilities.Length != 2)
+                continue;
+
+            var key = SynergyRegistry.MakeKey(def.Abilities[0], def.Abilities[1]);
+            if (string.IsNullOrEmpty(key))
+                continue;
+
+            map[key] = new SynergyEffect(def.Effect.Type, def.Effect.Value);
+        }
+
+        return map;
+    }
+
+    static int FindLineNumber(string text, int x, int y)
+    {
+        var lines = text.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Contains($"\"x\": {x}") && lines[i].Contains($"\"y\": {y}"))
+                return i + 1;
+        }
+        return 0;
+    }
+
+    static void CompileRpk(string contentDir, List<string> jsonFiles, string outputPath)
+    {
+        using var stream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+        using var writer = new BinaryWriter(stream);
+
+        writer.Write(Encoding.ASCII.GetBytes("RPK1"));
+        writer.Write(1u);
+        writer.Write((uint)jsonFiles.Count);
+
+        foreach (var file in jsonFiles)
+        {
+            var relativePath = Path.GetRelativePath(contentDir, file).Replace('\\', '/');
+            var pathBytes = Encoding.UTF8.GetBytes(relativePath);
+            var data = File.ReadAllBytes(file);
+
+            var dataOffset = (uint)(stream.Position + 4 + 4 + 2 + pathBytes.Length);
+
+            writer.Write(dataOffset);
+            writer.Write((uint)data.Length);
+            writer.Write((ushort)pathBytes.Length);
+            writer.Write(pathBytes);
+            writer.Write(data);
+        }
+    }
+
+    static void CompileContentIndex(string contentDir, List<string> jsonFiles, string outputPath)
+    {
+        var segments = new List<IndexEntry>();
+        var dungeons = new List<IndexEntry>();
+        var enemies = new List<IndexEntry>();
+        var npcs = new List<IndexEntry>();
+        var items = new List<IndexEntry>();
+        var encounters = new List<IndexEntry>();
+        var quests = new List<IndexEntry>();
+        var classes = new List<IndexEntry>();
+
+        foreach (var file in jsonFiles)
+        {
+            var relPath = Path.GetRelativePath(contentDir, file);
+            var parts = relPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (parts.Length < 2) continue;
+            var category = parts[0];
+            if (category == "campaigns" && parts.Length > 1 && parts[1] == "dungeons")
+                category = "dungeons";
+            var json = File.ReadAllText(file);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var elementList = new List<JsonElement>();
+            if (root.ValueKind == JsonValueKind.Array)
+                foreach (var e in root.EnumerateArray()) elementList.Add(e);
+            else
+                elementList.Add(root);
+
+            foreach (var el in elementList)
+            {
+                if (el.ValueKind != JsonValueKind.Object) continue;
+                if (!el.TryGetProperty("id", out var idProp)) continue;
+                var id = idProp.GetString() ?? "";
+                if (string.IsNullOrEmpty(id)) continue;
+
+                var entry = new IndexEntry { Id = id };
+                if (el.TryGetProperty("name", out var nameProp)) entry.Name = nameProp.GetString();
+                if (el.TryGetProperty("tags", out var tagsProp))
+                    entry.Tags = tagsProp.EnumerateArray().Select(t => t.GetString()!).Where(s => s != null).ToArray();
+                if (el.TryGetProperty("dangerLevel", out var dProp)) entry.Danger = dProp.GetInt32();
+                if (el.TryGetProperty("danger", out var dgProp)) entry.Danger = dgProp.GetInt32();
+
+                switch (category)
+                {
+                    case "segments":
+                        entry.Template = parts.Length > 1 ? parts[1] : null;
+                        if (el.TryGetProperty("width", out var wProp) && el.TryGetProperty("height", out var hProp))
+                            entry.Size = new IndexSize { Width = wProp.GetInt32(), Height = hProp.GetInt32() };
+                        if (el.TryGetProperty("tiles", out var tilesProp))
+                        {
+                            var connections = new HashSet<string>();
+                            foreach (var tile in tilesProp.EnumerateArray())
+                            {
+                                if (tile.TryGetProperty("exitDirection", out var edProp))
+                                    connections.Add(edProp.GetString()?.ToLowerInvariant() ?? "");
+                            }
+                            entry.Connections = connections.Where(c => !string.IsNullOrEmpty(c)).ToArray();
+                        }
+                        segments.Add(entry);
+                        break;
+                    case "dungeons":
+                        if (el.TryGetProperty("minDepth", out var minD) && el.TryGetProperty("maxDepth", out var maxD))
+                            entry.Size = new IndexSize { Width = minD.GetInt32(), Height = maxD.GetInt32() };
+                        if (el.TryGetProperty("segments", out var segsProp))
+                            entry.Connections = segsProp.EnumerateArray().Select(s => s.GetString()!).Where(s => s != null).ToArray();
+                        dungeons.Add(entry);
+                        break;
+                    case "enemies":
+                        enemies.Add(entry);
+                        break;
+                    case "npcs":
+                        npcs.Add(entry);
+                        break;
+                    case "items":
+                        items.Add(entry);
+                        break;
+                    case "encounters":
+                        encounters.Add(entry);
+                        break;
+                    case "quests":
+                        quests.Add(entry);
+                        break;
+                    case "classes":
+                        classes.Add(entry);
+                        break;
+                }
+            }
+        }
+
+        var index = new ContentIndex
+        {
+            ContentHash = ComputeContentHash(jsonFiles),
+            Segments = segments.ToArray(),
+            Dungeons = dungeons.ToArray(),
+            Enemies = enemies.ToArray(),
+            Npcs = npcs.ToArray(),
+            Items = items.ToArray(),
+            Encounters = encounters.ToArray(),
+            Quests = quests.ToArray(),
+            Classes = classes.ToArray()
+        };
+
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
+        File.WriteAllText(outputPath, JsonSerializer.Serialize(index, options));
+    }
+
+    static string ComputeContentHash(List<string> files)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        foreach (var file in files.OrderBy(f => f))
+        {
+            var data = File.ReadAllBytes(file);
+            sha.TransformBlock(data, 0, data.Length, null, 0);
+        }
+        sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        return Convert.ToHexString(sha.Hash!);
+    }
+}
+
+class Manifest
+{
+    public int Version { get; set; }
+    public string ContentHash { get; set; } = "";
+    public string[] Files { get; set; } = Array.Empty<string>();
+}
+
+class ContentIndex
+{
+    public string ContentHash { get; set; } = "";
+    public IndexEntry[] Segments { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Dungeons { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Enemies { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Npcs { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Items { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Encounters { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Quests { get; set; } = Array.Empty<IndexEntry>();
+    public IndexEntry[] Classes { get; set; } = Array.Empty<IndexEntry>();
+}
+
+class IndexEntry
+{
+    public string Id { get; set; } = "";
+    public string? Name { get; set; }
+    public string? Template { get; set; }
+    public string[] Tags { get; set; } = Array.Empty<string>();
+    public int? Danger { get; set; }
+    public IndexSize? Size { get; set; }
+    public string[] Connections { get; set; } = Array.Empty<string>();
+}
+
+class IndexSize
+{
+    public int Width { get; set; }
+    public int Height { get; set; }
+}

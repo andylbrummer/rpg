@@ -1,0 +1,14 @@
+[
+  { "speaker": "generic", "kind": "vendor",
+    "tiers": { "low": "Coin first, questions never.", "neutral": "Browse. Everything here has a price.", "high": "Back again? Good. I set aside the fresh stock for you." } },
+  { "speaker": "bureau", "kind": "vendor",
+    "tiers": { "low": "The Bureau does not extend credit to the unrecorded.", "neutral": "Requisition forms are on the counter. Try not to bleed on them.", "high": "Your file is in good order. The Quartermaster authorizes the good stock." } },
+  { "speaker": "convocation", "kind": "vendor",
+    "tiers": { "low": "The Bloom does not trade with the unworthy.", "neutral": "Take what the Bloom permits. No more.", "high": "The Bloom recognizes you. Its gifts are yours." } },
+  { "speaker": "cartography", "kind": "vendor",
+    "tiers": { "low": "You cannot buy a map you are not meant to read.", "neutral": "Every route has a toll. Pay it.", "high": "For you, the Collective opens the sealed drawers." } },
+  { "speaker": "inkblood", "kind": "vendor",
+    "tiers": { "low": "Your name is not in the ledger. We do not sell to blank pages.", "neutral": "Sign here. The Scribes record every transaction.", "high": "Your account is written in full. The archive stock is open to you." } },
+  { "speaker": "stillness", "kind": "vendor",
+    "tiers": { "low": "...", "neutral": "Choose in silence.", "high": "The Null keeps what it sells. You have earned its quiet." } }
+]

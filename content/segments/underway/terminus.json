@@ -1,0 +1,144 @@
+{
+  "id": "underway_terminus",
+  "name": "The Drowned Terminus",
+  "description": "A grand vaulted terminus, three quarters underwater. The Stillness keeps something here \u2014 something that does not want to be moved.",
+  "tags": [
+    "boss",
+    "underway",
+    "encounter:uw-boss-leviathan"
+  ],
+  "width": 5,
+  "height": 5,
+  "tiles": [
+    {
+      "x": 1,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "type": "Floor",
+      "south": "None"
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "type": "Floor",
+      "west": "SecretDoor"
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "type": "Floor"
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "type": "Floor",
+      "isExit": true,
+      "exitDirection": "South",
+      "south": "Door"
+    },
+    {
+      "x": 4,
+      "y": 5,
+      "type": "Floor"
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "type": "Floor"
+    }
+  ]
+}

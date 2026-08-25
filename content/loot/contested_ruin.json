@@ -1,0 +1,8 @@
+{
+  "id": "contested_ruin",
+  "entries": [
+    { "itemId": "scrap_metal", "weight": 3 },
+    { "itemId": "bone_fragment", "weight": 2 },
+    { "itemId": "small_salve", "weight": 1 }
+  ]
+}

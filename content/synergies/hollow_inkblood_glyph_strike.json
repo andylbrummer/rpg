@@ -1,0 +1,17 @@
+{
+  "id": "hollow_inkblood_glyph_strike",
+  "abilities": [
+    "backstab",
+    "forbidden_glyph"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 7,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "The Hollow plants a stolen glyph directly into the target's back.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

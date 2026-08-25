@@ -1,0 +1,345 @@
+{
+  "id": "stillblade",
+  "name": "Stillblade",
+  "description": "Melee combatant with anti-magic capability. Resistant to necromantic effects but cannot benefit from allied necromantic buffs.",
+  "baseStats": {
+    "strength": 5,
+    "dexterity": 5,
+    "constitution": 4,
+    "intelligence": 3,
+    "willpower": 4
+  },
+  "abilities": [
+    {
+      "id": "rend",
+      "name": "Rend",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "1d8+PWR",
+        "range": "melee"
+      },
+      "tags": [
+        "physical",
+        "slash"
+      ]
+    },
+    {
+      "id": "silence_strike",
+      "name": "Silence Strike",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "1d6+PWR",
+        "range": "melee",
+        "extra": "dispel_one_buff"
+      },
+      "tags": [
+        "physical",
+        "anti_magic"
+      ]
+    },
+    {
+      "id": "warding_stance",
+      "name": "Warding Stance",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "evade",
+        "value": 4,
+        "duration": 2,
+        "target": "self"
+      },
+      "tags": [
+        "stance",
+        "defense"
+      ]
+    },
+    {
+      "id": "break_magic",
+      "name": "Break Magic",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "dispel",
+        "target": "enemy",
+        "count": 2
+      },
+      "tags": [
+        "anti_magic",
+        "dispel"
+      ]
+    },
+    {
+      "id": "null_ward",
+      "name": "Null Ward",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "evade",
+        "value": 5,
+        "duration": 2,
+        "target": "ally_group"
+      },
+      "tags": [
+        "anti_magic",
+        "defense"
+      ],
+      "branch": "void_warden"
+    },
+    {
+      "id": "mage_breaker",
+      "name": "Mage Breaker",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d6+PWR",
+        "range": "melee",
+        "extra": "dispel_one_buff"
+      },
+      "tags": [
+        "physical",
+        "anti_magic"
+      ],
+      "branch": "silent_edge"
+    },
+    {
+      "id": "oblivion_wall",
+      "name": "Oblivion Wall",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "buff",
+        "stat": "evade",
+        "value": 7,
+        "duration": 3,
+        "target": "ally_group"
+      },
+      "tags": [
+        "anti_magic",
+        "defense"
+      ],
+      "branch": "oblivion_guard"
+    },
+    {
+      "id": "total_silence",
+      "name": "Total Silence",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "dispel",
+        "target": "enemy_group",
+        "count": 3
+      },
+      "tags": [
+        "anti_magic",
+        "dispel"
+      ],
+      "branch": "silence_warden"
+    },
+    {
+      "id": "executioner",
+      "name": "Executioner",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "3d6+PWR",
+        "range": "melee"
+      },
+      "tags": [
+        "physical",
+        "slash"
+      ],
+      "branch": "deathless_blade"
+    },
+    {
+      "id": "null_reave",
+      "name": "Null Reave",
+      "cost": {
+        "type": "none"
+      },
+      "effect": {
+        "type": "damage",
+        "value": "2d8+PWR",
+        "range": "melee",
+        "extra": "dispel_all_buffs"
+      },
+      "tags": [
+        "physical",
+        "anti_magic"
+      ],
+      "branch": "null_reaver"
+    }
+  ],
+  "availableBranches": [
+    "void_warden",
+    "silent_edge"
+  ],
+  "branches": [
+    {
+      "id": "oblivion_guard",
+      "requiresBranch": "void_warden"
+    },
+    {
+      "id": "silence_warden",
+      "requiresBranch": "void_warden",
+      "factionGate": {
+        "factionId": "stillness",
+        "threshold": 30
+      },
+      "fallbackBranch": "oblivion_guard"
+    },
+    {
+      "id": "deathless_blade",
+      "requiresBranch": "silent_edge"
+    },
+    {
+      "id": "null_reaver",
+      "requiresBranch": "silent_edge"
+    }
+  ],
+  "levelTable": [
+    {
+      "level": 1,
+      "hpGain": 0,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": [
+        "rend",
+        "silence_strike"
+      ]
+    },
+    {
+      "level": 2,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": [
+        "warding_stance"
+      ]
+    },
+    {
+      "level": 3,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 1,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 4,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 1
+      },
+      "newAbilities": [
+        "break_magic"
+      ]
+    },
+    {
+      "level": 5,
+      "hpGain": 4,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 1,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 6,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 7,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 1,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 8,
+      "hpGain": 4,
+      "statGain": {
+        "strength": 1,
+        "dexterity": 0,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 9,
+      "hpGain": 3,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 0,
+        "constitution": 1,
+        "intelligence": 0,
+        "willpower": 0
+      },
+      "newAbilities": []
+    },
+    {
+      "level": 10,
+      "hpGain": 5,
+      "statGain": {
+        "strength": 0,
+        "dexterity": 1,
+        "constitution": 0,
+        "intelligence": 0,
+        "willpower": 1
+      },
+      "newAbilities": []
+    }
+  ]
+}

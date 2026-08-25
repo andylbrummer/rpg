@@ -1,0 +1,43 @@
+{
+  "id": "settlement_gone_wrong",
+  "name": "Settlement Gone Wrong Encounters",
+  "entries": [
+    {
+      "weight": 30,
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 18
+    },
+    {
+      "weight": 25,
+      "enemies": [
+        { "enemyId": "rat", "count": 3, "rowOverride": 0 }
+      ],
+      "xpReward": 15
+    },
+    {
+      "weight": 20,
+      "enemies": [
+        { "enemyId": "bloom_mite", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 16
+    },
+    {
+      "weight": 15,
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 1, "rowOverride": 0 },
+        { "enemyId": "bloom_mite", "count": 2, "rowOverride": 1 }
+      ],
+      "xpReward": 24
+    },
+    {
+      "weight": 10,
+      "enemies": [
+        { "enemyId": "bloom_wretch", "count": 1, "rowOverride": 0 },
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 0 }
+      ],
+      "xpReward": 30
+    }
+  ]
+}

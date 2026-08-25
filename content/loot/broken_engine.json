@@ -1,0 +1,9 @@
+{
+  "id": "broken_engine",
+  "entries": [
+    { "itemId": "scrap_metal", "weight": 4 },
+    { "itemId": "engine_charge", "weight": 2 },
+    { "itemId": "bone_fragment", "weight": 2 },
+    { "itemId": "rat_tail", "weight": 1 }
+  ]
+}

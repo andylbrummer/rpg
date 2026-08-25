@@ -1,0 +1,103 @@
+namespace RPC.Engine.Campaign;
+
+/// <summary>
+/// Template-driven campaign epilogue generator.
+/// Populates pre-authored templates from the action log and campaign state.
+/// </summary>
+public class EpilogueTemplate
+{
+    public string Id { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string[] Paragraphs { get; set; } = Array.Empty<string>();
+}
+
+public class EpilogueGenerator
+{
+    public static string Generate(GameState state)
+    {
+        var log = state.ActionLog;
+        var campaign = state.Campaign;
+
+        // Extract key facts from action log
+        var mastermind = campaign.CampaignConfig?.Mastermind ?? "unknown";
+        var scheme = campaign.CampaignConfig?.Scheme.ToString().ToLowerInvariant() ?? "unknown scheme";
+        var patron = campaign.CampaignConfig?.Patron ?? "unknown";
+
+        // Count character deaths
+        var deaths = log.Where(e => e.Type == "character_died").ToList();
+        var deathCount = deaths.Count;
+
+        // Settlement fates from tracked world state (player choices + campaign rolls).
+        var settlementFateCounts = state.WorldState.Settlements.Values
+            .GroupBy(SettlementFate.Normalize)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var settlementsSaved = settlementFateCounts.GetValueOrDefault(SettlementFate.Saved);
+        var settlementsLost = settlementFateCounts.GetValueOrDefault(SettlementFate.Lost);
+        var settlementsAbandoned = settlementFateCounts.GetValueOrDefault(SettlementFate.Abandoned);
+
+        // Check wild card alliance
+        var wildCardStatus = campaign.WildCardAllianceStatus.ToString().ToLowerInvariant();
+        var wildCardTurn = campaign.WildCardAllianceTurn;
+
+        // Betrayal path
+        var betrayal = campaign.BetrayalPath;
+
+        // Build paragraphs
+        var paragraphs = new List<string>();
+
+        // Opening
+        paragraphs.Add($"The campaign against the {mastermind} reached its conclusion. " +
+            $"What began as a simple contract from the {patron} spiraled into something far darker.");
+
+        // Scheme outcome
+        if (betrayal)
+        {
+            paragraphs.Add($"The {scheme} succeeded. With your help, the {mastermind} consolidated power across the Reach. " +
+                $"The patron's trust was rewarded with a knife in the back.");
+        }
+        else if (campaign.CampaignEnded)
+        {
+            paragraphs.Add($"The {scheme} was ultimately foiled. " +
+                $"The mastermind's plans came to nothing.");
+        }
+        else
+        {
+            paragraphs.Add($"The {scheme} remains unresolved. The Reach continues to suffer.");
+        }
+
+        // Settlement fates
+        if (settlementsSaved + settlementsLost + settlementsAbandoned > 0)
+        {
+            var parts = new List<string>();
+            if (settlementsSaved > 0) parts.Add($"{settlementsSaved} saved");
+            if (settlementsLost > 0) parts.Add($"{settlementsLost} lost");
+            if (settlementsAbandoned > 0) parts.Add($"{settlementsAbandoned} abandoned");
+            paragraphs.Add($"Across the Reach, the settlements' fates were sealed: {string.Join(", ", parts)}.");
+        }
+
+        // Party losses
+        if (deathCount > 0)
+        {
+            var companionWord = deathCount == 1 ? "companion fell" : "companions fell";
+            paragraphs.Add($"Your party paid a heavy price. {deathCount} {companionWord} in the darkness.");
+        }
+        else
+        {
+            paragraphs.Add("Remarkably, every member of your party survived the ordeal.");
+        }
+
+        // Wild card
+        if (wildCardTurn > 0)
+        {
+            paragraphs.Add($"The wild card faction revealed their true nature — alliance status: {wildCardStatus}.");
+        }
+
+        // Betrayal
+        if (betrayal)
+        {
+            paragraphs.Add("In the end, you chose to stand with the mastermind. The Reach will remember your betrayal.");
+        }
+
+        return string.Join("\n\n", paragraphs);
+    }
+}

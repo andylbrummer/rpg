@@ -1,0 +1,17 @@
+{
+  "id": "fieldwright_marcher_overcharged_shot",
+  "abilities": [
+    "overcharge",
+    "called_shot"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Overcharged engine-tech guidance systems turn a called shot into a guaranteed kill.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

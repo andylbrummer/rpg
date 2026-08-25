@@ -1,0 +1,19 @@
+{
+  "id": "env_bloom_site_skirmish_shiv",
+  "abilities": [
+    "skirmish",
+    "shiv"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "The heat-haze of the bloom site fuses these techniques into something fiercer.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true,
+  "environment": "bloom_site"
+}

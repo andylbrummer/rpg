@@ -1,0 +1,56 @@
+{
+  "id": "underway",
+  "name": "Underway Encounters",
+  "entries": [
+    {
+      "id": "uw-rat-swarm",
+      "weight": 30,
+      "enemies": [
+        { "enemyId": "rat", "count": 3, "rowOverride": 0 }
+      ]
+    },
+    {
+      "id": "uw-scavenger-mob",
+      "weight": 25,
+      "factionId": "cartography",
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 0 },
+        { "enemyId": "rat", "count": 1, "rowOverride": 1 }
+      ]
+    },
+    {
+      "id": "uw-stillness-watcher",
+      "weight": 15,
+      "factionId": "stillness",
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 1, "rowOverride": 0 }
+      ]
+    },
+    {
+      "id": "uw-cartography-survey",
+      "weight": 12,
+      "factionId": "cartography",
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 3, "rowOverride": 0 }
+      ]
+    },
+    {
+      "id": "uw-bureau-patrol",
+      "weight": 10,
+      "factionId": "bureau",
+      "enemies": [
+        { "enemyId": "bureau_soldier", "count": 1, "rowOverride": 0 },
+        { "enemyId": "rat", "count": 1, "rowOverride": 1 }
+      ]
+    },
+    {
+      "id": "uw-boss-leviathan",
+      "weight": 4,
+      "dangerRating": 5,
+      "enemies": [
+        { "enemyId": "convocation_soldier", "count": 1, "rowOverride": 0 },
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 1 }
+      ]
+    }
+  ]
+}

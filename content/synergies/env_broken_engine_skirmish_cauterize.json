@@ -1,0 +1,19 @@
+{
+  "id": "env_broken_engine_skirmish_cauterize",
+  "abilities": [
+    "skirmish",
+    "cauterize"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Resonance from the broken engine amplifies the pairing.",
+  "fieldNotes": {
+    "discoveredBy": null
+  },
+  "hidden": true,
+  "environment": "broken_engine"
+}

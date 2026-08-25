@@ -1,0 +1,19 @@
+{
+  "id": "rat",
+  "name": "Sewer Rat",
+  "description": "A bloated rodent driven mad by necrotic runoff.",
+  "stats": {
+    "str": 3,
+    "dex": 5,
+    "con": 3,
+    "int": 1,
+    "wil": 2
+  },
+  "hpBase": 8,
+  "speed": 4,
+  "ai": "basic_melee",
+  "abilities": ["bite"],
+  "lootTable": [
+    { "itemId": "rat_tail", "chance": 0.3 }
+  ]
+}

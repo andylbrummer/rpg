@@ -1,0 +1,17 @@
+{
+  "id": "fieldwright_inkblood_overcharge",
+  "abilities": [
+    "overcharge",
+    "ink_slash"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "A Fieldwright's overcharge ignites blood-ink residue, amplifying the Inkblood's slash.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

@@ -41,6 +41,10 @@ Implementation plan for a first-person party-based dungeon crawler. Desktop app 
 
 The .NET host owns all game state. The browser is a renderer and input handler. No game logic runs client-side. The frontend sends player actions over WebSocket, receives state updates, and renders them.
 
+### Rendering State Boundary
+
+The server computes **visibility** (line-of-sight and explored state) and sends it as part of the dungeon grid. The client does not run its own LOS algorithm. At 40×40 grids this is trivial server-side; if dungeons grow larger than 60×60, visibility computation can be moved to the client without protocol changes (the `visible` flag becomes client-authoritative).
+
 ## Project Structure
 
 ```

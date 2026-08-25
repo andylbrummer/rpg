@@ -1,0 +1,11 @@
+{
+  "name": "protocol-gen",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "^15.0.4"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "sealed_vault",
+  "entries": [
+    { "itemId": "scrap_metal", "weight": 3 },
+    { "itemId": "engine_charge", "weight": 2 },
+    { "itemId": "ink_vial", "weight": 1 }
+  ]
+}

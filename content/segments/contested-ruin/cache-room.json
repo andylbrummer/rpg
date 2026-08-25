@@ -1,0 +1,63 @@
+{
+  "id": "ruin_cache",
+  "name": "Looted Cache",
+  "description": "A storage chamber, ransacked twice. What the Bureau left, the Convocation took. Something small still hides behind the loose stone.",
+  "tags": [
+    "chamber",
+    "contested_ruin"
+  ],
+  "width": 3,
+  "height": 3,
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "type": "Floor",
+      "south": "None"
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "type": "Floor"
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "type": "Floor",
+      "east": "SecretDoor"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "type": "Floor",
+      "isExit": true,
+      "exitDirection": "South",
+      "south": "Door"
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "type": "Floor"
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "type": "Floor"
+    }
+  ]
+}

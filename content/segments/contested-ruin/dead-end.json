@@ -1,0 +1,10 @@
+{
+  "id": "ruin_dead_end",
+  "name": "Toppled Tower",
+  "description": "A spiral staircase ends abruptly where the upper floors collapsed. Rubble blocks the way forward — but the stones look loose.",
+  "tags": ["dead_end", "contested_ruin"],
+  "tiles": [
+    { "x": 0, "y": 1, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
+    { "x": 0, "y": 0, "type": "Floor", "north": "BreakableWall" }
+  ]
+}

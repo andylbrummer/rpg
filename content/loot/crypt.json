@@ -1,0 +1,8 @@
+{
+  "id": "crypt",
+  "entries": [
+    { "itemId": "bone_fragment", "weight": 4 },
+    { "itemId": "ash_residue", "weight": 2 },
+    { "itemId": "rat_tail", "weight": 1 }
+  ]
+}

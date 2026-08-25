@@ -1,0 +1,19 @@
+{
+  "id": "bloom_entrance",
+  "name": "Overgrown Airlock",
+  "description": "A rusted airlock choked with phosphorescent fungal growth. Spore-laden air drifts through cracked seals.",
+  "tags": ["entrance", "bloom_site"],
+  "width": 3,
+  "height": 3,
+  "tiles": [
+    { "x": 1, "y": 1, "type": "Floor" },
+    { "x": 2, "y": 1, "type": "Floor", "north": "Door", "isExit": true, "exitDirection": "North" },
+    { "x": 3, "y": 1, "type": "Floor" },
+    { "x": 1, "y": 2, "type": "Floor" },
+    { "x": 2, "y": 2, "type": "Floor" },
+    { "x": 3, "y": 2, "type": "Floor" },
+    { "x": 1, "y": 3, "type": "Floor" },
+    { "x": 2, "y": 3, "type": "Floor", "south": "Door", "isExit": true, "exitDirection": "South" },
+    { "x": 3, "y": 3, "type": "Floor" }
+  ]
+}

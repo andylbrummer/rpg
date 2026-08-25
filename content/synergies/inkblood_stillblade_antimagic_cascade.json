@@ -1,0 +1,17 @@
+{
+  "id": "inkblood_stillblade_antimagic_cascade",
+  "abilities": [
+    "break_magic",
+    "forbidden_glyph"
+  ],
+  "anti": false,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 6,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "Breaking a glyph's containment releases raw antimagic energy.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

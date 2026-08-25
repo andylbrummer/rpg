@@ -1,0 +1,67 @@
+{
+  "id": "ErraticEngine",
+  "name": "Erratic Engine",
+  "description": "One of the ancient Engines has become dangerously unstable, causing dungeon geometry to shift and rearrange unpredictably. No corridor can be trusted.",
+  "evidenceChain": [
+    "power_surge_logs",
+    "engine_misfire_reports",
+    "fried_conduit_samples",
+    "blackout_grid_map",
+    "governor_tamper_marks",
+    "overheated_core_warnings",
+    "engineer_panic_notes",
+    "rolling_outage_schedule",
+    "harmonic_distortion_readings",
+    "backup_failure_record",
+    "coolant_loss_ledger",
+    "control_room_lockout",
+    "saboteur_tool_cache",
+    "tuning_fork_signature",
+    "engine_breaker_orders"
+  ],
+  "worldStateModifiers": {
+    "routeStatusChance": {
+      "engineAffected": 0.3,
+      "blocked": 0.1
+    },
+    "townEffects": {
+      "engineResearchNeeded": true,
+      "vendorComponentPriceMultiplier": 1.2
+    },
+    "travelEffects": {
+      "encounterChanceBonus": 0.1,
+      "engineHazardWeight": 2
+    },
+    "reputationEffects": {
+      "convocation": -2,
+      "cartography": -1
+    }
+  },
+  "events": [
+    {
+      "id": "first_shift",
+      "name": "First Shift Detected",
+      "description": "An Engine has hiccupped. A known route now leads somewhere else entirely.",
+      "turnThreshold": 3,
+      "effect": "block_routes",
+      "routeCount": 1
+    },
+    {
+      "id": "routes_warped",
+      "name": "Routes Warped",
+      "description": "Multiple travel routes have rearranged. Maps are becoming unreliable.",
+      "turnThreshold": 7,
+      "effect": "contest_routes",
+      "routeCount": 2
+    },
+    {
+      "id": "engine_critical",
+      "name": "Engine Critical",
+      "description": "The Engine's output is spiking. Dungeons may begin rearranging themselves in real time.",
+      "turnThreshold": 12,
+      "effect": "world_state_change",
+      "worldStateKey": "engine_status",
+      "worldStateValue": "critical"
+    }
+  ]
+}

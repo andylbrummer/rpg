@@ -1,0 +1,17 @@
+{
+  "id": "bonewarden_stillblade_anti",
+  "abilities": [
+    "bone_spear",
+    "rend"
+  ],
+  "anti": true,
+  "effect": {
+    "type": "bonus_damage",
+    "value": 0,
+    "appliesAfter": "second_ability"
+  },
+  "hint": "The Bonewarden's necromancy clashes violently with the Stillblade's void-magic, disrupting both.",
+  "fieldNotes": {
+    "discoveredBy": null
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "settlement_gone_wrong",
+  "entries": [
+    { "itemId": "scrap_metal", "weight": 3 },
+    { "itemId": "healing_draft", "weight": 1 },
+    { "itemId": "antitoxin", "weight": 1 },
+    { "itemId": "rat_tail", "weight": 2 }
+  ]
+}

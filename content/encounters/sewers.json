@@ -1,0 +1,36 @@
+{
+  "id": "sewers",
+  "name": "Sewer Warrens Encounters",
+  "entries": [
+    {
+      "weight": 40,
+      "enemies": [
+        { "enemyId": "rat", "count": 1, "rowOverride": 0 }
+      ],
+      "xpReward": 8
+    },
+    {
+      "weight": 35,
+      "enemies": [
+        { "enemyId": "rat", "count": 3, "rowOverride": 0 }
+      ],
+      "xpReward": 15
+    },
+    {
+      "weight": 20,
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 1, "rowOverride": 0 },
+        { "enemyId": "rat", "count": 2, "rowOverride": 1 }
+      ],
+      "xpReward": 18
+    },
+    {
+      "weight": 5,
+      "enemies": [
+        { "enemyId": "goblin_scavenger", "count": 2, "rowOverride": 0 },
+        { "enemyId": "bone_archer", "count": 1, "rowOverride": 1 }
+      ],
+      "xpReward": 30
+    }
+  ]
+}
