@@ -69,7 +69,7 @@ public class ContentPackTests
 
         File.WriteAllText(Path.Combine(contentDir, "classes", "test.json"),
             "{\"id\":\"test-class\",\"name\":\"Test\",\"tier\":1,\"hp\":10,\"mp\":5,\"strength\":1,\"defense\":1,\"magic\":1,\"resistance\":1,\"speed\":1,\"abilities\":[{\"id\":\"a1\",\"name\":\"A1\",\"power\":1,\"cost\":{\"type\":\"none\",\"amount\":null},\"target\":\"enemy\"},{\"id\":\"a2\",\"name\":\"A2\",\"power\":1,\"cost\":{\"type\":\"none\",\"amount\":null},\"target\":\"enemy\"},{\"id\":\"a3\",\"name\":\"A3\",\"power\":1,\"cost\":{\"type\":\"none\",\"amount\":null},\"target\":\"enemy\"}],\"tags\":[]}");
-        var result = RunCompiler(contentDir, outputDir);
+        var result = ContentPackToolRunner.Run(contentDir, outputDir);
         Assert.Equal(0, result.ExitCode);
 
         Assert.True(File.Exists(Path.Combine(outputDir, "content.rpk")));
@@ -88,21 +88,4 @@ public class ContentPackTests
         Directory.Delete(tempDir, recursive: true);
     }
 
-    private static (int ExitCode, string Output) RunCompiler(string contentDir, string outputDir)
-    {
-        var toolPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "tools", "content-pack");
-        var startInfo = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "dotnet",
-            Arguments = $"run --project \"{toolPath}\" -- \"{contentDir}\" \"{outputDir}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false
-        };
-
-        using var process = System.Diagnostics.Process.Start(startInfo)!;
-        process.WaitForExit();
-        var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
-        return (process.ExitCode, output);
-    }
 }

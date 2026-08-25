@@ -40,6 +40,29 @@ public class MetaProgressionTests
         Assert.Empty(loaded.ConqueredDungeons);
     }
 
+    /// <summary>
+    /// An unreadable meta file used to be swallowed into a fresh instance, which the next save then
+    /// wrote over — silently erasing every run the player had completed, and indistinguishable from
+    /// a first launch. It must be preserved under a quarantine name instead.
+    /// </summary>
+    [Fact]
+    public void Load_UnreadableFile_IsSetAsideInsteadOfSilentlyDiscarded()
+    {
+        var path = TempPath();
+        File.WriteAllText(path, "{\"runsCompleted\": 41, truncated");
+
+        var loaded = MetaProgressionStore.Load(path);
+
+        Assert.Equal(0, loaded.RunsCompleted);
+        Assert.False(File.Exists(path), "the unreadable file should have been moved aside, not left to be overwritten");
+
+        var quarantined = Directory.GetFiles(Path.GetDirectoryName(path)!, $"{Path.GetFileName(path)}.corrupt.*");
+        Assert.Single(quarantined);
+        Assert.Contains("41", File.ReadAllText(quarantined[0]));
+
+        File.Delete(quarantined[0]);
+    }
+
     [Fact]
     public void RecordCampaignEnd_FoldsRunIntoMeta()
     {

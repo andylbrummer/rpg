@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { gameStore, sendAction, serverErrorStore, bootstrapGameStore, onTestSetState } from '$shared/stores/gameStore';
+  import { modal } from '$shared/actions/modal';
+  import { gameStore, sendAction, serverErrorStore, bootstrapGameStore, onTestSetState, connectionStatus } from '$shared/stores/gameStore';
   import { GameClient } from '$shared/net/GameClient';
   import { TownMenu } from '$features/town';
   import type { PlayerAction } from '$shared/types/game';
@@ -83,6 +84,8 @@
     return () => {
       unsubGameStore();
       feedback.dispose();
+      host?.dispose();
+      host = null;
     };
   });
 
@@ -104,6 +107,27 @@
       host.update(gameState);
       subtitleEntries = host.subtitleEntries;
     }
+  });
+
+  // Whether the tab is currently being displayed at all; kept in sync by a visibilitychange
+  // listener registered on mount.
+  let documentVisible = $state(true);
+
+  // Stop continuously drawing the 3D scene wherever the player is not looking at it. The renderer
+  // draws into a canvas behind the UI layer, so a frame is wasted whole while the tab is in the
+  // background, and while the title screen covers it — position:fixed inset:0, opaque, above every
+  // other layer.
+  //
+  // Menu mode is included deliberately rather than by the same reasoning. Town is a menu screen:
+  // its own panel is opaque, but the bars framing it are 80% black over the canvas, so the scene's
+  // ambient motion does faintly show through and freezing it is a change a player could notice.
+  // It is worth it — town is where the game spends much of its time not being a 3D game, and the
+  // renderer stays responsive to state changes there because pausing switches it to drawing on
+  // demand rather than not drawing. Combat is left running: its overlay is 92% opaque, so the
+  // scene behind it is meaningfully visible.
+  $effect(() => {
+    const inMenu = gameState?.mode === 'Menu';
+    host?.setPaused(inMenu || showTitleScreen || !documentVisible);
   });
 
   function applyDisplaySettings(d: DisplaySettings) {
@@ -216,11 +240,18 @@
       }
     });
 
+    const handleVisibilityChange = () => {
+      documentVisible = !document.hidden;
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    handleVisibilityChange();
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       input.dispose();
       unsubTest();
       gamepadManager.dispose();
@@ -310,6 +341,16 @@
     sendAction({ type: 'resolve_travel_encounter', targetId: choice });
   }
 
+  /**
+   * Answer a faction encounter the party can talk its way out of. The server pauses the encounter
+   * and waits for this; without it the offer sat in every state frame with nothing to accept it,
+   * so walking into a patrol at good standing simply did nothing — no fight, no parley, no
+   * Ashmouth negotiation, and no Bonewarden ancestral bargain.
+   */
+  function handleParleyChoice(option: string) {
+    sendAction({ type: 'encounter_choice', targetId: option });
+  }
+
   function turnColor(turns: number): string {
     if (turns >= 13) return '#c44';
     if (turns >= 10) return '#d4a84b';
@@ -320,6 +361,14 @@
 <main class="game">
   <div bind:this={gameContainer} class="renderer"></div>
   <div class="ui-layer">
+    {#if $connectionStatus === 'disconnected'}
+      <!-- Only once a live session has actually dropped. The initial handshake is already
+           covered by the title screen, and announcing it there would be noise. -->
+      <div class="connection-banner" role="alert">
+        <span class="connection-banner-title">Connection lost</span>
+        <span class="connection-banner-detail">Reconnecting — input is not being recorded.</span>
+      </div>
+    {/if}
     {#if serverError}
       <div class="error-toast" role="alert">
         <span class="error-code">{serverError.code}</span>
@@ -349,7 +398,9 @@
     {/if}
     {#if gameState?.mode !== 'Combat' && !showTitleScreen}
       <header class="top-bar">
-        <div class="game-title">The Reach</div>
+        <!-- The app's only top-level heading; a div left the page with no h1 for a screen
+             reader or outline to anchor on. -->
+        <h1 class="game-title">The Reach</h1>
         <div class="game-info">
           <span class="mode-badge">{gameState?.mode || 'Menu'}</span>
           {#if gameState?.hasDungeon}
@@ -421,8 +472,26 @@
           onIntent={dispatchIntent}
         />
       {/if}
+      {#if gameState?.pendingParley}
+        <div class="travel-encounter-overlay" role="dialog" aria-label="Faction encounter" aria-modal="true" tabindex="-1" use:modal>
+          <div class="travel-encounter-card" data-testid="parley-card">
+            <h2 class="travel-encounter-title">{gameState.pendingParley.factionId} patrol</h2>
+            <p class="travel-encounter-desc">They have seen you. How do you answer?</p>
+            <div class="travel-options">
+              {#each gameState.pendingParley.options as option}
+                <button
+                  class="travel-action-btn"
+                  data-testid="parley-option"
+                  data-option={option}
+                  onclick={() => handleParleyChoice(option)}
+                >{option}</button>
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
       {#if gameState?.travelEncounter && gameState?.mode === 'Menu'}
-        <div class="travel-encounter-overlay" role="dialog" aria-label="Travel encounter">
+        <div class="travel-encounter-overlay" role="dialog" aria-label="Travel encounter" aria-modal="true" tabindex="-1" use:modal>
           <div class="travel-encounter-card">
             <h2 class="travel-encounter-title">{gameState.travelEncounter.name}</h2>
             {#if gameState.travelEncounter.resolutionType === 'stat_test'}
@@ -445,7 +514,7 @@
         </div>
       {/if}
       {#if gameState?.campaignEnded}
-        <div class="campaign-end-overlay" role="dialog" aria-label="Campaign complete">
+        <div class="campaign-end-overlay" role="dialog" aria-label="Campaign complete" aria-modal="true" tabindex="-1" use:modal>
           <div class="campaign-end-card">
             <h2 class="campaign-end-title">Campaign Complete</h2>
             <p class="campaign-end-turns">Final Turn: {gameState.overworld?.turns ?? 15}/15</p>
@@ -486,10 +555,12 @@
           onAudioToggle={(enabled) => host?.setAudioEnabled(enabled)}
           onDisplayChange={applyDisplaySettings}
           onAccessibilityChange={applyAccessibilitySettings}
+          isIronman={gameState?.isIronman ?? false}
+          onIronmanChange={(enabled) => dispatchIntent({ kind: 'setIronman', enabled })}
         />
       {/if}
       {#if showStats}
-        <div class="stats-overlay" role="dialog" aria-label="Your stats">
+        <div class="stats-overlay" role="dialog" aria-label="Your stats" aria-modal="true" tabindex="-1" use:modal>
           <div class="stats-card">
             <h2 class="stats-title">Your Stats</h2>
             {#if analyticsData}
@@ -512,7 +583,7 @@
         </div>
       {/if}
       {#if replaySynergyId}
-        <div class="replay-modal-overlay" role="dialog" aria-label="Synergy replay">
+        <div class="replay-modal-overlay" role="dialog" aria-label="Synergy replay" aria-modal="true" tabindex="-1" use:modal>
           <div class="replay-modal-card">
             <h3 class="replay-title">{ALL_SYNERGIES.find(s => s.id === replaySynergyId)?.abilities.join(' + ') ?? 'Synergy'}</h3>
             <div class="replay-anim"></div>
@@ -559,7 +630,14 @@
 
   .game {
     display: grid;
-    grid-template: 1fr / 1fr;
+    /*
+      minmax(0, 1fr) rather than 1fr. A bare 1fr is minmax(auto, 1fr), and the auto minimum is
+      the track's min-content — so a wide child grows the track past the container instead of
+      being made to fit. That is what pinned the app to a ~1000px floor on a narrow window: the
+      grid track stayed at content width while the element itself was viewport width, and the
+      overflow:hidden here quietly clipped the difference.
+    */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -580,7 +658,9 @@
   .ui-layer {
     z-index: 1;
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    /* Single implicit column: keep it from being sized by its widest child (see .game). */
+    grid-template-columns: minmax(0, 1fr);
     pointer-events: none;
     width: 100%;
     height: 100%;
@@ -595,12 +675,17 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* Title plus five status/menu controls do not fit one row on a narrow window; wrapping
+       keeps them all reachable instead of pushing the document wider than the viewport. */
+    flex-wrap: wrap;
+    gap: 0.5rem;
     padding: clamp(0.375rem, 1.5vh, 0.75rem) clamp(0.5rem, 2vw, 1rem);
     background: rgba(0, 0, 0, 0.8);
     border-bottom: 0.0625em solid #333;
   }
 
   .game-title {
+    margin: 0;
     font-size: clamp(1rem, 2.5vw, 1.5rem);
     font-weight: bold;
     color: #d4a84b;
@@ -608,6 +693,7 @@
 
   .game-info {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
   }
@@ -666,7 +752,7 @@
 
   .viewport {
     display: grid;
-    grid-template: 1fr / 1fr;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     min-height: 0;
     overflow: hidden;
   }
@@ -675,10 +761,45 @@
     grid-row: 1 / -1;
     grid-column: 1 / -1;
     min-height: 0;
+    /*
+      Grid items default to min-width:auto, so a screen wider than the viewport could not
+      shrink and instead stretched the whole document — the town screen forced ~1000px and its
+      own overflow:hidden then clipped it, taking the tab strip and the actions rail off-screen
+      with no way to reach them. The min-height counterpart was already here; the width axis
+      was missing.
+    */
+    min-width: 0;
   }
 
   .bottom-bar {
     background: rgba(0, 0, 0, 0.8);
+  }
+
+  .connection-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: rgba(120, 60, 20, 0.97);
+    border-bottom: 1px solid #d4a84b;
+    padding: 0.5em 1em;
+    display: flex;
+    gap: 0.75em;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    pointer-events: auto;
+  }
+
+  .connection-banner-title {
+    font-weight: 700;
+    color: #ffdca8;
+  }
+
+  .connection-banner-detail {
+    color: #f0e2cc;
+    font-size: 0.9em;
   }
 
   .error-toast {
@@ -1033,7 +1154,9 @@
     background: rgba(120, 160, 200, 0.2);
     border-radius: 0.25rem;
     font-size: 0.75rem;
-    color: #78a0c8;
+    /* #78a0c8 measured 4.45:1 against its own tinted background — just under the 4.5:1 AA
+       floor at this size. A slightly lighter blue clears it while keeping the same hue. */
+    color: #8ab4dc;
   }
 
   .stats-loading {

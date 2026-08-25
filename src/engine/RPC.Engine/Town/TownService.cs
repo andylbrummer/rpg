@@ -9,11 +9,13 @@ public class TownService
 {
     private readonly FactionContentRepository? _factionContent;
     private readonly RumorRepository? _rumors;
+    private readonly RPC.Engine.Content.ItemRegistry? _items;
 
-    public TownService(FactionContentRepository? factionContent = null, RumorRepository? rumors = null)
+    public TownService(FactionContentRepository? factionContent = null, RumorRepository? rumors = null, RPC.Engine.Content.ItemRegistry? items = null)
     {
         _factionContent = factionContent;
         _rumors = rumors;
+        _items = items;
     }
 
     public List<FactionContact> GenerateContacts() => _factionContent?.GenerateContacts() ?? new List<FactionContact>();
@@ -44,17 +46,24 @@ public class TownService
         _rumors?.VerifyRumor(rumor, source, rng) ?? false;
 
 
-    public void RestAtInn(GameState state)
+    /// <summary>
+    /// Rest the party at the inn, reporting whether it happened. The inn is a town facility, so
+    /// resting from anywhere else does nothing — and the caller has to be able to tell, because
+    /// treating a refusal as a change broadcasts an unchanged state to every client and, in an
+    /// ironman run, writes a save for an action that did not occur.
+    /// </summary>
+    public bool RestAtInn(GameState state)
     {
-        if (state.Mode != GameMode.Menu) return;
+        if (state.Mode != GameMode.Menu) return false;
         foreach (var member in state.Party.Members)
         {
             if (member.Id == Guid.Empty) continue;
-            var maxHp = member.GetEffectiveStats().MaxHp;
+            var maxHp = member.GetEffectiveStats(_items).MaxHp;
             var index = Array.IndexOf(state.Party.Members, member);
             state.Party.SetMember(index, member with { CurrentHp = maxHp, TempModifiers = Array.Empty<TempStatModifier>() });
         }
         state.LastUpdate = DateTime.UtcNow;
+        return true;
     }
 
     public DowntimeResult? PerformDowntimeAction(GameState state, Guid characterId, DowntimeAction action)
@@ -65,7 +74,7 @@ public class TownService
         var character = state.Party.Members.FirstOrDefault(m => m.Id == characterId);
         if (character.Id == Guid.Empty) return null;
 
-        var result = DowntimeSystem.PerformAction(character, action, state.Party, state.Reputation, state.Evidence, state._encounterRng);
+        var result = DowntimeSystem.PerformAction(character, action, state.Party, state.Reputation, state.Evidence, state._encounterRng, _items);
         if (result.Success)
         {
             state._downtimeCompleted.Add(characterId);
@@ -379,7 +388,7 @@ public class TownService
         state.PartyGold -= goldCost;
         state.TitheTokens -= titheCost;
 
-        var newStats = ApplyRandomStatLoss(dead.BaseStats, statLoss);
+        var newStats = ApplyRandomStatLoss(dead.BaseStats, statLoss, state._encounterRng);
         var maxHp = EffectiveStats.FromBase(newStats, dead.Level).MaxHp;
         var resurrected = dead with
         {
@@ -471,9 +480,13 @@ public class TownService
         return true;
     }
 
-    private static BaseStats ApplyRandomStatLoss(BaseStats stats, int count)
+    /// <summary>
+    /// Burns <paramref name="count"/> points off random stats. Rolled from the campaign's seeded
+    /// RNG, not Random.Shared: the loss is permanent and paid for, so it has to reproduce from the
+    /// seed like every other game-affecting roll.
+    /// </summary>
+    private static BaseStats ApplyRandomStatLoss(BaseStats stats, int count, GameRandom r)
     {
-        var r = Random.Shared;
         var s = stats;
         for (int i = 0; i < count; i++)
         {

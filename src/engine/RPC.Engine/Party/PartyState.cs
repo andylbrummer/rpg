@@ -21,6 +21,20 @@ public class PartyState
     /// <summary>Maximum total roster size (active + bench). Recruiting past this requires a dismissal.</summary>
     public const int MaxRosterSize = 12;
 
+    /// <summary>
+    /// Empty the roster and every campaign-scoped store, ready for a new run's default party. The
+    /// bench and the component stores are as campaign-scoped as the active members: leaving them
+    /// behind handed the next run characters it never recruited and materials it never gathered.
+    /// </summary>
+    public void Reset()
+    {
+        Array.Clear(Members);
+        Bench.Clear();
+        DeadCharacters.Clear();
+        ExpeditionCache = Array.Empty<ComponentStack>();
+        TownStorage = Array.Empty<ComponentStack>();
+    }
+
     /// <summary>Living active members plus benched members. Dead characters are not counted.</summary>
     public int RosterCount => Members.Count(c => c.Id != Guid.Empty) + Bench.Count;
 

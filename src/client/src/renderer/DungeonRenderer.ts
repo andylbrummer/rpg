@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Tile, RenderModel, RenderCombat, RenderPlayer } from './RenderModel';
-import { getTheme, type DungeonTheme } from './DungeonTheme';
+import { getTheme, dungeonTypeKey, type DungeonTheme } from './DungeonTheme';
+import { torchProfileFor } from './TorchProfiles';
 import { BloomCluster, BloomParticleSystem, BloomHazardOverlay } from './BloomEffects';
 import { getCreatureMaterials, type CreatureMaterialSet } from './CreatureMaterials';
 import { createUnaccountedMaterial } from './UnaccountedMaterial';
@@ -31,6 +32,8 @@ export class DungeonRenderer {
   static readonly BREAK_ANIMATION_MS = 600;
   private currentTheme: DungeonTheme;
   private currentDungeonType: string | undefined;
+  /** Canonical form of currentDungeonType; see dungeonTypeKey. Recomputed only on change. */
+  private currentDungeonKey = '';
   private bloomClusters: BloomCluster[] = [];
   private bloomParticles: BloomParticleSystem[] = [];
   private bloomHazards: BloomHazardOverlay[] = [];
@@ -41,6 +44,7 @@ export class DungeonRenderer {
   private dyingUnaccounted: Map<string, { mesh: THREE.Group; startTime: number }> = new Map();
   private lastCombatLogLength = 0;
   private unaccountedAttackBoosts: Map<string, number> = new Map();
+  private readonly onWindowResize: () => void;
 
   static isSupported(): boolean {
     try {
@@ -110,8 +114,11 @@ export class DungeonRenderer {
     this.rimLight.position.set(-5, 3, -5);
     this.scene.add(this.rimLight);
 
-    // Handle resize
-    window.addEventListener('resize', () => this.handleResize(container));
+    // Keep the handler so dispose() can detach it. An anonymous listener cannot be removed, and
+    // because it closes over `this`, window holds the whole scene — textures, meshes, WebGL
+    // context — alive for the life of the page even after the renderer is torn down.
+    this.onWindowResize = () => this.handleResize(container);
+    window.addEventListener('resize', this.onWindowResize);
 
     // Start render loop
     this.animate();
@@ -315,6 +322,7 @@ export class DungeonRenderer {
     const dungeonType = model.dungeonType;
     if (dungeonType !== this.currentDungeonType) {
       this.currentDungeonType = dungeonType;
+      this.currentDungeonKey = dungeonTypeKey(dungeonType);
       this.currentTheme = getTheme(dungeonType);
       this.applyTheme(this.currentTheme);
       this.setupAmbientParticles(dungeonType);
@@ -328,6 +336,17 @@ export class DungeonRenderer {
     } else {
       this.renderDefaultScene();
     }
+
+    // While paused the animation loop is not drawing, so the canvas would otherwise keep showing
+    // whatever was on it when the pause began — the dungeon the party just left, in the case that
+    // matters. Ask for one frame instead: paused means "draw on demand" rather than "stop drawing".
+    //
+    // Requested rather than drawn here on purpose. Drawing inline would put the cost of a whole
+    // frame on the state-update path, which is not where it belongs and is not free — where the
+    // GPU is software-emulated a frame runs into the hundreds of milliseconds, and everything the
+    // shell does after this call, including collecting the subtitles that are due, would wait
+    // behind it. The loop is still scheduling frames, so the next tick picks this up.
+    if (this.isPaused) this.needsRedraw = true;
   }
 
   private applyTheme(theme: DungeonTheme): void {
@@ -465,7 +484,7 @@ export class DungeonRenderer {
       this.clearCreatures();
       return;
     }
-    const mats = getCreatureMaterials(this.currentDungeonType ?? '', this.currentTheme);
+    const mats = getCreatureMaterials(this.currentDungeonKey, this.currentTheme);
     const enemies = combat.combatants.filter(c => !c.isPlayer && c.alive);
     const alive = new Set(enemies.map(c => c.id));
     // Detect unaccounted attacks for wrong-speed animation
@@ -748,7 +767,7 @@ export class DungeonRenderer {
 
   private addBloomEffects(tiles: Tile[]): void {
     if (this.bloomEffectsAdded) return;
-    if (this.currentDungeonType !== 'bloom-site') return;
+    if (this.currentDungeonKey !== 'bloom-site') return;
 
     let floorIndex = 0;
     for (const tile of tiles) {
@@ -1127,9 +1146,49 @@ export class DungeonRenderer {
     this.reduceMotion = value;
   }
 
+  /**
+   * When set, frames are scheduled but neither drawn nor advanced. See {@link setPaused}.
+   */
+  private isPaused = false;
+
+  /** Set while paused to ask the loop for a single frame; see {@link setPaused}. */
+  private needsRedraw = false;
+
+  /**
+   * Switch between drawing every frame and drawing only when the state changes.
+   *
+   * A frame costs the same whether or not it reaches the player: the scene is rendered into a
+   * canvas that sits behind the UI layer, so wherever the views on top of it are opaque, every
+   * frame is a full render nobody observes. That is a real cost on a laptop (battery, heat) and a
+   * dominant one anywhere the GPU is software-emulated.
+   *
+   * Paused means draw-on-demand, not stop-drawing: pausing draws one frame immediately, and
+   * {@link updateState} draws another whenever the state changes, so the still image on the canvas
+   * always matches the current state rather than being whatever happened to be there when the
+   * pause began. What stops is only the continuous ambient animation — torch flicker, particles,
+   * bloom — which is what makes pausing safe to do behind an opaque view and a visible (if slight)
+   * change anywhere the scene shows through.
+   *
+   * Animations advance from absolute timestamps rather than accumulated deltas, so a paused
+   * stretch does not drift them — on resume they simply reflect the time that has passed. Frames
+   * keep being scheduled while paused so resuming needs no restart path that could leave the loop
+   * dead; a rAF callback that returns immediately costs nothing measurable next to a draw.
+   */
+  setPaused(paused: boolean): void {
+    const wasPaused = this.isPaused;
+    this.isPaused = paused;
+    if (paused && !wasPaused) this.needsRedraw = true;
+  }
+
   private animate(): void {
     if (this.isDisposed) return;
     requestAnimationFrame(() => this.animate());
+    if (this.isPaused && !this.needsRedraw) return;
+    this.needsRedraw = false;
+    this.renderFrame();
+  }
+
+  private renderFrame(): void {
     const time = performance.now() * 0.001;
     // Periodically trigger a mutation transition on a random cluster.
     if (!this.reduceMotion && this.bloomClusters.length > 0 && time >= this.nextBloomMutation) {
@@ -1157,56 +1216,25 @@ export class DungeonRenderer {
   }
 
   private updateAnimatedLighting(time: number): void {
-    const type = this.currentDungeonType?.toLowerCase().replace(/_/g, '-');
-    const baseIntensity = this.currentTheme.glowIntensity;
-
-    // Universal subtle torch flicker
-    const flicker = 1 + Math.sin(time * 10) * 0.03 + Math.sin(time * 23) * 0.02;
-    this.torchLight.intensity = baseIntensity * flicker;
-
-    switch (type) {
-      case 'broken_engine': {
-        // Emergency red strobe
-        const strobe = Math.sin(time * 3) > 0.7 ? 1.5 : 1.0;
-        this.torchLight.color.setHex(0xffaa44);
-        this.torchLight.intensity = baseIntensity * flicker * strobe;
-        break;
-      }
-      case 'bloom-site': {
-        // Bioluminescent pulse
-        const pulse = 1 + Math.sin(time * 2) * 0.3;
-        this.torchLight.color.setHex(0x88ff44);
-        this.torchLight.intensity = baseIntensity * pulse;
-        break;
-      }
-      case 'sealed-vault': {
-        // Ward hum — gentle blue oscillation
-        const hum = 1 + Math.sin(time * 1.5) * 0.15;
-        this.torchLight.color.setHex(0x44aaff);
-        this.torchLight.intensity = baseIntensity * hum;
-        break;
-      }
-      case 'crypt': {
-        // Ghostly whisper — slow purple drift
-        const drift = 1 + Math.sin(time * 0.8) * 0.2;
-        this.torchLight.color.setHex(0x9966ff);
-        this.torchLight.intensity = baseIntensity * drift;
-        break;
-      }
-      default:
-        // Standard torch flicker already applied
-        break;
+    const profile = torchProfileFor(this.currentDungeonKey, this.currentTheme.glowIntensity, time);
+    this.torchLight.intensity = profile.intensity;
+    if (profile.color !== null) {
+      this.torchLight.color.setHex(profile.color);
     }
   }
 
   dispose(): void {
     this.isDisposed = true;
+    window.removeEventListener('resize', this.onWindowResize);
     this.clearBloomEffects();
     this.clearCreatures();
     this.ambientParticleSystem?.dispose();
     this.ambientParticleSystem = null;
     this.clearBreakingWalls();
     this.renderer.dispose();
+    // Drop the canvas too: a host that is rebuilt onto the same container would otherwise stack a
+    // second canvas over the first, leaving the dead one painted underneath.
+    this.renderer.domElement.remove();
     this.wallTexture.dispose();
     this.floorTexture.dispose();
     this.doorTexture.dispose();

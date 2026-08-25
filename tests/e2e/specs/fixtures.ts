@@ -23,6 +23,27 @@ async function waitForServer(url: string, timeout = 60000): Promise<void> {
 }
 
 export const test = base.extend<ServerFixture>({
+  /**
+   * Render at half resolution for the whole suite.
+   *
+   * Headless Chromium has no GPU, so Three.js runs on SwiftShader and the render loop saturates
+   * the page's main thread. Measured in a 1920x1080 test: a trivial page.evaluate(() => 1) took
+   * 0.3-3.4 SECONDS, which is what made the viewport tests look flaky — every state observation
+   * queued behind a frame, so waits blew through even a 60s ceiling. Quartering the pixel count
+   * gives that time back.
+   *
+   * resolutionScale only affects the WebGL framebuffer, never DOM layout, and these specs assert
+   * on DOM geometry and game state rather than 3D fidelity.
+   */
+  page: async ({ page }, use) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('rpc_display_settings', JSON.stringify({
+        fov: 75, resolutionScale: 0.5, vsync: true, fullscreen: false,
+      }));
+    });
+    await use(page);
+  },
+
   serverUrl: [async ({}, use) => {
     // Clean up persistent save file to prevent turn-count accumulation across test runs
     try {

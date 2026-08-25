@@ -19,8 +19,33 @@ public class SaveSystemTests : IDisposable
     {
         if (File.Exists(_testSavePath))
             File.Delete(_testSavePath);
-        if (File.Exists(_testSavePath + ".tmp"))
-            File.Delete(_testSavePath + ".tmp");
+        foreach (var sidecar in Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, $"{Path.GetFileName(_testSavePath)}.*"))
+            File.Delete(sidecar);
+        if (Directory.Exists($"{_testSavePath}.tmp"))
+            Directory.Delete($"{_testSavePath}.tmp", recursive: true);
+    }
+
+    /// <summary>
+    /// Saves used to stage through one fixed "save.json.tmp" shared by every writer. Two of them —
+    /// two hosts on the same per-user save, or an autosave racing a manual save — collided on that
+    /// name: the loser threw IOException straight out of SaveGame. Occupying the legacy staging name
+    /// proves the save no longer depends on it. See AtomicFileTests for the underlying contract.
+    /// </summary>
+    [Fact]
+    public void Saving_Does_Not_Depend_On_A_Staging_Name_Another_Writer_Could_Hold()
+    {
+        Directory.CreateDirectory($"{_testSavePath}.tmp"); // an occupied staging name a save cannot use
+
+        var gs = new GameState(seed: 42);
+        gs.EnterDungeon(new Dungeon(3, 3, "test"), "test");
+        gs.Player = new Player(new Position(1, 2), Direction.East);
+        gs.SaveGame(_testSavePath);
+
+        var reloaded = new GameState(seed: 7);
+        Assert.True(reloaded.LoadGame(_testSavePath));
+        Assert.Equal(1, reloaded.Player.Position.X);
+
+        Directory.Delete($"{_testSavePath}.tmp", recursive: true);
     }
 
     [Fact]

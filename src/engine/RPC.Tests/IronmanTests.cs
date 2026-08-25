@@ -48,6 +48,13 @@ public class IronmanTests : IDisposable
         Assert.False(loadedState.IsIronman);
     }
 
+    // These two tests decide "did a save happen?" by comparing the file's contents, not its
+    // modification time. Turning changes the party's facing, so a save that fires necessarily
+    // rewrites the file and one that does not necessarily leaves it byte-identical. Modification
+    // time cannot carry that signal: the filesystem stamps writes from a coarse clock, so two
+    // writes milliseconds apart can share a timestamp and the assertion fails for no product
+    // reason. Comparing contents is exact and drops the sleeps that were only there to space the
+    // timestamps apart.
     [Fact]
     public void AutoSave_On_State_Change_When_Ironman()
     {
@@ -62,16 +69,13 @@ public class IronmanTests : IDisposable
         state.SaveGame(state.SavePath);
         Assert.True(File.Exists(_tempSavePath));
 
-        var beforeWrite = File.GetLastWriteTimeUtc(_tempSavePath);
-
-        // Wait a tiny bit to ensure timestamp changes
-        Thread.Sleep(50);
+        var beforeSave = File.ReadAllText(_tempSavePath);
 
         // Perform a state-changing action
         handler.Execute(new TurnLeftCommand());
 
-        var afterWrite = File.GetLastWriteTimeUtc(_tempSavePath);
-        Assert.True(afterWrite > beforeWrite, "Ironman should auto-save after state-changing action");
+        var afterSave = File.ReadAllText(_tempSavePath);
+        Assert.NotEqual(beforeSave, afterSave);
     }
 
     [Fact]
@@ -79,17 +83,16 @@ public class IronmanTests : IDisposable
     {
         var state = new GameState(seed: 42);
         state.IsIronman = false;
+        state.SavePath = _tempSavePath;
         var handler = new GameCommandHandler(state, new StubDungeonGenerator());
 
-        state.SaveGame(_tempSavePath);
-        var beforeWrite = File.GetLastWriteTimeUtc(_tempSavePath);
-
-        Thread.Sleep(50);
+        state.SaveGame(state.SavePath);
+        var beforeSave = File.ReadAllText(_tempSavePath);
 
         handler.Execute(new TurnLeftCommand());
 
-        var afterWrite = File.GetLastWriteTimeUtc(_tempSavePath);
-        Assert.Equal(beforeWrite, afterWrite);
+        var afterSave = File.ReadAllText(_tempSavePath);
+        Assert.Equal(beforeSave, afterSave);
     }
 
     [Fact]

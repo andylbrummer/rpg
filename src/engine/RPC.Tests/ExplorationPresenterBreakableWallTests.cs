@@ -38,7 +38,7 @@ public class ExplorationPresenterBreakableWallTests
 
     private static JsonElement BreakableWalls(GameState gs)
     {
-        var json = JsonSerializer.Serialize(ExplorationPresenter.Present(gs));
+        var json = JsonSerializer.Serialize(new ExplorationPresenter().Present(gs));
         return JsonDocument.Parse(json).RootElement.GetProperty("BreakableWalls");
     }
 
@@ -76,7 +76,7 @@ public class ExplorationPresenterBreakableWallTests
         // It belongs to the detected set (search affordance) but must NOT be offered as breakable.
         Assert.Equal(0, BreakableWalls(gs).GetArrayLength());
 
-        var json = JsonSerializer.Serialize(ExplorationPresenter.Present(gs));
+        var json = JsonSerializer.Serialize(new ExplorationPresenter().Present(gs));
         var detected = JsonDocument.Parse(json).RootElement.GetProperty("DetectedSecrets");
         Assert.Equal(1, detected.GetArrayLength());
     }

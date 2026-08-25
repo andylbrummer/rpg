@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { resetGame, sendWsAction } from './helpers';
+import { enterCombat, enterDungeon, resetGame, sendWsAction, waitForGameState } from './helpers';
 
 function makeMockCombat(partyCount: number, enemyCount: number) {
   const combatants = [
@@ -61,36 +61,53 @@ test.describe('G4: Combat', () => {
   test('combat state has combatants after trigger', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await resetGame(page, serverUrl);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-    await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+    await enterDungeon(page, serverUrl, 'broken_engine');
+    await enterCombat(page, serverUrl);
     await expect(page.locator('.combat-overlay')).toBeVisible();
   });
 
   test('flee combat returns to exploration', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await resetGame(page, serverUrl);
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-    await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+    await enterDungeon(page, serverUrl, 'broken_engine');
+    await enterCombat(page, serverUrl);
     await expect(page.locator('.combat-overlay')).toBeVisible();
     await sendWsAction(page, serverUrl, { type: 'flee_combat' });
     await expect(page.locator('text=Return to Town')).toBeVisible({ timeout: 10000 });
   });
 
-  test.describe('FormationDragDropTests', () => {
-    test('dragging char from front to back updates formation', async ({ page, serverUrl }) => {
+  test.describe('FormationRankTests', () => {
+    // The party screen replaced its drag-and-drop formation grid with the broadsheet's
+    // "Swap rank" control. The behaviour under test is unchanged — moving a member between
+    // the front and back rank — so this drives the current control and asserts on the
+    // server-side row, which is what the combat renderer and targeting rules actually read.
+    test('swapping rank moves a party member between front and back', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
-      await resetGame(page, serverUrl);
-      await expect(page.locator('.formation-grid')).toBeVisible();
+      const before = await resetGame(page, serverUrl);
 
-      const frontCard = page.locator('.formation-row.front-row .formation-card').first();
-      const backRow = page.locator('.formation-row.back-row');
+      await page.locator('.town-nav-btn').filter({ hasText: 'Party' }).click();
 
-      await frontCard.dragTo(backRow);
-      await page.waitForTimeout(400);
+      const frontMember = before.party.find((m: any) => m.row === 0);
+      expect(frontMember).toBeTruthy();
 
-      // After swap, the dragged character should appear in the back row
-      const backNames = await backRow.locator('.formation-name').allTextContents();
-      expect(backNames.length).toBeGreaterThan(0);
+      await page.locator(`#roster-${frontMember.slot}`).click();
+      await expect(page.locator('.rank-badge')).toContainText('Front Rank');
+
+      await page.locator('button.swap').filter({ hasText: 'Swap rank' }).click();
+
+      // SwapRows exchanges the occupants of the two slots, so the character moves to the
+      // partner slot as well as changing rank — track it by id, not by slot.
+      const after = await waitForGameState(
+        page,
+        (state: any) => state?.party?.find((m: any) => m.id === frontMember.id)?.row === 1,
+        10000
+      );
+
+      const moved = after.party.find((m: any) => m.id === frontMember.id);
+      expect(moved.slot).not.toBe(frontMember.slot);
+
+      await page.locator(`#roster-${moved.slot}`).click();
+      await expect(page.locator('.rank-badge')).toContainText('Back Rank');
     });
   });
 
@@ -98,8 +115,8 @@ test.describe('G4: Combat', () => {
     test('combat renderer shows front and back rows', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       const partyFront = page.locator('.party-side .row-band.front-band');
@@ -118,8 +135,8 @@ test.describe('G4: Combat', () => {
     test('melee ability highlights only front-row enemies', async ({ page, serverUrl }) => {
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       // Wait for a player turn (action buttons visible)
@@ -164,11 +181,16 @@ test.describe('G4: Combat', () => {
 
   test.describe('CombatViewportTests', () => {
     test('fits 1920x1080 without horizontal scroll', async ({ page, serverUrl }) => {
+      // Forcing a large viewport while the WebGL renderer runs behind the overlay is
+      // expensive in headless Chromium — measured at roughly double the wall-clock of the
+      // same test at 1280x720, which put it up against the default 60s budget. The size is
+      // the point of the test, so buy time rather than shrink it.
+      test.slow();
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       const combat = makeMockCombat(6, 3);
@@ -188,11 +210,16 @@ test.describe('G4: Combat', () => {
 
   test.describe('InitiativeBarTests', () => {
     test('12-slot initiative bar is readable without scroll', async ({ page, serverUrl }) => {
+      // Forcing a large viewport while the WebGL renderer runs behind the overlay is
+      // expensive in headless Chromium — measured at roughly double the wall-clock of the
+      // same test at 1280x720, which put it up against the default 60s budget. The size is
+      // the point of the test, so buy time rather than shrink it.
+      test.slow();
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       const combat = makeMockCombat(6, 6);
@@ -247,11 +274,16 @@ test.describe('G4: Combat', () => {
 
   test.describe('VisualOverlapTests', () => {
     test('no overlap at max encounter', async ({ page, serverUrl }) => {
+      // Forcing a large viewport while the WebGL renderer runs behind the overlay is
+      // expensive in headless Chromium — measured at roughly double the wall-clock of the
+      // same test at 1280x720, which put it up against the default 60s budget. The size is
+      // the point of the test, so buy time rather than shrink it.
+      test.slow();
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto(`${serverUrl}/app`);
       await resetGame(page, serverUrl);
-      await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-      await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+      await enterDungeon(page, serverUrl, 'broken_engine');
+      await enterCombat(page, serverUrl);
       await expect(page.locator('.combat-overlay')).toBeVisible();
 
       const combat = makeMockCombat(6, 9);

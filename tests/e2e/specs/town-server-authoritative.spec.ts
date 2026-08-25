@@ -7,28 +7,28 @@ test.describe('Town: server-authoritative state', () => {
     await resetGame(page, serverUrl);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    const recruitCards = page.locator('.town-services .service-item');
-    // We have 3 sections (tavern, missions, vendor); tavern should have 6 recruits
-    const tavernSection = page.locator('.town-services h2:has-text("Tavern") + .service-list');
-    const recruits = tavernSection.locator('.service-item');
-    await expect(recruits).toHaveCount(6);
+    // The tavern roster is rendered by TavernHall on the Tavern tab; the generic
+    // ".town-services .service-item" list it used to live in no longer carries it.
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
+    await expect(page.locator('.roster .hand')).toHaveCount(6);
   });
 
   test('refresh keeps same tavern roster', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    const tavernSection = page.locator('.town-services h2:has-text("Tavern") + .service-list');
-    const recruits = tavernSection.locator('.service-item');
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
+    const recruits = page.locator('.roster .hand');
     await expect(recruits).toHaveCount(6);
 
-    const beforeNames = await recruits.locator('.recruit-name').allTextContents();
+    const beforeNames = await recruits.locator('.hand-name').allTextContents();
     expect(beforeNames.length).toBe(6);
 
     await page.reload();
     await page.waitForSelector('.town-menu', { timeout: 10000 });
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
 
-    const afterNames = await recruits.locator('.recruit-name').allTextContents();
+    const afterNames = await page.locator('.roster .hand .hand-name').allTextContents();
     expect(afterNames).toEqual(beforeNames);
   });
 

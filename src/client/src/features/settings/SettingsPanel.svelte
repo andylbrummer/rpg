@@ -36,6 +36,7 @@
     type AccessibilitySettings,
     type ColorblindMode,
   } from '$config/accessibilitySettings';
+  import { modal } from '$shared/actions/modal';
 
   interface Props {
     open: boolean;
@@ -43,9 +44,23 @@
     onAudioToggle?: (enabled: boolean) => void;
     onDisplayChange?: (settings: DisplaySettings) => void;
     onAccessibilityChange?: (settings: AccessibilitySettings) => void;
+    /**
+     * Whether the current run is in ironman mode. Server-authoritative and saved with the run, so
+     * it is read from game state rather than from local settings storage like the options above.
+     */
+    isIronman?: boolean;
+    onIronmanChange?: (enabled: boolean) => void;
   }
 
-  let { open, onClose, onAudioToggle, onDisplayChange, onAccessibilityChange }: Props = $props();
+  let {
+    open,
+    onClose,
+    onAudioToggle,
+    onDisplayChange,
+    onAccessibilityChange,
+    isIronman = false,
+    onIronmanChange,
+  }: Props = $props();
 
   let a11y = $state<AccessibilitySettings>(loadAccessibilitySettings());
 
@@ -210,9 +225,18 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="settings-overlay" onclick={onClose}>
-    <div class="settings-panel" onclick={(e) => e.stopPropagation()} tabindex="-1" onkeydown={handleKeyDown}>
+    <div
+      class="settings-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+      onclick={(e) => e.stopPropagation()}
+      tabindex="-1"
+      onkeydown={handleKeyDown}
+      use:modal
+    >
       <div class="settings-header">
-        <h2>Settings</h2>
+        <h2 id="settings-title">Settings</h2>
         <button class="close-btn" onclick={onClose} aria-label="Close settings">×</button>
       </div>
 
@@ -222,6 +246,31 @@
           <input type="checkbox" checked={audioEnabled} onchange={toggleAudio} />
           <span>Ambient audio {audioEnabled ? 'ON' : 'OFF'}</span>
         </label>
+      </div>
+
+      <div class="settings-section">
+        <h3>Gameplay</h3>
+        <!-- Locked once taken, because the server will not turn it back off. Offering a control
+             whose request is refused would also leave this checkbox wrong: a refused action
+             changes nothing, so no state comes back to correct it. -->
+        <label class="audio-toggle">
+          <input
+            type="checkbox"
+            checked={isIronman}
+            disabled={isIronman}
+            onchange={(e) => onIronmanChange?.(e.currentTarget.checked)}
+          />
+          <span>Ironman {isIronman ? 'ON' : 'OFF'}</span>
+        </label>
+        <p class="setting-note">
+          One save, written after every action. A total party kill ends the run and deletes it —
+          the bench may attempt a rescue to recover equipment, but the dead stay dead.
+          {#if isIronman}
+            This run is committed; only a new campaign clears it.
+          {:else}
+            Once taken, it cannot be turned off for this run.
+          {/if}
+        </p>
       </div>
 
       <div class="settings-section">
@@ -440,6 +489,13 @@
     font-size: 0.85rem;
   }
 
+  .setting-note {
+    margin: 0.35rem 0 0;
+    color: #999;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
   .slider {
     flex: 1 1 auto;
   }
@@ -556,7 +612,12 @@
     background: rgba(100, 100, 100, 0.15);
     border: 1px solid #555;
     border-radius: 0.25rem;
-    color: #888;
+    /*
+      #888 measures 4.48:1 against this button's composited background — under the 4.5:1 AA
+      floor for text this size, which is why axe flagged it. #9a9a9a clears it at ~5.6:1 and
+      still reads as the muted, secondary control it is meant to be.
+    */
+    color: #9a9a9a;
     font-size: 0.8rem;
     cursor: pointer;
   }

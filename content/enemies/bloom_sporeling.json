@@ -3,11 +3,11 @@
   "name": "Bloom Sporeling",
   "description": "A bulbous fungal mass that floats on drifting spores, lobbing concentrated blight at distant prey.",
   "stats": {
-    "str": 4,
-    "dex": 6,
-    "con": 5,
-    "int": 7,
-    "wil": 6
+    "strength": 4,
+    "dexterity": 6,
+    "constitution": 5,
+    "intelligence": 7,
+    "willpower": 6
   },
   "hpBase": 10,
   "speed": 4,

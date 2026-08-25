@@ -55,11 +55,42 @@ public readonly record struct Tile(
     };
 }
 
+/// <summary>
+/// The mutable tile plane of a <see cref="Dungeon"/>. Wrapping the raw <c>Tile[,]</c> exists so
+/// that every write bumps <see cref="Version"/>: presenters cache derived views of the map
+/// (notably the explored-tile automap payload) and key them on this counter, and a write that
+/// slipped past the counter would serve a stale map. Because the setter is the only way to
+/// write, that cannot happen by omission at a call site.
+/// </summary>
+public sealed class TileGrid
+{
+    private readonly Tile[,] _tiles;
+    private int _version;
+
+    public TileGrid(int width, int height)
+    {
+        _tiles = new Tile[width, height];
+    }
+
+    /// <summary>Incremented on every tile write. Cheap staleness key for derived views.</summary>
+    public int Version => _version;
+
+    public Tile this[int x, int y]
+    {
+        get => _tiles[x, y];
+        set
+        {
+            _tiles[x, y] = value;
+            _version++;
+        }
+    }
+}
+
 public class Dungeon
 {
     public int Width { get; }
     public int Height { get; }
-    public Tile[,] Tiles { get; }
+    public TileGrid Tiles { get; }
     public string Name { get; }
     public string? WanderingTableId { get; set; }
     public string? EncounterTableId { get; set; }
@@ -71,7 +102,7 @@ public class Dungeon
         Width = width;
         Height = height;
         Name = name;
-        Tiles = new Tile[width, height];
+        Tiles = new TileGrid(width, height);
 
         // Initialize with empty tiles
         for (int x = 0; x < width; x++)
@@ -100,6 +131,32 @@ public class Dungeon
 
     public Tile GetTile(Position pos) =>
         IsValidPosition(pos) ? Tiles[pos.X, pos.Y] : new Tile(TileType.Empty);
+
+    /// <summary>
+    /// Where a party arrives in this dungeon: the tile the stitcher marked
+    /// <see cref="TileType.StairsUp"/>, or — for hand-built or stairless maps — the first walkable
+    /// tile in scan order. Null only when nothing is walkable.
+    /// <para>
+    /// Every consumer that needs "the entrance" must come through here. The stairs tile is not
+    /// <see cref="TileType.Floor"/>, so an independent scan looking for floor silently answers with
+    /// a different room than the one the path classifier and the stairs placer agree on.
+    /// </para>
+    /// </summary>
+    public Position? FindEntrance()
+    {
+        Position? firstWalkable = null;
+        for (int x = 0; x < Width; x++)
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                var tile = Tiles[x, y];
+                if (!tile.IsWalkable) continue;
+                if (tile.Type == TileType.StairsUp) return new Position(x, y);
+                firstWalkable ??= new Position(x, y);
+            }
+        }
+        return firstWalkable;
+    }
 }
 
 public class RoomInfo

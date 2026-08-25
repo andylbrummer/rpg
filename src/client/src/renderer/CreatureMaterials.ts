@@ -1,4 +1,4 @@
-import type { DungeonTheme } from './DungeonTheme';
+import { dungeonTypeKey, type DungeonTheme } from './DungeonTheme';
 
 export interface CreatureMaterialSet {
   body: number;
@@ -10,7 +10,7 @@ export function getCreatureMaterials(
   dungeonType: string,
   _theme: DungeonTheme
 ): CreatureMaterialSet {
-  const normalized = dungeonType?.toLowerCase().replace(/_/g, '-') ?? '';
+  const normalized = dungeonTypeKey(dungeonType);
   if (normalized === 'bloom-site') {
     return {
       body: 0x1a2d0f,

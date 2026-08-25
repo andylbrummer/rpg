@@ -29,4 +29,19 @@ public class SessionMetaState
 
     /// <summary>Override for the meta-save file path; null uses <see cref="MetaProgressionStore.DefaultPath"/>.</summary>
     public string? MetaPath { get; set; }
+
+    /// <summary>
+    /// Clear the fields that belong to a single run, so a new campaign does not inherit them.
+    /// <para>
+    /// Only <see cref="IsIronman"/> is run-scoped. The rest deliberately survive: <see cref="Meta"/>
+    /// is cross-campaign progression by definition, and <see cref="SavePath"/>,
+    /// <see cref="MetaPath"/>, <see cref="MetaPersistenceEnabled"/> and <see cref="SettingsHash"/>
+    /// describe the session and the build rather than the campaign being played. Resetting those
+    /// would point the next campaign's saves somewhere else.
+    /// </para>
+    /// </summary>
+    public void Reset()
+    {
+        IsIronman = false;
+    }
 }

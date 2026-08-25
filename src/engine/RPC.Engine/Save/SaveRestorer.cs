@@ -157,9 +157,34 @@ public static class SaveRestorer
 
     public static void RestoreCampaignConfig(GameState state, SaveData data)
     {
-        // Family name is campaign state independent of the (optional) campaign config block, so it
-        // restores even for saves without a config.
+        // Everything above the guard is campaign progress rather than the campaign's configuration,
+        // and none of it lives inside the (optional) config block — so it has to restore even for a
+        // save written before a campaign was generated. Family name was hoisted out for exactly
+        // this reason once already, while the rest stayed behind the guard where a configless save
+        // silently dropped them.
         state.Campaign.FamilyName = data.FamilyName ?? "";
+
+        state.Campaign.FactionTimelineModifiers = data.FactionTimelineModifiers != null
+            ? new Dictionary<string, int>(data.FactionTimelineModifiers)
+            : new Dictionary<string, int>();
+
+        state.Campaign.FiredEvents = data.FiredEvents != null
+            ? new HashSet<string>(data.FiredEvents)
+            : new HashSet<string>();
+
+        state.Campaign.UnlockedDungeons = data.UnlockedDungeons != null
+            ? new HashSet<string>(data.UnlockedDungeons)
+            : new HashSet<string>();
+
+        state.Campaign.ReadDocuments = data.ReadDocuments != null
+            ? new HashSet<string>(data.ReadDocuments)
+            : new HashSet<string>();
+
+        state.Campaign.AnnouncedFactionStates = data.AnnouncedFactionStates != null
+            ? new HashSet<string>(data.AnnouncedFactionStates)
+            : new HashSet<string>();
+
+        state.Campaign.BetrayalPath = data.BetrayalPath;
 
         if (data.CampaignConfig == null) return;
 
@@ -186,19 +211,6 @@ public static class SaveRestorer
                 data.CampaignConfig.WildcardTrigger.TurnThreshold)
         };
 
-        state.Campaign.FactionTimelineModifiers = data.FactionTimelineModifiers != null
-            ? new Dictionary<string, int>(data.FactionTimelineModifiers)
-            : new Dictionary<string, int>();
-
-        state.Campaign.FiredEvents = data.FiredEvents != null
-            ? new HashSet<string>(data.FiredEvents)
-            : new HashSet<string>();
-
-        state.Campaign.UnlockedDungeons = data.UnlockedDungeons != null
-            ? new HashSet<string>(data.UnlockedDungeons)
-            : new HashSet<string>();
-
-        state.Campaign.BetrayalPath = data.BetrayalPath;
     }
 
     public static void RestoreOverworld(GameState state, SaveData data)
@@ -337,6 +349,32 @@ public static class SaveRestorer
     public static void RestoreStepsSinceEncounter(GameState state, SaveData data)
     {
         state.StepsSinceEncounter = Math.Max(0, data.StepsSinceEncounter);
+    }
+
+    /// <summary>
+    /// Restores the in-flight rescue expedition, or clears it when the save carries none — a state
+    /// object being loaded into must not keep an expedition the save does not describe.
+    /// </summary>
+    public static void RestoreRescueExpedition(GameState state, SaveData data)
+    {
+        if (data.RescueExpedition is not { } saved)
+        {
+            state.RescueExpedition = null;
+            return;
+        }
+
+        state.RescueExpedition = new Combat.RescueExpeditionState
+        {
+            IsActive = saved.IsActive,
+            RescuePartyIds = saved.RescuePartyIds
+                .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
+                .Where(g => g != Guid.Empty)
+                .ToArray(),
+            DungeonType = saved.DungeonType,
+            TpkLocation = new Models.Dungeons.Position(saved.TpkX, saved.TpkY),
+            Success = saved.Success,
+            Resolved = saved.Resolved
+        };
     }
 
     public static void RestoreIronman(GameState state, SaveData data)

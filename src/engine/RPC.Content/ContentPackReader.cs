@@ -50,6 +50,13 @@ public class ContentPackReader
         }
     }
 
+    /// <summary>
+    /// Every path in the loaded pack. Callers that need to list a directory have to be able to see
+    /// what is in here; without this the only way to do it was reflection over the private
+    /// dictionary, which fails silently and empties the catalogue the moment the field is renamed.
+    /// </summary>
+    public IEnumerable<string> Paths => _entries.Keys;
+
     public bool Contains(string path) => _entries.ContainsKey(path);
 
     public string? GetString(string path)

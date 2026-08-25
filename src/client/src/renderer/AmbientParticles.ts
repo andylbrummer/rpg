@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { dungeonTypeKey } from './DungeonTheme';
 
 export interface ParticlePreset {
   count: number;
@@ -61,7 +62,7 @@ const PRESETS: Record<string, ParticlePreset> = {
 };
 
 export function getParticlePreset(dungeonType: string): ParticlePreset | null {
-  return PRESETS[dungeonType] ?? null;
+  return PRESETS[dungeonTypeKey(dungeonType)] ?? null;
 }
 
 export class AmbientParticleSystem {

@@ -261,6 +261,18 @@ export interface TravelEncounter {
   options?: string[];
 }
 
+/**
+ * A faction encounter the party can talk its way out of. The server pauses the encounter and
+ * offers the options this party has earned — parley at standing, a Bureau or Convocation
+ * diplomatic protocol, an Ashmouth negotiation, a Bonewarden's ancestral bargain — plus Fight.
+ * Answered with an `encounter_choice` carrying the chosen option.
+ */
+export interface PendingParley {
+  encounterId: string;
+  factionId: string;
+  options: string[];
+}
+
 export interface ActionLogEntry {
   turn: number;
   act: number;
@@ -302,9 +314,20 @@ export interface TitheState {
 
 export interface EvidenceState {
   suspectedFaction?: string;
+  /** Evidence gathered per faction. The threshold to accuse is 7. */
+  counters?: Record<string, number>;
+  /** The faction already accused, if any — an accusation is once per campaign. */
+  accusedFaction?: string | null;
   canConfront: boolean;
   canAccuse: boolean;
   hasIrrefutableProof: boolean;
+  /**
+   * Whether the party could side with whoever is really behind the scheme, and whether they
+   * already have. Deliberately booleans rather than a faction id: who the mastermind is stays
+   * server-side until the campaign reveals them.
+   */
+  canBetray?: boolean;
+  onBetrayalPath?: boolean;
 }
 
 export interface DeadCharacter {
@@ -356,6 +379,7 @@ export interface GameState {
   town?: TownState;
   overworld?: OverworldState;
   travelEncounter?: TravelEncounter;
+  pendingParley?: PendingParley | null;
   reputation?: Record<string, number>;
   heat?: HeatState;
   evidence?: EvidenceState;
@@ -370,6 +394,7 @@ export interface GameState {
   titheTokens?: number;
   tithe?: TitheState;
   campaignEnded?: boolean;
+  isIronman?: boolean;
   isFragileState?: boolean;
   rescueExpedition?: {
     isActive: boolean;

@@ -28,33 +28,14 @@ public class SaveFileIO
         return File.ReadAllText(SavePath);
     }
 
-    public void WriteAtomic(string json)
-    {
-        var dir = Path.GetDirectoryName(SavePath);
-        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
+    /// <summary>Durably replace the save file. See <see cref="AtomicFile.WriteAllText"/>.</summary>
+    public void WriteAtomic(string json) => AtomicFile.WriteAllText(SavePath, json);
 
-        var tmpPath = SavePath + ".tmp";
-        File.WriteAllText(tmpPath, json);
-
-        using (var fs = new FileStream(tmpPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-        {
-            fs.Flush(flushToDisk: true);
-        }
-
-        File.Move(tmpPath, SavePath, overwrite: true);
-    }
-
-    public string Quarantine(string reason)
-    {
-        if (!File.Exists(SavePath))
-            return "";
-
-        var timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmss");
-        var quarantinePath = $"{SavePath}.quarantine.{timestamp}";
-        File.Move(SavePath, quarantinePath);
-        return quarantinePath;
-    }
+    /// <summary>
+    /// Set an unloadable save aside under a timestamped name so it is preserved rather than
+    /// overwritten. Callers report why; this only moves the file.
+    /// </summary>
+    public string Quarantine() => AtomicFile.Quarantine(SavePath, "quarantine");
 
     public SaveData? Deserialize(string json)
     {

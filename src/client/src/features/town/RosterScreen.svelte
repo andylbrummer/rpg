@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GameState, PartyMember, BenchMember } from '$shared/types/game';
+  import { modal } from '$shared/actions/modal';
   import type { UiIntent } from '$shared/actions/uiIntent';
 
   interface Props {
@@ -245,7 +246,7 @@
 </div>
 
 {#if confirmDismiss}
-  <div class="roster-confirm-overlay" role="dialog" aria-label="Confirm dismissal">
+  <div class="roster-confirm-overlay" role="dialog" aria-label="Confirm dismissal" aria-modal="true" tabindex="-1" use:modal>
     <div class="roster-confirm">
       <h3 class="roster-confirm-title">Dismiss {confirmDismiss.name}?</h3>
       <p class="roster-confirm-text">

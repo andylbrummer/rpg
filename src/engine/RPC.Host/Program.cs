@@ -43,7 +43,7 @@ class Program
 
         if (isDev)
         {
-            var devHtml = GetDevHtml(server.Port);
+            var devHtml = GetDevHtml();
             window.LoadRawString(devHtml);
         }
         else
@@ -55,16 +55,13 @@ class Program
         server.Stop();
     }
 
-    static string GetDevHtml(int serverPort)
+    static string GetDevHtml()
     {
         return $@"<!DOCTYPE html>
 <html lang=""en"">
 <head>
     <meta charset=""UTF-8"">
     <title>The Reach - Dev</title>
-    <script>
-        window.SERVER_PORT = {serverPort};
-    </script>
 </head>
 <body>
     <iframe src=""http://localhost:5173"" style=""width:100vw;height:100vh;border:none;"" />

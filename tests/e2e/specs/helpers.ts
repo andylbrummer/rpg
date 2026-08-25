@@ -31,14 +31,53 @@ export async function waitForGameState(page: Page, predicate: (state: any) => bo
   throw new Error(`Timed out waiting for game state after ${timeout}ms`);
 }
 
-export async function resetGame(page: Page, serverUrl: string): Promise<any> {
+/**
+ * Party the engine builds in InitializeDefaultParty, in slot order. Used as the marker that a
+ * reset has actually landed.
+ */
+const DEFAULT_PARTY_ORDER = ['Kael', 'Sera', 'Mira', 'Vex', 'Nyx', 'Orin'];
+
+export async function resetGame(page: Page, serverUrl: string, timeout = 60000): Promise<any> {
   await sendWsAction(page, serverUrl, { type: 'reset_game' });
   return waitForGameState(page, (state: any) =>
     state?.mode === 'Menu' &&
     state?.overworld?.turns === 0 &&
     state?.hasDungeon === false &&
-    state?.party?.every((member: any) => member.level === 1),
-    20000);
+    state?.party?.every((member: any) => member.level === 1) &&
+    // Wait for the party to be back in its default slot order. Every other clause is already
+    // true of the state from *before* the reset — a preceding test that left the game in town
+    // at level 1 satisfies all of them — so without a marker that only a completed reset can
+    // produce, this returned the previous test's snapshot. Rows alone are not that marker:
+    // swapping two members exchanges their slots too, so the layout stays self-consistent.
+    state?.party?.every((member: any, i: number) => member.name === DEFAULT_PARTY_ORDER[i]),
+    // Generous for the same reason as enterDungeon: it returns as soon as the reset lands, and
+    // the 1920x1080 renderer tests starve the page badly enough to exceed a 20s ceiling.
+    timeout);
+}
+
+/**
+ * Enters a dungeon and waits until the game is actually in it.
+ *
+ * sendWsAction only sleeps a fixed 600ms, which is not enough: generating a dungeon measured
+ * 1.4-2.4s on a warm server. Tests that fired enter_dungeon and immediately fired enter_combat
+ * were sending the second action while the game was still in Menu, where it is rejected — the
+ * combat overlay then never appeared and the test failed on an assertion far from the cause.
+ * Wait for the transition the action was supposed to cause instead of guessing at a duration.
+ *
+ * The ceiling is generous because it costs nothing when things are quick — the wait returns as
+ * soon as the predicate holds. It needs to be: the tests that force a 1920x1080 viewport run a
+ * software-rendered WebGL scene behind the overlay, which starves the page enough that observing
+ * the new state took longer than 30s.
+ */
+export async function enterDungeon(page: Page, serverUrl: string, dungeonType = 'broken_engine', timeout = 60000): Promise<any> {
+  await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType });
+  return waitForGameState(page, (state: any) => state?.mode === 'Exploration' && state?.hasDungeon === true, timeout);
+}
+
+/** Triggers combat and waits until the engine reports it, for the same reason as enterDungeon. */
+export async function enterCombat(page: Page, serverUrl: string, timeout = 60000): Promise<any> {
+  await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+  return waitForGameState(page, (state: any) => state?.mode === 'Combat' && !!state?.combat, timeout);
 }
 
 export async function resolveCombatByAttacking(page: Page, serverUrl: string, maxActions = 80): Promise<void> {

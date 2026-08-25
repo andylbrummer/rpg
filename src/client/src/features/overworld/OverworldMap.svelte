@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { OverworldState, OverworldRoute } from '$shared/types/game';
+  import { modal } from '$shared/actions/modal';
   import type { AmbientAudioManager } from '$renderer/AmbientAudio';
 
   interface Props {
@@ -128,7 +129,7 @@
   }
 </script>
 
-<div class="map-panel" role="dialog" aria-modal="true" aria-label="Overworld map">
+<div class="map-panel" role="dialog" aria-modal="true" aria-label="Overworld map" tabindex="-1" use:modal>
   <button class="close-btn" onclick={onClose} aria-label="Close map">×</button>
   <h2 class="map-title">Overworld</h2>
   <svg viewBox="0 0 400 200" class="map-svg">
@@ -232,7 +233,7 @@
   {#if confirmTarget}
     {@const targetNode = overworld.nodes.find((n) => n.id === confirmTarget)}
     {@const routeToTarget = getRouteBetween(confirmTarget, overworld.currentNodeId)}
-    <div class="confirm-modal" role="alertdialog" aria-modal="true" aria-label="Confirm travel">
+    <div class="confirm-modal" role="alertdialog" aria-modal="true" aria-label="Confirm travel" tabindex="-1" use:modal>
       <p>Travel to <strong>{targetNode?.name}</strong>?</p>
       <p class="cost">Cost: {routeToTarget?.distance ?? '?'} turns</p>
       {#if routeToTarget?.status === 'Contested'}

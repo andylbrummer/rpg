@@ -37,7 +37,8 @@ public static class LevelingSystem
             return character; // No level data available
 
         var newStats = character.BaseStats + levelEntry.StatGain;
-        var newMaxHp = character.GetEffectiveStats().MaxHp + levelEntry.HpGain;
+        // No new max HP to compute: MaxHp is derived from Constitution and level rather than
+        // stored, so raising the stats above raises it. The local this replaced was never read.
         var newHp = character.CurrentHp + levelEntry.HpGain;
         var newAbilities = character.KnownAbilities
             .Concat(levelEntry.NewAbilities)

@@ -39,6 +39,7 @@ public static class CommandDispatcher
             ["return_to_town"] = _ => new ReturnToTownCommand(),
             ["save_game"] = _ => new SaveGameCommand(),
             ["reset_game"] = _ => new ResetGameCommand(),
+            ["set_ironman"] = a => new SetIronmanCommand(a.Enabled ?? throw new ArgumentException("Enabled required")),
             ["swap_row"] = a => new SwapRowCommand(a.Slot ?? throw new ArgumentException("Slot required")),
             ["tavern_recruit"] = a => new RecruitFromTavernCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
             ["swap_active_bench"] = a => new SwapActiveBenchCommand(
@@ -65,6 +66,7 @@ public static class CommandDispatcher
                 Guid.Parse(a.TargetId ?? throw new ArgumentException("TargetId required")),
                 a.Branch ?? throw new ArgumentException("Branch required")),
             ["accuse_faction"] = a => new AccuseFactionCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
+            ["choose_betrayal"] = _ => new ChooseBetrayalCommand(),
             ["read_archive"] = a => new ReadArchiveCommand(a.TargetId ?? throw new ArgumentException("TargetId required")),
             ["transfer_to_cache"] = a => new TransferToCacheCommand(
                 a.Slot ?? throw new ArgumentException("Slot required"),

@@ -22,6 +22,26 @@
     <ProjectReference Include="..\RPC.Engine\RPC.Engine.csproj" />
     <ProjectReference Include="..\RPC.Content\RPC.Content.csproj" />
     <ProjectReference Include="..\RPC.Host\RPC.Host.csproj" />
+    <!-- The content-pack tests invoke the compiler as a process, not as a library, so its assembly
+         is not referenced. The reference exists so MSBuild builds the tool with the rest of the
+         solution: the tests used to build it themselves on first use, which put a compile in the
+         middle of a fully parallel test run and cost ~15s of suite wall-clock for a build that
+         takes ~2s on its own. -->
+    <!-- SetConfiguration is load-bearing: without it the tool builds Debug even when the tests are
+         built Release, and the runner then looks for it under the wrong configuration. -->
+    <ProjectReference Include="..\..\..\tools\content-pack\content-pack.csproj"
+                      ReferenceOutputAssembly="false"
+                      Private="false"
+                      SetConfiguration="Configuration=$(Configuration)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Where that build put the tool. Passed through rather than guessed so the runner does not
+         have to infer the configuration it was compiled under. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ContentPackToolAssembly</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\tools\content-pack\bin\$(Configuration)\net9.0\content-pack.dll'))</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>

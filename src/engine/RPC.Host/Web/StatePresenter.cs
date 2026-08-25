@@ -18,6 +18,7 @@ public class StatePresenter
 
     private readonly PartyPresenter _partyPresenter;
     private readonly CombatPresenter _combatPresenter;
+    private readonly ExplorationPresenter _explorationPresenter = new();
     private readonly ItemRegistry _itemRegistry;
 
     public StatePresenter(ClassRegistry classRegistry, ItemRegistry itemRegistry)
@@ -29,7 +30,7 @@ public class StatePresenter
 
     public object CreateStateMessage(GameState state)
     {
-        var exploration = ExplorationPresenter.Present(state);
+        var exploration = _explorationPresenter.Present(state);
         var party = _partyPresenter.Present(state);
         var combat = _combatPresenter.PresentCombat(state);
         var combatResult = _combatPresenter.PresentCombatResult(state);
@@ -86,6 +87,7 @@ public class StatePresenter
                     : 0
             },
             campaignEnded = state.CampaignEnded,
+            isIronman = state.IsIronman,
             isFragileState = state.IsFragileState,
             rescueExpedition = state.RescueExpedition != null ? new
             {

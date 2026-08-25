@@ -34,12 +34,44 @@ public class ProtocolEnvelopeTests : IDisposable
         return port;
     }
 
-    private async Task<ClientWebSocket> ConnectAsync()
+    private async Task<ClientWebSocket> ConnectAsync() => await ConnectAsync(_server.Port);
+
+    private async Task<ClientWebSocket> ConnectAsync(int port)
     {
         var ws = new ClientWebSocket();
-        var port = _server.Port;
         await ws.ConnectAsync(new Uri($"ws://localhost:{port}/"), _cts.Token);
         return ws;
+    }
+
+    /// <summary>
+    /// The heartbeat interval the tests below run their server at. Short enough that they finish in
+    /// well under a second rather than waiting out the production five, and still an order of
+    /// magnitude above the loopback round trip they are measuring against. Only the tests that are
+    /// about the heartbeat use it: the rest keep the default, where a client that never pongs is
+    /// not dropped part-way through an unrelated assertion.
+    /// </summary>
+    /// <remarks>
+    /// 500ms rather than something smaller: the stall test has to miss a ping and then catch up
+    /// before the third consecutive miss legitimately ends the connection, so its whole exchange
+    /// has to fit inside three intervals. At 200ms that margin was thin enough to lose to
+    /// scheduling jitter under a parallel run.
+    /// </remarks>
+    private static readonly TimeSpan FastHeartbeat = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>A second server, ticking fast, stopped when the caller's using block ends.</summary>
+    private static RunningServer StartFastHeartbeatServer()
+    {
+        var server = new GameServer(port: GetFreePort(), loadSave: false, heartbeatInterval: FastHeartbeat);
+        server.Start();
+        return new RunningServer(server);
+    }
+
+    /// <summary>Stops the server it wraps. GameServer is startable and stoppable, not disposable.</summary>
+    private sealed class RunningServer(GameServer server) : IDisposable
+    {
+        public int Port => server.Port;
+        public TimeSpan HeartbeatInterval => server.HeartbeatInterval;
+        public void Dispose() => server.Stop();
     }
 
     private static async Task<JsonElement> ReceiveAsync(ClientWebSocket ws)
@@ -130,16 +162,59 @@ public class ProtocolEnvelopeTests : IDisposable
         var state = await ReceiveAsync(ws);
         seqs.Add(state.GetProperty("seq").GetInt32());
 
-        // send action
-        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "move_forward" } });
+        // An action that changes nothing draws no reply at all, so this step used to send
+        // move_forward from the menu — where there is no dungeon to move in — and then sit for a
+        // whole heartbeat interval reading the server's ping as its third "server message". The
+        // sequence numbers were monotonic, so it passed, having never seen the state it names.
+        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "turn_left" } });
 
         // state ack
         var state2 = await ReceiveAsync(ws);
+        Assert.Equal("state", state2.GetProperty("type").GetString());
         seqs.Add(state2.GetProperty("seq").GetInt32());
 
         for (int i = 1; i < seqs.Count; i++)
         {
             Assert.True(seqs[i] > seqs[i - 1], $"Sequence not monotonic: {seqs[i]} <= {seqs[i - 1]}");
+        }
+    }
+
+    /// <summary>
+    /// A well-formed action the server considers and declines to act on draws no reply of any
+    /// kind — not a state, not an error, not an ack. The client is fire-and-forget so nothing
+    /// hangs, but on the wire "refused", "ignored" and "still working" are indistinguishable, and
+    /// tests that expected a reply here sat waiting for the next heartbeat and read that instead.
+    /// Pinned so the silence is a known property rather than something rediscovered.
+    /// </summary>
+    [Fact]
+    public async Task An_Action_That_Changes_Nothing_Draws_No_Reply()
+    {
+        using var ws = await ConnectAsync();
+        await ReceiveAsync(ws); // hello
+        await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await ReceiveAsync(ws); // state
+
+        // move_forward from the menu: there is no dungeon to move in, so nothing changes.
+        await SendAsync(ws, new { v = 2, type = "action", seq = 2, payload = new { type = "move_forward" } });
+
+        using var quiet = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        var reply = await ReceiveWithin(ws, quiet.Token);
+
+        Assert.Null(reply);
+    }
+
+    /// <summary>Returns the next message, or null if none arrives before the token trips.</summary>
+    private static async Task<JsonElement?> ReceiveWithin(ClientWebSocket ws, CancellationToken token)
+    {
+        var buffer = new byte[16384];
+        try
+        {
+            var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), token);
+            return JsonSerializer.Deserialize<JsonElement>(Encoding.UTF8.GetString(buffer, 0, result.Count));
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
         }
     }
 
@@ -265,16 +340,16 @@ public class ProtocolEnvelopeTests : IDisposable
     [Fact]
     public async Task Heartbeat_Ping_Sent_After_Ready()
     {
-        using var ws = await ConnectAsync();
+        using var server = StartFastHeartbeatServer();
+        using var ws = await ConnectAsync(server.Port);
         await ReceiveAsync(ws); // hello
 
         await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
         await ReceiveAsync(ws); // state
 
-        // Wait for heartbeat ping (server sends every 5s, but we use a shorter timeout for tests)
-        // The server may have already sent one depending on timing.
-        // We use a 6s timeout to reliably catch at least one ping.
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+        // Generous multiple of the interval: enough that a loaded machine still sees a ping,
+        // short enough that a server which never pings fails the test quickly.
+        var cts = new CancellationTokenSource(server.HeartbeatInterval * 25);
         while (!cts.Token.IsCancellationRequested)
         {
             var msg = await ReceiveAsync(ws);
@@ -291,14 +366,15 @@ public class ProtocolEnvelopeTests : IDisposable
     [Fact]
     public async Task Heartbeat_Pong_Keeps_Connection_Alive()
     {
-        using var ws = await ConnectAsync();
+        using var server = StartFastHeartbeatServer();
+        using var ws = await ConnectAsync(server.Port);
         await ReceiveAsync(ws); // hello
 
         await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
         await ReceiveAsync(ws); // state
 
         // Wait for ping
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+        var cts = new CancellationTokenSource(server.HeartbeatInterval * 25);
         JsonElement ping = default;
         bool gotPing = false;
         while (!cts.Token.IsCancellationRequested)
@@ -321,6 +397,87 @@ public class ProtocolEnvelopeTests : IDisposable
         await SendAsync(ws, new { v = 2, type = "action", seq = 3, payload = new { type = "turn_left" } });
         var state = await ReceiveAsync(ws);
         Assert.Equal("state", state.GetProperty("type").GetString());
+    }
+
+    /// <summary>
+    /// A client that stalls briefly must not be dropped. The pong is answered on the browser's main
+    /// thread, and this is a WebGL dungeon crawler: building a dungeon's geometry or a GC pause
+    /// blocks that thread past a ping interval. Killing on the first missed pong disconnected
+    /// healthy sessions at exactly the busiest moments, and input entered while down is discarded —
+    /// so the action that caused the stall appeared to do nothing at all.
+    ///
+    /// Silence is simulated by ignoring the first ping and answering the second, which is what a
+    /// client returning from a blocked main thread does. Counting pings rather than waiting out
+    /// wall-clock is what makes this reliable: the server's rule counts consecutive unanswered
+    /// pings, so a test that stalls "for 1.6 intervals" and then races to catch up before the third
+    /// one is measuring the machine's scheduler as much as the server, and loses that race under a
+    /// loaded parallel run.
+    /// </summary>
+    [Fact]
+    public async Task A_Client_That_Misses_One_Heartbeat_Is_Not_Dropped()
+    {
+        using var server = StartFastHeartbeatServer();
+        using var ws = await ConnectAsync(server.Port);
+        await ReceiveAsync(ws); // hello
+
+        await SendAsync(ws, new { v = 2, type = "ready", seq = 1, payload = new { } });
+        await ReceiveAsync(ws); // state
+
+        // Ignore the first ping outright; answer the second.
+        var pingsSeen = 0;
+        var deadline = new CancellationTokenSource(server.HeartbeatInterval * 40);
+        while (!deadline.Token.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            if (msg.GetProperty("type").GetString() != "heartbeat.ping") continue;
+
+            if (++pingsSeen < 2) continue;
+
+            var pingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+            await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = 2, payload = new { pingSeq } });
+            break;
+        }
+
+        Assert.Equal(2, pingsSeen);
+
+        // Still alive, and still serving actions. Pings that arrive while the action is in flight
+        // are answered rather than ignored, so this assertion cannot fail for the unrelated reason
+        // of a second stall it never meant to simulate.
+        await SendAsync(ws, new { v = 2, type = "action", seq = 3, payload = new { type = "turn_left" } });
+        var state = await WaitForTypeAnsweringPingsAsync(ws, "state", deadline.Token);
+        Assert.Equal("state", state.GetProperty("type").GetString());
+        Assert.Equal(WebSocketState.Open, ws.State);
+    }
+
+    /// <summary>
+    /// Waits for a message of <paramref name="type"/>, answering heartbeat pings while it waits so
+    /// the wait itself cannot look like a stalled client.
+    /// </summary>
+    private static async Task<JsonElement> WaitForTypeAnsweringPingsAsync(ClientWebSocket ws, string type, CancellationToken token)
+    {
+        var pongSeq = 100;
+        while (!token.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            var msgType = msg.GetProperty("type").GetString();
+            if (msgType == type) return msg;
+            if (msgType == "heartbeat.ping")
+            {
+                var pingSeq = msg.GetProperty("payload").GetProperty("pingSeq").GetInt32();
+                await SendAsync(ws, new { v = 2, type = "heartbeat.pong", seq = pongSeq++, payload = new { pingSeq } });
+            }
+        }
+        throw new TimeoutException($"No '{type}' message arrived before the deadline.");
+    }
+
+    private static async Task<JsonElement> WaitForTypeAsync(ClientWebSocket ws, string type, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            var msg = await ReceiveAsync(ws);
+            if (msg.GetProperty("type").GetString() == type) return msg;
+        }
+        throw new TimeoutException($"No '{type}' message arrived before the deadline.");
     }
 
     [Fact]

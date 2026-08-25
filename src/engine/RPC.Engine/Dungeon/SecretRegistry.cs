@@ -38,7 +38,11 @@ public class SecretRegistry
 
     public void Register(SecretDef secret)
     {
-        if (string.IsNullOrEmpty(secret.Id)) return;
+        if (string.IsNullOrEmpty(secret.Id))
+            throw new ArgumentException(
+                "A secret must carry an id; discovery, detection, and breaking all address it by id.",
+                nameof(secret));
+
         _byId[secret.Id] = secret;
 
         if (!string.IsNullOrEmpty(secret.DocLinkId))
@@ -67,11 +71,20 @@ public class SecretRegistry
         _byDocLink.Clear();
     }
 
-    public void LoadFromJson(string json)
+    /// <summary>
+    /// Load one authored secret. <paramref name="source"/> names the file in error messages. A
+    /// definition that cannot be registered is reported, not dropped: a silently skipped secret is
+    /// indistinguishable from a dungeon that simply has none.
+    /// </summary>
+    public void LoadFromJson(string json, string? source = null)
     {
-        var def = JsonSerializer.Deserialize<SecretDef>(json, ContentJsonOptions.Standard);
-        if (def is null || string.IsNullOrEmpty(def.Id))
-            return;
+        var where = source is null ? "A secret definition" : $"Secret definition '{source}'";
+        var def = JsonSerializer.Deserialize<SecretDef>(json, ContentJsonOptions.Standard)
+            ?? throw new InvalidOperationException($"{where} did not parse into a definition.");
+
+        if (string.IsNullOrEmpty(def.Id))
+            throw new InvalidOperationException($"{where} carries no id, so nothing could ever discover it.");
+
         Register(def);
     }
 
@@ -80,6 +93,21 @@ public class SecretRegistry
         if (!Directory.Exists(directoryPath))
             return;
         foreach (var file in Directory.EnumerateFiles(directoryPath, "*.json"))
-            LoadFromJson(File.ReadAllText(file));
+            LoadFromJson(File.ReadAllText(file), Path.GetFileName(file));
+    }
+
+    /// <summary>
+    /// Catalog-driven load, so the host reads secrets from whichever content pack it resolved
+    /// rather than inferring a directory off the filesystem. Mirrors the other registries'
+    /// catalog loaders.
+    /// </summary>
+    public void LoadFromCatalog(IContentCatalog catalog)
+    {
+        foreach (var file in catalog.EnumerateFiles("secrets", "*.json"))
+        {
+            var json = catalog.GetString(file) ?? catalog.GetString($"secrets/{Path.GetFileName(file)}");
+            if (json != null)
+                LoadFromJson(json, Path.GetFileName(file));
+        }
     }
 }

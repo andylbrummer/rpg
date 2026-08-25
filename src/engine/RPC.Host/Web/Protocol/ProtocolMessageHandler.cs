@@ -74,15 +74,22 @@ internal sealed class ProtocolMessageHandler
             {
                 _gameStateLock.Release();
             }
-            await _broadcaster.SendState(client, payload: snapshot);
+            await _broadcaster.SendState(client, snapshot);
             return;
         }
 
         if (envelope.Type == "heartbeat.pong")
         {
-            if (envelope.Payload is JsonElement json && json.TryGetProperty("pingSeq", out var pingSeqEl))
+            // TryGetInt32 rather than GetInt32: a pong carrying a non-numeric pingSeq is a client
+            // bug, and throwing here would unwind the receive loop and drop an otherwise healthy
+            // connection. Ignoring the malformed pong lets the heartbeat time it out normally.
+            if (envelope.Payload is JsonElement json
+                && json.ValueKind == JsonValueKind.Object
+                && json.TryGetProperty("pingSeq", out var pingSeqEl)
+                && pingSeqEl.ValueKind == JsonValueKind.Number
+                && pingSeqEl.TryGetInt32(out var pingSeq))
             {
-                client.LastPongSeq = pingSeqEl.GetInt32();
+                client.LastPongSeq = pingSeq;
             }
             return;
         }
@@ -109,7 +116,11 @@ internal sealed class ProtocolMessageHandler
                     classesPlayed = data.ClassesPlayed.ToArray(),
                     branchesChosen = data.BranchesChosen.ToArray(),
                     optionalDungeonsUnlocked = data.OptionalDungeonsUnlocked.ToArray(),
-                    factionEndStates = data.FactionEndStates
+                    // Copied like the arrays above, not passed by reference. Serialization happens
+                    // after the lock is released, so handing out the live dictionary let a campaign
+                    // ending on the command thread mutate it mid-enumeration — which throws and
+                    // takes down the send rather than returning stale numbers.
+                    factionEndStates = new Dictionary<string, int>(data.FactionEndStates)
                 };
             }
             finally
@@ -193,12 +204,26 @@ internal sealed class ProtocolMessageHandler
 
             if (stateChanged && snapshot != null)
             {
-                await _broadcaster.SendState(client, envelope.Seq, snapshot);
-                await _broadcaster.BroadcastState(excludeClient: client, payload: snapshot);
+                await _broadcaster.SendState(client, snapshot, envelope.Seq);
+                await _broadcaster.BroadcastState(snapshot, excludeClient: client);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // Server shutdown, not a command failure — let the receive loop unwind.
+            throw;
+        }
+        catch (ArgumentException ex)
+        {
+            // The command reached its handler and was rejected for what it carried — an unknown
+            // id, a slot the party does not have. That is the client's action being wrong, not the
+            // server failing, and reporting it as an internal error tells the player nothing and
+            // sends whoever debugs it looking for a server fault that does not exist.
+            await SendError(client, "invalid_action", ex.Message, recoverable: true, ackSeq: envelope.Seq);
         }
         catch (Exception ex)
         {
+            Console.Error.WriteLine($"[Protocol] Action failed: {ex}");
             await SendError(client, "internal_error", $"Internal error processing action: {ex.Message}", recoverable: true, ackSeq: envelope.Seq);
         }
     }

@@ -1,4 +1,4 @@
-using System.Text.Json;
+using RPC.Engine;
 using RPC.Engine.Analytics;
 
 namespace RPC.Tests;
@@ -16,6 +16,10 @@ public class AnalyticsTests : IDisposable
     {
         if (File.Exists(_tempPath))
             File.Delete(_tempPath);
+        // Also sweep the sidecars a failed run can strand next to it (unique-named temps, and any
+        // quarantine copy), so a failure does not leave litter in the shared temp directory.
+        foreach (var sidecar in Directory.GetFiles(Path.GetDirectoryName(_tempPath)!, $"{Path.GetFileName(_tempPath)}.*"))
+            File.Delete(sidecar);
     }
 
     [Fact]
@@ -65,10 +69,75 @@ public class AnalyticsTests : IDisposable
         var tracker1 = new AnalyticsTracker(_tempPath);
         tracker1.RecordCampaignStart("test", "the_vault", new[] { "bonewarden" });
         tracker1.RecordSynergyDiscovered("test_synergy");
+        tracker1.Flush();
 
         var tracker2 = new AnalyticsTracker(_tempPath);
         var data = tracker2.GetData();
         Assert.Equal(1, data.CampaignsStarted);
         Assert.Contains("test_synergy", data.SynergiesDiscovered);
     }
+
+    /// <summary>
+    /// Campaign start and end are the milestones the aggregates exist for, so they are durable
+    /// without an explicit flush. Everything in between is coalesced.
+    /// </summary>
+    [Fact]
+    public void CampaignMilestones_Persist_Without_An_Explicit_Flush()
+    {
+        var tracker = new AnalyticsTracker(_tempPath);
+        tracker.RecordCampaignStart("test", "the_vault", new[] { "bonewarden" });
+
+        Assert.Equal(1, new AnalyticsTracker(_tempPath).GetData().CampaignsStarted);
+
+        tracker.RecordCampaignEnd(mastermindExposed: true, schemeStopped: false, betrayal: false, turns: 3, deaths: 0);
+
+        Assert.Equal(1, new AnalyticsTracker(_tempPath).GetData().CampaignsCompleted);
+    }
+
+    /// <summary>
+    /// Discovery events fire from inside the exploration command path, under the game-state lock.
+    /// Each one used to serialize the whole aggregate blob and fsync it — milliseconds of blocking
+    /// disk I/O per secret found. They must now coalesce into a single write.
+    /// </summary>
+    [Fact]
+    public void Discovery_Events_Do_Not_Touch_Disk_Until_Flushed()
+    {
+        var tracker = new AnalyticsTracker(_tempPath);
+        tracker.RecordSecretDiscovered("secret-a");
+        tracker.RecordDocumentRead("doc-a");
+        tracker.RecordOptionalDungeonUnlocked("dungeon-a");
+
+        Assert.False(File.Exists(_tempPath));
+
+        tracker.Flush();
+
+        var reloaded = new AnalyticsTracker(_tempPath).GetData();
+        Assert.Contains("secret-a", reloaded.SecretsDiscovered);
+        Assert.Contains("doc-a", reloaded.DocumentsRead);
+        Assert.Contains("dungeon-a", reloaded.OptionalDungeonsUnlocked);
+    }
+
+    /// <summary>
+    /// A tracker with no path is the engine default, so a headless <see cref="GameState"/> must not
+    /// read or write the shared per-user analytics file just by existing.
+    /// </summary>
+    [Fact]
+    public void A_Pathless_Tracker_Never_Touches_Disk()
+    {
+        var before = Directory.Exists(Path.GetDirectoryName(AnalyticsTracker.DefaultPath))
+            ? Directory.GetFiles(Path.GetDirectoryName(AnalyticsTracker.DefaultPath)!).Length
+            : 0;
+
+        var gs = new GameState(seed: 1);
+        gs.DiscoverSecret("breakable_wall", "secret-headless");
+        gs.Analytics.Flush();
+
+        Assert.Contains("secret-headless", gs.Analytics.GetData().SecretsDiscovered);
+
+        var after = Directory.Exists(Path.GetDirectoryName(AnalyticsTracker.DefaultPath))
+            ? Directory.GetFiles(Path.GetDirectoryName(AnalyticsTracker.DefaultPath)!).Length
+            : 0;
+        Assert.Equal(before, after);
+    }
+
 }

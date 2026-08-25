@@ -11,7 +11,7 @@ public class EnemyRegistryTests
       "id": "rat",
       "name": "Sewer Rat",
       "description": "A bloated rodent.",
-      "stats": { "str": 3, "dex": 5, "con": 3, "int": 1, "wil": 2 },
+      "stats": { "strength": 3, "dexterity": 5, "constitution": 3, "intelligence": 1, "willpower": 2 },
       "hpBase": 8,
       "speed": 4,
       "ai": "basic_melee",

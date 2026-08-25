@@ -3,11 +3,11 @@
   "name": "Bloom Mite",
   "description": "A skittering insectoid swarmer no larger than a fist, its carapace pulsing with sickly green luminescence.",
   "stats": {
-    "str": 4,
-    "dex": 10,
-    "con": 3,
-    "int": 1,
-    "wil": 3
+    "strength": 4,
+    "dexterity": 10,
+    "constitution": 3,
+    "intelligence": 1,
+    "willpower": 3
   },
   "hpBase": 8,
   "speed": 10,

@@ -46,6 +46,14 @@ export class RendererHost {
     return this.audioManager;
   }
 
+  /**
+   * Pause or resume drawing the 3D scene. See {@link DungeonRenderer.setPaused}; the shell decides
+   * when the scene is hidden, because only it knows which view is on top.
+   */
+  setPaused(paused: boolean) {
+    this.renderer.setPaused(paused);
+  }
+
   applyDisplaySettings(d: DisplaySettings) {
     this.renderer.setFov(d.fov);
     this.renderer.setResolutionScale(d.resolutionScale);
@@ -58,5 +66,16 @@ export class RendererHost {
   setAudioEnabled(enabled: boolean) {
     this.audioManager.setEnabled(enabled);
     this.unaccountedAudio.setEnabled(enabled);
+  }
+
+  /**
+   * Releases the renderer, its WebGL context and the audio graph. Without this the host outlives
+   * the component that created it: the render loop keeps running, ambient oscillators keep
+   * playing, and the scene stays reachable from the window resize listener.
+   */
+  dispose() {
+    this.renderer.dispose();
+    this.unaccountedAudio.dispose();
+    this.audioManager.stop();
   }
 }

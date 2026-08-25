@@ -3,4 +3,8 @@
   <Project Path="RPC.Engine/RPC.Engine.csproj" />
   <Project Path="RPC.Host/RPC.Host.csproj" />
   <Project Path="RPC.Tests/RPC.Tests.csproj" />
+  <!-- The content-pack compiler. In the solution so a solution build gives it the same
+       configuration as everything else: outside it, the tests' project reference still built the
+       tool, but always as Debug, while a Release test run looked for it under Release. -->
+  <Project Path="../../tools/content-pack/content-pack.csproj" />
 </Solution>

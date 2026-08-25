@@ -16,7 +16,7 @@ public class DungeonPathClassifier
         var result = new Dictionary<int, RoomRole>();
         if (dungeon.Rooms.Count == 0) return result;
 
-        var entrance = FindEntrance(dungeon);
+        var entrance = dungeon.FindEntrance();
         var boss = FindBoss(dungeon, bossEncounterId);
         var criticalTiles = entrance is null || boss is null
             ? new HashSet<Position>()
@@ -66,19 +66,6 @@ public class DungeonPathClassifier
         return count;
     }
 
-    private static Position? FindEntrance(Dungeon dungeon)
-    {
-        Position? first = null;
-        for (int x = 0; x < dungeon.Width; x++)
-            for (int y = 0; y < dungeon.Height; y++)
-            {
-                var t = dungeon.Tiles[x, y];
-                if (!t.IsWalkable) continue;
-                first ??= new Position(x, y);
-                if (t.Type == TileType.StairsUp) return new Position(x, y);
-            }
-        return first;
-    }
 
     // When a specific boss encounter id is provided, match exactly that tile (the procedural path
     // tags many tiles with encounter ids before decoration, so "first encounter tile" would latch

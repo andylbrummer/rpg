@@ -191,7 +191,7 @@ public class SegmentStitcher
 
     private static void PlaceExitStairs(Dungeon dungeon)
     {
-        var entrance = FindEntrance(dungeon);
+        var entrance = dungeon.FindEntrance();
         if (entrance is null) return;
 
         // BFS for the deepest reachable tile.
@@ -243,7 +243,7 @@ public class SegmentStitcher
     /// <summary>Find the reachable walkable tile closest (Manhattan) to <paramref name="orphan"/>.</summary>
     private static Position? NearestReachable(Dungeon dungeon, Position orphan)
     {
-        var entrance = FindEntrance(dungeon);
+        var entrance = dungeon.FindEntrance();
         if (entrance is null) return null;
 
         var reachable = ReachableSet(dungeon, entrance.Value);
@@ -300,22 +300,6 @@ public class SegmentStitcher
     private static readonly Direction[] AllDirections =
         { Direction.North, Direction.East, Direction.South, Direction.West };
 
-    private static Position? FindEntrance(Dungeon dungeon)
-    {
-        Position? first = null;
-        for (int x = 0; x < dungeon.Width; x++)
-        {
-            for (int y = 0; y < dungeon.Height; y++)
-            {
-                var tile = dungeon.Tiles[x, y];
-                if (!tile.IsWalkable) continue;
-                var pos = new Position(x, y);
-                first ??= pos;
-                if (tile.Type == TileType.StairsUp) return pos;
-            }
-        }
-        return first;
-    }
 
     private static HashSet<Position> ReachableSet(Dungeon dungeon, Position entrance)
     {

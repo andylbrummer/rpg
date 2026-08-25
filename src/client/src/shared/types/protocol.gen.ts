@@ -82,6 +82,11 @@ export type PlayerAction =
 
     }
   | {
+      type: "set_ironman";
+      enabled: boolean;
+
+    }
+  | {
       type: "swap_row";
       slot: number;
 
@@ -163,6 +168,10 @@ export type PlayerAction =
   | {
       type: "accuse_faction";
       targetId: string;
+
+    }
+  | {
+      type: "choose_betrayal";
 
     }
   | {

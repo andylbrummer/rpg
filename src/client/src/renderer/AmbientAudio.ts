@@ -1,3 +1,4 @@
+import { dungeonTypeKey } from './DungeonTheme';
 export interface AmbientTrack {
   id: string;
   displayName: string;
@@ -91,7 +92,7 @@ const TRACKS: Record<string, AmbientTrack> = {
 };
 
 export function getAmbientTrack(dungeonType: string): AmbientTrack {
-  return TRACKS[dungeonType] ?? TRACKS.default;
+  return TRACKS[dungeonTypeKey(dungeonType)] ?? TRACKS.default;
 }
 
 // Faction ambient motifs — heard on the overworld so the player perceives a faction's

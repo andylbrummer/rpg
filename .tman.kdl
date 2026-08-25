@@ -1,0 +1,53 @@
+// Supervision caps for The Reach's build and test commands.
+//
+// The default 60s stall cap killed this repo's legitimate runs: `dotnet test` prints nothing
+// between "Starting test execution" and its summary (~25s, but longer on a cold build), and the
+// Playwright suite has individual tests that legitimately run 30-60s while the list reporter
+// stays silent. Both were being killed mid-run and reported as failures. The per-alias caps below
+// are sized to the observed runtimes, not opened up to hide a slow suite; the defaults block no
+// longer pins a stall at all, so anything without its own cap — a hook-rewritten bare `dotnet
+// test`, for one — takes tman's built-in 30m backstop instead of dying at 60s. No max-cpu either:
+// it normalises across all cores, so any ceiling reads as "kill a healthy parallel build".
+defaults {
+    max-mem 4096
+    max-parallel 2
+}
+
+// .NET engine: ~1400 tests, ~25s of silence between start and summary.
+alias "test" {
+    command "sh"
+    args "-c" "cd src/engine && dotnet test --configuration Release"
+    stall "5m"
+    max-time "20m"
+}
+
+alias "build" {
+    command "sh"
+    args "-c" "cd src/engine && dotnet build --configuration Release"
+    stall "3m"
+    max-time "15m"
+}
+
+// Client unit tests are fast and chatty; the defaults are fine.
+alias "test-client" {
+    command "sh"
+    args "-c" "cd src/client && npm run test:unit"
+    stall "2m"
+    max-time "10m"
+}
+
+// Playwright: single specs routinely take 30-60s with no reporter output, and the whole suite
+// boots a dotnet host first.
+alias "e2e" {
+    command "sh"
+    args "-c" "cd src/client && npm run test:e2e"
+    stall "5m"
+    max-time "45m"
+}
+
+alias "check" {
+    command "sh"
+    args "-c" "cd src/client && npm run check"
+    stall "3m"
+    max-time "10m"
+}

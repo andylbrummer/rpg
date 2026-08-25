@@ -23,6 +23,13 @@ public readonly record struct Combatant(
 
     public bool IsAlive => Hp > 0;
     public bool IsFrontRow => Row == 0;
+
+    /// <summary>
+    /// The Unaccounted break several combat rules — they phase between rows, reach past the front
+    /// row, and reassemble after death — so the check is asked in both the AI and the resolver.
+    /// It belongs to the combatant rather than to either caller.
+    /// </summary>
+    public bool IsUnaccounted => AiBehavior == "unaccounted";
 }
 
 public readonly record struct StatusEffect(string Type, int Duration, int? Potency, Guid SourceId = default);

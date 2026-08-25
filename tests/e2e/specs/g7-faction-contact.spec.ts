@@ -1,14 +1,14 @@
 import { test, expect } from './fixtures';
-import { sendWsAction } from './helpers';
+import { resetGame, sendWsAction } from './helpers';
 
 test.describe('Faction contacts in town', () => {
   test('contact at 0 rep shows greeting + dismissive line only', async ({ page, serverUrl }) => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
 
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const contacts = contactSection.locator('.contact-card');
     await expect(contacts).toHaveCount(5);
@@ -24,11 +24,11 @@ test.describe('Faction contacts in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 10 });
     await page.waitForTimeout(500);
 
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const bureauContact = contactSection.locator('.contact-card').filter({ hasText: 'Agent Voss' });
 
@@ -41,11 +41,11 @@ test.describe('Faction contacts in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 30 });
     await page.waitForTimeout(500);
 
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const bureauContact = contactSection.locator('.contact-card').filter({ hasText: 'Agent Voss' });
 
@@ -58,8 +58,7 @@ test.describe('Faction contacts in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 30 });
     await page.waitForTimeout(500);
 
@@ -67,6 +66,7 @@ test.describe('Faction contacts in town', () => {
     await page.waitForTimeout(600);
 
     await page.getByRole('button', { name: 'Missions', exact: true }).click();
+    await page.locator('.town-nav-btn').filter({ hasText: 'Missions' }).click();
     const questSection = page.locator('.town-services h2:has-text("Quest Log") + .service-list');
     const quests = questSection.locator('.service-item');
     await expect(quests).toHaveCount(1);
@@ -76,11 +76,11 @@ test.describe('Faction contacts in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
-    await sendWsAction(page, serverUrl, { type: 'reset_game' });
-    await page.waitForTimeout(500);
+    await resetGame(page, serverUrl);
     await sendWsAction(page, serverUrl, { type: 'set_reputation', targetId: 'bureau', value: 30 });
     await page.waitForTimeout(500);
 
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
 
     await sendWsAction(page, serverUrl, { type: 'mission_accept', targetId: 'mission-bureau-1' });
@@ -90,6 +90,7 @@ test.describe('Faction contacts in town', () => {
     await page.waitForTimeout(600);
 
     await page.getByRole('button', { name: 'Missions', exact: true }).click();
+    await page.locator('.town-nav-btn').filter({ hasText: 'Missions' }).click();
     const questSection = page.locator('.town-services h2:has-text("Quest Log") + .service-list');
     const questStatus = questSection.locator('.quest-status').first();
     await expect(questStatus).toHaveText('completed');
@@ -104,6 +105,7 @@ test.describe('Faction contacts in town', () => {
     await page.goto(`${serverUrl}/app`);
     await page.waitForSelector('.town-menu', { timeout: 10000 });
 
+    await page.locator('.town-nav-btn').filter({ hasText: 'Tavern' }).click();
     const contactSection = page.locator('.town-services h2:has-text("Faction Contacts") + .service-list');
     const contacts = contactSection.locator('.contact-card');
     await expect(contacts).toHaveCount(5);

@@ -125,6 +125,8 @@
       }
     }
 
+    drawSecretMarkers(gameState, cellSize, offsetX, offsetY, scale);
+
     const px = gameState.player.x * cellSize + offsetX;
     const py = gameState.player.y * cellSize + offsetY;
 
@@ -151,6 +153,43 @@
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + dx * dirLen, cy + dy * dirLen);
     ctx.stroke();
+  }
+
+  /**
+   * Marks what the party has sensed but not yet identified with a "?", and a wall it has revealed
+   * and can still break with a "!". The engine has always sent both sets and the state type has
+   * always carried them, but nothing drew them: the Inkblood Cartographer's whole passive is to
+   * put these on the automap, so without the marker a party with a Cartographer saw exactly what a
+   * party without one saw.
+   */
+  function drawSecretMarkers(
+    gameState: GameState,
+    cellSize: number,
+    offsetX: number,
+    offsetY: number,
+    scale: number,
+  ) {
+    if (!ctx) return;
+
+    const marks: Array<{ x: number; y: number; glyph: string; color: string }> = [
+      ...(gameState.detectedSecrets ?? []).map((s) => ({ x: s.x, y: s.y, glyph: '?', color: '#d8c56a' })),
+      ...(gameState.breakableWalls ?? []).map((w) => ({ x: w.x, y: w.y, glyph: '!', color: '#e08a4a' })),
+    ];
+    if (marks.length === 0) return;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${Math.max(6, cellSize * 0.8)}px sans-serif`;
+    for (const mark of marks) {
+      ctx.fillStyle = mark.color;
+      ctx.fillText(
+        mark.glyph,
+        mark.x * cellSize + offsetX + cellSize / 2,
+        mark.y * cellSize + offsetY + cellSize / 2,
+      );
+    }
+    ctx.restore();
   }
 </script>
 

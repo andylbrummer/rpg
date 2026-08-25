@@ -9,14 +9,18 @@ public class CombatService
     private readonly EncounterTableRegistry? _encounterTables;
     private readonly ClassRegistry? _classRegistry;
     private readonly SynergyRegistry? _synergies;
+    private readonly EnemyRegistry? _enemies;
+    private readonly RPC.Engine.Content.ItemRegistry? _items;
     private readonly GameRandom _encounterRng;
 
-    public CombatService(EncounterTableRegistry? encounterTables, ClassRegistry? classRegistry, GameRandom encounterRng, SynergyRegistry? synergies = null)
+    public CombatService(EncounterTableRegistry? encounterTables, ClassRegistry? classRegistry, GameRandom encounterRng, SynergyRegistry? synergies = null, EnemyRegistry? enemies = null, RPC.Engine.Content.ItemRegistry? items = null)
     {
         _encounterTables = encounterTables;
         _classRegistry = classRegistry;
         _encounterRng = encounterRng;
         _synergies = synergies;
+        _enemies = enemies;
+        _items = items;
     }
 
     public void TriggerEncounter(GameState state, EncounterDef? encounter = null)
@@ -77,7 +81,7 @@ public class CombatService
             else if (rep < -25)
             {
                 // Hostile: reinforce the encounter
-                var reinforced = encounter.Enemies.Concat(new[] { new EnemySpawn("faction_soldier", 1) }).ToArray();
+                var reinforced = encounter.Enemies.Concat(new[] { new EnemySpawn(EnemyRegistry.SoldierIdFor(factionId), 1) }).ToArray();
                 encounter = encounter with { Enemies = reinforced };
             }
         }
@@ -88,7 +92,7 @@ public class CombatService
     private void EnterCombat(GameState state, EncounterDef encounter)
     {
         state.CurrentEncounterId = Guid.NewGuid().ToString();
-        state.Combat = CombatEngine.Enter(state.Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)), environment: state.CurrentDungeonType);
+        state.Combat = CombatEngine.Enter(state.Party, encounter, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies, state.CurrentDungeonType, _items);
 
         state.EmitActionLog("combat", "encounter_started", new Dictionary<string, string> { { "encounterId", state.CurrentEncounterId } });
 
@@ -132,9 +136,10 @@ public class CombatService
 
             // Kick off the first round and auto-resolve any leading AI turns
             var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+            var openingEmitter = CombatActionLog.EmitterFor(state);
             state.Combat = CombatEngine.AutoResolveToPlayerTurn(
-                CombatEngine.Tick(state.Combat, null, rng, _classRegistry, null, _synergies),
-                rng, _classRegistry, null, _synergies);
+                CombatEngine.Tick(state.Combat, null, rng, _classRegistry, openingEmitter, _synergies),
+                rng, _classRegistry, openingEmitter, _synergies);
         }
         state.LastUpdate = DateTime.UtcNow;
     }
@@ -264,7 +269,7 @@ public class CombatService
     {
         var encounter = ResolveOrFallbackEncounter(state);
         var reinforced = encounter.Enemies
-            .Concat(new[] { new EnemySpawn("faction_soldier", 1) })
+            .Concat(new[] { new EnemySpawn(EnemyRegistry.SoldierIdFor(factionId), 1) })
             .ToArray();
         encounter = encounter with { Enemies = reinforced };
         state.CurrentParley = null;
@@ -423,19 +428,7 @@ public class CombatService
         }
 
         var rng = new GameRandom(_encounterRng.Roll(1, 10000));
-        Action<string, string, Dictionary<string, string>> emitter = (cat, type, payload) =>
-        {
-            if (type == "synergy_triggered" && state.CurrentEncounterId != null)
-            {
-                payload["encounterId"] = state.CurrentEncounterId;
-            }
-            if (type == "synergy_triggered" && payload.TryGetValue("synergyId", out var sid) && !string.IsNullOrEmpty(sid))
-            {
-                state.Journal.Discover(sid);
-                state.Analytics.RecordSynergyDiscovered(sid);
-            }
-            state.EmitActionLog(cat, type, payload);
-        };
+        var emitter = CombatActionLog.EmitterFor(state);
 
         state.Combat = CombatEngine.Tick(state.Combat, action, rng, _classRegistry, emitter, _synergies);
 
@@ -549,20 +542,8 @@ public class CombatService
                 var rescueStarted = state.StartRescueExpedition();
                 if (!rescueStarted)
                 {
-                    // No bench characters available — delete save
-                    try
-                    {
-                        var savePath = state.SavePath;
-                        if (File.Exists(savePath))
-                        {
-                            File.Delete(savePath);
-                            state.EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string>());
-                        }
-                    }
-                    catch
-                    {
-                        // best effort
-                    }
+                    // No bench characters available: the run is over.
+                    state.EndIronmanRun(rescueFailed: false);
                 }
             }
         }
@@ -587,9 +568,14 @@ public class CombatService
             && ability.Tags.Contains("area");
     }
 
-    public void FleeCombat(GameState state)
+    /// <summary>
+    /// Flee the current combat, reporting whether there was one to flee. A caller that assumes it
+    /// always happened broadcasts an unchanged state to every client, saves an ironman run for an
+    /// action that did not occur, and clears a combat result the player has not seen yet.
+    /// </summary>
+    public bool FleeCombat(GameState state)
     {
-        if (state.Mode != GameMode.Combat) return;
+        if (state.Mode != GameMode.Combat) return false;
         state.Mode = GameMode.Exploration;
         if (state.CurrentEncounterId != null)
         {
@@ -599,5 +585,6 @@ public class CombatService
         state.Combat = null;
         state.ClearTaggedEncounterTile(resolved: false);
         state.LastUpdate = DateTime.UtcNow;
+        return true;
     }
 }

@@ -1,6 +1,7 @@
 using RPC.Engine.Campaign;
 using RPC.Engine.Character;
 using RPC.Engine.Combat;
+using RPC.Engine.Content;
 using RPC.Engine.Exploration;
 using RPC.Engine.Models.Dungeons;
 using RPC.Engine.Dungeons;
@@ -96,7 +97,13 @@ public class GameState
     private readonly FactionContentRepository? _factionContent;
     private readonly CampaignContentRegistry? _campaignContent;
     private readonly DialogueRepository? _dialogue;
-    public Analytics.AnalyticsTracker Analytics { get; } = new();
+
+    /// <summary>
+    /// Anonymized aggregate tracker for the session. Defaults to an in-memory tracker so headless
+    /// tests never read or write the shared per-user analytics file; the host replaces it with a
+    /// persisting one, mirroring <see cref="MetaPersistenceEnabled"/>.
+    /// </summary>
+    public Analytics.AnalyticsTracker Analytics { get; set; } = new();
 
     /// <summary>
     /// Cross-campaign meta-progression for the current session. Defaults to an empty instance so
@@ -118,11 +125,60 @@ public class GameState
     /// <summary>Persist the current <see cref="Meta"/> to disk.</summary>
     public void SaveMetaProgression() => Save.MetaProgressionStore.Save(Meta, MetaPath);
 
+    /// <summary>
+    /// Item definitions from the content pack. Equipment stat bonuses are stored as item ids, so
+    /// every stat calculation that should account for what a character is wearing needs this;
+    /// without it the bonus silently resolves to zero.
+    /// </summary>
+    public ItemRegistry? Items { get; }
+
+    /// <summary>
+    /// Enemy definitions from the content pack, used to spawn combatants. Null when none were
+    /// injected, which leaves <c>SpawnEnemies</c> on its unnamed fallback stats — acceptable for a
+    /// focused engine test, never for a real run.
+    /// </summary>
+    public EnemyRegistry? Enemies { get; }
+
     /// <summary>Secret definitions for the current run, indexed for document-triggered discovery.</summary>
     public SecretRegistry Secrets { get; } = new();
 
     /// <summary>Family Archive definitions for the current run, read for faction intel.</summary>
     public Campaign.ArchiveRegistry Archives { get; } = new();
+
+    // The content-pack definitions the host loaded, kept so a new campaign can be re-seeded from
+    // them. The run's own registries are separate instances: a dungeon may register secrets of its
+    // own, and those must not leak back into the content the next campaign starts from.
+    private readonly SecretRegistry? _contentSecrets;
+    private readonly Campaign.ArchiveRegistry? _contentArchives;
+
+    private void SeedContentDefinitions()
+    {
+        SeedContentSecrets();
+
+        if (_contentArchives != null)
+            foreach (var archive in _contentArchives.All)
+                Archives.Register(archive);
+    }
+
+    private void SeedContentSecrets()
+    {
+        if (_contentSecrets != null)
+            foreach (var secret in _contentSecrets.All)
+                Secrets.Register(secret);
+    }
+
+    /// <summary>
+    /// Point the secret registry at a newly installed dungeon: the run's authored secrets plus a
+    /// secret for every breakable wall this particular layout contains. Rebuilt rather than added
+    /// to — wall positions belong to one dungeon, and carrying the last one's forward would mark
+    /// tiles in this one that hold nothing.
+    /// </summary>
+    internal void InstallDungeonSecrets(Dungeon dungeon)
+    {
+        Secrets.Clear();
+        SeedContentSecrets();
+        BreakableWallSecrets.RegisterFrom(Secrets, dungeon);
+    }
 
     // Cached campaign epilogue for the current run — generated once (LLM or template) and reused
     // across state snapshots so a slow/failed LLM call doesn't regenerate on every frame.
@@ -138,9 +194,14 @@ public class GameState
     /// </summary>
     public string ResolveEpilogue() => _cachedEpilogue ??= EpilogueGenerator.Generate(this);
 
-    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null, DialogueRepository? dialogue = null)
+    public GameState(int? seed = null, EncounterTableRegistry? encounterTables = null, ClassRegistry? classRegistry = null, SynergyRegistry? synergies = null, FactionContentRepository? factionContent = null, RumorRepository? rumors = null, IReadOnlyDictionary<string, DungeonTemplate>? dungeonTemplates = null, CampaignContentRegistry? campaignContent = null, SecretRegistry? secrets = null, Campaign.ArchiveRegistry? archives = null, EnemyRegistry? enemies = null, ItemRegistry? items = null, DialogueRepository? dialogue = null)
     {
         LastUpdate = DateTime.UtcNow;
+        Items = items;
+        _contentSecrets = secrets;
+        _contentArchives = archives;
+        Enemies = enemies;
+        SeedContentDefinitions();
         _seed = seed ?? DateTime.UtcNow.GetHashCode();
         _encounterRng = new GameRandom(_seed);
         _encounterTables = encounterTables;
@@ -148,21 +209,20 @@ public class GameState
         _factionContent = factionContent;
         _campaignContent = campaignContent;
         _dialogue = dialogue;
-        _townService = new TownService(factionContent, rumors);
+        _townService = new TownService(factionContent, rumors, items);
         InitializeDefaultParty();
         InitializeTown();
         Overworld = new OverworldState();
         Mode = GameMode.Menu; // Start in town/hub
 
-        _combatService = new CombatService(_encounterTables, _classRegistry, _encounterRng, synergies);
+        _combatService = new CombatService(_encounterTables, _classRegistry, _encounterRng, synergies, enemies, items);
         _explorationService = new ExplorationService(_encounterTables, _classRegistry, _encounterRng);
-        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies, campaignContent);
+        _overworldService = new OverworldService(_encounterRng, _classRegistry, synergies, campaignContent, enemies, items);
         _campaignService = new CampaignService(_classRegistry);
         _missionService = new MissionService(_classRegistry);
         _eventScheduler = new EventScheduler(_campaignService);
         _factionInteractionService = new FactionInteractionService(_campaignService);
         _dungeonTemplates = dungeonTemplates ?? new Dictionary<string, DungeonTemplate>();
-        Analytics = new Analytics.AnalyticsTracker();
     }
 
     private void InitializeDefaultParty()
@@ -268,7 +328,18 @@ public class GameState
 
         if (!ComponentInventorySystem.CanAddComponent(
                 Party.ExpeditionCache, itemId, 1, PartyState.MaxExpeditionCacheSlots))
-            return false; // cache full — leave loot on the floor
+        {
+            // Leave the loot on the floor, but say so. The handler only reads the bool as "did
+            // state change", so a silent false meant an explicit pickup did nothing at all and
+            // offered the player no reason — indistinguishable from an input that never landed.
+            EmitActionLog("dungeon", "loot_refused_cache_full", new Dictionary<string, string>
+            {
+                { "itemId", itemId },
+                { "x", pos.X.ToString() },
+                { "y", pos.Y.ToString() }
+            });
+            return false;
+        }
 
         ComponentInventorySystem.AddToExpeditionCache(Party, itemId, 1);
         Exploration.CollectedLoot.Add(key);
@@ -297,12 +368,14 @@ public class GameState
         return _combatService.SubmitCombatAction(this, action);
     }
 
-    public void FleeCombat()
+    /// <summary>Flee the current combat. False when there is no combat to flee.</summary>
+    public bool FleeCombat()
     {
-        _combatService.FleeCombat(this);
+        return _combatService.FleeCombat(this);
     }
 
-    public void RestAtInn() => _townService.RestAtInn(this);
+    /// <summary>Rest the party at the inn. False when the party is not in town.</summary>
+    public bool RestAtInn() => _townService.RestAtInn(this);
 
     public DowntimeResult? PerformDowntimeAction(Guid characterId, DowntimeAction action)
     {
@@ -350,16 +423,23 @@ public class GameState
 
     public void Reset()
     {
+        // Each aggregate clears itself. Listing their fields here instead let new ones be forgotten:
+        // an open parley, an in-flight rescue expedition, the bench, and the component stores were
+        // all surviving into the next campaign.
         Mode = GameMode.Menu;
-        Combat = null;
-        LastCombatResult = null;
-        Player = new Player(new Position(32, 32), Direction.North);
         Exploration.Reset();
+        CombatSession.Reset();
+        Campaign.Reset();
+        Party.Reset();
+        SessionMeta.Reset();
         Town = new TownState();
         Overworld = new OverworldState();
-        Campaign.Reset();
+        // Clear the run's registrations, then put the content-pack definitions back: they describe
+        // what exists to be found, not what this run has found, and a campaign after the first must
+        // not start with an empty world.
         Secrets.Clear();
         Archives.Clear();
+        SeedContentDefinitions();
         _cachedEpilogue = null;
         PartyGold = 500;
         TitheTokens = 0;
@@ -367,14 +447,11 @@ public class GameState
         Tithe.OutstandingSinceTurn = null;
         Tithe.BilledMilestones.Clear();
         PartyInventory.Clear();
-        Party.DeadCharacters.Clear();
+        _downtimeCompleted.Clear();
         InitializeDefaultParty();
         InitializeTown();
         ActionLog.Clear();
         _actionLogTurn = 0;
-        CurrentTravelEncounter = null;
-        RolledTravelEncounterCount = 0;
-        ResolvedTravelEncounterCount = 0;
         LastUpdate = DateTime.UtcNow;
     }
 
@@ -430,13 +507,22 @@ public class GameState
     /// </summary>
     public Action<string>? ActionLogSizeWarningSink { get; set; }
 
+    /// <summary>Campaign action-log size that trips the one-shot dev warning.</summary>
+    public const int ActionLogSizeWarningThreshold = 1000;
+
     internal void EmitActionLog(string category, string type, Dictionary<string, string> payload)
     {
         _actionLogTurn++;
         ActionLog.Add(new ActionLogEntry(_actionLogTurn, CurrentAct, category, type, new Dictionary<string, string>(payload)));
-        if (ActionLog.Count >= 1000)
+
+        // Warn on the crossing only. The previous >= test fired on every subsequent emit, so a
+        // long campaign printed this thousands of times — from inside the command path, under the
+        // game-state lock. The log itself is not a leak: it is cleared on campaign reset, and it
+        // is load-bearing until then (campaign end counts deaths and completed dungeons out of
+        // it), so it is deliberately not rotated.
+        if (ActionLog.Count == ActionLogSizeWarningThreshold)
         {
-            var warning = $"[DEV] ActionLog size warning: {ActionLog.Count} events. Consider log rotation.";
+            var warning = $"[DEV] ActionLog size warning: {ActionLog.Count} events in this campaign.";
             if (ActionLogSizeWarningSink != null)
                 ActionLogSizeWarningSink(warning);
             else
@@ -540,7 +626,13 @@ public class GameState
     /// </summary>
     public CampaignContentRegistry? CampaignContent => _campaignContent;
 
-    public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path, ContentHash);
+    /// <summary>
+    /// Save the run. Defaults to <see cref="SavePath"/> — where this run says it saves — rather
+    /// than to the shared default location. They are the same for an ordinary run, but a run that
+    /// set its own path used to save and load somewhere other than it autosaved and, in ironman,
+    /// other than permadeath deletes.
+    /// </summary>
+    public void SaveGame(string? path = null) => Save.SaveSystem.Save(this, path ?? SavePath, ContentHash);
 
     public void ApplyReputationDelta(string factionId, int delta, string source)
     {
@@ -571,7 +663,8 @@ public class GameState
         FinalDungeonUnlocked = value;
     }
 
-    public bool LoadGame(string? path = null, Dungeons.IDungeonGenerator? dungeonGenerator = null) => Save.SaveSystem.Load(this, path, ContentHash, dungeonGenerator);
+    /// <summary>Load the run from <see cref="SavePath"/> unless told otherwise. See <see cref="SaveGame"/>.</summary>
+    public bool LoadGame(string? path = null, Dungeons.IDungeonGenerator? dungeonGenerator = null) => Save.SaveSystem.Load(this, path ?? SavePath, ContentHash, dungeonGenerator);
 
     public bool ChooseBranch(Guid characterId, string branch) => _campaignService.ChooseBranch(this, characterId, branch);
 
@@ -643,24 +736,12 @@ public class GameState
         foreach (var r in bench)
             Party.Bench.Remove(r);
 
-        // Reset rescue party to dungeon entrance
-        if (CurrentDungeon != null)
+        // The rescue party walks in from the entrance, not from where the last party fell.
+        if (CurrentDungeon?.FindEntrance() is { } entrance)
         {
-            for (int x = 0; x < CurrentDungeon.Width; x++)
-            {
-                for (int y = 0; y < CurrentDungeon.Height; y++)
-                {
-                    if (CurrentDungeon.Tiles[x, y].Type == TileType.Floor)
-                    {
-                        Player.Position = new Position(x, y);
-                        Player.Facing = Direction.North;
-                        ExploreAroundPlayer();
-                        break;
-                    }
-                }
-                if (Player.Position.X != RescueExpedition.TpkLocation.X || Player.Position.Y != RescueExpedition.TpkLocation.Y)
-                    break;
-            }
+            Player.Position = entrance;
+            Player.Facing = Direction.North;
+            ExploreAroundPlayer();
         }
         StepsSinceEncounter = 0;
 
@@ -713,16 +794,7 @@ public class GameState
         }
         else
         {
-            // Delete ironman save on rescue failure
-            try
-            {
-                if (File.Exists(SavePath))
-                {
-                    File.Delete(SavePath);
-                    EmitActionLog("meta", "ironman_tpk", new Dictionary<string, string> { { "rescueFailed", "true" } });
-                }
-            }
-            catch { }
+            EndIronmanRun(rescueFailed: true);
         }
     }
 
@@ -733,4 +805,35 @@ public class GameState
     /// <summary>Flavor line for a tavern recruit, keyed by class id.</summary>
     public string RecruitDialogue(string classId)
         => _dialogue?.GetLine("recruit", classId, 0) ?? "...";
+
+    /// <summary>
+    /// End an ironman run for good: delete the save so it cannot be resumed, and record that the
+    /// run ended. The two callers (a total party kill with no rescue available, and a failed rescue
+    /// expedition) enforce the same rule, so they share one implementation — the combat path used to
+    /// carry its own copy that swallowed the failure and only logged the TPK when a save file
+    /// happened to exist.
+    /// <para>
+    /// A delete failure leaves the run resumable, which silently defeats permadeath, so it is
+    /// reported and recorded rather than swallowed. The TPK itself is logged either way: the run
+    /// ended whether or not there was a file to remove.
+    /// </para>
+    /// </summary>
+    internal void EndIronmanRun(bool rescueFailed)
+    {
+        var payload = new Dictionary<string, string>();
+        if (rescueFailed) payload["rescueFailed"] = "true";
+
+        try
+        {
+            if (File.Exists(SavePath))
+                File.Delete(SavePath);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Ironman] Failed to delete save at {SavePath}: {ex.Message}");
+            payload["saveDeleteFailed"] = "true";
+        }
+
+        EmitActionLog("meta", "ironman_tpk", payload);
+    }
 }

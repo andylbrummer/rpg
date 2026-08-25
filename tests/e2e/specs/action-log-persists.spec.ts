@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { resetGame, resolveCombatByAttacking, sendWsAction } from './helpers';
+import { enterCombat, enterDungeon, resetGame, resolveCombatByAttacking, sendWsAction } from './helpers';
 
 test.describe('Action Log Persists', () => {
   test('combat log events survive save and reload', async ({ page, serverUrl, request }) => {
@@ -9,8 +9,8 @@ test.describe('Action Log Persists', () => {
     await resetGame(page, serverUrl);
 
     // Enter dungeon and trigger combat
-    await sendWsAction(page, serverUrl, { type: 'enter_dungeon', dungeonType: 'broken_engine' });
-    await sendWsAction(page, serverUrl, { type: 'enter_combat' });
+    await enterDungeon(page, serverUrl, 'broken_engine');
+    await enterCombat(page, serverUrl);
     await resolveCombatByAttacking(page, serverUrl);
 
     // Ensure we returned to exploration

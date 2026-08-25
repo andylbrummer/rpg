@@ -108,23 +108,27 @@ public class SaveSchemaV2Tests : IDisposable
 
         var originalBytes = File.ReadAllBytes(_testSavePath);
 
-        // Simulate interrupted atomic write: .tmp exists but rename never happened
-        var tmpPath = _testSavePath + ".tmp";
+        // Simulate a write killed between staging and rename: the temp survives, the save does not
+        // reflect it. Temps are uniquely named per write, so this stands in for a dead writer's
+        // orphan; back-date it past the sweep threshold to mark it abandoned rather than in flight.
+        var tmpPath = $"{_testSavePath}.{Guid.NewGuid():N}.tmp";
         File.WriteAllText(tmpPath, "{\"corrupt");
+        File.SetLastWriteTimeUtc(tmpPath, DateTime.UtcNow.AddHours(-1));
 
-        // Load should read the original intact save, ignoring .tmp
+        // Load should read the original intact save, ignoring the orphaned temp
         var gs2 = new GameState(seed: 99);
         var loaded = gs2.LoadGame(_testSavePath);
         Assert.True(loaded);
         Assert.Equal(gs.Player.Position.X, gs2.Player.Position.X);
 
-        // A fresh save should succeed and remove stale .tmp
+        // A fresh save should succeed and collect the abandoned temp
         var gs3 = new GameState(seed: 77);
         gs3.EnterDungeon(new Dungeon(5, 5, "other"), "other");
         gs3.Player = new Player(new Position(3, 4), Direction.South);
         gs3.SaveGame(_testSavePath);
 
-        Assert.False(File.Exists(tmpPath), "Stale .tmp should be removed after successful save");
+        Assert.False(File.Exists(tmpPath), "An abandoned staging file should be collected by a later save");
+        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(_testSavePath)!, $"{Path.GetFileName(_testSavePath)}*.tmp"));
         Assert.True(File.Exists(_testSavePath));
 
         // After successful save, new state should be loadable

@@ -13,6 +13,20 @@
 
   let { gameState, onTavernRecruit, onMissionAccept, onVendorPurchase, onIntent, activeTab = 'tavern' }: Props = $props();
 
+  /**
+   * Factions the party has built a public case against. Seven is the engine's threshold
+   * (CampaignService.AccuseFaction refuses below it), so offering anything less would present a
+   * button the server would decline.
+   */
+  const ACCUSATION_THRESHOLD = 7;
+
+  let accusableFactions = $derived(
+    Object.entries(gameState?.evidence?.counters ?? {})
+      .filter(([, evidence]) => evidence >= ACCUSATION_THRESHOLD)
+      .map(([id, evidence]) => ({ id, evidence }))
+      .sort((a, b) => b.evidence - a.evidence || a.id.localeCompare(b.id)),
+  );
+
   const classColors: Record<string, string> = {
     bonewarden: '#8B7355',
     stillblade: '#6B8E9F',
@@ -415,6 +429,79 @@
     </div>
   </div>
 {/if}
+
+<!-- Naming the faction behind the scheme. Seven pieces of evidence make the case public, and the
+     campaign allows exactly one accusation: naming the wrong faction costs standing with them and
+     hands the real mastermind the advantage. The server holds the answer; the party decides. -->
+{#if gameState?.evidence?.accusedFaction}
+  <h2>Accusation</h2>
+  <div class="service-list">
+    <div class="service-item accusation-made">
+      <span class="betrayal-title">You named {gameState.evidence.accusedFaction}</span>
+      <span class="betrayal-desc">The case is public. There is only one accusation in a campaign.</span>
+    </div>
+  </div>
+{:else if gameState?.evidence?.canAccuse}
+  <h2>Accusation</h2>
+  <div class="service-list">
+    {#each accusableFactions as faction (faction.id)}
+      <div class="service-item accusation-offer" data-testid="accusation-offer">
+        <div class="betrayal-text">
+          <span class="betrayal-title">Accuse {faction.id}</span>
+          <span class="betrayal-desc">
+            {faction.evidence} pieces of evidence — enough to make the case publicly. Name the wrong
+            faction and you lose standing with them, and whoever is really behind this gains ground.
+          </span>
+        </div>
+        <button
+          type="button"
+          class="action-btn betray"
+          data-testid="accuse-btn"
+          data-faction={faction.id}
+          onclick={() => onIntent({ kind: 'accuseFaction', factionId: faction.id })}
+        >
+          Accuse publicly
+        </button>
+      </div>
+    {/each}
+  </div>
+{/if}
+
+<!-- The offer to change sides. The server decides whether it can be made at all — it needs a
+     mastermind and evidence against them — and says so without naming who, because that is the
+     campaign's hidden information until the party proves it. -->
+{#if gameState?.evidence?.onBetrayalPath}
+  <h2>Betrayal</h2>
+  <div class="service-list">
+    <div class="service-item betrayal-active">
+      <span class="betrayal-title">You serve the scheme now</span>
+      <span class="betrayal-desc">
+        Your evidence bought a place at their table rather than a case against them. The missions
+        ahead are theirs.
+      </span>
+    </div>
+  </div>
+{:else if gameState?.evidence?.canBetray}
+  <h2>Betrayal</h2>
+  <div class="service-list">
+    <div class="service-item betrayal-offer">
+      <div class="betrayal-text">
+        <span class="betrayal-title">Turn your evidence into an introduction</span>
+        <span class="betrayal-desc">
+          What you have gathered is enough to reach whoever is really behind this — not to expose
+          them, but to join them. There is no coming back from it.
+        </span>
+      </div>
+      <button
+        type="button"
+        class="action-btn betray"
+        onclick={() => onIntent({ kind: 'chooseBetrayal' })}
+      >
+        Throw in with them
+      </button>
+    </div>
+  </div>
+{/if}
 {/if}
 
 {#if activeTab === 'clerk'}
@@ -503,8 +590,14 @@
         {:else}
           <div class="downtime-picker">
             <div class="downtime-controls">
+              <!--
+                One of these rows exists per party member, so a bare "Select action" label would
+                be ambiguous to a screen reader. Naming the member makes each control's purpose
+                unambiguous out of context, which is how a screen reader encounters it.
+              -->
               <select
                 class="downtime-select"
+                aria-label={`Downtime action for ${member.name}`}
                 value={selected ?? ''}
                 onchange={(e) => { selectedAction[member.id] = (e.target as HTMLSelectElement).value; }}
               >
@@ -516,6 +609,7 @@
               <button
                 type="button"
                 class="action-btn downtime-perform"
+                aria-label={`Perform downtime action for ${member.name}`}
                 disabled={!selected}
                 onclick={() => performSelected(member.id)}
               >
@@ -1145,4 +1239,46 @@
   .recruit-body { display:flex; flex-direction:column; gap:0.2rem; flex:1 1 auto; min-width:0; }
   .recruit-line { font-style:italic; color:#aaa; font-size:clamp(0.6rem,1.2vw,0.7rem); }
   .recruit-foot { display:flex; justify-content:space-between; align-items:center; margin-top:auto; }
+
+  /* Deliberately the coldest thing on the screen: this is the one town action that cannot be
+     undone, and it should not read like the alliance offer sitting above it. */
+  .betrayal-offer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    background: rgba(124, 63, 63, 0.12);
+    border: 1px solid rgba(124, 63, 63, 0.4);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .betrayal-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .betrayal-title {
+    color: #c96a6a;
+    font-weight: bold;
+  }
+
+  .betrayal-desc {
+    color: #ccc;
+    font-size: clamp(0.65rem, 1.2vw, 0.8rem);
+  }
+
+  .action-btn.betray {
+    background: #7c3f3f;
+  }
+
+  .betrayal-active {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    background: rgba(124, 63, 63, 0.12);
+    border: 1px solid rgba(124, 63, 63, 0.4);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
 </style>

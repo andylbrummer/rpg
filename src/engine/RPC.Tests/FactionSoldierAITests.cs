@@ -25,7 +25,7 @@ public class FactionSoldierAITests
         var enemyRegistry = new EnemyRegistry();
         enemyRegistry.LoadFromJson("bureau_soldier", @"{
             ""id"": ""bureau_soldier"", ""name"": ""Bureau Enforcer"", ""description"": ""Test"",
-            ""stats"": { ""str"": 5, ""dex"": 5, ""con"": 5, ""int"": 3, ""wil"": 3 },
+            ""stats"": { ""strength"": 5, ""dexterity"": 5, ""constitution"": 5, ""intelligence"": 3, ""willpower"": 3 },
             ""hpBase"": 10, ""speed"": 4, ""ai"": ""soldier_tactical"",
             ""abilities"": [""bayonet_thrust"", ""suppress""], ""lootTable"": []
         }");
@@ -59,7 +59,7 @@ public class FactionSoldierAITests
         var enemyRegistry = new EnemyRegistry();
         enemyRegistry.LoadFromJson("bureau_soldier", @"{
             ""id"": ""bureau_soldier"", ""name"": ""Bureau Enforcer"", ""description"": ""Test"",
-            ""stats"": { ""str"": 5, ""dex"": 5, ""con"": 5, ""int"": 3, ""wil"": 3 },
+            ""stats"": { ""strength"": 5, ""dexterity"": 5, ""constitution"": 5, ""intelligence"": 3, ""willpower"": 3 },
             ""hpBase"": 20, ""speed"": 4, ""ai"": ""soldier_tactical"",
             ""abilities"": [""bayonet_thrust"", ""suppress""], ""lootTable"": []
         }");
@@ -116,7 +116,7 @@ public class FactionSoldierAITests
         var registry = new EnemyRegistry();
         registry.LoadFromJson("bureau_soldier", @"{
             ""id"": ""bureau_soldier"", ""name"": ""Bureau Enforcer"", ""description"": ""Test"",
-            ""stats"": { ""str"": 5, ""dex"": 5, ""con"": 5, ""int"": 3, ""wil"": 3 },
+            ""stats"": { ""strength"": 5, ""dexterity"": 5, ""constitution"": 5, ""intelligence"": 3, ""willpower"": 3 },
             ""hpBase"": 20, ""speed"": 4, ""ai"": ""soldier_tactical"",
             ""abilities"": [""bayonet_thrust""], ""lootTable"": [], ""factionId"": ""bureau""
         }");
@@ -137,7 +137,7 @@ public class FactionSoldierAITests
         var registry = new EnemyRegistry();
         registry.LoadFromJson("convocation_soldier", @"{
             ""id"": ""convocation_soldier"", ""name"": ""Convocation Zealot"", ""description"": ""Test"",
-            ""stats"": { ""str"": 5, ""dex"": 5, ""con"": 5, ""int"": 3, ""wil"": 3 },
+            ""stats"": { ""strength"": 5, ""dexterity"": 5, ""constitution"": 5, ""intelligence"": 3, ""willpower"": 3 },
             ""hpBase"": 20, ""speed"": 4, ""ai"": ""zealot_aggressive"",
             ""abilities"": [""fervent_slash""], ""lootTable"": [], ""factionId"": ""convocation""
         }");

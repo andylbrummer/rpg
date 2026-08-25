@@ -12,13 +12,17 @@ public class OverworldService
     private readonly ClassRegistry? _classRegistry;
     private readonly SynergyRegistry? _synergies;
     private readonly CampaignContentRegistry? _campaignContent;
+    private readonly EnemyRegistry? _enemies;
+    private readonly RPC.Engine.Content.ItemRegistry? _items;
 
-    public OverworldService(GameRandom encounterRng, ClassRegistry? classRegistry, SynergyRegistry? synergies = null, CampaignContentRegistry? campaignContent = null)
+    public OverworldService(GameRandom encounterRng, ClassRegistry? classRegistry, SynergyRegistry? synergies = null, CampaignContentRegistry? campaignContent = null, EnemyRegistry? enemies = null, RPC.Engine.Content.ItemRegistry? items = null)
     {
         _encounterRng = encounterRng;
         _classRegistry = classRegistry;
         _synergies = synergies;
         _campaignContent = campaignContent;
+        _enemies = enemies;
+        _items = items;
     }
 
     public void GenerateOverworld(GameState state, CampaignConfig config)
@@ -326,9 +330,11 @@ public class OverworldService
 
         if (isHostilePatrol)
         {
-            var patrolEnemies = new[] { new EnemySpawn("faction_soldier", 2) };
+            // isHostilePatrol is only set when the encounter carries a faction, so the patrol always
+            // knows whose soldiers it is fighting.
+            var patrolEnemies = new[] { new EnemySpawn(EnemyRegistry.SoldierIdFor(factionId!), 2) };
             var encounterDef = new EncounterDef(encounter.Id, encounter.Name, patrolEnemies, 15);
-            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
+            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies, items: _items);
             state.CurrentTravelEncounter = null;
 
             if (state.Combat.IsFinished)
@@ -341,15 +347,16 @@ public class OverworldService
             {
                 state.Mode = GameMode.Combat;
                 var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+                var emitter = CombatActionLog.EmitterFor(state);
                 state.Combat = CombatEngine.AutoResolveToPlayerTurn(
-                    CombatEngine.Tick(state.Combat, null, rng, _classRegistry, null, _synergies),
-                    rng, _classRegistry, null, _synergies);
+                    CombatEngine.Tick(state.Combat, null, rng, _classRegistry, emitter, _synergies),
+                    rng, _classRegistry, emitter, _synergies);
             }
         }
         else if (encounter.ResolutionType == TravelResolutionType.Combat && encounter.Enemies != null)
         {
             var encounterDef = new EncounterDef(encounter.Id, encounter.Name, encounter.Enemies, 15);
-            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)));
+            state.Combat = CombatEngine.Enter(state.Party, encounterDef, new GameRandom(_encounterRng.Roll(1, 10000)), _enemies, items: _items);
             state.CurrentTravelEncounter = null;
 
             if (state.Combat.IsFinished)
@@ -362,9 +369,10 @@ public class OverworldService
             {
                 state.Mode = GameMode.Combat;
                 var rng = new GameRandom(_encounterRng.Roll(1, 10000));
+                var emitter = CombatActionLog.EmitterFor(state);
                 state.Combat = CombatEngine.AutoResolveToPlayerTurn(
-                    CombatEngine.Tick(state.Combat, null, rng, _classRegistry, null, _synergies),
-                    rng, _classRegistry, null, _synergies);
+                    CombatEngine.Tick(state.Combat, null, rng, _classRegistry, emitter, _synergies),
+                    rng, _classRegistry, emitter, _synergies);
             }
         }
     }

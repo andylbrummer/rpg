@@ -20,17 +20,37 @@ public class ExplorationService
 
     public void EnterDungeon(GameState state, Dungeon dungeon, string dungeonType)
     {
-        if (state.CampaignEnded) return;
-        if (state.HasPendingBranchChoices) return;
+        // Every refusal says why. Two of these used to return silently: the party simply stayed in
+        // town with no log line and no message, which reads as a dropped input rather than a rule.
+        // The client disables the button for pending branches, but it decides that from a state
+        // snapshot, so a click racing the level-up that created the pending choice still lands here.
+        if (state.CampaignEnded)
+        {
+            state.EmitActionLog("dungeon", "dungeon_blocked_campaign_ended", new Dictionary<string, string>
+            {
+                { "dungeonType", dungeonType }
+            });
+            return;
+        }
+        if (state.HasPendingBranchChoices)
+        {
+            state.EmitActionLog("dungeon", "dungeon_blocked_pending_branches", new Dictionary<string, string>
+            {
+                { "dungeonType", dungeonType }
+            });
+            return;
+        }
         if (state.Heat.IsLockdown)
         {
             state.EmitActionLog("heat", "dungeon_blocked_lockdown", new Dictionary<string, string>
             {
-                { "heat", state.Heat.Value.ToString() }
+                { "heat", state.Heat.Value.ToString() },
+                { "dungeonType", dungeonType }
             });
             return;
         }
         state.CurrentDungeon = dungeon;
+        state.InstallDungeonSecrets(dungeon);
         state.CurrentDungeonType = dungeonType;
         state.ExploredTiles.Clear();
         state.Exploration.CollectedLoot.Clear();
@@ -39,20 +59,10 @@ public class ExplorationService
         state.Mode = GameMode.Exploration;
         state.EmitActionLog("dungeon", "dungeon_entered", new Dictionary<string, string> { { "dungeonType", dungeonType } });
         state.IncrementTurns(1);
-        // Find entrance position
-        for (int x = 0; x < dungeon.Width; x++)
-        {
-            for (int y = 0; y < dungeon.Height; y++)
-            {
-                if (dungeon.Tiles[x, y].Type == TileType.Floor)
-                {
-                    state.Player.Position = new Position(x, y);
-                    state.Player.Facing = Direction.North;
-                    ExploreAroundPlayer(state);
-                    return;
-                }
-            }
-        }
+        if (dungeon.FindEntrance() is not { } entrance) return;
+        state.Player.Position = entrance;
+        state.Player.Facing = Direction.North;
+        ExploreAroundPlayer(state);
     }
 
     public void ExploreAroundPlayer(GameState state)
@@ -229,7 +239,16 @@ public class ExplorationService
         if (secret.X is not int sx || secret.Y is not int sy) return false;
         if (!TryParseWall(secret.Wall, out var dir)) return false;
 
-        SetBorderBothSides(state.CurrentDungeon, new Position(sx, sy), dir, BorderType.None);
+        // The secret's coordinates are content-fixed while the dungeon around them is generated per
+        // seed, so they are not guaranteed to name a wall this layout actually made breakable.
+        // Clearing the border regardless punched a hole through an ordinary wall and rewrote the
+        // map's connectivity from what is really a content/geometry mismatch.
+        var pos = new Position(sx, sy);
+        var border = state.CurrentDungeon.GetTile(pos).GetBorder(dir);
+        if (border is not (BorderType.BreakableWall or BorderType.CrackedWall))
+            return false;
+
+        SetBorderBothSides(state.CurrentDungeon, pos, dir, BorderType.None);
 
         // One break = one in-dungeon turn (ages carried bloom samples).
         Inventory.BloomDecaySystem.TickDungeonTurn(state);

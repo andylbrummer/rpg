@@ -72,9 +72,11 @@ public class GameCommandHandler
                 stateChanged = UseConsumable(useCmd);
                 break;
             case FleeCombatCommand:
-                _gameState.FleeCombat();
-                stateChanged = true;
-                clearCombatResult = true;
+                stateChanged = _gameState.FleeCombat();
+                // Only clear a combat result that this flee actually produced. Clearing on a flee
+                // that did nothing would discard the result of the previous fight before the
+                // player had seen it.
+                clearCombatResult = stateChanged;
                 break;
             case TriggerEncounterCommand:
                 _gameState.TriggerEncounter();
@@ -89,21 +91,51 @@ public class GameCommandHandler
                 }
                 break;
             case RestAtInnCommand:
-                _gameState.RestAtInn();
-                stateChanged = true;
+                stateChanged = _gameState.RestAtInn();
                 break;
             case ReturnToTownCommand:
-                _gameState.ReturnToTown();
-                stateChanged = true;
+                // Only from outside town. GameState.ReturnToTown also runs the town-arrival cycle
+                // — a campaign turn, the downtime reset, the recruit and rumor refresh — and does
+                // so unconditionally, so replaying this command from town (a double click, a
+                // reconnect resending its last action) would burn a turn off the campaign clock
+                // and clear the party's downtime progress in exchange for nothing. Guarded here
+                // rather than in the engine because arriving in town is also how the engine itself
+                // advances that cycle; it is only the client asking twice that is wrong.
+                if (_gameState.Mode != GameMode.Menu)
+                {
+                    _gameState.ReturnToTown();
+                    stateChanged = true;
+                }
                 break;
             case SaveGameCommand:
-                _gameState.SaveGame();
+                // Save where the run says it saves. The ironman autosave below and the permadeath
+                // delete both resolve the file through GameState.SavePath, and a manual save that
+                // resolved it differently would be writing to a file the other two do not manage:
+                // a run whose save path is not the default would autosave to one file and save to
+                // another, and permadeath would delete only the first. The two agree today only
+                // because nothing outside tests ever sets SavePath — which is also why a test that
+                // dispatches this command writes to the real per-user save rather than its own.
+                _gameState.SaveGame(_gameState.SavePath);
                 stateChanged = true;
                 break;
 
             case SetIronmanCommand ironmanCmd:
-                _gameState.IsIronman = ironmanCmd.Enabled;
-                stateChanged = true;
+                // Ironman is a commitment for the length of a run: it can be taken on, never given
+                // back. A permadeath mode the player can switch off in front of a hard fight and
+                // back on afterwards is not one, and every consequence that makes it mean
+                // something — the single save, the deletion on a wipe — is worth nothing if the
+                // mode can be stepped out of first. Starting a new campaign clears it; that is the
+                // only way out, and it costs the run.
+                //
+                // Enforced here rather than on GameState.IsIronman because the field itself has to
+                // stay settable both ways: loading a save restores whatever the run was, and
+                // Reset clears it for the next campaign. It is the player's request that is
+                // one-way, not the value.
+                if (ironmanCmd.Enabled && !_gameState.IsIronman)
+                {
+                    _gameState.IsIronman = true;
+                    stateChanged = true;
+                }
                 break;
             case ResetGameCommand:
                 _gameState.Reset();
@@ -111,6 +143,15 @@ public class GameCommandHandler
                 break;
             case SwapRowCommand swapCmd:
                 {
+                    // The slot arrives from the client. PartyState.SwapRows range-checks it, but
+                    // this case reads the member out of the array first — so an out-of-range slot
+                    // failed on the array access, as an IndexOutOfRangeException, before the
+                    // domain's own check could reject it. Bound it against the party itself rather
+                    // than restating the range, so the two cannot drift apart.
+                    if (swapCmd.Slot < 0 || swapCmd.Slot >= _gameState.Party.Members.Length)
+                        throw new ArgumentOutOfRangeException(
+                            nameof(swapCmd.Slot), swapCmd.Slot, "No such party slot.");
+
                     var member = _gameState.Party.Members[swapCmd.Slot];
                     _gameState.Party.SwapRows(swapCmd.Slot);
                     stateChanged = true;

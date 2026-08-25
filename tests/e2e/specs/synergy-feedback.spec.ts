@@ -101,7 +101,8 @@ test.describe('Synergy Feedback', () => {
         return {
           flashTarget: overlay?.getAttribute('data-flash-target') ?? 'missing',
           hasFlashClass: flashEl !== null,
-          flashParentText: flashEl?.closest('.enemy-side, .player-side')?.querySelector('h3')?.textContent ?? 'unknown',
+          // The side's section title; h2 since the combat overlay gained an h1 of its own.
+          flashParentText: flashEl?.closest('.enemy-side, .player-side')?.querySelector('h2')?.textContent ?? 'unknown',
         };
       });
       if (flashInfo.hasFlashClass) break;
@@ -168,8 +169,12 @@ test.describe('Synergy Feedback', () => {
     // The discovered synergy should now be revealed
     await expect(page.locator('.field-note-entry .field-note-names', { hasText: 'silence_strike + smoke_bomb' })).toBeVisible();
 
-    // Undiscovered synergies should still show ???
-    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(17);
+    // Undiscovered synergies should still show ???. The total comes from synergy content and
+    // moves whenever content is added, so derive it rather than pinning today's count: what
+    // this test owns is that exactly the one discovered entry is revealed.
+    const total = await page.locator('.field-note-entry').count();
+    expect(total).toBeGreaterThan(1);
+    await expect(page.locator('.field-note-entry .field-note-names', { hasText: '??? + ???' })).toHaveCount(total - 1);
   });
 
   test('replay modal opens and shows animation', async ({ page, serverUrl }) => {

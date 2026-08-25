@@ -78,6 +78,25 @@
     gap: 0.75rem;
     min-width: clamp(14rem, 22vw, 18rem);
     max-width: min(22rem, 30vw);
+    /* The dungeon list grows past the viewport on a full campaign; scroll it inside the rail
+       rather than letting it push the rail past its container and get clipped. */
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /*
+    Stacked layout (see TownMenu's matching breakpoint): the rail sits below the panel rather
+    than beside it, so its sidebar width no longer applies and it must be able to shrink. Left
+    at flex: 0 0 auto its dungeon list is taller than the viewport and would squeeze the panel
+    above it to nothing.
+  */
+  @media (max-width: 60rem) {
+    .actions-panel {
+      flex: 0 1 auto;
+      max-height: 45%;
+      min-width: 0;
+      max-width: none;
+    }
   }
 
   .actions-panel h2 {

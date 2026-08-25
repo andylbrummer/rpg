@@ -148,4 +148,32 @@ public class DungeonLootReachabilityTests
         Assert.True(failures.Count == 0,
             "Dungeons with no reachable loot at the live default seed:\n  " + string.Join("\n  ", failures));
     }
+
+    /// <summary>
+    /// Breakable walls only matter if the stitcher actually places the segments that carry them.
+    /// Registering a secret per wall is worth nothing if no generated layout contains one, so this
+    /// reports what the live templates really produce rather than assuming the content reaches play.
+    /// </summary>
+    [Fact]
+    public void Template_dungeons_that_author_breakable_walls_actually_place_them()
+    {
+        var gen = new DungeonGenerator(AllSegments(), AllTemplates(), AllEncounterTables(), AllLootTables());
+        var templates = AllTemplates();
+        Assert.NotEmpty(templates);
+
+        var withWalls = new List<string>();
+        foreach (var id in templates.Keys.OrderBy(k => k))
+        {
+            var d = gen.Generate(id);
+            var secrets = new SecretRegistry();
+            BreakableWallSecrets.RegisterFrom(secrets, d);
+            _out.WriteLine($"{id,-24} breakableWalls={secrets.All.Count}");
+            if (secrets.All.Count > 0) withWalls.Add(id);
+        }
+
+        Assert.True(withWalls.Count > 0,
+            "No template dungeon placed a breakable wall at its default seed, so nothing can ever "
+            + "be searched out or broken through. Segments authoring BreakableWall borders are not "
+            + "reaching the generated layouts.");
+    }
 }

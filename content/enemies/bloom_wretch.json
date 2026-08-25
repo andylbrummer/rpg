@@ -3,11 +3,11 @@
   "name": "Bloom Wretch",
   "description": "A shambling humanoid covered in fungal growths, still smoldering with residual ash from the blight.",
   "stats": {
-    "str": 10,
-    "dex": 6,
-    "con": 8,
-    "int": 2,
-    "wil": 4
+    "strength": 10,
+    "dexterity": 6,
+    "constitution": 8,
+    "intelligence": 2,
+    "willpower": 4
   },
   "hpBase": 14,
   "speed": 5,
