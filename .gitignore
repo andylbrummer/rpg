@@ -85,3 +85,7 @@ secrets.json
 .dartai/*.local.md
 content/out/
 .worktrack/
+
+# tman shims
+/test
+/test.cmd
