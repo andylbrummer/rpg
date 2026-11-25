@@ -32,7 +32,7 @@ async function waitForServer(url: string, timeout = 15000): Promise<void> {
 test.describe('Content Hot Reload', () => {
   test('touching segment JSON broadcasts content.reload over websocket', async ({ page }) => {
     const port = await getFreePort();
-    const hostDll = resolve(__dirname, '../../../src/engine/RPC.Host/bin/Debug/net9.0/RPC.Host.dll');
+    const hostDll = resolve(__dirname, '../../../src/engine/RPC.Host/bin/Debug/net10.0/RPC.Host.dll');
     const proc = spawn('dotnet', [hostDll, '--headless', '--dev', `--port=${port}`], {
       cwd: resolve(__dirname, '../../../src/engine'),
       stdio: 'pipe',

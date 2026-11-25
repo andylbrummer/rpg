@@ -52,7 +52,7 @@ export const test = base.extend<ServerFixture>({
       // ignore if file does not exist
     }
 
-    const hostDll = resolve(__dirname, '../../../src/engine/RPC.Host/bin/Release/net9.0/RPC.Host.dll');
+    const hostDll = resolve(__dirname, '../../../src/engine/RPC.Host/bin/Release/net10.0/RPC.Host.dll');
     const proc = spawn('dotnet', [hostDll, '--headless'], {
       cwd: resolve(__dirname, '../../../src/engine'),
       stdio: 'pipe',
